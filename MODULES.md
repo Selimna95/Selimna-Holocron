@@ -1,9 +1,9 @@
-# Architecture — Holocron v3.1.0
+# Architecture — Holocron v3.2.0
 
 | Fichier | Responsabilité |
 |---|---|
 | `index.html` | Structure des pages, formulaires et gabarits de l’interface |
-| `app.css` | Thème global et composants du tableau de bord (CSS critique, budget < 100 Ko) |
+| `app.css` | Thème global et composants du tableau de bord (CSS critique, budget < 120 Ko) |
 | `sithari.css` | Propriétaire unique des composants Sith’ari, chargée à la demande |
 | `pages.css` | Styles des pages secondaires, chargés à la première navigation hors tableau de bord |
 | `modules/runtime-guards.js` | État partagé explicite, stockage protégé et fetch avec timeout/AbortController |

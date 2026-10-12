@@ -4,7 +4,7 @@
 (function(){
   'use strict';
 
-  const DEFAULT_RELAY='https://swgoh-optimizer-relay.lorg75017.workers.dev';
+  const DEFAULT_RELAY=DEFAULT_RELAY_URL;
   function el(id){ return document.getElementById(id); }
   function text(id,v){ const n=el(id); if(n) n.textContent=String(v ?? ''); }
   function nfmt(v){ return Number(v||0).toLocaleString('fr-FR'); }
@@ -103,11 +103,7 @@
     const gate=el('holocronGate'), shell=el('appShell');
     if(shell) shell.hidden=false;
     renderDecision();
-    try {
-      safeSessionStorage.setItem('holocronSessionEstablished','1');
-      const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);
-      if(ally.length===9) safeSessionStorage.setItem('holocronLastAllyCode',ally);
-    } catch (_) {}
+    // Le code allié et l’état d’authentification ne sont pas persistés.
     if(gate){
       gate.classList.remove('gate-complete');
       gate.classList.add('is-success');
@@ -126,9 +122,7 @@
   function safeStorageSet(key,value){
     return safeStorage.setItem(key,value);
   }
-  function validRelayUrl(value){
-    try{const u=new URL(String(value||'').trim());return (u.protocol==='https:'||u.protocol==='http:') && !!u.host;}catch(_){return false;}
-  }
+  function validRelayUrl(value){ return !!normalizeRelayUrl(value); }
 
   async function startLegacyLoad(){
     const input=el('gateAllyCode');
@@ -136,10 +130,11 @@
     if(ally.length!==9){setGate('CODE ALLIÉ INVALIDE · 9 CHIFFRES ATTENDUS','error');return;}
     const relayInput=el('gateRelayUrl');
     const relay=String(relayInput?.value||safeStorageGet('swgohRelayUrl')||DEFAULT_RELAY).trim().replace(/\/+$/,'');
-    if(relay && !validRelayUrl(relay)){setGate('URL DU RELAIS INVALIDE · UTILISEZ HTTP(S)','error');return;}
-    if(relay) safeStorageSet('swgohRelayUrl',relay);
+    if(relay && !validRelayUrl(relay)){setGate('URL DU RELAIS INVALIDE · HTTPS REQUIS HORS LOCALHOST','error');return;}
+    if(relay) safeStorageSet('swgohRelayUrl',normalizeRelayUrl(relay));
+    const customRelay=!!relay && normalizeRelayUrl(relay)!==DEFAULT_RELAY;
     const legacy=el('allyCode'); if(legacy) legacy.value=ally;
-    setGate('IDENTIFICATION DU ROSTER · CHARGEMENT DES DONNÉES','loading');
+    setGate(customRelay?'ATTENTION · RELAIS PERSONNALISÉ : vérifiez sa confiance. CHARGEMENT DU ROSTER…':'IDENTIFICATION DU ROSTER · CHARGEMENT DES DONNÉES','loading');
     const btn=el('gateActivate'); if(btn) btn.disabled=true;
     if(typeof window.loadRemotePlayer!=='function'){
       setGate('MOTEUR DE SYNCHRONISATION INDISPONIBLE','error');
@@ -167,22 +162,10 @@
     const gateBtn=el('gateActivate'); if(gateBtn) gateBtn.addEventListener('click',startLegacyLoad);
     const code=el('gateAllyCode'); if(code) code.addEventListener('keydown',e=>{if(e.key==='Enter')startLegacyLoad();});
     const relayInput=el('gateRelayUrl');
-    if(relayInput) relayInput.value=safeStorageGet('swgohRelayUrl')||DEFAULT_RELAY;
+    if(relayInput) relayInput.value=safeStorageGet('swgohRelayUrl')||'';
     window.addEventListener('holocron:data-updated',renderDecision);
-    window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
-    // A previously authenticated tab can reconnect without replaying the full gate.
-    try {
-      const savedAlly=safeSessionStorage.getItem('holocronLastAllyCode')||'';
-      if(safeSessionStorage.getItem('holocronSessionEstablished')==='1' && /^\d{9}$/.test(savedAlly)){
-        const legacy=el('allyCode'); if(legacy) legacy.value=savedAlly;
-        if(el('gateAllyCode'))el('gateAllyCode').value=savedAlly;
-        if(el('appShell'))el('appShell').hidden=false;
-        if(el('holocronGate'))el('holocronGate').hidden=true;
-        if(typeof window.loadRemotePlayer==='function'){
-          window.loadRemotePlayer().then(ok=>{if(ok===false){if(el('holocronGate'))el('holocronGate').hidden=false;}renderDecision();}).catch(()=>{if(el('holocronGate'))el('holocronGate').hidden=false;});
-        }
-      }
-    } catch (_) {}
+    window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||'';});
+    // À chaque rechargement, demander explicitement le code allié à l’utilisateur.
     renderDecision();
   }
 

@@ -18,11 +18,16 @@ async function fetchWithTimeout(input, options = {}, timeoutMs = 15000) {
   }
 }
 
+async function withTimeout(promise, timeoutMs, label) {
+  let timer;
+  try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} : délai dépassé (${timeoutMs} ms)`)), timeoutMs); })]); }
+  finally { clearTimeout(timer); }
+}
 async function loadEngine() {
-  const { loadPyodide } = await import('https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs');
-  const pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.7/full/' });
-  for (const [path, required] of [['./python/optimizer.py', true], ['./python/kyber_data.py', false]]) {
-    const response = await fetchWithTimeout(new URL(path, import.meta.url), { cache: 'force-cache' });
+  const { loadPyodide } = await withTimeout(import('https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs'), 30000, 'Import Pyodide');
+  const pyodide = await withTimeout(loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.7/full/' }), 60000, 'Chargement Pyodide');
+  for (const [path, required] of [['./python/optimizer.py', true], ['./python/kyber_data.py', false], ['./python/kyber_profiles.json', false]]) {
+    const response = await fetchWithTimeout(new URL(path, import.meta.url), { cache: 'no-cache' });
     if (!response.ok) {
       if (required) throw new Error(`Impossible de charger ${path} (HTTP ${response.status})`);
       continue;
@@ -34,15 +39,23 @@ async function loadEngine() {
 }
 
 function getPyodide() {
-  if (!pyodideReadyPromise) pyodideReadyPromise = loadEngine();
+  if (!pyodideReadyPromise) {
+    pyodideReadyPromise = loadEngine().catch(error => {
+      pyodideReadyPromise = null;
+      throw error;
+    });
+  }
   return pyodideReadyPromise;
 }
 
 async function getProfileIndex() {
   if (!profileIndexPromise) {
-    profileIndexPromise = fetchWithTimeout(PROFILE_INDEX_URL, { cache: 'force-cache' }).then(async response => {
+    profileIndexPromise = fetchWithTimeout(PROFILE_INDEX_URL, { cache: 'no-cache' }).then(async response => {
       if (!response.ok) throw new Error(`Index des profils indisponible (HTTP ${response.status})`);
       return response.json();
+    }).catch(error => {
+      profileIndexPromise = null;
+      throw error;
     });
   }
   return profileIndexPromise;
@@ -55,7 +68,7 @@ async function getCharacterProfile(baseId, name) {
   const entry = index[wantedBase] || Object.values(index).find(item => String(item.name || '').trim().toLocaleLowerCase() === wantedName);
   if (!entry?.file) throw new Error(`Profil local introuvable pour ${name || baseId || 'ce personnage'}.`);
   if (profileCache.has(entry.base_id)) return profileCache.get(entry.base_id);
-  const response = await fetchWithTimeout(new URL(`./python/optimizer_profiles/${encodeURIComponent(entry.file)}`, import.meta.url), { cache: 'force-cache' });
+  const response = await fetchWithTimeout(new URL(`./python/optimizer_profiles/${encodeURIComponent(entry.file)}`, import.meta.url), { cache: 'no-cache' });
   if (!response.ok) throw new Error(`Profil ${entry.name} indisponible (HTTP ${response.status})`);
   const profile = await response.json();
   profileCache.set(entry.base_id, profile);
@@ -106,7 +119,13 @@ r = optimizer.find_top_builds(
 )
 json.dumps(r)
 `);
-    self.postMessage({ id, type: 'done', result: typeof raw === 'string' ? raw : String(raw) });
+    const resultText = typeof raw === 'string' ? raw : String(raw);
+    let parsed = [];
+    try { parsed = JSON.parse(resultText); } catch (_) {}
+    const warning = parsed.find(item => Array.isArray(item?.warnings) && item.warnings.length)?.warnings?.[0];
+    if (warning) self.postMessage({ id, type: 'status', message: warning });
+    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Le moteur n’a trouvé aucun build. Vérifiez les sets, les slots et les mods disponibles ; aucun résultat ne sera masqué silencieusement.');
+    self.postMessage({ id, type: 'done', result: resultText });
   } catch (error) {
     self.postMessage({ id, type: 'error', error: error?.stack || error?.message || String(error) });
   }

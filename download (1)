@@ -4,3 +4,5 @@ coverage/
 playwright-report/
 test-results/
 python/optimizer_profiles/*.json
+
+python/kyber_profiles.json

@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 const root = process.cwd();
 const classicScripts = [
   'modules/runtime-guards.js',
+  'service-worker-register.js',
   'gac-usage.js',
   'interface-adapter.js',
   'modules/core.js',

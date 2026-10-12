@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.2.0] — 2026-10-12
+
+### Sécurité et fiabilité
+- Helper `safeUrl()` HTTPS-only pour les images et politique CSP restrictive.
+- Relais centralisé, HTTPS exigé hors localhost, avertissement des relais personnalisés et suppression du stockage du code allié en session.
+- Timeout/annulation du Worker et erreurs explicites lorsque l’optimiseur ne peut pas proposer de build.
+- Revalidation réseau des profils et du moteur avec cache de secours.
+
+### Moteur et tests
+- Repli visible si le plan de sets Kyber est impossible, recherche exhaustive sur petits inventaires, cache du set normalisé et identifiants uniques des mods anonymes.
+- Constantes de scoring nommées, fixtures HTML de scraping et génération reproductible de l’index des profils.
+- Feuilles CSS formatées sur plusieurs lignes ; `app.css` reste sous 100 Ko.
+- 14 tests Python exécutés localement avec succès. Les tests npm et Playwright restent à confirmer par la CI, car le registre npm était inaccessible lors de la préparation.
+
+
 ## [3.0.0] — 2026-10-12
 
 ### Corrigé

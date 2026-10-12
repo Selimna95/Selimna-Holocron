@@ -1,6 +1,6 @@
 {
   "name": "selimnas-holocron-v3",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "private": true,
   "description": "Holocron Sith — SWGOH Optimizer web app",
   "scripts": {
@@ -8,12 +8,14 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint . && stylelint 'app.css' 'sithari.css' 'pages.css'",
-    "format:check": "prettier --check package.json vite.config.mjs eslint.config.mjs stylelint.config.mjs playwright.config.mjs tests/js/*.test.js tests/e2e/*.spec.js",
+    "format:check": "prettier --check \"**/*.{js,mjs,json,css,html,md,yml}\"",
     "test:js": "vitest run",
     "test:e2e": "playwright test",
     "test:python": "python -m unittest discover -s tests -v",
     "css:budget": "node scripts/check-css-budget.mjs",
-    "check": "npm run lint && npm run test:js && npm run test:python && npm run css:budget && npm run build"
+    "check": "npm run lint && npm run test:js && npm run test:profiles && npm run test:python && npm run css:budget && npm run build",
+    "format": "prettier --write \"**/*.{js,mjs,json,css,html,md,yml}\"",
+    "test:profiles": "python scripts/generate-profile-index.py --check"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
