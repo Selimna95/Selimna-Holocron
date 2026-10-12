@@ -1,4 +1,23 @@
-function showPage(page){
+const HOLOCRON_STYLE_PROMISES = new Map();
+function ensureHolocronStylesheet(file){
+  const href=new URL(`./${file}`,document.baseURI).href;
+  const existing=[...document.querySelectorAll('link[rel=stylesheet]')].find(link=>link.href===href);
+  if(existing)return HOLOCRON_STYLE_PROMISES.get(file)||Promise.resolve();
+  if(HOLOCRON_STYLE_PROMISES.has(file))return HOLOCRON_STYLE_PROMISES.get(file);
+  const promise=new Promise((resolve,reject)=>{
+    const link=document.createElement('link');link.rel='stylesheet';link.href=href;
+    link.onload=resolve;link.onerror=()=>reject(new Error(`Impossible de charger ${file}`));
+    document.head.appendChild(link);
+  });
+  HOLOCRON_STYLE_PROMISES.set(file,promise);
+  return promise;
+}
+async function showPage(page){
+  const styles=[];
+  if(page!=='dashboard')styles.push(ensureHolocronStylesheet('pages.css'));
+  if(page==='sithari')styles.push(ensureHolocronStylesheet('sithari.css'));
+  try{await Promise.all(styles);}catch(error){console.warn('[Holocron] Feuille de style secondaire indisponible:',error);}
+  window.HOLOCRON_STATE.ui.activePage=page;
   document.body.dataset.page=page;
   document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x.dataset.page===page));
   document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===page));

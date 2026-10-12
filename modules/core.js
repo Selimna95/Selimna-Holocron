@@ -297,10 +297,10 @@ async function fetchKyberProfile(character){
   const display=character.name||character.character||character.baseId||character.base_id||'';
   const candidates=[]; const add=v=>{const s=slug(v);if(s&&!candidates.includes(s))candidates.push(s);};
   add(display); add(character.baseId||character.base_id);
-  const tryCandidate=async candidate=>{try{const r=await fetch(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`,{headers:{'Accept':'text/html,application/xhtml+xml'}});if(!r.ok)return null;const html=await r.text();if(!/Best Mods|Data Slice:\s*Kyber/i.test(html))return null;return parseKyberProfileHTML(html,display,candidate);}catch(e){log(`Référence Kyber ${candidate}: ${e?.message||e}`);return null;}};
+  const tryCandidate=async candidate=>{try{const r=await holoFetch(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`,{headers:{'Accept':'text/html,application/xhtml+xml'}});if(!r.ok)return null;const html=await r.text();if(!/Best Mods|Data Slice:\s*Kyber/i.test(html))return null;return parseKyberProfileHTML(html,display,candidate);}catch(e){log(`Référence Kyber ${candidate}: ${e?.message||e}`);return null;}};
   for(const candidate of candidates){const parsed=await tryCandidate(candidate);if(parsed){profiles[candidate]=parsed;return parsed;}}
   try{
-    const r=await fetch(`${workerUrl()}/?path=characters-index`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
+    const r=await holoFetch(`${workerUrl()}/?path=characters-index`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
     if(r.ok){const doc=parseHTML(await r.text());const wanted=normalizeKyberKey(display);for(const a of Array.from(doc.querySelectorAll('a[href*="/units/"]')||[])){const label=normalizeKyberKey(a.textContent);const href=a.getAttribute('href')||'';const m=href.match(/\/units\/([^/]+)/);if(label===wanted&&m){const candidate=m[1];const parsed=await tryCandidate(candidate);if(parsed){profiles[candidate]=parsed;return parsed;}}}}
   }catch(e){log(`Index personnages Kyber indisponible : ${e?.message||e}`);}
   return null;
@@ -322,10 +322,26 @@ function buildLocalOptimizerReference(character){
     }
   };
 }
+async function loadOptimizerProfileForCharacter(character){
+  await optimizerProfilesReady;
+  const base=String(character?.baseId||character?.base_id||'').trim().toUpperCase();
+  const name=String(character?.name||character?.character||'').trim().toLocaleLowerCase();
+  const entry=(base&&optimizerProfiles[base])||Object.values(optimizerProfiles||{}).find(item=>String(item?.base_id||'').toUpperCase()===base||String(item?.name||'').trim().toLocaleLowerCase()===name);
+  if(!entry)return null;
+  if(entry.base_stats&&typeof entry.base_stats==='object')return entry;
+  const file=entry.file||`${entry.base_id||base}.json`;
+  const response=await holoFetch(new URL(`./python/optimizer_profiles/${encodeURIComponent(file)}`,document.baseURI),{cache:'force-cache'});
+  if(!response.ok)throw new Error(`Profil local indisponible (${response.status})`);
+  const profile=await response.json();
+  optimizerProfiles[profile.base_id||base]=profile;
+  return profile;
+}
+
 async function ensureSelectedKyberProfile(){
   await optimizerProfilesReady;
   const c=selectedCharacter();if(!c)return null;
   const seq=++kyberRequestSeq;
+  try{await loadOptimizerProfileForCharacter(c);}catch(error){log(`Profil local non chargé : ${error?.message||error}`);}
   $('characterInfo').innerHTML=`<span class="tag">${esc(c.baseId||c.base_id||'')}</span> <strong>${esc(c.name||c.character||c.baseId||'')}</strong> · récupération de la référence d’optimisation…`;
   const p=await fetchKyberProfile(c);
   const fallback=p||buildLocalOptimizerReference(c);
@@ -484,13 +500,13 @@ function updateCharacterInfo() {
 }
 
 const DEFAULT_WORKER_URL = 'https://swgoh-optimizer-relay.lorg75017.workers.dev';
-function workerUrl() { return String(localStorage.getItem('swgohRelayUrl') || $('relayUrl')?.value || DEFAULT_WORKER_URL).trim().replace(/\/$/,''); }
-function saveWorkerUrl() { const v=String($('relayUrl').value||'').trim().replace(/\/$/,''); if(v)localStorage.setItem('swgohRelayUrl',v);else localStorage.removeItem('swgohRelayUrl'); $('relayState').textContent=v?'RELAIS CONFIGURÉ':'RELAIS NON CONFIGURÉ'; log(v?`Relais Cloudflare enregistré : ${v}`:'Relais Cloudflare effacé.'); }
+function workerUrl() { return String(safeStorage.getItem('swgohRelayUrl') || $('relayUrl')?.value || DEFAULT_WORKER_URL).trim().replace(/\/$/,''); }
+function saveWorkerUrl() { const v=String($('relayUrl').value||'').trim().replace(/\/$/,''); if(v)safeStorage.setItem('swgohRelayUrl',v);else safeStorage.removeItem('swgohRelayUrl'); window.HOLOCRON_STATE.preferences.relayUrl=v; $('relayState').textContent=v?'RELAIS CONFIGURÉ':'RELAIS NON CONFIGURÉ'; log(v?`Relais Cloudflare enregistré : ${v}`:'Relais Cloudflare effacé.'); }
 async function fetchText(url) {
   const candidates=[], relay=workerUrl();
   if(relay){const m=url.match(/\/p\/(\d{9})\/(characters|mods)?\/?(?:\?page=(\d+))?/);if(m){const ally=m[1],path=m[2]||'profile',page=m[3]||'1';candidates.push(`${relay}/?ally=${ally}&path=${path}&page=${page}`);}}
   candidates.push(url); let last='';
-  for(const u of candidates){try{const r=await fetch(u,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const text=await r.text();if(text&&text.length>200)return text;last=`Réponse vide via ${u}`;}catch(e){last=e.message||String(e);}}
+  for(const u of candidates){try{const r=await holoFetch(u,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const text=await r.text();if(text&&text.length>200)return text;last=`Réponse vide via ${u}`;}catch(e){last=e.message||String(e);}}
   throw new Error(last||'Impossible de lire la page SWGOH.GG.');
 }
 function parseHTML(text){return new DOMParser().parseFromString(text,'text/html');}
@@ -542,7 +558,7 @@ function extractApiMods(json){
 }
 function unitToCharacter(u,index=0){const o=u?.data&&typeof u.data==='object'?u.data:u;if(!o||typeof o!=='object')return null;const baseId=o.base_id??o.baseId??o.definitionId;const name=o.name??o.character??o.characterName??o.unitName;const hasRosterFields=baseId&&Number.isFinite(Number(o.level))&&Number.isFinite(Number(o.rarity))&&(Object.prototype.hasOwnProperty.call(o,'gear_level')||Object.prototype.hasOwnProperty.call(o,'gearLevel')||Object.prototype.hasOwnProperty.call(o,'gear')||Object.prototype.hasOwnProperty.call(o,'power')||Object.prototype.hasOwnProperty.call(o,'combat_type'));if(!hasRosterFields)return null;const relicTierRaw=o.relic_tier??o.relicTier??o.relic_level??o.relicLevel??o.relic?.tier??o.relic?.relicTier??0;const thumbnailName=o.thumbnail_name??o.thumbnailName??o.thumbnail??o.icon??o.image??'';const portraitUrl=o.portrait_url??o.portraitUrl??o.image_url??o.imageUrl??'';return{name:name||baseId,baseId,level:Number(o.level||0),gear:Number(o.gear_level??o.gearLevel??o.gear??0),stars:Number(o.rarity??o.starLevel??o.stars??0),power:Number(o.power||0),combatType:Number(o.combat_type??o.combatType??1),relic_tier:Number(relicTierRaw)||0,thumbnailName,portraitUrl,raw:u};}
 function extractApiCharacters(json){const direct=Array.isArray(json?.units)?json.units:[];let out=direct.map(unitToCharacter).filter(Boolean);if(!out.length){const candidates=[];walkObjects(json,o=>{const unit=unitToCharacter(o);if(unit)candidates.push(unit);});out=candidates;}const seen=new Set();return out.filter(x=>{const key=`${x.baseId||''}|${x.name||''}`;if(seen.has(key))return false;seen.add(key);return true;});}
-async function fetchJSON(url){const r=await fetch(url,{headers:{'Accept':'application/json,text/plain,*/*'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);return JSON.parse(await r.text());}
+async function fetchJSON(url){const r=await holoFetch(url,{headers:{'Accept':'application/json,text/plain,*/*'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);return JSON.parse(await r.text());}
 
 async function loadRemotePlayer(){
   const allyCode=cleanAllyCode($('allyCode').value);if(allyCode.length!==9){log('Ally Code invalide : 9 chiffres attendus.');return;}
@@ -584,7 +600,7 @@ async function loadRemotePlayer(){
     for(const m of apiMods){ if(!seenIds.has(m.game_id)){ merged.push(m); seenIds.add(m.game_id); } }
     const seen=new Set();mods=merged.filter(m=>m&&!seen.has(m.game_id)&&seen.add(m.game_id));
     log(`Mods décodés : ${htmlMods.length} via pages publiques + ${Math.max(0,mods.length-htmlMods.length)} compléments API = ${mods.length}.`);
-    currentData={allyCode,name:title,characters:chars,ships,mods,galacticPower:accountGalacticPower};updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();
+    currentData={allyCode,name:title,characters:chars,ships,mods,galacticPower:accountGalacticPower};window.HOLOCRON_STATE.account=currentData;window.HOLOCRON_STATE.preferences.relayUrl=workerUrl();updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();
     $('dataInfo').textContent=`Source: SWGOH.GG public pages${workerUrl()?' + Cloudflare Worker relay':''}\nJoueur: ${title}\nAlly Code: ${fmt}\nPersonnages: ${chars.length}\nVaisseaux: ${ships.length}\nUnités totales: ${chars.length+ships.length}\nMods: ${mods.length}\nProfils Kyber disponibles dans cette version: ${Object.keys(profiles).length}`;
     log(`TERMINÉ : ${chars.length} personnages, ${ships.length} vaisseaux, ${mods.length} mods exploitables.`);if(!mods.length)log('Aucun mod lisible.');showPage('dashboard');
     window.dispatchEvent(new CustomEvent('holocron:data-updated'));
@@ -781,14 +797,14 @@ function renderDataTable(){
   }
 }
 
-$('loadPlayer').addEventListener('click',loadRemotePlayer);$('allyCode').addEventListener('keydown',e=>{if(e.key==='Enter')loadRemotePlayer();});$('saveRelay').addEventListener('click',saveWorkerUrl);$('relayUrl').value=localStorage.getItem('swgohRelayUrl')||'';$('relayState').textContent=workerUrl()?'RELAIS CONFIGURÉ':'RELAIS NON CONFIGURÉ';$('character').addEventListener('change',()=>{updateCharacterInfo();ensureSelectedKyberProfile();});
+$('loadPlayer').addEventListener('click',loadRemotePlayer);$('allyCode').addEventListener('keydown',e=>{if(e.key==='Enter')loadRemotePlayer();});$('saveRelay').addEventListener('click',saveWorkerUrl);$('relayUrl').value=safeStorage.getItem('swgohRelayUrl')||'';window.HOLOCRON_STATE.preferences.relayUrl=$('relayUrl').value;$('relayState').textContent=workerUrl()?'RELAIS CONFIGURÉ':'RELAIS NON CONFIGURÉ';$('character').addEventListener('change',()=>{updateCharacterInfo();ensureSelectedKyberProfile();});
 ['optimizerPrimaryArrow','optimizerPrimaryTriangle','optimizerPrimaryCircle','optimizerPrimaryCross'].forEach(id=>$(id)?.addEventListener('change',()=>{}));$('dataSearch').addEventListener('input',renderDataTable);['dataFactionFilter','dataSideFilter','modSetFilter','modSlotFilter','modOwnerFilter','modLevelFilter'].forEach(id=>$(id)?.addEventListener('input',renderDataTable));
 document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.data-tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');currentDataset=btn.dataset.dataset;const mf=$('modFilters'),ms=$('modSummary');if(mf)mf.hidden=currentDataset!=='mods';if(ms)ms.hidden=currentDataset!=='mods';renderDataCharacterFilters();renderDataTable();}));
 
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.0.0', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });

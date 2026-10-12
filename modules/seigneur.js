@@ -1,16 +1,16 @@
 async function loadOptimizerReferenceData(){
   // V44: les profils Optimizer ne doivent plus être une dépendance bloquante.
-  // Le Worker sait maintenant charger optimizer_profiles.json lui-même.
+  // Le Worker charge l’index puis le profil du personnage à la demande.
   // On tente les sources locales pour l'UI, mais l'Optimizer peut démarrer même
   // si le script embarqué n'a pas été publié par GitHub Pages.
   const candidates=[
-    new URL('./python/optimizer_profiles.json',document.baseURI).href,
-    new URL('/SWGOH-Optimizer-Web/python/optimizer_profiles.json',location.origin).href,
+    new URL('./python/optimizer_profiles/index.json',document.baseURI).href,
+    new URL('/Selimnas-Holocron-v3/python/optimizer_profiles/index.json',location.origin).href,
   ];
   let loaded=null;
   for(const url of candidates){
     try{
-      const r=await fetch(url+'?v=3.0.0',{cache:'force-cache'});
+      const r=await holoFetch(url+'',{cache:'force-cache'});
       if(!r.ok)continue;
       const json=await r.json();
       if(json&&typeof json==='object'&&Object.keys(json).length){loaded=json;break;}
@@ -18,21 +18,21 @@ async function loadOptimizerReferenceData(){
   }
   if(loaded){
     optimizerProfiles=loaded;
-    log(`Profils Optimizer UI chargés depuis la source JSON unique : ${Object.keys(optimizerProfiles).length}.`);
+    log(`Index des profils Optimizer chargé : ${Object.keys(optimizerProfiles).length} personnages.`);
   }else{
     optimizerProfiles={};
-    log('Profils Optimizer UI non chargés : le Worker tentera de lire python/optimizer_profiles.json.');
+    log('Profils Optimizer UI non chargés : le Worker chargera le profil du personnage à la demande.');
   }
   // Kyber est une référence facultative : SWGOH.GG sera interrogé au besoin,
   // puis le profil local du Worker sert de secours.
   const kyberCandidates=[
     new URL('./python/kyber_profiles.json',document.baseURI).href,
-    new URL('/SWGOH-Optimizer-Web/python/kyber_profiles.json',location.origin).href,
+    new URL('/Selimnas-Holocron-v3/python/kyber_profiles.json',location.origin).href,
   ];
   profiles={};
   for(const url of kyberCandidates){
     try{
-      const r=await fetch(url+'?v=3.0.0',{cache:'force-cache'});
+      const r=await holoFetch(url+'',{cache:'force-cache'});
       if(r.ok){const json=await r.json();if(json&&typeof json==='object'){profiles=json;break;}}
     }catch(e){}
   }
@@ -60,28 +60,16 @@ async function boot(){
   try{
     optimizerProfilesReady = loadOptimizerReferenceData();
     await optimizerProfilesReady;
-    log(`Références UI chargées. Profils Optimizer locaux : ${Object.keys(optimizerProfiles||{}).length}.`);
+    log(`Index des profils chargé : ${Object.keys(optimizerProfiles||{}).length} personnages.`);
   }catch(e){
     log('Références UI non disponibles : le Worker reste autonome.');
   }
 
-  // Pyodide principal est facultatif et ne doit jamais bloquer l'Optimizer.
-  try{
-    if(typeof loadPyodide==='function'){
-      pyodide=await loadPyodide();
-      const optimizerResponse=await fetch(new URL('./python/optimizer.py',document.baseURI).href+'?v=3.0.0',{cache:'force-cache'});
-      if(!optimizerResponse.ok) throw new Error(`optimizer.py HTTP ${optimizerResponse.status}`);
-      const optimizer=await optimizerResponse.text();
-      pyodide.FS.writeFile('/home/pyodide/optimizer.py',optimizer);
-      pyodide.runPython(`import sys; sys.path.append('/home/pyodide'); import optimizer`);
-      log('Moteur Python principal disponible en secours.');
-    }
-  }catch(e){
-    log('Moteur Python principal indisponible : le Worker reste utilisé pour l’optimisation.');
-  }
+  // Pyodide est chargé à la demande par optimizer-worker.mjs, au premier calcul.
+
 }
 
-$('fileInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{currentData=JSON.parse(await file.text());mods=extractMods(currentData);const importedUnits=extractCharacters(currentData);const split=splitRosterUnits(importedUnits);rosterCharacters=split.characters;rosterShips=split.ships;buildFactionMap();updateRosterCounts(rosterCharacters,rosterShips);fillCharacters(rosterCharacters);updateAccountSummary(file.name,'IMPORT JSON');renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();$('dataInfo').textContent=`Fichier: ${file.name}\nMods détectés: ${mods.length}\nPersonnages détectés: ${rosterCharacters.length}\nVaisseaux détectés: ${rosterShips.length}`;$('log').textContent='';log(`Import: ${file.name}`);log(`${mods.length} mods détectés.`);log(`${rosterCharacters.length} personnages + ${rosterShips.length} vaisseaux détectés.`);document.querySelector('[data-page="data"]').click();}catch(e){log('JSON invalide: '+e.message);}});
+$('fileInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{currentData=JSON.parse(await file.text());window.HOLOCRON_STATE.account=currentData;mods=extractMods(currentData);const importedUnits=extractCharacters(currentData);const split=splitRosterUnits(importedUnits);rosterCharacters=split.characters;rosterShips=split.ships;buildFactionMap();updateRosterCounts(rosterCharacters,rosterShips);fillCharacters(rosterCharacters);updateAccountSummary(file.name,'IMPORT JSON');renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();$('dataInfo').textContent=`Fichier: ${file.name}\nMods détectés: ${mods.length}\nPersonnages détectés: ${rosterCharacters.length}\nVaisseaux détectés: ${rosterShips.length}`;$('log').textContent='';log(`Import: ${file.name}`);log(`${mods.length} mods détectés.`);log(`${rosterCharacters.length} personnages + ${rosterShips.length} vaisseaux détectés.`);document.querySelector('[data-page="data"]').click();}catch(e){log('JSON invalide: '+e.message);}});
 
 
 const KNOWN_GALACTIC_LEGEND_IDS=new Set(['GLREY','SUPREMELEADERKYLOREN','GRANDMASTERLUKE','JEDIMASTERKENOBI','LORDVADER','JABBATHEHUTT','GLLEIA','SITHPALPATINE','GLAHSOKATANO']);
