@@ -516,19 +516,27 @@ def optimize_kyber(
         )
 
     candidates = {}
+    incremental_scores = {}
     for slot_index, slot in enumerate(SLOTS, 1):
         ranked = sorted(
             grouped[slot],
             key=lambda m: _mod_score(m, kyber, weights),
             reverse=True,
         )
-        candidates[slot] = ranked[:max(1, int(limit_per_slot))]
+        selected = ranked[:max(1, int(limit_per_slot))]
+        candidates[slot] = selected
+        # Cache each mod's local score once. Partial beam scores are additive;
+        # the full Kyber/stat score is still recalculated for completed builds.
+        for mod in selected:
+            incremental_scores[id(mod)] = _mod_score(mod, kyber, weights)
 
     # Bounded beam search instead of 50^6 / 80^6 brute force.
-    beam = [()]
+    # Accumulate cached mod scores per expansion rather than recomputing every
+    # partial build's full stat sheet at every depth.
+    beam = [(0.0, ())]
     for slot_index, slot in enumerate(SLOTS, 1):
         expanded = []
-        for partial in beam:
+        for partial_score, partial in beam:
             used = {mod_id(m) for m in partial}
             for mod in candidates[slot]:
                 if mod_id(mod) in used:
@@ -536,17 +544,18 @@ def optimize_kyber(
                 build = partial + (mod,)
                 if set_plan and not _partial_matches_set_plan(build, set_plan):
                     continue
-                score = build_score(build, kyber, weights, base_stats)
+                score = partial_score + incremental_scores[id(mod)]
                 expanded.append((score, build))
 
         expanded.sort(key=lambda x: x[0], reverse=True)
-        beam = [build for _, build in expanded[:beam_width]]
+        beam = expanded[:beam_width]
         if progress_callback:
             try:
                 progress_callback(slot_index, slot, len(beam))
             except Exception:
                 pass
 
+    beam = [build for _, build in beam]
     if set_plan:
         exact_beam = [build for build in beam if _matches_set_plan(build, set_plan)]
         if exact_beam:
