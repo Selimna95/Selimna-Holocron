@@ -1,5 +1,5 @@
 """
-SWGOH Optimizer — version Kyber / Web V17
+SWGOH Optimizer — moteur Kyber Web
 Drop-in module exposing optimize_kyber().
 
 Important:
@@ -12,13 +12,22 @@ Important:
 import json
 import re
 import os
-try:
-    from importer import diagnostic_log
-except Exception:
-    def diagnostic_log(message):
-        pass
-
 SLOTS = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+
+# Explicit, named calibration values for the heuristic score. These are ranking
+# weights, not in-game stat multipliers; changing them can alter recommendations.
+SCORING_WEIGHTS = {
+    "mod_set_share": 5000.0,
+    "mod_primary_match": 12000.0,
+    "mod_speed_secondary": 8.0,
+    "build_set_share": 3000.0,
+    "build_dominant_set_penalty": 5000.0,
+    "build_primary_match": 9000.0,
+    "build_primary_mismatch_penalty": 10000.0,
+    "build_reference_stat": 1800.0,
+    "dominant_set_threshold": 0.80,
+}
+EXACT_SEARCH_MAX_COMBINATIONS = 100_000
 
 SLOT_ALIASES = {
     # SWGOH.GG / Comlink slot ids: 2=Square, 3=Arrow, 4=Diamond,
@@ -66,7 +75,7 @@ def normalize_slot(slot):
     if direct:
         return direct
     # Handle numeric-looking values such as 7.0 and labels such as slot_7.
-    m = re.search(r"(?:slot[_ -]?)?([0-7])(?:\.0+)?$", value.casefold())
+    m = re.fullmatch(r"(?:slot[_ -]?)?([0-7])(?:\.0+)?", value.casefold())
     if m:
         return SLOT_ALIASES.get(m.group(1))
     return value
@@ -83,7 +92,10 @@ def mod_slot_value(mod):
 
 
 def mod_id(mod):
-    return mod.get("game_id") or mod.get("id")
+    """Stable mod identity; anonymous mods must not collide in a build."""
+    if not isinstance(mod, dict):
+        return None
+    return mod.get("game_id") or mod.get("id") or mod.get("_optimizer_unique_id")
 
 
 SET_NAMES = {
@@ -110,6 +122,8 @@ def normalize_set(value):
 def mod_set(mod):
     if not isinstance(mod, dict):
         return None
+    if "_optimizer_set" in mod:
+        return mod["_optimizer_set"]
     for key in ("set_name", "set", "setId", "modSetId", "mod_set_id"):
         value = mod.get(key)
         if value is not None and str(value).strip():
@@ -308,7 +322,7 @@ def _mod_score(mod, kyber, weights):
     # Kyber set distribution has priority.
     set_dist = _get_kyber_set_distribution(kyber)
     set_share = set_dist.get(str(mod_set(mod)), 0.0)
-    score += set_share * 5000.0
+    score += set_share * SCORING_WEIGHTS["mod_set_share"]
 
     # Kyber primary distribution has very strong priority.
     distribution = _get_slot_distribution(kyber, slot)
@@ -322,9 +336,9 @@ def _mod_score(mod, kyber, weights):
                 return re.sub(r"\s*%\s*$", "", str(name).strip()).casefold()
             target = _cmp(primary)
             own = sum(v for k, v in distribution.items() if _cmp(k) == target)
-        score += own * 12000.0
+        score += own * SCORING_WEIGHTS["mod_primary_match"]
         if own == 0.0 and dominant:
-            score -= dominant * 12000.0
+            score -= dominant * SCORING_WEIGHTS["mod_primary_match"]
 
     # Secondary stats.
     for stat, value in stats.items():
@@ -333,7 +347,7 @@ def _mod_score(mod, kyber, weights):
         score += value * to_float(weights.get(stat), 0.0)
 
     # Speed secondary is always useful, but remains below Kyber primary.
-    score += stats.get("Speed", 0.0) * 8.0
+    score += stats.get("Speed", 0.0) * SCORING_WEIGHTS["mod_speed_secondary"]
     return score
 
 
@@ -351,9 +365,9 @@ def build_score(build, kyber, weights, base_stats):
         if share <= 0:
             continue
         count = counts.get(name, 0)
-        score += share * 3000.0 * count
-        if share >= 0.80:
-            score -= (6 - count) * share * 5000.0
+        score += share * SCORING_WEIGHTS["build_set_share"] * count
+        if share >= SCORING_WEIGHTS["dominant_set_threshold"]:
+            score -= (6 - count) * share * SCORING_WEIGHTS["build_dominant_set_penalty"]
 
     # Strongly reward Kyber primaries.
     for slot in ("Arrow", "Triangle", "Circle", "Cross"):
@@ -370,9 +384,9 @@ def build_score(build, kyber, weights, base_stats):
             target = re.sub(r"\s*%\s*$", "", str(primary).strip()).casefold()
             own = sum(v for k, v in dist.items()
                       if re.sub(r"\s*%\s*$", "", str(k).strip()).casefold() == target)
-        score += own * 9000.0
+        score += own * SCORING_WEIGHTS["build_primary_match"]
         if own == 0.0:
-            score -= dominant * 10000.0
+            score -= dominant * SCORING_WEIGHTS["build_primary_mismatch_penalty"]
 
     # Match Kyber reference stats without making them hard constraints.
     for stat in ("Speed", "Health", "Protection"):
@@ -380,7 +394,7 @@ def build_score(build, kyber, weights, base_stats):
         if ref <= 0:
             continue
         ratio = to_float(stats.get(stat)) / ref
-        score += min(ratio, 1.20) * 1800.0
+        score += min(ratio, 1.20) * SCORING_WEIGHTS["build_reference_stat"]
 
     return score
 
@@ -474,20 +488,24 @@ def optimize_kyber(
         "Tenacity": 0.1,
     }
 
-    set_plan_info = _kyber_set_plan(kyber)
+    set_plan_info = None if kwargs.get("_skip_set_plan") else _kyber_set_plan(kyber)
     set_plan = set_plan_info[1] if set_plan_info else None
 
     grouped = {slot: [] for slot in SLOTS}
-    for mod in mods:
+    for source_index, mod in enumerate(mods):
         if not isinstance(mod, dict):
             continue
         item = dict(mod)
+        if not mod_id(item):
+            item["_optimizer_unique_id"] = f"anonymous-{source_index}"
+        item["_optimizer_set"] = normalize_set(mod_set(item))
         slot = normalize_slot(mod_slot_value(item))
         if slot in grouped:
             item["slot"] = slot
             resolved_set = mod_set(item)
             # Never erase a set that was already normalized by the importer.
             resolved_set = resolved_set or normalize_set(item.get("set_name") or item.get("set"))
+            item["_optimizer_set"] = resolved_set
             item["set_name"] = resolved_set
             if resolved_set is not None:
                 item["set"] = resolved_set
@@ -530,9 +548,38 @@ def optimize_kyber(
         for mod in selected:
             incremental_scores[id(mod)] = _mod_score(mod, kyber, weights)
 
-    # Bounded beam search instead of 50^6 / 80^6 brute force.
-    # Accumulate cached mod scores per expansion rather than recomputing every
-    # partial build's full stat sheet at every depth.
+    # Small inventories use exact enumeration, which prevents a heuristic beam
+    # from pruning the true best build before final set/stat scoring.
+    combination_count = 1
+    for slot in SLOTS:
+        combination_count *= len(candidates[slot])
+        if combination_count > EXACT_SEARCH_MAX_COMBINATIONS:
+            break
+    if combination_count <= EXACT_SEARCH_MAX_COMBINATIONS:
+        import itertools
+        all_builds = []
+        for combination in itertools.product(*(candidates[slot] for slot in SLOTS)):
+            ids = [mod_id(mod) for mod in combination]
+            if len(set(ids)) != len(ids):
+                continue
+            all_builds.append(list(combination))
+        exact_matches = [build for build in all_builds if _matches_set_plan(build, set_plan)] if set_plan else all_builds
+        warnings = []
+        if set_plan and not exact_matches:
+            warnings.append("Plan de sets Kyber impossible avec l’inventaire ; résultats de repli non contraints affichés.")
+            exact_matches = all_builds
+        results = [{
+            "build": build,
+            "score": build_score(build, kyber, weights, base_stats),
+            "stats": final_stats(build, base_stats),
+            "set_plan": set_plan or {},
+            "warnings": warnings,
+        } for build in exact_matches]
+        results.sort(key=lambda item: item["score"], reverse=True)
+        return results[:max(0, int(number_of_builds))]
+
+    # Large inventories use bounded beam search. Cached per-mod set names and
+    # local scores reduce repeated work, while final ranking uses full builds.
     beam = [(0.0, ())]
     for slot_index, slot in enumerate(SLOTS, 1):
         expanded = []
@@ -556,29 +603,33 @@ def optimize_kyber(
                 pass
 
     beam = [build for _, build in beam]
+    exact_beam = [build for build in beam if _matches_set_plan(build, set_plan)] if set_plan else beam
+    warnings = []
+    if set_plan and not exact_beam:
+        warnings.append("Plan de sets Kyber impossible avec l’inventaire ou éliminé par la recherche bornée ; résultats de repli non contraints affichés.")
+        relaxed_kyber = dict(kyber) if isinstance(kyber, dict) else {}
+        relaxed_kyber["specific_sets"] = []
+        fallback = optimize_kyber(
+            mods, base_stats=base_stats, kyber=relaxed_kyber, weights=weights,
+            targets=targets, number_of_builds=number_of_builds,
+            limit_per_slot=limit_per_slot, beam_width=beam_width,
+            progress_callback=progress_callback, _skip_set_plan=True,
+        )
+        for item in fallback:
+            item["warnings"] = warnings
+        return fallback
     if set_plan:
-        exact_beam = [build for build in beam if _matches_set_plan(build, set_plan)]
-        if exact_beam:
-            beam = exact_beam
-        else:
-            # Inventory may not contain enough mods for the reference set plan.
-            # In that case do not invent a result: return the best unconstrained
-            # candidates only if the reference composition is impossible.
-            pass
+        beam = exact_beam
 
     results = []
     for build in beam:
-        if set_plan and not _matches_set_plan(build, set_plan):
-            continue
-        results.append(
-            {
-                "build": list(build),
-                "score": build_score(build, kyber, weights, base_stats),
-                "stats": final_stats(build, base_stats),
-                "set_plan": set_plan or {},
-            }
-        )
-
+        results.append({
+            "build": list(build),
+            "score": build_score(build, kyber, weights, base_stats),
+            "stats": final_stats(build, base_stats),
+            "set_plan": set_plan or {},
+            "warnings": warnings,
+        })
     results.sort(key=lambda item: item["score"], reverse=True)
     return results[: int(number_of_builds)]
 
