@@ -353,10 +353,10 @@ function disciplePortraitHtml(character){
  const urls=disciplePortraitCandidates(character);
  const label=String(character?.name||character?.baseId||'?');
  if(!urls.length)return `<div class="topchange-portrait topchange-portrait-fallback"><span>${esc(label.slice(0,1))}</span></div>`;
- const encoded=urls.map(u=>u.replace(/'/g,"\\'"));
- const first=encoded[0];
- const rest=JSON.stringify(encoded.slice(1)).replace(/"/g,'&quot;');
- return `<div class="topchange-portrait" data-essential-portrait-list="${rest}"><img src="${first}" alt="${esc(label)}" loading="lazy" data-essential-portrait-index="0"></div>`;
+ const safeUrls=urls.map(safeUrl).filter(Boolean);
+ if(!safeUrls.length)return `<div class="topchange-portrait topchange-portrait-fallback"><span>${esc(label.slice(0,1))}</span></div>`;
+ const rest=esc(JSON.stringify(safeUrls.slice(1)));
+ return `<div class="topchange-portrait" data-essential-portrait-list="${rest}"><img src="${safeUrls[0]}" alt="${esc(label)}" loading="lazy" data-essential-portrait-index="0"></div>`;
 }
 
 function reallocationSpeedTierLabel(tier){

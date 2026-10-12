@@ -24,6 +24,30 @@
     };
   }
 
+  global.DEFAULT_RELAY_URL = 'https://swgoh-optimizer-relay.lorg75017.workers.dev';
+
+  global.esc = global.esc || function esc(value) {
+    return String(value ?? '').replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
+  };
+
+  global.safeUrl = function safeUrl(value, base = global.location.href) {
+    try {
+      const url = new URL(String(value ?? '').trim(), base);
+      if (url.protocol !== 'https:') return '';
+      return global.esc(url.href);
+    } catch (_) { return ''; }
+  };
+
+  global.normalizeRelayUrl = function normalizeRelayUrl(value) {
+    try {
+      const url = new URL(String(value ?? '').trim());
+      const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+      if (url.username || url.password || !url.host || (url.protocol !== 'https:' && !(local && url.protocol === 'http:'))) return '';
+      url.hash = '';
+      return url.href.replace(/\/$/, '');
+    } catch (_) { return ''; }
+  };
+
   global.safeStorage = global.safeStorage || storageAdapter('localStorage');
   global.safeSessionStorage = global.safeSessionStorage || storageAdapter('sessionStorage');
 

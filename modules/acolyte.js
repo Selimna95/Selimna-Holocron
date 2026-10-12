@@ -123,10 +123,10 @@ function essentialPortraitCandidates(character){
 function essentialPortraitHtml(character){
  const urls=essentialPortraitCandidates(character);
  if(!urls.length)return `<div class="topchange-portrait topchange-portrait-fallback"><span>${esc(String(character?.name||character?.baseId||'?').slice(0,1))}</span></div>`;
- const encoded=urls.map(u=>u.replace(/'/g,"\\'"));
- const first=encoded[0];
- const rest=JSON.stringify(encoded.slice(1)).replace(/"/g,'&quot;');
- return `<div class="topchange-portrait" data-essential-portrait-list="${rest}"><img src="${first}" alt="${esc(character?.name||'')}" loading="lazy" data-essential-portrait-index="0"></div>`;
+ const safeUrls=urls.map(safeUrl).filter(Boolean);
+ if(!safeUrls.length)return `<div class="topchange-portrait topchange-portrait-fallback"><span>${esc(String(character?.name||character?.baseId||'?').slice(0,1))}</span></div>`;
+ const rest=esc(JSON.stringify(safeUrls.slice(1)));
+ return `<div class="topchange-portrait" data-essential-portrait-list="${rest}"><img src="${safeUrls[0]}" alt="${esc(character?.name||'')}" loading="lazy" data-essential-portrait-index="0"></div>`;
 }
 function renderHolocronVerdict(rowsOverride){
  const title=$('holocronVerdictTitle'), action=$('holocronVerdictAction'), state=$('holocronVerdictState');
@@ -165,7 +165,9 @@ function bindEssentialPortraits(){
      const next=Number(img.dataset.essentialPortraitIndex||0)+1;
      if(next<list.length){
        img.dataset.essentialPortraitIndex=String(next);
-       img.src=list[next];
+       const safeNext=safeUrl(list[next]);
+       if(!safeNext){img.dispatchEvent(new Event('error'));return;}
+       img.src=safeNext;
        return;
      }
      img.remove();

@@ -29,8 +29,20 @@ let analysisAuditSpeed = 'TOUS';
 let analysisAuditSort = 'priority';
 let accountGalacticPower = {total:0, characters:0, ships:0};
 
+// Test-only fixture injection is available solely on the local development host.
+if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+  window.__setHolocronTestFixture = ({ characterData, modData, profile } = {}) => {
+    rosterCharacters = Array.isArray(characterData) ? characterData : [];
+    rosterShips = [];
+    mods = Array.isArray(modData) ? modData : [];
+    currentData = { name: 'Fixture', characters: rosterCharacters, ships: rosterShips, mods };
+    if (profile) window.fetchKyberProfile = async () => profile;
+    fillCharacters(rosterCharacters);
+  };
+}
+
 const $ = (id) => document.getElementById(id);
-function log(msg) { $('log').textContent += `\n${msg}`; $('log').scrollTop = $('log').scrollHeight; }
+function log(msg) { const node=$('log'); if(!node)return; const lines=(node.textContent+'\n'+String(msg)).split('\n'); node.textContent=lines.slice(-500).join('\n'); node.scrollTop=node.scrollHeight; }
 function setRuntime(text, ok=false) { $('runtime').textContent = text; $('runtime').classList.toggle('ok', ok); }
 function cleanAllyCode(value) { return String(value || '').replace(/\D/g, '').slice(0, 9); }
 function formatAlly(code) { const x=cleanAllyCode(code); return x.length===9 ? `${x.slice(0,3)}-${x.slice(3,6)}-${x.slice(6)}` : x; }
@@ -499,9 +511,8 @@ function updateCharacterInfo() {
   if(fallback) log(`Profil local disponible pour ${c.name||c.baseId}, mais les critères Kyber détaillés restent à récupérer.`);
 }
 
-const DEFAULT_WORKER_URL = 'https://swgoh-optimizer-relay.lorg75017.workers.dev';
-function workerUrl() { return String(safeStorage.getItem('swgohRelayUrl') || $('relayUrl')?.value || DEFAULT_WORKER_URL).trim().replace(/\/$/,''); }
-function saveWorkerUrl() { const v=String($('relayUrl').value||'').trim().replace(/\/$/,''); if(v)safeStorage.setItem('swgohRelayUrl',v);else safeStorage.removeItem('swgohRelayUrl'); window.HOLOCRON_STATE.preferences.relayUrl=v; $('relayState').textContent=v?'RELAIS CONFIGURÉ':'RELAIS NON CONFIGURÉ'; log(v?`Relais Cloudflare enregistré : ${v}`:'Relais Cloudflare effacé.'); }
+function workerUrl() { return normalizeRelayUrl(safeStorage.getItem('swgohRelayUrl') || $('relayUrl')?.value || DEFAULT_RELAY_URL) || DEFAULT_RELAY_URL; }
+function saveWorkerUrl() { const raw=String($('relayUrl').value||'').trim(); const v=raw?normalizeRelayUrl(raw):''; if(raw&&!v){$('relayState').textContent='URL REFUSÉE · HTTPS REQUIS';log('URL de relais refusée : HTTPS obligatoire hors localhost.');return;} if(v)safeStorage.setItem('swgohRelayUrl',v);else safeStorage.removeItem('swgohRelayUrl'); window.HOLOCRON_STATE.preferences.relayUrl=v; $('relayState').textContent=v&&v!==DEFAULT_RELAY_URL?'ATTENTION · RELAIS PERSONNALISÉ':'RELAIS PAR DÉFAUT'; log(v?`Relais enregistré${v!==DEFAULT_RELAY_URL?' (personnalisé, vérifiez qu’il est de confiance)':''} : ${v}`:'Relais personnalisé effacé ; retour au relais par défaut.'); }
 async function fetchText(url) {
   const candidates=[], relay=workerUrl();
   if(relay){const m=url.match(/\/p\/(\d{9})\/(characters|mods)?\/?(?:\?page=(\d+))?/);if(m){const ally=m[1],path=m[2]||'profile',page=m[3]||'1';candidates.push(`${relay}/?ally=${ally}&path=${path}&page=${page}`);}}
@@ -520,7 +531,8 @@ function parseModsPage(doc,page){
   nodes.forEach((node,idx)=>{
     const img=node.querySelector('.statmod-img, img[class*=\"statmod-img\"]');
     const alt=img?.getAttribute('alt')||'';
-    const src=img?.getAttribute('src')||img?.getAttribute('data-src')||'';
+    const srcRaw=img?.getAttribute('src')||img?.getAttribute('data-src')||'';
+    const src=srcRaw?safeUrl(srcRaw,'https://swgoh.gg/'):'';
     const words=alt.trim().split(/\s+/).filter(Boolean);
     const shape=words.at(-1)||'';
     const set=words.length>=5?words.slice(2,-1).join(' '):(words.length>=4?words[2]:'');
@@ -709,7 +721,7 @@ function normalizeModForDisplay(m){
   out.dots=Number(out.dots??out.dotCount??out.pips??out.rarity??0);
   out.tier=out.tier??out.quality??out.grade??out.modTier??out.mod_tier??out.rarityTier??'';
   out.raw_alt=out.raw_alt??out.alt??out.imageAlt??out.name??'';
-  out.asset_src=out.asset_src??out.icon_url??out.iconUrl??out.image_url??out.imageUrl??out.icon??out.image??'';
+  out.asset_src=safeUrl(out.asset_src??out.icon_url??out.iconUrl??out.image_url??out.imageUrl??out.icon??out.image??'');
   out.tier=modIconTier(out);
   out.dots=modDots(out);
   return out;
@@ -797,7 +809,7 @@ function renderDataTable(){
   }
 }
 
-$('loadPlayer').addEventListener('click',loadRemotePlayer);$('allyCode').addEventListener('keydown',e=>{if(e.key==='Enter')loadRemotePlayer();});$('saveRelay').addEventListener('click',saveWorkerUrl);$('relayUrl').value=safeStorage.getItem('swgohRelayUrl')||'';window.HOLOCRON_STATE.preferences.relayUrl=$('relayUrl').value;$('relayState').textContent=workerUrl()?'RELAIS CONFIGURÉ':'RELAIS NON CONFIGURÉ';$('character').addEventListener('change',()=>{updateCharacterInfo();ensureSelectedKyberProfile();});
+$('loadPlayer').addEventListener('click',loadRemotePlayer);$('allyCode').addEventListener('keydown',e=>{if(e.key==='Enter')loadRemotePlayer();});$('saveRelay').addEventListener('click',saveWorkerUrl);$('relayUrl').value=safeStorage.getItem('swgohRelayUrl')||'';window.HOLOCRON_STATE.preferences.relayUrl=$('relayUrl').value;$('relayState').textContent=workerUrl()!==DEFAULT_RELAY_URL?'ATTENTION · RELAIS PERSONNALISÉ':'RELAIS PAR DÉFAUT';$('character').addEventListener('change',()=>{updateCharacterInfo();ensureSelectedKyberProfile();});
 ['optimizerPrimaryArrow','optimizerPrimaryTriangle','optimizerPrimaryCircle','optimizerPrimaryCross'].forEach(id=>$(id)?.addEventListener('change',()=>{}));$('dataSearch').addEventListener('input',renderDataTable);['dataFactionFilter','dataSideFilter','modSetFilter','modSlotFilter','modOwnerFilter','modLevelFilter'].forEach(id=>$(id)?.addEventListener('input',renderDataTable));
 document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.data-tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');currentDataset=btn.dataset.dataset;const mf=$('modFilters'),ms=$('modSummary');if(mf)mf.hidden=currentDataset!=='mods';if(ms)ms.hidden=currentDataset!=='mods';renderDataCharacterFilters();renderDataTable();}));
 
@@ -805,32 +817,33 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
   optimizerWorker = new Worker('./optimizer-worker.mjs', { type: 'module' });
-  optimizerWorker.addEventListener('error', (event) => {
-    log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
-  });
+  optimizerWorker.addEventListener('error', event => log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue')));
   return optimizerWorker;
 }
-
-function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context, scopedMods) {
+function cancelOptimizerWorker(reason='Calcul annulé par l’utilisateur.') {
+  if (optimizerWorker) { optimizerWorker.terminate(); optimizerWorker = null; }
+  window.dispatchEvent(new CustomEvent('holocron:optimizer-cancelled', { detail: { reason } }));
+}
+window.cancelOptimizerWorker = cancelOptimizerWorker;
+function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context, scopedMods, options={}) {
   const worker = getOptimizerWorker();
   const id = ++optimizerRequestId;
   return new Promise((resolve, reject) => {
     const started = performance.now();
-    const onMessage = (event) => {
-      const data = event.data || {};
-      if (data.id !== id) return;
-      if (data.type === 'status') {
-        $('results').innerHTML = `<div class="calculating">${esc(data.message || 'Calcul en cours…')}<br><small>Temps écoulé : ${Math.round((performance.now()-started)/1000)} s</small></div>`;
-        return;
-      }
-      worker.removeEventListener('message', onMessage);
-      if (data.type === 'done') {
-        resolve(JSON.parse(data.result));
-      } else {
-        reject(new Error(data.error || 'Erreur inconnue du Worker Python.'));
-      }
+    const timeoutMs = Math.max(1000, Number(options.timeoutMs) || 180000);
+    let finished = false;
+    const finish = (callback, value) => { if(finished)return; finished=true; clearTimeout(timer); worker.removeEventListener('message', onMessage); options.signal?.removeEventListener('abort', onAbort); callback(value); };
+    const onAbort = () => { cancelOptimizerWorker('Calcul annulé.'); finish(reject, new DOMException('Calcul annulé.', 'AbortError')); };
+    const timer = setTimeout(() => { cancelOptimizerWorker('Délai de calcul dépassé.'); finish(reject, new Error('Le calcul a dépassé le délai autorisé et le Worker a été arrêté.')); }, timeoutMs);
+    const onMessage = event => {
+      const data = event.data || {}; if (data.id !== id) return;
+      if (data.type === 'status') { const node=$('results'); if(node)node.innerHTML=`<div class="calculating">${esc(data.message || 'Calcul en cours…')}<br><small>Temps écoulé : ${Math.round((performance.now()-started)/1000)} s</small></div>`; return; }
+      if (data.type === 'done') { try { finish(resolve, JSON.parse(data.result)); } catch(error) { finish(reject,error); } }
+      else finish(reject, new Error(data.error || 'Erreur inconnue du Worker Python.'));
     };
-    worker.addEventListener('message', onMessage);
+    if(options.signal?.aborted){onAbort();return;}
+    options.signal?.addEventListener('abort',onAbort,{once:true});
+    worker.addEventListener('message',onMessage);
     worker.postMessage({ id, mods: scopedMods, profile, base_stats: baseStatsForCharacter(character), n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
   });
 }
