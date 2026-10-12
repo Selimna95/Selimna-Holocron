@@ -104,9 +104,9 @@
     if(shell) shell.hidden=false;
     renderDecision();
     try {
-      sessionStorage.setItem('holocronSessionEstablished','1');
+      safeSessionStorage.setItem('holocronSessionEstablished','1');
       const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);
-      if(ally.length===9) sessionStorage.setItem('holocronLastAllyCode',ally);
+      if(ally.length===9) safeSessionStorage.setItem('holocronLastAllyCode',ally);
     } catch (_) {}
     if(gate){
       gate.classList.remove('gate-complete');
@@ -121,10 +121,10 @@
   }
 
   function safeStorageGet(key){
-    try{return localStorage.getItem(key)||'';}catch(_){return '';}
+    return safeStorage.getItem(key);
   }
   function safeStorageSet(key,value){
-    try{localStorage.setItem(key,value);return true;}catch(_){return false;}
+    return safeStorage.setItem(key,value);
   }
   function validRelayUrl(value){
     try{const u=new URL(String(value||'').trim());return (u.protocol==='https:'||u.protocol==='http:') && !!u.host;}catch(_){return false;}
@@ -172,8 +172,8 @@
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
     // A previously authenticated tab can reconnect without replaying the full gate.
     try {
-      const savedAlly=sessionStorage.getItem('holocronLastAllyCode')||'';
-      if(sessionStorage.getItem('holocronSessionEstablished')==='1' && /^\d{9}$/.test(savedAlly)){
+      const savedAlly=safeSessionStorage.getItem('holocronLastAllyCode')||'';
+      if(safeSessionStorage.getItem('holocronSessionEstablished')==='1' && /^\d{9}$/.test(savedAlly)){
         const legacy=el('allyCode'); if(legacy) legacy.value=savedAlly;
         if(el('gateAllyCode'))el('gateAllyCode').value=savedAlly;
         if(el('appShell'))el('appShell').hidden=false;

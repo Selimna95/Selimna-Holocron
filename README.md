@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 3.0.0** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 3.1.0** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Fonctionnalités
 - Import et synchronisation du profil public SWGOH.GG via un relais HTTP(S) configurable ou par les chemins d’import prévus dans l’application.
@@ -44,10 +44,15 @@ Tests Python :
 python -m unittest discover -s tests -v
 ```
 
-La CI GitHub Actions exécute les tests Python et vérifie la syntaxe des scripts JavaScript avec Node.js. Les contrôles statiques ne remplacent pas un test navigateur réel : avant publication, vérifier la synchronisation du profil, les six slots de mods, les filtres, la navigation, les vues mobile et l’optimisation via Web Worker.
+Installation des outils web : `npm install`, puis `npm run check`. Le build Vite produit `dist/` avec des noms d’assets hachés ; les scripts historiques restent chargés dans l’ordre classique pour préserver leurs dépendances globales.
+
+## Publication GitHub Pages
+Le workflow de qualité construit `dist/` et publie automatiquement le site lors d’un push sur `main`. Dans GitHub, ouvre **Settings → Pages**, puis règle **Build and deployment → Source** sur **GitHub Actions** (au lieu de `Deploy from a branch`). Le build conserve les chemins relatifs du dépôt et produit des noms d’assets hachés.
+
+La CI GitHub Actions exécute ESLint, Stylelint (interdiction de `!important`), les tests Vitest, les tests Python, le budget CSS, le build Vite et le scénario Playwright « charger profil → ouvrir la Forge → vérifier les candidats ».
 
 ## Données de référence
-`python/optimizer_profiles.json` est la source de référence des profils du moteur. Le fichier JavaScript de profils redondant a été supprimé car aucune référence active ne le chargeait. `python/kyber_profiles.json` reste une donnée distincte pour les références Kyber.
+`python/optimizer_profiles/index.json` référence les profils du moteur ; chaque personnage est chargé depuis son fichier dédié dans `python/optimizer_profiles/`. Le fichier JavaScript de profils redondant a été supprimé car aucune référence active ne le chargeait. `python/kyber_profiles.json` reste une donnée distincte pour les références Kyber.
 
 ## Licence
 Le projet est distribué sous licence MIT ; voir `LICENSE`.
