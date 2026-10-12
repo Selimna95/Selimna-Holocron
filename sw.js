@@ -1,4 +1,4 @@
-const CACHE_NAME = 'holocron-static-v3.2.0';
+const CACHE_NAME = 'holocron-static-v3.2.1';
 const IMMUTABLE_ASSETS = /\.(?:[a-f0-9]{8,}\.(?:js|css)|holocron-[0-9]+\.png)$/i;
 
 self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));

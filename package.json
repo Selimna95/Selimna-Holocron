@@ -1,6 +1,6 @@
 {
   "name": "selimnas-holocron-v3",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "private": true,
   "description": "Holocron Sith — SWGOH Optimizer web app",
   "scripts": {

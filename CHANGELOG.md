@@ -1,6 +1,14 @@
 # Changelog
 
-## [3.2.0] — 2026-10-12
+
+## [3.2.1] — 2026-10-12
+
+### Correctif bloquant — entrée dans l’Holocron
+- L’interface principale s’ouvre dès validation du code allié, sans attendre la réponse de SWGOH.GG ou du relais.
+- La synchronisation du roster se déroule ensuite en arrière-plan ; en cas d’échec, l’Holocron reste accessible et le statut indique que les données restent à synchroniser.
+- Le moteur de chargement, les contrôles de sécurité et l’import JSON restent disponibles.
+
+## [3.2.1] — 2026-10-12
 
 ### Sécurité et fiabilité
 - Helper `safeUrl()` HTTPS-only pour les images et politique CSP restrictive.

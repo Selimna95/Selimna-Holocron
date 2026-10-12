@@ -1,4 +1,4 @@
-# Architecture — Holocron v3.2.0
+# Architecture — Holocron v3.2.1
 
 | Fichier | Responsabilité |
 |---|---|

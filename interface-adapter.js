@@ -136,6 +136,10 @@
     const legacy=el('allyCode'); if(legacy) legacy.value=ally;
     setGate(customRelay?'ATTENTION · RELAIS PERSONNALISÉ : vérifiez sa confiance. CHARGEMENT DU ROSTER…':'IDENTIFICATION DU ROSTER · CHARGEMENT DES DONNÉES','loading');
     const btn=el('gateActivate'); if(btn) btn.disabled=true;
+    // L'accès à l'interface ne doit pas dépendre de la disponibilité de SWGOH.GG
+    // ou du relais. Ouvrir l'Holocron immédiatement, puis synchroniser en arrière-plan.
+    showApp();
+    text('topProfileState','SYNCHRONISATION…');
     if(typeof window.loadRemotePlayer!=='function'){
       setGate('MOTEUR DE SYNCHRONISATION INDISPONIBLE','error');
       if(btn) btn.disabled=false; return;
@@ -147,12 +151,17 @@
       const chars=(typeof rosterCharacters!=='undefined' && Array.isArray(rosterCharacters))?rosterCharacters:[];
       const modsNow=(typeof mods!=='undefined' && Array.isArray(mods))?mods:[];
       if(data && (chars.length || modsNow.length)){
-        setGate('ROSTER SYNCHRONISÉ','ok'); showApp();
+        setGate('ROSTER SYNCHRONISÉ','ok');
+        text('topProfileState','CONNECTÉ');
       }else{
         setGate('SYNCHRONISATION INCOMPLÈTE · Consultez le journal de chargement.','error');
+        text('topProfileState','À SYNCHRONISER');
+        const info=el('dataInfo'); if(info) info.textContent='L’Holocron est ouvert, mais le roster n’a pas pu être synchronisé. Consultez le journal et réessayez, ou importez un fichier JSON depuis les Archives du roster.';
       }
     }catch(e){
       setGate('ÉCHEC DE SYNCHRONISATION · '+(e?.message||String(e)),'error');
+      text('topProfileState','HORS LIGNE');
+      const info=el('dataInfo'); if(info) info.textContent='L’Holocron est ouvert, mais la synchronisation a échoué. Consultez le journal et réessayez, ou importez un fichier JSON depuis les Archives du roster.';
     }finally{
       if(btn) btn.disabled=false;
     }
