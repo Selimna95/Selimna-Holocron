@@ -1,31 +1,53 @@
 name: Quality checks
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
 on:
   push:
   pull_request:
 
 jobs:
-  python-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: python -m unittest discover -s tests -v
-      - run: python -m py_compile python/optimizer.py python/kyber_data.py
-  javascript-syntax:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-      - run: node --check interface-adapter.js
-      - run: node --check modules/core.js
-      - run: node --check modules/acolyte.js
-      - run: node --check modules/disciple.js
-      - run: node --check modules/seigneur.js
-      - run: node --check modules/sithari.js
-      - run: node --check modules/runtime.js
-      - run: node --check optimizer-worker.mjs
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run test:js
+      - run: python scripts/generate-profile-index.py --check
+      - run: npm run test:python
+      - run: npm run css:budget
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
