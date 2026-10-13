@@ -6,7 +6,7 @@ Une interface de commandement du Côté obscur : obsidienne, graphite chaud, rou
 
 ## Tokens de référence
 
-Les variables centrales sont définies dans le bloc `:root` de `app.css`.
+Les variables de couleur restent définies dans le bloc `:root` de `app.css`. Les tokens de typographie, d’espacement, de rayon et de focus partagés sont complétés dans `holocron-system.css`, chargée après les feuilles spécifiques. Cette couche ne contient que de la présentation et ne remplace aucun contrat métier.
 
 | Rôle | Valeur de référence |
 | --- | --- |

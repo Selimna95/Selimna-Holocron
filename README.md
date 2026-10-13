@@ -56,3 +56,8 @@ La CI GitHub Actions exécute les tests Python et vérifie la syntaxe des script
 
 ## Licence
 Le projet est distribué sous licence MIT ; voir `LICENSE`.
+
+
+### Couche visuelle partagée
+
+`holocron-system.css` regroupe les tokens d’interface et les ajustements transversaux (focus clavier, états, composants partagés et adaptations responsives). Elle ne contient aucune logique de calcul. Le Codex détaillé du roster peut être masqué visuellement sans supprimer les données ou les fonctions métier.

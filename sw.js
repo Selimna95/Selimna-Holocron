@@ -1,9 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.1.0';
+const CACHE_NAME = 'holocron-static-v3.2.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.1.0',
   './sithari.css?v=3.1.0',
+  './holocron-system.css?v=3.2.0',
   './interface-adapter.js?v=3.1.0',
   './gac-usage.js?v=3.1.0',
   './modules/core.js',

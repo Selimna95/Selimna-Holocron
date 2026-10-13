@@ -9,6 +9,7 @@
 <link rel="icon" href="assets/icons/holocron-192.png" type="image/png">
 <link rel="stylesheet" href="app.css?v=3.1.0">
 <link rel="stylesheet" href="sithari.css?v=3.1.0">
+<link rel="stylesheet" href="holocron-system.css?v=3.2.0">
 
 
 
@@ -38,7 +39,7 @@
       <input id="gateRelayUrl" type="url" inputmode="url" placeholder="https://votre-relais.workers.dev" autocomplete="url">
       <p>Le relais reçoit votre code allié pour récupérer les données de profil. Utilisez uniquement un relais de confiance. L’URL enregistrée reste dans ce navigateur.</p>
     </details>
-    <div id="gateMessage" class="gate-message" aria-live="polite">Le savoir attend votre code.</div>
+    <div id="gateMessage" class="gate-message" aria-live="polite">Le Gardien attend ton code allié pour ouvrir le Sanctuaire.</div>
   </div>
   <div class="gate-brand"><span>SELIMNA’S</span><strong>HOLOCRON</strong></div>
   <div class="gate-footer"><span>HOLOCRON V3.1.0</span><span>LE SAVOIR EST UNE ARME</span></div>
@@ -67,6 +68,9 @@
 <div id="appShell" class="app-shell" hidden>
 <header class="topbar">
   <div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V3.1.0</span></div>
+  <div class="guardian-context" id="guardianContext" data-state="idle" aria-live="polite" aria-label="Conseil du Gardien">
+    <span class="guardian-context-seal" aria-hidden="true">✦</span><span class="guardian-context-copy"><small>LE GARDIEN</small><strong id="guardianContextText">Commence par synchroniser ton roster.</strong></span>
+  </div>
   <div class="top-status-group">
     <div class="top-pill"><span class="status-dot"></span><span>PROFIL</span><b id="topProfileState">EN ATTENTE</b></div>
     <div class="top-pill account-pill"><span class="pill-icon">♙</span><span>COMPTE</span><b id="topAccountName">—</b></div>
@@ -88,8 +92,8 @@
     <div class="phase-nav-label lord"><span>Ⅲ</span> SEIGNEUR SITH <small>MAÎTRISER</small></div>
     <button type="button" class="nav nav-phase-entry nav-lord" data-page="optimizer"><span class="nav-icon">✦</span><span>FORGE PERSONNAGE</span><small>MAÎTRISER</small></button>
 
-    <div class="phase-nav-label codex"><span>▦</span> CODEX DU ROSTER <small>CONSULTER</small></div>
-    <button type="button" class="nav" data-page="data"><span class="nav-icon">▦</span><span>PERSONNAGES · VAISSEAUX · MODS</span></button>
+    <div class="phase-nav-label codex roster-codex-ui"><span>▦</span> CODEX DU ROSTER <small>CONSULTER</small></div>
+    <button type="button" class="nav roster-codex-ui" data-page="data"><span class="nav-icon">▦</span><span>PERSONNAGES · VAISSEAUX · MODS</span></button>
 
     <div class="phase-nav-label sithari"><span>✧</span> SITH’ARI <small>TRANSCENDER</small></div>
     <button type="button" class="nav nav-sithari" data-page="sithari"><span class="nav-icon">◈</span><span>OPTIMISATION KYBER</span></button>
@@ -115,7 +119,7 @@
           <button type="button" class="path-card path-disciple" data-page="mods-analysis"><span class="path-step">02 <i>COMPRENDRE</i></span><span class="path-glyph">◈</span><strong>Disciple</strong><span class="path-description">Comprendre et réaffecter les mods</span><span class="path-action">ANALYSER LES MODS <b>↗</b></span></button>
           <button type="button" class="path-card path-lord" data-page="optimizer"><span class="path-step">03 <i>MAÎTRISER</i></span><span class="path-glyph">✦</span><strong>Seigneur Sith</strong><span class="path-description">Optimiser un personnage</span><span class="path-action">ENTRER DANS LA FORGE <b>↗</b></span></button>
           <button type="button" class="path-card path-sithari" data-page="sithari"><span class="path-step">04 <i>TRANSCENDER</i></span><span class="path-glyph">✧</span><strong>Sith’Ari</strong><span class="path-description">Comparer et affiner les mods selon Kyber</span><span class="path-action">OUVRIR LE NEXUS <b>↗</b></span></button>
-          <button type="button" class="path-card path-codex" data-page="data"><span class="path-step">CODEX <i>CONSULTER</i></span><span class="path-glyph">▦</span><strong>Archives du roster</strong><span class="path-description">Retrouver personnages, vaisseaux et mods</span><span class="path-action">PARCOURIR LES DONNÉES <b>↗</b></span></button>
+          <button type="button" class="path-card path-codex roster-codex-ui" data-page="data"><span class="path-step">CODEX <i>CONSULTER</i></span><span class="path-glyph">▦</span><strong>Archives du roster</strong><span class="path-description">Retrouver personnages, vaisseaux et mods</span><span class="path-action">PARCOURIR LES DONNÉES <b>↗</b></span></button>
         </div>
       </section>
 
@@ -124,7 +128,7 @@
 
         <article class="decision-card unit-card dashboard-info-card">
           <div class="decision-card-head"><span class="card-icon">♙</span><div><span>PERSONNAGES</span><strong id="charsCount">0</strong><small>UNITÉS TOTALES</small></div><em id="unitsDelta">—</em></div>
-          <div class="decision-card-title">CODEX · VUE D’ENSEMBLE</div>
+          <div class="decision-card-title">ROSTER · VUE D’ENSEMBLE</div>
           <div class="decision-bars" id="unitVentilation"></div>
           <div class="decision-legend" id="unitLegend"></div>
           <small class="dashboard-info-note">DÉTAILS : NIVEAU SEIGNEUR SITH</small>
@@ -463,10 +467,16 @@
       </div>
       <div class="panel table-panel"><div id="dataTableMeta" class="table-meta">Aucune donnée.</div><div id="dataTable" class="data-table-wrap"><div class="empty">Chargez un profil pour afficher les données.</div></div></div>
       <div class="panel"><div class="panel-title">CODEX // SOURCE & DIAGNOSTIC DES DONNÉES</div><pre id="dataInfo">Aucune donnée.</pre></div>
-      <div class="panel"><button id="clearData" class="danger">EFFACER LES DONNÉES</button></div>
     </section>
 
     <section id="help" class="page">
+      <div class="panel help help-search-panel">
+        <div class="panel-title">RECHERCHE DANS L’AIDE</div>
+        <label for="helpSearch">TROUVER UNE NOTION
+          <input id="helpSearch" type="search" placeholder="Relais, mods, Pyodide, vaisseaux…" autocomplete="off">
+        </label>
+        <p id="helpSearchStatus" aria-live="polite">3 rubriques disponibles.</p>
+      </div>
       <div class="panel help">
         <div class="panel-title">SYSTÈME & AIDE // RELAIS DE DONNÉES</div>
         <p>Le navigateur bloque la lecture directe de SWGOH.GG à cause du CORS. Le Worker Cloudflare sert uniquement de relais public vers SWGOH.GG.</p>
@@ -488,6 +498,11 @@
       <div class="panel help">
         <div class="panel-title">SOURCE PUBLIQUE SWGOH.GG</div>
         <p>Vous pouvez vérifier manuellement votre page publique : <a id="swgohLink" href="https://swgoh.gg/" target="_blank" rel="noopener">SWGOH.GG</a>.</p>
+      </div>
+      <div class="panel help system-data-actions">
+        <div class="panel-title">GESTION DE SESSION</div>
+        <p>Cette action retire le profil actuellement chargé de l’interface. La configuration du relais reste conservée.</p>
+        <button id="clearData" class="danger" type="button">EFFACER LE PROFIL CHARGÉ</button>
       </div>
     </section>
   </section>

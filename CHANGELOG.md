@@ -21,3 +21,11 @@
 - Le relais Cloudflare reste un service externe dont le code et la politique de conservation ne sont pas présents dans ce dépôt.
 - Les scripts navigateur conservent des globals historiques ; leur conversion en modules ES exige une migration progressive et des tests navigateur.
 - Le nettoyage complet des couches CSS sédimentaires doit être validé visuellement sur toutes les pages et tailles d’écran.
+
+## Nouvelle couche d'expérience — audit ciblé et harmonisation visuelle
+
+- Ajout de `holocron-system.css` pour les tokens partagés, les états, le focus clavier et les adaptations responsives.
+- Ajout d'un conseil contextuel unique du Gardien dans l'en-tête, adapté à l'espace actif et à l'état de chargement du profil.
+- Réorganisation visuelle des états de la porte d'entrée, du verdict du Sanctuaire, des priorités Acolyte, des étapes Disciple, de la Forge Seigneur Sith et des comparaisons Sith'ari.
+- Masquage visuel du Codex détaillé personnages/vaisseaux/mods à la demande ; les données et points d'entrée métier sont conservés. Après import JSON, retour au Sanctuaire au lieu d'ouvrir la page masquée.
+- Version du cache statique incrémentée afin d'inclure la nouvelle feuille de style.
