@@ -249,7 +249,7 @@ button,a,input,select,textarea{touch-action:manipulation}img,svg,canvas,video{ma
 @media(max-width:800px){.layout{display:block;min-height:0}.sidebar{position:sticky;top:0;z-index:35;width:100%;height:auto;display:flex;flex-direction:row;overflow-x:auto;gap:5px;padding:7px 10px;background:#161110;border-right:0;border-bottom:1px solid var(--line)}.sidebar:before,.sidebar-orbit,.side-note{display:none!important}.nav{flex:0 0 auto;width:auto;min-width:max-content;height:39px;margin:0;padding:0 10px;gap:7px;font-size:9px}.nav-icon{width:20px;height:20px}.content{padding:15px 13px 32px}.hero{grid-template-columns:minmax(0,1fr);gap:15px}.online-loader{width:100%}.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.analysis-two-col,.report-analysis-grid{grid-template-columns:minmax(0,1fr)}.report-mod-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.topbar{padding:8px 11px;gap:8px}.version,.top-tools{display:none!important}.top-status-group{gap:5px}.top-pill{padding:4px 7px;font-size:9px}.top-pill:nth-child(n+3){display:none}.brand-mark{width:30px;height:30px}.brand{font-size:11px}.accent{font-size:9px}.content{padding:11px 9px 26px}.hero{padding:15px}.hero h1{font-size:23px}.hero p{font-size:12px}.dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.metric{min-height:70px;padding:9px;gap:7px}.kpi-icon{width:29px;height:29px;flex-basis:29px}.metric span{font-size:9px}.metric strong{font-size:17px}.metric small{font-size:9px}.holocron-levels{grid-template-columns:minmax(0,1fr)}.holocron-priority{grid-column:auto}.summary-grid,.gp-breakdown,.reallocation-controls,.form-grid,.analysis-selectors,.data-character-filters{grid-template-columns:minmax(0,1fr)}.speed-recap-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.analysis-header,.reallocation-header{display:block;padding:12px}.analysis-tabs,.data-tabs{flex-wrap:nowrap;overflow-x:auto}.analysis-tab,.data-tab{flex:0 0 auto;font-size:9px;padding:8px}.inventory-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.report-header{display:block;padding:12px}.report-header h1{font-size:20px;overflow-wrap:anywhere}.report-identity,.report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.report-mod-grid,.mod-detail-grid{grid-template-columns:minmax(0,1fr)}.report-section,.topchanges-method,.topchanges-results-panel{padding:11px}.topchanges-steps,.holocron-change-list{grid-template-columns:minmax(0,1fr)}.creator-banner{width:calc(100% - 18px)!important}.modal{padding:8px}.modal-box{padding:13px;max-height:94vh}}
 @media(max-width:360px){.dashboard-kpis{grid-template-columns:minmax(0,1fr)}.nav{font-size:9px;padding:0 8px}.inventory-toolbar{grid-template-columns:minmax(0,1fr)}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
 
 /* =====================================================================
    V92.5 — HOLOCRON GATE / SINGLE VISUAL LAYER
@@ -2334,15 +2334,7 @@ button,a,input,select,textarea{touch-action:manipulation}img,svg,canvas,video{ma
    - BLEU    = repère / cible de comparaison
    ===================================================================== */
 
-.sithari-page{
-  --sa-ink:#f2f3f1;
-  --sa-muted:#918787;
-  --sa-line:rgba(194, 171, 169, .16);
-  --sa-blue:#d8938d;
-  --sa-green:#66d6a0;
-  --sa-red:#e58d82;
-  --sa-gold:#d8b75e;
-}
+/* Sith’ari design tokens are owned by sithari.css. */
 
 /* --- 1. Hiérarchie générale : moins de bruit, plus de respiration --- */
 .sithari-page .sithari-selector,

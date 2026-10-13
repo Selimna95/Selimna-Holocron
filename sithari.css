@@ -14,6 +14,7 @@
   --sa-red:#ff3048;
   --sa-green:#68e0a3;
   --sa-gold:#d9b96a;
+  --sa-blue:#d8938d; /* Shared with Sith’ari analysis accents in app.css. */
   position:relative; min-height:calc(100vh - 76px); padding:26px 30px 70px;
   overflow:hidden; color:var(--sa-text);
   background:
