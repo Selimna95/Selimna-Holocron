@@ -400,3 +400,52 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
 @media(max-width:900px){.sithari-page .sithari-slots{grid-template-columns:1fr!important}.sithari-page .sithari-action-secondary{grid-template-columns:1fr}.sithari-page .sithari-rule-check{grid-template-columns:1fr}.sithari-page .sithari-action-result{grid-template-columns:24px 1fr}.sithari-page .sithari-action-result>span{grid-column:2}}
 
 .disciple-quest-result{display:flex;flex-direction:column;gap:8px;text-align:center;padding:28px 22px}.disciple-quest-result>b{font-size:1.05rem;letter-spacing:.04em}.disciple-quest-result span{line-height:1.5}.disciple-quest-result small{opacity:.7}
+
+/* P2/P3 harmonisation — controls share the application's focus and interaction language. */
+.sithari-page :where(button, input, select, textarea){
+  font:inherit;
+}
+.sithari-page :where(input,select,textarea){
+  max-width:100%;
+  color:var(--sa-text);
+  background-color:rgba(255,255,255,.035);
+  border:1px solid var(--sa-line);
+  border-radius:4px;
+}
+.sithari-page :where(input,select,textarea):hover:not(:disabled){
+  border-color:rgba(216,147,141,.42);
+}
+.sithari-page :where(button){
+  min-height:36px;
+  border-radius:4px;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,transform .16s ease;
+}
+.sithari-page :where(button:hover:not(:disabled)){
+  border-color:rgba(216,147,141,.5);
+}
+.sithari-page :where(button:active:not(:disabled)){
+  transform:translateY(1px);
+}
+.sithari-page :where(button:disabled,input:disabled,select:disabled,textarea:disabled){
+  opacity:.58;
+  cursor:not-allowed;
+}
+.sithari-page :where(button,input,select,textarea):focus-visible{
+  outline:2px solid var(--sa-gold);
+  outline-offset:2px;
+}
+.sithari-page :where(.sithari-panel-title,.sithari-selector-head,.sithari-analysis-head){
+  min-width:0;
+}
+.sithari-page :where(.sithari-character-card,.sithari-team-tab,.sithari-result-row){
+  overflow-wrap:anywhere;
+}
+@media(max-width:680px){
+  .sithari-page{padding-left:12px;padding-right:12px}
+  .sithari-page :where(input,select,textarea){min-height:40px}
+  .sithari-page :where(button){min-height:40px}
+}
+@media(prefers-reduced-motion:reduce){
+  .sithari-page :where(button){transition:none}
+}
+

@@ -22,7 +22,7 @@
 </head>
 <body>
 
-<div id="holocronGate" class="holocron-gate" aria-label="Connexion à l’Holocron">
+<div id="holocronGate" class="holocron-gate" role="region" aria-label="Connexion à l’Holocron">
   <div class="gate-visual" aria-hidden="true">
     <img src="assets/backgrounds/holocron-gate.jpg" alt="" class="gate-holocron-image">
     <div class="gate-energy-lines"></div>
@@ -30,7 +30,7 @@
   </div>
   <div class="gate-login">
     <label for="gateAllyCode">CODE ALLIÉ</label>
-    <div class="gate-input-wrap"><span>♙</span><input id="gateAllyCode" inputmode="numeric" maxlength="9" placeholder="123456789" autocomplete="off" aria-label="Code allié"><i>✓</i></div>
+    <div class="gate-input-wrap"><span>♙</span><input id="gateAllyCode" inputmode="numeric" maxlength="9" placeholder="123456789" autocomplete="off" aria-label="Code allié" aria-describedby="gateMessage"><i>✓</i></div>
     <button id="gateActivate" type="button"><span class="button-spinner"></span>ACTIVER L’HOLOCRON</button>
     <details class="gate-relay-settings">
       <summary>Paramètres de synchronisation</summary>
@@ -143,9 +143,9 @@
           <div class="decision-holocron-glow"></div>
           <div class="decision-holocron">
 
-            <button class="holocron-face face-expert" data-page="optimizer" aria-label="Seigneur Sith"> <span>✦</span><b>SEIGNEUR SITH</b></button>
-            <button class="holocron-face face-essential" data-page="top-changes" aria-label="Acolyte"><span>⌁</span><b>ACOLYTE</b></button>
-            <button class="holocron-face face-understand" data-page="mods-analysis" aria-label="Disciple"><span>◌</span><b>DISCIPLE</b></button>
+            <button type="button" class="holocron-face face-expert" data-page="optimizer" aria-label="Seigneur Sith"> <span>✦</span><b>SEIGNEUR SITH</b></button>
+            <button type="button" class="holocron-face face-essential" data-page="top-changes" aria-label="Acolyte"><span>⌁</span><b>ACOLYTE</b></button>
+            <button type="button" class="holocron-face face-understand" data-page="mods-analysis" aria-label="Disciple"><span>◌</span><b>DISCIPLE</b></button>
             <button class="sithari-core" id="sithariAccess" type="button" aria-label="Accéder au SITH’ARI">
               <span class="sithari-core-rune">✧</span><strong>SITH’ARI</strong><small>TRANSCENDER</small>
             </button>
