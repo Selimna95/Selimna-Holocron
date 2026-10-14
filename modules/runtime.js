@@ -18,12 +18,20 @@ function updateGuardianContext(page){
   root.title=message;
 }
 function showPage(page){
-  // Le Codex du roster est volontairement masqué dans l’interface ; ses données
-  // et ses points d’entrée techniques restent présents pour les modules existants.
-  if(page==='data') page='dashboard';
+  // Chaque destination visible doit ouvrir son écran réel. Le Codex est une
+  // destination de consultation à part entière, accessible depuis le Sanctuaire.
   document.body.dataset.page=page;
-  document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x.dataset.page===page));
-  document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===page));
+  document.querySelectorAll('.nav').forEach(x=>{
+    const active=x.dataset.page===page;
+    x.classList.toggle('active',active);
+    if(active) x.setAttribute('aria-current','page');
+    else x.removeAttribute('aria-current');
+  });
+  document.querySelectorAll('.page').forEach(x=>{
+    const active=x.id===page;
+    x.classList.toggle('active',active);
+    x.setAttribute('aria-hidden',String(!active));
+  });
   updateGuardianContext(page);
   if(page==='mods-analysis') renderModsAnalysis();
   if(page==='top-changes') renderHolocronTopChanges();
@@ -75,7 +83,7 @@ $('reallocationIncomplete')?.addEventListener('change',discipleHandleSearchEvent
 $('reallocationVeryLow')?.addEventListener('change',discipleHandleSearchEvent);
 $('reallocationLow')?.addEventListener('change',discipleHandleSearchEvent);
 $('runReallocation')?.addEventListener('click',discipleHandleSearchEvent);
-$('clearData').addEventListener('click',()=>{currentData=null;mods=[];modFiltersReady=false;const mf=$('modFilters'),ms=$('modSummary');if(mf)mf.hidden=true;if(ms)ms.hidden=true;rosterCharacters=[];rosterShips=[];factionMap={};analysisSelectedCharacter='';analysisFaction='';analysisSide='ALL';analysisStatus='TOUS';analysisAuditSpeed='TOUS';analysisAuditSort='priority';updateRosterCounts([],[]);fillCharacters([]);if($('v18DashboardSpeed'))$('v18DashboardSpeed').innerHTML='';$('results').textContent='Chargez d’abord vos données.';$('dataInfo').textContent='Aucune donnée.';if($('playerName'))$('playerName').textContent='Profil non chargé';if($('playerAlly'))$('playerAlly').textContent='—';if($('heroPlayerName'))$('heroPlayerName').textContent='Profil non chargé';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent='—';if($('heroProfileState'))$('heroProfileState').textContent='EN ATTENTE';$('dataTableMeta').textContent='Aucune donnée.';$('dataTable').innerHTML='<div class="empty">Chargez un profil pour afficher les données.</div>';$('log').textContent='Données effacées.';renderSithariNexus();updateGuardianContext(document.body.dataset.page||'dashboard');});
+$('clearData').addEventListener('click',()=>{currentData=null;mods=[];modFiltersReady=false;const mf=$('modFilters'),ms=$('modSummary');if(mf)mf.hidden=true;if(ms)ms.hidden=true;rosterCharacters=[];rosterShips=[];factionMap={};analysisSelectedCharacter='';analysisFaction='';analysisSide='ALL';analysisStatus='TOUS';analysisAuditSpeed='TOUS';analysisAuditSort='priority';updateRosterCounts([],[]);fillCharacters([]);if($('v18DashboardSpeed'))$('v18DashboardSpeed').innerHTML='';$('results').textContent='Chargez d’abord vos données.';$('dataInfo').textContent='Aucune donnée.';if($('playerName'))$('playerName').textContent='Profil non chargé';if($('playerAlly'))$('playerAlly').textContent='—';if($('heroPlayerName'))$('heroPlayerName').textContent='Profil non chargé';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent='—';if($('heroProfileState'))$('heroProfileState').textContent='EN ATTENTE';$('dataTableMeta').textContent='Aucune donnée.';$('dataTable').innerHTML='<div class="empty">Chargez un profil pour afficher les données.</div>';$('log').textContent='Données effacées.';if($('topAccountName'))$('topAccountName').textContent='—';if($('topProfileState'))$('topProfileState').textContent='EN ATTENTE';if($('topUnitsCount'))$('topUnitsCount').textContent='—';try{sessionStorage.removeItem('holocronSessionEstablished');sessionStorage.removeItem('holocronLastAllyCode');}catch(_){}window.dispatchEvent(new Event('holocron:data-updated'));renderSithariNexus();updateGuardianContext(document.body.dataset.page||'dashboard');});
 
 document.querySelectorAll('.analysis-tab').forEach(btn=>btn.addEventListener('click',()=>setAnalysisTab(btn.dataset.analysisTab)));
 $('analysisFaction')?.addEventListener('change',()=>{analysisFaction=$('analysisFaction').value;analysisSelectedCharacter='';renderSelectionPanel();});
@@ -110,6 +118,7 @@ document.getElementById('sithariAccess')?.addEventListener('click',()=>showPage(
 $('sithariFaction')?.addEventListener('change',e=>{sithariFaction=e.target.value;sithariRenderAll();});
 $('sithariCharacterSearch')?.addEventListener('input',e=>{sithariSearch=e.target.value||'';sithariRenderSelectors();});
 $('sithariClearSelection')?.addEventListener('click',()=>{sithariSelectedKeys=[];sithariActiveKey='';sithariRenderAll();});
+showPage(document.querySelector('.page.active')?.id || 'dashboard');
 renderGalacticPower();
 renderSithariNexus();
 boot();

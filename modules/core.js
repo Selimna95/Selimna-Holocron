@@ -486,11 +486,27 @@ function updateCharacterInfo() {
 const DEFAULT_WORKER_URL = 'https://swgoh-optimizer-relay.lorg75017.workers.dev';
 function workerUrl() { return String(localStorage.getItem('swgohRelayUrl') || $('relayUrl')?.value || DEFAULT_WORKER_URL).trim().replace(/\/$/,''); }
 function saveWorkerUrl() { const v=String($('relayUrl').value||'').trim().replace(/\/$/,''); if(v)localStorage.setItem('swgohRelayUrl',v);else localStorage.removeItem('swgohRelayUrl'); $('relayState').textContent=v?'RELAIS CONFIGURÉ':'RELAIS NON CONFIGURÉ'; log(v?`Relais Cloudflare enregistré : ${v}`:'Relais Cloudflare effacé.'); }
+async function fetchTextWithTimeout(url,options={},timeoutMs=20000){
+  const controller=typeof AbortController==='function'?new AbortController():null;
+  const timer=controller?setTimeout(()=>controller.abort(),timeoutMs):null;
+  try{
+    const response=await fetch(url,{...options,...(controller?{signal:controller.signal}:{})});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    return await response.text();
+  }catch(error){
+    if(error?.name==='AbortError')throw new Error(`Délai dépassé après ${Math.round(timeoutMs/1000)} s : ${new URL(url).host}`);
+    throw error;
+  }finally{if(timer)clearTimeout(timer);}
+}
+async function fetchJSON(url){
+  const raw=await fetchTextWithTimeout(url,{headers:{'Accept':'application/json,text/plain,*/*'}});
+  try{return JSON.parse(raw);}catch(_){throw new Error('Réponse JSON invalide reçue du relais.');}
+}
 async function fetchText(url) {
   const candidates=[], relay=workerUrl();
   if(relay){const m=url.match(/\/p\/(\d{9})\/(characters|mods)?\/?(?:\?page=(\d+))?/);if(m){const ally=m[1],path=m[2]||'profile',page=m[3]||'1';candidates.push(`${relay}/?ally=${ally}&path=${path}&page=${page}`);}}
   candidates.push(url); let last='';
-  for(const u of candidates){try{const r=await fetch(u,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const text=await r.text();if(text&&text.length>200)return text;last=`Réponse vide via ${u}`;}catch(e){last=e.message||String(e);}}
+  for(const u of candidates){try{const text=await fetchTextWithTimeout(u,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});if(text&&text.length>200)return text;last=`Réponse vide via ${new URL(u).host}`;}catch(e){last=e.message||String(e);}}
   throw new Error(last||'Impossible de lire la page SWGOH.GG.');
 }
 function parseHTML(text){return new DOMParser().parseFromString(text,'text/html');}
