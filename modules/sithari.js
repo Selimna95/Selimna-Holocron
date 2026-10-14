@@ -312,8 +312,35 @@ function sithariSlotState(c,slot){
   const status=!current?'CALIBRATION':(setOk&&primaryOk?'REINFORCE':'CALIBRATE');
   return {character:c,slot,current,status,mode,profile:p,reference,setOk,primaryOk,actionable:true};
 }
+function sithariPortraitCandidates(c){
+  const direct=String(c?.portraitUrl||c?.portrait_url||c?.imageUrl||c?.image_url||'').trim();
+  const urls=[]; if(/^https?:\/\//i.test(direct))urls.push(direct);
+  const ids=[]; const add=v=>{const x=String(v||'').trim().toLowerCase().replace(/^tex\.charui[_\.]/,'').replace(/\.png$/,'').replace(/[^a-z0-9 _-]/g,'').replace(/\s+/g,'_');if(x&&!ids.includes(x))ids.push(x);};
+  add(c?.thumbnailName||c?.thumbnail_name); add(c?.baseId||c?.base_id);
+  const name=String(c?.name||c?.character||'').trim();
+  const exact={'jedi knight luke skywalker':['luke_jediknight'],'grand master yoda':['yodagrandmaster'],'jedi knight anakin':['anakinknight'],'sith eternal emperor':['espalpatine_post'],'rey (scavenger)':['reyjakku'],'admiral ackbar':['ackbaradmiral'],'luminara unduli':['luminara'],'ct-5555 "fives"':['trooperclone_fives'],'l3-37':['l337'],'poe dameron':['poe']};
+  for(const [label,keys] of Object.entries(exact))if(name.toLowerCase()===label)keys.forEach(add);
+  add(name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,''));
+  for(const id of ids)urls.push(`https://game-assets.swgoh.gg/textures/tex.charui_${id}.png`);
+  const mirrorName=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,'_');
+  if(mirrorName)urls.push(`https://raw.githubusercontent.com/tools4swgoh/swgoh-icons/main/65px-Unit-Character-${encodeURIComponent(mirrorName)}-portrait.png`);
+  return [...new Set(urls)];
+}
 function sithariPortrait(c){
-  const src=c?.portraitUrl||c?.thumbnailName||''; return src?`<img src="${esc(src)}" alt="" loading="lazy">`:`<span>${esc(String(c?.name||'?').slice(0,1))}</span>`;
+  const urls=sithariPortraitCandidates(c); const label=String(c?.name||c?.baseId||'?');
+  if(!urls.length)return `<span class="sithari-portrait-fallback">${esc(label.slice(0,1))}</span>`;
+  return `<img src="${esc(urls[0])}" data-sithari-portrait-list="${esc(JSON.stringify(urls.slice(1)))}" data-sithari-portrait-index="0" alt="${esc(label)}" loading="lazy">`;
+}
+function sithariBindPortraitFallbacks(root){
+  root.querySelectorAll('img[data-sithari-portrait-list]').forEach(img=>{
+    if(img.dataset.sithariFallbackBound)return; img.dataset.sithariFallbackBound='1';
+    img.addEventListener('error',()=>{
+      let urls=[];try{urls=JSON.parse(img.dataset.sithariPortraitList||'[]')}catch{}
+      const index=Number(img.dataset.sithariPortraitIndex||0);
+      if(index<urls.length){img.dataset.sithariPortraitIndex=String(index+1);img.src=urls[index];return;}
+      const fallback=document.createElement('span');fallback.className='sithari-portrait-fallback';fallback.textContent=(img.alt||'?').slice(0,1);img.replaceWith(fallback);
+    });
+  });
 }
 function sithariRenderSelectors(){
   const factionEl=$('sithariFaction'), grid=$('sithariCharacterGrid'), meta=$('sithariSelectionMeta'); if(!grid)return;
@@ -343,7 +370,7 @@ function sithariRenderTeam(){
   document.querySelectorAll('[data-sithari-active]').forEach(btn=>btn.addEventListener('click',()=>{sithariActiveKey=btn.dataset.sithariActive;sithariRenderAll(false)}));
   team.querySelectorAll('.sithari-selected-chip i').forEach((x)=>x.addEventListener('click',e=>{e.stopPropagation();sithariToggleCharacter(x.closest('[data-sithari-active]').dataset.sithariActive)}));
 }
-function sithariModMini(m){if(!m)return '<span class="sithari-no-mod">AUCUN MOD</span>';const x=modSpeedMetrics(m), sec=modSecondaries(m)||'—';return `<span class="sithari-mod-mini">${modIconHtml(m,'44')}<span class="sithari-mod-copy"><b>${esc(String(m.primary_stat||'—'))} ${num(m.primary_value,1)}</b><strong>${x.primary?'★ Primaire Speed':(x.secondary?`+${num(x.secondary)} Speed`:'Sans Speed')}</strong><small>${esc(sec)}</small></span></span>`;}
+function sithariModMini(m,slot,status){if(!m)return '<span class="sithari-no-mod">AUCUN MOD</span>';const x=modSpeedMetrics(m), sec=modSecondaries(m)||'—';return `<button type="button" class="sithari-mod-mini sithari-mod-trigger" data-sithari-mod-toggle="${esc(slot||m.slot||'')}" aria-label="Ouvrir les possibilités du mod ${esc(slot||m.slot||'')}"><span class="sithari-mod-trigger-icon">${modIconHtml(m,'54')}<i>✦</i></span><span class="sithari-mod-copy"><b>${esc(String(m.primary_stat||'—'))} ${num(m.primary_value,1)}</b><strong>${x.primary?'★ Primaire Speed':(x.secondary?`+${num(x.secondary)} Speed`:'Sans Speed')}</strong><small>${esc(sec)}</small><em>${status==='REINFORCE'?'Cliquer pour renforcer':'Cliquer pour calibrer'}</em></span></button>`;}
 function sithariStatsReference(c,p){
   const op=optimizerProfileForCharacter(c)||{};
   const cur=op.current_stats||{};
@@ -358,6 +385,10 @@ function sithariStatsPanel(c,p){
   return `<section class="sithari-stats-panel"><div class="sithari-stats-head"><div><small>COMPARAISON</small><strong>TES STATS VS RÉFÉRENCE KYBER</strong></div><span>VALEUR ACTUELLE → CIBLE KYBER</span></div><div class="sithari-stats-grid">${rows.map(r=>{const delta=r.current-r.kyber;const cls=delta>=0?'ahead':'behind';return `<div class="sithari-stat-row"><span>${esc(r.label)}</span><b class="${cls}">${sithariStatValue(r.current,r.key)}</b><i>→</i><strong>${sithariStatValue(r.kyber,r.key)}</strong><small class="${cls}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toLocaleString('fr-FR')}</small></div>`}).join('')}</div></section>`;
 }
 function sithariBindActionControls(box){
+  box.querySelectorAll('[data-sithari-mod-toggle]').forEach(btn=>btn.addEventListener('click',()=>{
+    const c=sithariCharacterByKey(sithariActiveKey); const slotKey=btn.dataset.sithariModToggle;
+    if(c&&slotKey){const state=sithariSlotState(c,slotKey);sithariOpenAction(state,state.status==='REINFORCE'?'REINFORCEMENT':'CALIBRATION');}
+  }));
   box.querySelectorAll('[data-sithari-action]').forEach(btn=>btn.addEventListener('click',()=>{
     const c=sithariCharacterByKey(sithariActiveKey);
     const slotKey=btn.dataset.sithariSlot;
@@ -427,7 +458,7 @@ function sithariSlotCard(x,i){
   const action=x.status==='REINFORCE'?'REINFORCEMENT':x.status==='CALIBRATE'?'CALIBRATION':'';
   const actionBtn=action?`<button type="button" class="sithari-slot-action ${action==='REINFORCEMENT'?'reinforcement':'calibration'}" data-sithari-action="${action}" data-sithari-slot="${x.slot}">${action==='REINFORCEMENT'?'↗ RENFORCEMENT':'⌁ CALIBRAGE'}</button>`:'';
   return `<article class="sithari-slot-card ${cls}"><header><span>${String(i+1).padStart(2,'0')}</span><div><small>SLOT</small><strong>${SITHARI_SLOT_LABEL[x.slot]||x.slot}</strong></div><em>${label}</em></header>
-    <div class="sithari-slot-compare"><div class="sithari-current-mod"><small>TON MOD</small>${sithariModMini(x.current)}</div><div class="sithari-slot-arrow">→</div><div class="sithari-kyber-ref"><small>RÉFÉRENCE KYBER</small><p><b>SETS</b> ${esc(x.reference.sets)}</p><p><b>PRIMAIRE</b> ${esc(x.reference.prim)}</p><p><b>SECONDAIRES</b> ${esc(x.reference.sec)}</p></div></div>
+    <div class="sithari-slot-compare"><div class="sithari-current-mod"><small>TON MOD</small>${sithariModMini(x.current,x.slot,x.status)}</div><div class="sithari-slot-arrow">→</div><div class="sithari-kyber-ref"><small>RÉFÉRENCE KYBER</small><p><b>SETS</b> ${esc(x.reference.sets)}</p><p><b>PRIMAIRE</b> ${esc(x.reference.prim)}</p><p><b>SECONDAIRES</b> ${esc(x.reference.sec)}</p></div></div>
     <div class="sithari-rule-check"><span class="${x.setOk?'ok':'bad'}"><b>${x.setOk?'✓':'×'}</b> SET <em>${x.setOk?'CONFORME':'À CALIBRER'}</em></span><span class="${x.primaryOk?'ok':'bad'}"><b>${x.primaryOk?'✓':'×'}</b> PRIMAIRE <em>${x.primaryOk?'CONFORME':'À CALIBRER'}</em></span></div>
     ${actionBtn}
     ${sithariRenderActionPanel(x)}
@@ -452,6 +483,7 @@ function renderSithariNexus(){
 function sithariRenderAll(resetActive=true){
   if(resetActive && sithariSelectedKeys.length && !sithariSelectedKeys.includes(sithariActiveKey))sithariActiveKey=sithariSelectedKeys[0];
   sithariRenderSelectors();sithariRenderTeam();sithariRenderCharacter();sithariRenderTeamResults();
+  sithariBindPortraitFallbacks(document.getElementById('sithari')||document);
   sithariEnsureProfilesForTeam();
 }
 
