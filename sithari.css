@@ -676,3 +676,27 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
 @keyframes sithari-star-arrive{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:650px){.sithari-page .sithari-action-result.sithari-star-option{grid-template-columns:18px 46px minmax(0,1fr)!important;gap:7px!important}.sithari-page .sithari-result-visual .mod-visual{width:42px!important;height:42px!important}.sithari-page .sithari-result-stats{grid-column:2/4;padding-left:2px}.sithari-page .sithari-constellation-core>small{width:100%;margin-left:28px}.sithari-page .sithari-analysis-portrait{width:62px!important;height:62px!important;flex-basis:62px!important}}
 @media(prefers-reduced-motion:reduce){.sithari-page .sithari-constellation:before,.sithari-page .sithari-constellation-core>span,.sithari-page .sithari-star-link,.sithari-page .sithari-star-option{animation:none!important;transition:none!important}}
+
+/* Sith'ari visual interaction pass: the equipped mod itself is the control. */
+.sithari-page .sithari-mod-trigger{appearance:none;-webkit-appearance:none;width:100%;min-width:0;display:flex;align-items:center;gap:10px;text-align:left;padding:8px!important;border:1px solid rgba(255,48,72,.22)!important;border-radius:7px!important;background:radial-gradient(ellipse at 0 50%,rgba(115,10,22,.18),transparent 70%),#0b0b0c!important;color:inherit;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .2s}
+.sithari-page .sithari-mod-trigger:hover,.sithari-page .sithari-mod-trigger:focus-visible{border-color:rgba(255,48,72,.75)!important;box-shadow:0 0 20px rgba(255,35,55,.14),inset 0 0 18px rgba(255,35,55,.05)!important;outline:none;transform:translateY(-1px)}
+.sithari-page .sithari-mod-trigger-icon{position:relative;display:grid;place-items:center;flex:0 0 56px;min-height:58px}
+.sithari-page .sithari-mod-trigger-icon>i{position:absolute;right:-1px;top:-3px;color:#ff394f;font-style:normal;font-size:14px;text-shadow:0 0 10px #ff203b;animation:sithari-star-glow 2s ease-in-out infinite}
+.sithari-page .sithari-mod-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sithari-page .sithari-mod-copy>em{font-style:normal;font-size:9px;letter-spacing:.06em;color:#ff6475;opacity:.88}
+.sithari-page .sithari-portrait-fallback{display:grid;place-items:center;width:100%;height:100%;min-width:28px;min-height:28px;background:linear-gradient(145deg,#3b171b,#101010);color:#e8c66c;font-weight:900;border:1px solid rgba(217,185,106,.45);border-radius:5px}
+.sithari-page .sithari-constellation{background:radial-gradient(ellipse at 50% 0%,rgba(160,8,28,.2),transparent 72%),#070708!important}
+.sithari-page .sithari-action-results{position:relative;display:grid!important;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px!important;padding:12px 2px 4px;margin-top:12px}
+.sithari-page .sithari-action-results:before{content:"";position:absolute;z-index:0;left:7%;right:7%;top:25px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,42,61,.58),rgba(255,42,61,.2),rgba(255,42,61,.58),transparent);animation:sithari-pulse-line 2.8s ease-in-out infinite;pointer-events:none}
+.sithari-page .sithari-action-result.sithari-star-option{z-index:1;grid-template-columns:18px 54px minmax(0,1fr)!important;align-content:start;min-height:116px;background:linear-gradient(145deg,rgba(61,8,17,.55),rgba(10,10,11,.97) 58%)!important;border-color:rgba(255,48,72,.28)!important;box-shadow:inset 0 0 20px rgba(255,20,40,.025)}
+.sithari-page .sithari-action-result.sithari-star-option:after{content:"";position:absolute;left:27px;top:-13px;height:13px;width:1px;background:linear-gradient(transparent,rgba(255,48,72,.8));}
+.sithari-page .sithari-result-owner{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:2px 7px;min-width:0}
+.sithari-page .sithari-result-owner strong{overflow-wrap:anywhere;color:#e8d9b2;font-size:10px}
+.sithari-page .sithari-result-owner small{grid-column:2;color:#a6a29b;font-size:9px}
+.sithari-page .sithari-result-stats{grid-column:2/4;display:flex;flex-direction:column;gap:5px;padding:8px 0 0!important;border-top:1px solid rgba(255,48,72,.15)}
+.sithari-page .sithari-result-stats>b{color:#f7f4ee;font-size:11px}
+.sithari-page .sithari-result-stats>b strong{color:#f2d27c;font-size:13px}
+.sithari-page .sithari-result-stats>span{color:#b8b6b0;font-size:10px;line-height:1.45}
+.sithari-page .sithari-result-stats>em{color:#9be1ad;font-size:11px;font-style:normal;font-weight:800}
+.sithari-page .sithari-result-stats>em i{color:#ff6879;font-style:normal;font-weight:600;margin-left:5px}
+@media(max-width:650px){.sithari-page .sithari-action-results{grid-template-columns:1fr!important}.sithari-page .sithari-mod-trigger{padding:7px!important}}
