@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icons/holocron-192.png" type="image/png">
 <link rel="stylesheet" href="app.css?v=3.2.0">
-<link rel="stylesheet" href="sithari.css?v=3.2.0">
+<link rel="stylesheet" href="sithari.css?v=3.2.0-sithari-clarity">
 <link rel="stylesheet" href="holocron-system.css?v=3.2.0">
 
 
@@ -198,12 +198,17 @@
       <div><small>SITH’ARI // 1 · CONSTITUER L’ÉQUIPE</small><h3>CHOISIS 1 À 5 PERSONNAGES À OPTIMISER</h3><p class="sithari-help">Filtre par faction, puis clique sur les personnages à analyser. Les personnages sélectionnés apparaissent dans l’équipe.</p></div>
       <div class="sithari-team-count"><strong id="sithariSelectedCount">0</strong><span>/ 5</span><small>sélectionnés</small></div>
     </div>
-    <div class="sithari-filters">
-      <label class="sithari-faction-filter"><span>FACTION</span><select id="sithariFaction"><option value="Toutes les factions">Toutes les factions</option></select></label>
-      <label class="sithari-search"><span>RECHERCHE</span><input id="sithariCharacterSearch" type="search" placeholder="Nom du personnage…"></label>
-    </div>
-    <div class="sithari-selection-meta"><span id="sithariSelectionMeta">Choisis une faction puis ajoute jusqu’à 5 personnages.</span><button type="button" id="sithariClearSelection">VIDER L’ÉQUIPE</button></div>
-    <div id="sithariCharacterGrid" class="sithari-character-grid"></div>
+    <details class="sithari-picker">
+      <summary><span class="sithari-picker-symbol">＋</span><span><strong>Ajouter ou modifier les personnages</strong><small>La sélection reste disponible à tout moment · 1 à 5 personnages</small></span><span class="sithari-picker-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="sithari-picker-body">
+        <div class="sithari-filters">
+          <label class="sithari-faction-filter"><span>FACTION</span><select id="sithariFaction"><option value="Toutes les factions">Toutes les factions</option></select></label>
+          <label class="sithari-search"><span>RECHERCHE</span><input id="sithariCharacterSearch" type="search" placeholder="Nom du personnage…"></label>
+        </div>
+        <div class="sithari-selection-meta"><span id="sithariSelectionMeta">Choisis une faction puis ajoute jusqu’à 5 personnages.</span><button type="button" id="sithariClearSelection">VIDER L’ÉQUIPE</button></div>
+        <div id="sithariCharacterGrid" class="sithari-character-grid"></div>
+      </div>
+    </details>
   </section>
 
   <section class="sithari-team-panel panel">
@@ -227,8 +232,10 @@
   </section>
 
   <section class="sithari-team-results panel">
-    <div class="sithari-panel-title"><span>⬢</span><div><small>SITH’ARI // 4 · VUE ÉQUIPE</small><strong>CE QU’IL RESTE À FAIRE</strong></div><em>Vert = renforcement · Rouge = calibrage</em></div>
-    <div id="sithariTeamResults" class="sithari-team-results-grid"></div>
+    <details class="sithari-team-overview">
+      <summary><span><small>VUE D’ENSEMBLE</small><strong>État des personnages sélectionnés</strong></span><span class="sithari-overview-legend"><i></i> Renforcement <i></i> Calibrage</span><b aria-hidden="true">⌄</b></summary>
+      <div id="sithariTeamResults" class="sithari-team-results-grid"></div>
+    </details>
   </section>
 
   <footer class="sithari-footer"><span>SITH’ARI // TRANSCENDER</span><strong>COMPARER · RENFORCER · CALIBRER</strong><small>Une équipe. Six slots par personnage. Une référence Kyber.</small></footer>

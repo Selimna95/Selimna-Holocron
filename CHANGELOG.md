@@ -45,3 +45,14 @@
 - Réorganisation visuelle des états de la porte d'entrée, du verdict du Sanctuaire, des priorités Acolyte, des étapes Disciple, de la Forge Seigneur Sith et des comparaisons Sith'ari.
 - Le Codex détaillé personnages/vaisseaux/mods reste accessible comme destination de consultation ; ses données et points d'entrée métier sont conservés.
 - Version du cache statique incrémentée afin d'inclure la nouvelle feuille de style.
+
+## Affinage UX Sith’ari — Maîtrise ultime
+
+- Réduction de la densité initiale : la sélection des personnages est désormais repliée dans un panneau explicite, toujours accessible.
+- Suppression visuelle de la double liste des personnages dans la zone d’analyse ; les sélections restent accessibles via les puces d’équipe et la structure interne nécessaire au code est conservée.
+- Repli par défaut de la vue d’ensemble d’équipe, consultable à la demande.
+- Nouvelle hiérarchie visuelle : titre plus sobre, textes plus lisibles, cartes espacées, moins de bordures et d’effets décoratifs.
+- Comparaison actuelle / référence Kyber et actions par slot conservées ; aucune formule de calcul ni règle métier modifiée.
+- Mise en page mobile simplifiée, avec comparaison des deux modulations empilée verticalement.
+- Cache-busting de la feuille de style Sith’ari pour que GitHub Pages charge la nouvelle présentation.
+- Vérifications : 13 tests Python réussis, syntaxe JavaScript contrôlée et identifiants HTML Sith’ari vérifiés. Un test interactif avec un roster réel reste nécessaire.
