@@ -1,3 +1,13 @@
+## [3.2.1] — 2026-10-14
+
+### Sith’ari — constellation visuelle des mods
+- Affichage des véritables icônes de mods dans les résultats de renforcement et calibrage, avec niveau, tier et nombre de points.
+- Portrait du personnage propriétaire affiché pour chaque option, ou repère explicite lorsqu’un mod est libre.
+- Affichage de la primaire, des secondaires et de la vitesse totale réelle, avec différence calculée par rapport au mod actuel.
+- Possibilités présentées comme des étoiles reliées par des lignes rouges pulsantes, avec animations discrètes et respect de la préférence de mouvement réduit.
+- Un second clic sur le bouton actif replie les possibilités ; le bouton Fermer reste disponible.
+- Les calculs et règles métier existants sont conservés.
+
 ## [3.2.0] — 2026-10-14
 
 ### Navigation et compréhension (P1–P5)

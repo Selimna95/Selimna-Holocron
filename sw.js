@@ -1,12 +1,12 @@
-const CACHE_NAME = 'holocron-static-v3.2.0';
+const CACHE_NAME = 'holocron-static-v3.2.1';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './app.css?v=3.2.0',
-  './sithari.css?v=3.2.0',
-  './holocron-system.css?v=3.2.0',
-  './interface-adapter.js?v=3.2.0',
-  './gac-usage.js?v=3.2.0',
+  './app.css?v=3.2.1',
+  './sithari.css?v=3.2.1',
+  './holocron-system.css?v=3.2.1',
+  './interface-adapter.js?v=3.2.1',
+  './gac-usage.js?v=3.2.1',
   './modules/core.js',
   './modules/acolyte.js',
   './modules/disciple.js',
@@ -14,10 +14,10 @@ const STATIC_ASSETS = [
   './modules/sithari.js',
   './modules/runtime.js',
   './optimizer-worker.mjs',
-  './python/optimizer.py?v=3.2.0',
-  './python/kyber_data.py?v=3.2.0',
-  './python/optimizer_profiles.json?v=3.2.0',
-  './python/kyber_profiles.json?v=3.2.0',
+  './python/optimizer.py?v=3.2.1',
+  './python/kyber_data.py?v=3.2.1',
+  './python/optimizer_profiles.json?v=3.2.1',
+  './python/kyber_profiles.json?v=3.2.1',
   './assets/backgrounds/holocron-gate.jpg',
   './assets/icons/holocron-192.png',
   './assets/icons/holocron-512.png'
