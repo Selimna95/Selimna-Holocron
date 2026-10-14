@@ -1,8 +1,8 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 3.1.0** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 3.2.0** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
-## Direction artistique v3.1.0
+## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
 - Hiérarchie renforcée pour la navigation, les panneaux et les actions.
 - Thème appliqué directement aux règles existantes pour éviter une feuille de surcouche dédiée.
@@ -12,6 +12,8 @@
 - Analyse et optimisation des mods avec un moteur Python exécuté dans Web Worker via Pyodide.
 - Analyse de roster, comparaison aux références Kyber et outils Holocron/Sith’ari.
 - Interface responsive, installation PWA et prise en charge de `prefers-reduced-motion`.
+- Parcours UX clarifié : états vides explicites, descriptions des modules, navigation accessible et Codex ouvert depuis le Sanctuaire.
+- Synchronisation avec délai maximal de 20 secondes par requête et message d'erreur compréhensible en cas de délai dépassé.
 
 ## Démarrage local
 Les modules navigateur et le Web Worker utilisent `fetch`, les modules ES et les chemins relatifs. Ouvrir `index.html` directement avec `file://` peut bloquer les requêtes. Utilisez un serveur HTTP local depuis la racine du dépôt, par exemple :
@@ -60,4 +62,4 @@ Le projet est distribué sous licence MIT ; voir `LICENSE`.
 
 ### Couche visuelle partagée
 
-`holocron-system.css` regroupe les tokens d’interface et les ajustements transversaux (focus clavier, états, composants partagés et adaptations responsives). Elle ne contient aucune logique de calcul. Le Codex détaillé du roster peut être masqué visuellement sans supprimer les données ou les fonctions métier.
+`holocron-system.css` regroupe les tokens d’interface et les ajustements transversaux (focus clavier, états, composants partagés et adaptations responsives). Elle ne contient aucune logique de calcul. Le Codex du roster reste accessible comme destination de consultation.

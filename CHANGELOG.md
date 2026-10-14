@@ -1,3 +1,19 @@
+## [3.2.0] — 2026-10-14
+
+### Navigation et compréhension (P1–P5)
+- La navigation ouvre désormais le Codex du roster au lieu de rediriger silencieusement vers le Sanctuaire.
+- Le Codex est rétabli dans le menu et depuis la carte du Sanctuaire ; l'état actif de navigation est exposé via `aria-current`.
+- Les compteurs du tableau de bord affichent « — » tant qu'aucun roster n'est chargé, plutôt que de présenter l'absence de données comme un compte à zéro.
+- Les répartitions personnages/mods et le verdict du Sanctuaire expliquent désormais comment commencer lorsque le profil n'est pas chargé.
+- Ajout d'explications opérationnelles au point d'entrée, à la Forge Seigneur Sith, au Codex et à l'aide.
+- Ajout d'un délai maximal de 20 secondes par requête réseau, avec un message explicite si le relais ou la source ne répond pas.
+- Renforcement de la lisibilité mobile, des zones de défilement des tableaux, du focus clavier et de la préférence de mouvement réduit.
+- Version des ressources et cache PWA alignés sur `3.2.0`.
+
+### Compatibilité
+- Les identifiants HTML, les points d'entrée des modules et le moteur Python de l'optimiseur sont conservés.
+- Aucun calcul de classement, profil Kyber ou règle métier d'optimisation n'a été modifié.
+
 # Changelog
 
 ## [3.0.0] — 2026-10-12
@@ -27,5 +43,5 @@
 - Ajout de `holocron-system.css` pour les tokens partagés, les états, le focus clavier et les adaptations responsives.
 - Ajout d'un conseil contextuel unique du Gardien dans l'en-tête, adapté à l'espace actif et à l'état de chargement du profil.
 - Réorganisation visuelle des états de la porte d'entrée, du verdict du Sanctuaire, des priorités Acolyte, des étapes Disciple, de la Forge Seigneur Sith et des comparaisons Sith'ari.
-- Masquage visuel du Codex détaillé personnages/vaisseaux/mods à la demande ; les données et points d'entrée métier sont conservés. Après import JSON, retour au Sanctuaire au lieu d'ouvrir la page masquée.
+- Le Codex détaillé personnages/vaisseaux/mods reste accessible comme destination de consultation ; ses données et points d'entrée métier sont conservés.
 - Version du cache statique incrémentée afin d'inclure la nouvelle feuille de style.

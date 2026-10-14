@@ -50,6 +50,10 @@
     const ships=(typeof rosterShips!=='undefined' && Array.isArray(rosterShips))?rosterShips:[];
     const allMods=(typeof mods!=='undefined' && Array.isArray(mods))?mods:[];
     const gp=(typeof accountGalacticPower!=='undefined' && accountGalacticPower)||{total:0,characters:0,ships:0};
+    const hasRoster=chars.length>0 || ships.length>0 || allMods.length>0;
+
+    // Une absence de profil n'est pas un compte à zéro : afficher un état explicite.
+    const emptyLabel=hasRoster ? '0' : '—';
 
     // Player name is deliberately kept in the header, never over the Holocron.
     const accountName=(el('topAccountName')?.textContent||'').trim();
@@ -57,16 +61,18 @@
     text('decisionProfileName',displayName);
     text('essentialProfileName',displayName.toUpperCase());
     text('essentialGpTotal',gp.total ? nfmt(gp.total) : '—');
-    text('charsCount',chars.length);
-    text('modsCount',allMods.length);
-    text('gpTotal',gp.total ? nfmt(gp.total) : '0');
-    text('gpCharacters',gp.characters ? nfmt(gp.characters) : '0');
-    text('gpShips',gp.ships ? nfmt(gp.ships) : '0');
+    text('charsCount',hasRoster ? nfmt(chars.length) : emptyLabel);
+    text('modsCount',hasRoster ? nfmt(allMods.length) : emptyLabel);
+    text('gpTotal',hasRoster ? (gp.total ? nfmt(gp.total) : '0') : '—');
+    text('gpCharacters',hasRoster ? (gp.characters ? nfmt(gp.characters) : '0') : '—');
+    text('gpShips',hasRoster ? (gp.ships ? nfmt(gp.ships) : '0') : '—');
+    text('topUnitsCount',hasRoster ? nfmt(chars.length+ships.length) : '—');
+    text('topProfileState',hasRoster ? 'CONNECTÉ' : 'EN ATTENTE');
 
     const gpt=Number(gp.characters||0)+Number(gp.ships||0);
     const cp=gpt ? Math.round(Number(gp.characters||0)/gpt*100) : 0;
     const sp=gpt ? 100-cp : 0;
-    text('gpCharPct',cp+'%'); text('gpShipPct',sp+'%');
+    text('gpCharPct',hasRoster ? cp+'%' : '—'); text('gpShipPct',hasRoster ? sp+'%' : '—');
     const cb=el('gpCharBar'), sb=el('gpShipBar');
     if(cb) cb.style.width=cp+'%'; if(sb) sb.style.width=sp+'%';
 
@@ -80,8 +86,14 @@
       {label:'G13', value:chars.filter(c=>relicOf(c)<5&&gearOf(c)>=13).length},
       {label:'Autres', value:chars.filter(c=>relicOf(c)<5&&gearOf(c)<13).length}
     ];
-    renderBars('unitVentilation',groups);
-    renderLegend('unitLegend',groups);
+    if(hasRoster){
+      renderBars('unitVentilation',groups);
+      renderLegend('unitLegend',groups);
+    }else{
+      const unitBars=el('unitVentilation'), unitLegend=el('unitLegend');
+      if(unitBars) unitBars.innerHTML='<div class="dashboard-empty-state">Synchronise ton profil pour afficher la répartition du roster.</div>';
+      if(unitLegend) unitLegend.textContent='';
+    }
 
     const speedGroups=[
       {label:'20+', value:allMods.filter(m=>speedOf(m)>=20).length},
@@ -90,13 +102,31 @@
       {label:'1–9', value:allMods.filter(m=>{const s=speedOf(m);return s>=1&&s<10;}).length},
       {label:'0', value:allMods.filter(m=>speedOf(m)<1).length}
     ];
-    renderBars('modVentilation',speedGroups);
-    renderLegend('modLegend',speedGroups);
+    if(hasRoster){
+      renderBars('modVentilation',speedGroups);
+      renderLegend('modLegend',speedGroups);
+    }else{
+      const modBars=el('modVentilation'), modLegend=el('modLegend');
+      if(modBars) modBars.innerHTML='<div class="dashboard-empty-state">La ventilation des mods apparaîtra après synchronisation.</div>';
+      if(modLegend) modLegend.textContent='';
+    }
 
     // No meaningless "+70 V" badge in the character card.
-    text('unitsDelta','');
-    text('modsDelta',allMods.length ? 'SYNC' : '—');
-    text('decisionLastUpdate',new Date().toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}));
+    text('unitsDelta',hasRoster ? 'OK' : 'À FAIRE');
+    text('modsDelta',hasRoster ? (allMods.length ? 'SYNC' : '0 MOD') : 'À FAIRE');
+    const statusLabel=document.getElementById('decisionRosterStatus');
+    if(statusLabel) statusLabel.textContent=hasRoster ? 'ROSTER SYNCHRONISÉ' : 'PROFIL NON CHARGÉ';
+    text('decisionLastUpdate',hasRoster
+      ? 'Dernière actualisation : '+new Date().toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})
+      : 'Synchronise ton profil pour révéler les données de ton compte.');
+    if(!hasRoster){
+      text('holocronVerdictState','EN ATTENTE');
+      text('holocronVerdictTitle','Le Gardien attend le scan du roster.');
+      text('holocronVerdictAction','Active ton profil depuis l’écran d’accueil pour révéler les premières pistes.');
+      text('holocronVerdictCount','—');
+      text('holocronUrgentCount','—');
+      text('holocronOpportunityCount','—');
+    }
   }
 
   function showApp(){
@@ -118,6 +148,13 @@
   function setGate(msg,kind){
     const n=el('gateMessage');
     if(n){n.textContent=msg;n.dataset.state=kind||'';n.classList.toggle('error',kind==='error');n.classList.toggle('loading',kind==='loading');n.classList.toggle('success',kind==='ok');}
+    const code=el('gateAllyCode');
+    if(code){
+      if(kind==='error') code.setAttribute('aria-invalid','true');
+      else code.removeAttribute('aria-invalid');
+    }
+    const button=el('gateActivate');
+    if(button) button.setAttribute('aria-busy',String(kind==='loading'));
   }
 
   function safeStorageGet(key){
@@ -150,8 +187,9 @@
       if(loaded===false) throw new Error('Le chargement du compte a échoué. Consultez le journal.');
       const data=(typeof currentData!=='undefined')?currentData:null;
       const chars=(typeof rosterCharacters!=='undefined' && Array.isArray(rosterCharacters))?rosterCharacters:[];
+      const ships=(typeof rosterShips!=='undefined' && Array.isArray(rosterShips))?rosterShips:[];
       const modsNow=(typeof mods!=='undefined' && Array.isArray(mods))?mods:[];
-      if(data && (chars.length || modsNow.length)){
+      if(data && (chars.length || ships.length || modsNow.length)){
         setGate('ROSTER SYNCHRONISÉ','ok'); showApp();
       }else{
         setGate('SYNCHRONISATION INCOMPLÈTE · Consultez le journal de chargement.','error');

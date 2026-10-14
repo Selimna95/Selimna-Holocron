@@ -1,3 +1,22 @@
+# Holocron v3.2.0 — notes de livraison
+
+## Améliorations UX P1–P5
+- Navigation Codex restaurée et état actif annoncé aux technologies d'assistance.
+- États du tableau de bord clarifiés lorsqu'aucun profil n'est chargé.
+- Aide contextuelle et instructions de synchronisation renforcées.
+- Délai réseau explicite pour limiter les attentes infinies.
+- Améliorations responsive, focus clavier et mouvement réduit.
+
+## Vérifications automatisées
+- 8 tests unitaires Python réussis.
+- `node --check` réussi sur les scripts JavaScript et le Web Worker.
+- Les tests navigateur réels avec un compte SWGOH.GG doivent encore être exécutés avant publication.
+
+## Compatibilité
+- Les modules d'optimisation, les profils de référence Kyber et les calculs métier sont conservés.
+
+---
+
 # Holocron v3.0.0 — notes de livraison
 
 ## Vérifications automatisées effectuées

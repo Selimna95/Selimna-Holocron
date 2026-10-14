@@ -7,13 +7,13 @@
   <meta name="description" content="Selimna’s Holocron — Transforme ton inventaire de mods en décisions optimales">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icons/holocron-192.png" type="image/png">
-<link rel="stylesheet" href="app.css?v=3.1.0">
-<link rel="stylesheet" href="sithari.css?v=3.1.0">
+<link rel="stylesheet" href="app.css?v=3.2.0">
+<link rel="stylesheet" href="sithari.css?v=3.2.0">
 <link rel="stylesheet" href="holocron-system.css?v=3.2.0">
 
 
 
-<title>Selimna’s Holocron — V3.1.0</title>
+<title>Selimna’s Holocron — V3.2.0</title>
 
 
 
@@ -30,8 +30,9 @@
     <div class="gate-energy-core"></div>
   </div>
   <div class="gate-login">
-    <label for="gateAllyCode">CODE ALLIÉ</label>
-    <div class="gate-input-wrap"><span>♙</span><input id="gateAllyCode" inputmode="numeric" maxlength="9" placeholder="123456789" autocomplete="off" aria-label="Code allié" aria-describedby="gateMessage"><i>✓</i></div>
+    <label for="gateAllyCode">CODE ALLIÉ SWGOH.GG</label>
+    <div class="gate-input-wrap"><span aria-hidden="true">♙</span><input id="gateAllyCode" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="123456789" autocomplete="off" aria-label="Code allié SWGOH.GG à 9 chiffres" aria-describedby="gateInstructions gateMessage"><i aria-hidden="true">✓</i></div>
+    <p id="gateInstructions" class="gate-instructions">Saisis ton code allié public à 9 chiffres pour récupérer ton roster. Aucun mot de passe EA ou Google n’est demandé.</p>
     <button id="gateActivate" type="button"><span class="button-spinner"></span>ACTIVER L’HOLOCRON</button>
     <details class="gate-relay-settings">
       <summary>Paramètres de synchronisation</summary>
@@ -42,7 +43,7 @@
     <div id="gateMessage" class="gate-message" aria-live="polite">Le Gardien attend ton code allié pour ouvrir le Sanctuaire.</div>
   </div>
   <div class="gate-brand"><span>SELIMNA’S</span><strong>HOLOCRON</strong></div>
-  <div class="gate-footer"><span>HOLOCRON V3.1.0</span><span>LE SAVOIR EST UNE ARME</span></div>
+  <div class="gate-footer"><span>HOLOCRON V3.2.0</span><span>LE SAVOIR EST UNE ARME</span></div>
   <div id="gateStep" class="gate-step" aria-live="polite">IDENTIFICATION DU ROSTER</div>
 </div>
 
@@ -67,14 +68,14 @@
 
 <div id="appShell" class="app-shell" hidden>
 <header class="topbar">
-  <div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V3.1.0</span></div>
+  <div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V3.2.0</span></div>
   <div class="guardian-context" id="guardianContext" data-state="idle" aria-live="polite" aria-label="Conseil du Gardien">
     <span class="guardian-context-seal" aria-hidden="true">✦</span><span class="guardian-context-copy"><small>LE GARDIEN</small><strong id="guardianContextText">Commence par synchroniser ton roster.</strong></span>
   </div>
   <div class="top-status-group">
     <div class="top-pill"><span class="status-dot"></span><span>PROFIL</span><b id="topProfileState">EN ATTENTE</b></div>
     <div class="top-pill account-pill"><span class="pill-icon">♙</span><span>COMPTE</span><b id="topAccountName">—</b></div>
-    <div class="top-pill"><span class="pill-icon">◈</span><span>UNITÉS</span><b id="topUnitsCount">0</b></div>
+    <div class="top-pill"><span class="pill-icon">◈</span><span>UNITÉS</span><b id="topUnitsCount">—</b></div>
     <div class="top-tools"><span>⚙</span><span>⋮</span></div>
   </div>
 </header>
@@ -127,7 +128,7 @@
         <div class="decision-flow flow-left-top"></div><div class="decision-flow flow-left-bottom"></div><div class="decision-flow flow-right-top"></div><div class="decision-flow flow-right-bottom"></div><div class="decision-flow flow-bottom"></div>
 
         <article class="decision-card unit-card dashboard-info-card">
-          <div class="decision-card-head"><span class="card-icon">♙</span><div><span>PERSONNAGES</span><strong id="charsCount">0</strong><small>UNITÉS TOTALES</small></div><em id="unitsDelta">—</em></div>
+          <div class="decision-card-head"><span class="card-icon">♙</span><div><span>PERSONNAGES</span><strong id="charsCount">—</strong><small>UNITÉS TOTALES</small></div><em id="unitsDelta">—</em></div>
           <div class="decision-card-title">ROSTER · VUE D’ENSEMBLE</div>
           <div class="decision-bars" id="unitVentilation"></div>
           <div class="decision-legend" id="unitLegend"></div>
@@ -135,9 +136,9 @@
         </article>
 
         <article class="decision-card gp-card dashboard-info-card">
-          <div class="decision-card-head"><span class="card-icon">✦</span><div><span>PUISSANCE GALACTIQUE</span><strong id="gpTotal">0</strong><small>PUISSANCE TOTALE</small></div><em id="gpDelta">—</em></div>
+          <div class="decision-card-head"><span class="card-icon">✦</span><div><span>PUISSANCE GALACTIQUE</span><strong id="gpTotal">—</strong><small>PUISSANCE TOTALE</small></div><em id="gpDelta">—</em></div>
           <div class="decision-card-title">ÉTAT DU COMPTE</div>
-          <div class="decision-detail-list"><div><span>Personnages</span><strong id="gpCharacters">0</strong><i id="gpCharPct">0%</i></div><div><span>Vaisseaux</span><strong id="gpShips">0</strong><i id="gpShipPct">0%</i></div></div>
+          <div class="decision-detail-list"><div><span>Personnages</span><strong id="gpCharacters">—</strong><i id="gpCharPct">0%</i></div><div><span>Vaisseaux</span><strong id="gpShips">—</strong><i id="gpShipPct">0%</i></div></div>
           <div class="decision-gp-track"><span id="gpCharBar"></span><span id="gpShipBar"></span></div>
           <small class="dashboard-info-note">ANALYSE : NIVEAU SEIGNEUR SITH</small>
         </article>
@@ -158,7 +159,7 @@
         </div>
 
         <article class="decision-card mod-card dashboard-info-card">
-          <div class="decision-card-head"><span class="card-icon">◈</span><div><span>MODS</span><strong id="modsCount">0</strong><small>MODS ÉQUIPÉS</small></div><em id="modsDelta">—</em></div>
+          <div class="decision-card-head"><span class="card-icon">◈</span><div><span>MODS</span><strong id="modsCount">—</strong><small>MODS ÉQUIPÉS</small></div><em id="modsDelta">—</em></div>
           <div class="decision-card-title">ÉTAT DES MODS</div>
           <div class="decision-bars mods-bars" id="modVentilation"></div>
           <div class="decision-legend" id="modLegend"></div>
@@ -168,9 +169,9 @@
         <div class="holocron-verdict" id="holocronVerdict" aria-live="polite">
           <div class="holocron-verdict-head"><span class="status-dot"></span><span>HOLOCRON // VERDICT</span><b id="holocronVerdictState">EN ATTENTE</b></div>
           <div class="holocron-verdict-main"><strong id="holocronVerdictTitle">Le gardien attend le scan du roster.</strong><small id="holocronVerdictAction">Active le profil pour révéler les premières pistes.</small></div>
-          <div class="holocron-verdict-metrics"><span><b id="holocronVerdictCount">0</b> verdicts actifs</span><span><b id="holocronUrgentCount">0</b> actions urgentes</span><span><b id="holocronOpportunityCount">0</b> opportunités</span></div>
+          <div class="holocron-verdict-metrics"><span><b id="holocronVerdictCount">—</b> verdicts actifs</span><span><b id="holocronUrgentCount">—</b> actions urgentes</span><span><b id="holocronOpportunityCount">—</b> opportunités</span></div>
         </div>
-        <div class="decision-bottom-status"><span class="status-dot"></span><div><b>ROSTER SYNCHRONISÉ</b><small id="decisionLastUpdate">Données chargées depuis le profil</small></div></div>
+        <div class="decision-bottom-status"><span class="status-dot"></span><div><b id="decisionRosterStatus">PROFIL NON CHARGÉ</b><small id="decisionLastUpdate">Synchronise ton profil pour révéler les données de ton compte.</small></div></div>
         <div class="decision-slogan">L’HOLOCRON RÉVÈLE SON SAVOIR<br><span>LE GARDIEN GUIDE · LE MAÎTRE DÉCIDE</span></div>
       </div>
 
@@ -270,7 +271,7 @@
 
 <section id="optimizer" class="page">
   <div class="panel controls">
-    <div class="panel-title">SEIGNEUR SITH // FORGE PERSONNAGE</div>
+    <div class="panel-title">SEIGNEUR SITH // FORGE PERSONNAGE</div><p class="module-intro">Choisis un personnage, lance son diagnostic, puis définis les sources de mods à examiner. La recherche et le verdict apparaissent dans les étapes suivantes.</p>
     <div class="forge-control-group forge-character-group">
       <div class="forge-control-title"><span>01 // PERSONNAGE</span><small>Choisir un personnage. La référence Kyber est construite avant toute recherche.</small></div>
       <div class="forge-character-select-row">
@@ -452,7 +453,7 @@
 
     <section id="data" class="page">
       <div class="panel data-toolbar">
-        <div class="panel-title">CODEX DU ROSTER // PERSONNAGES · VAISSEAUX · MODS</div>
+        <div class="panel-title">CODEX DU ROSTER // PERSONNAGES · VAISSEAUX · MODS</div><p class="module-intro">Consulte les données de ton profil synchronisé. Utilise les filtres pour retrouver un personnage, un vaisseau ou un mod.</p>
         <div class="data-tabs">
           <button class="data-tab active" data-dataset="characters">PERSONNAGES <span id="tabCharsCount">0</span></button>
           <button class="data-tab" data-dataset="ships">VAISSEAUX <span id="tabShipsCount">0</span></button>
@@ -471,7 +472,7 @@
 
     <section id="help" class="page">
       <div class="panel help help-search-panel">
-        <div class="panel-title">RECHERCHE DANS L’AIDE</div>
+        <div class="panel-title">RECHERCHE DANS L’AIDE</div><p class="module-intro">Recherche un terme technique ou consulte les rubriques système ci-dessous. Les paramètres du relais se trouvent dans la première rubrique.</p>
         <label for="helpSearch">TROUVER UNE NOTION
           <input id="helpSearch" type="search" placeholder="Relais, mods, Pyodide, vaisseaux…" autocomplete="off">
         </label>
@@ -524,9 +525,9 @@
 </div>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
 <!-- V100: interface nouvelle / moteur technique V90 conservé intégralement. -->
-<script src="gac-usage.js?v=3.1.0"></script>
+<script src="gac-usage.js?v=3.2.0"></script>
 
-<script src="interface-adapter.js?v=3.1.0"></script>
+<script src="interface-adapter.js?v=3.2.0"></script>
 <script src="modules/core.js"></script>
 <script src="modules/acolyte.js"></script>
 <script src="modules/disciple.js"></script>

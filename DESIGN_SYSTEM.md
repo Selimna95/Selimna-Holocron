@@ -1,4 +1,4 @@
-# Holocron — système visuel Sith (v3.1.0)
+# Holocron — système visuel Sith (v3.2.0)
 
 ## Intention
 
