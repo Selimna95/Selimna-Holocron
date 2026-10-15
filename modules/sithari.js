@@ -231,7 +231,7 @@ function sithariReinforcementResults(x){
   return pool.filter(m=>sithariTwoSecondaryMatch(m,first,second))
     .map(m=>({m,status:sithariSourceStatus(m),score:sithariSecondaryScore(m,x.profile),speed:modTotalSpeed(m)}))
     .sort((a,b)=>b.score-a.score||b.speed-a.speed)
-    .slice(0,8);
+    .slice(0,5);
 }
 function sithariCalibrationResults(x){
   const setChoices=sithariCalibrationSetChoices(x.profile);
@@ -246,7 +246,7 @@ function sithariCalibrationResults(x){
   }
   return pool.map(m=>({m,status:sithariSourceStatus(m),score:sithariSecondaryScore(m,x.profile),speed:modTotalSpeed(m)}))
     .sort((a,b)=>b.score-a.score||b.speed-a.speed)
-    .slice(0,8);
+    .slice(0,5);
 }
 function sithariActionKey(character,slot){return `${characterKey(character)}::${slot}`;}
 let sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
