@@ -1,9 +1,9 @@
-const CACHE_NAME = 'holocron-static-v3.3.7-sithari';
+const CACHE_NAME = 'holocron-static-v3.3.8-sithari';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
-  './sithari.css?v=3.3.7-verified',
+  './sithari.css?v=3.3.8-final',
   './holocron-system.css?v=3.2.1',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
@@ -11,7 +11,7 @@ const STATIC_ASSETS = [
   './modules/acolyte.js',
   './modules/disciple.js',
   './modules/seigneur.js',
-  './modules/sithari.js?v=3.3.7-verified',
+  './modules/sithari.js?v=3.3.8-final',
   './modules/runtime.js',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
