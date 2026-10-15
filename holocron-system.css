@@ -688,3 +688,96 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
 @media (prefers-reduced-motion:reduce){
   .holocron-gate.is-loading .gate-input-wrap{animation:none}
 }
+
+
+/* Gate integration correction: remove the floating UI-card geometry entirely.
+   The input sits on the image with facet-like light rails, not inside a box. */
+.holocron-gate .gate-login{
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  padding:0 18px !important;
+}
+.holocron-gate .gate-input-wrap{
+  height:50px !important;
+  padding:0 8px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  clip-path:none !important;
+  background:linear-gradient(90deg,transparent,rgba(8,3,5,.2) 12%,rgba(8,3,5,.62) 50%,rgba(8,3,5,.2) 88%,transparent) !important;
+  box-shadow:none !important;
+  position:relative;
+}
+.holocron-gate .gate-input-wrap:before{
+  inset:0 8% !important;
+  clip-path:polygon(0 0,14% 0,18% 8%,82% 8%,86% 0,100% 0,100% 100%,86% 100%,82% 92%,18% 92%,14% 100%,0 100%) !important;
+  background:linear-gradient(180deg,rgba(255,45,57,.2),rgba(8,3,5,.62) 18%,rgba(8,3,5,.58) 82%,rgba(255,45,57,.15)) !important;
+  box-shadow:none !important;
+}
+.holocron-gate .gate-input-wrap:after{
+  left:17% !important;
+  right:17% !important;
+  bottom:2px !important;
+  height:1px !important;
+  background:linear-gradient(90deg,transparent,rgba(255,205,173,.65) 18%,rgba(255,46,61,.95) 50%,rgba(255,205,173,.65) 82%,transparent) !important;
+  box-shadow:0 0 8px rgba(255,35,48,.5) !important;
+}
+.holocron-gate .gate-input-wrap > span{width:34px !important}
+.holocron-gate .gate-input-wrap > i{width:30px !important}
+.holocron-gate .gate-login button{
+  width:76% !important;
+  height:38px !important;
+  margin-top:8px !important;
+  padding:0 10px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  clip-path:none !important;
+  background:linear-gradient(90deg,transparent,rgba(76,5,14,.3) 12%,rgba(42,3,9,.58) 50%,rgba(76,5,14,.3) 88%,transparent) !important;
+  box-shadow:none !important;
+  color:#f4ddd4 !important;
+  text-shadow:0 0 10px rgba(255,35,48,.5),0 2px 6px #000 !important;
+  position:relative;
+}
+.holocron-gate .gate-login button:before{
+  content:"";
+  position:absolute;
+  left:16%;
+  right:16%;
+  top:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,203,168,.72),rgba(255,40,55,.9),rgba(255,203,168,.72),transparent);
+  box-shadow:0 0 8px rgba(255,35,48,.5);
+}
+.holocron-gate .gate-login button:after{
+  inset:auto 23% 0 !important;
+  height:1px;
+  border:0 !important;
+  background:linear-gradient(90deg,transparent,rgba(255,65,76,.7),rgba(255,220,185,.58),rgba(255,65,76,.7),transparent);
+  clip-path:none !important;
+}
+.holocron-gate .gate-login button:hover{
+  background:linear-gradient(90deg,transparent,rgba(120,7,19,.28) 12%,rgba(65,3,10,.65) 50%,rgba(120,7,19,.28) 88%,transparent) !important;
+  box-shadow:none !important;
+}
+.holocron-gate .gate-login > label{
+  text-shadow:0 0 12px rgba(255,35,48,.55),0 2px 8px #000 !important;
+}
+.holocron-gate .gate-instructions,
+.holocron-gate .gate-message,
+.holocron-gate .gate-relay-settings{
+  background:transparent !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+@media(max-width:760px){
+  .holocron-gate .gate-login{width:min(420px,84vw);padding:0 10px !important}
+  .holocron-gate .gate-login button{width:84% !important}
+}
+@media(max-width:440px){
+  .holocron-gate .gate-login{width:min(390px,92vw);padding:0 8px !important}
+  .holocron-gate .gate-input-wrap{height:46px !important}
+  .holocron-gate .gate-login button{width:88% !important}
+}
