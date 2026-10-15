@@ -795,3 +795,17 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
 @media(prefers-reduced-motion:reduce){
   .sithari-page .sithari-constellation:before,.sithari-page .sithari-constellation:after,.sithari-page .sithari-constellation-stage:before,.sithari-page .sithari-constellation-core>span,.sithari-page .sithari-star-link,.sithari-page .sithari-star-option{animation:none!important;transition:none!important}
 }
+
+/* Sith'ari interaction/energy spacing */
+.sithari-page .sithari-action-panel{position:relative!important;z-index:20!important;isolation:isolate!important;overflow:visible!important}
+.sithari-page .sithari-action-secondary{position:relative!important;z-index:25!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important;margin:14px 0 18px!important;padding:12px!important;border:1px solid rgba(255,54,75,.35)!important;border-radius:9px!important;background:#0b0809!important}
+.sithari-page .sithari-action-secondary label{position:relative!important;z-index:26!important;display:flex!important;flex-direction:column!important;gap:8px!important;min-width:0!important;padding:10px!important;pointer-events:auto!important}
+.sithari-page .sithari-action-secondary select{position:relative!important;z-index:27!important;display:block!important;width:100%!important;min-height:46px!important;padding:10px!important;appearance:auto!important;pointer-events:auto!important;cursor:pointer!important;border:1px solid rgba(255,72,91,.65)!important;background:#151012!important;color:#fff!important;font:600 13px/1.35 var(--font-ui)!important;opacity:1!important;visibility:visible!important}
+.sithari-page .sithari-action-secondary select option{background:#111!important;color:#fff!important}
+.sithari-page .sithari-constellation{margin-top:22px!important;padding:22px!important}
+.sithari-page .sithari-constellation-stage{grid-template-rows:minmax(170px,auto) minmax(240px,auto) minmax(170px,auto)!important;column-gap:clamp(28px,4vw,60px)!important;row-gap:clamp(28px,3vw,44px)!important;min-height:680px!important;padding:22px 14px!important}
+.sithari-page .sithari-constellation-current{min-height:240px!important;margin:8px!important}
+.sithari-page .sithari-action-result.sithari-star-option{min-height:145px!important;margin:8px!important;box-shadow:0 0 0 7px rgba(255,42,63,.04),0 0 24px rgba(255,30,50,.2),inset 0 0 16px rgba(255,25,45,.07)!important}
+.sithari-page .sithari-action-result.sithari-star-option:after{background:linear-gradient(90deg,rgba(255,28,54,.05),rgba(255,74,95,.95),rgba(255,28,54,.05))!important;box-shadow:0 0 8px rgba(255,35,58,.7)!important}
+@media(max-width:760px){.sithari-page .sithari-action-secondary{grid-template-columns:minmax(0,1fr)!important}.sithari-page .sithari-constellation-stage{grid-template-rows:minmax(125px,auto) minmax(170px,auto) minmax(125px,auto)!important;gap:26px 14px!important;min-height:500px!important}.sithari-page .sithari-constellation-current{min-height:170px!important}}
+@media(max-width:560px){.sithari-page .sithari-constellation{padding:12px 8px!important;margin-top:16px!important}.sithari-page .sithari-constellation-stage{gap:14px!important;min-height:0!important}.sithari-page .sithari-action-results{gap:14px!important;padding-top:10px!important}}
