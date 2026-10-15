@@ -948,3 +948,56 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
  .sithari-page .sithari-proposal-rank{width:24px!important;height:24px!important;font-size:10px!important}
  .sithari-page .sithari-proposal-title strong{font-size:12px!important}
 }
+
+
+/* Sith’ari — décharge d’énergie à l’ouverture d’un mod, puis panneau de décision persistant. */
+.sithari-page .sithari-character-flow-board{isolation:isolate}
+.sithari-page .sithari-character-flow-board.sithari-energy-active:after{
+  content:"";position:absolute;z-index:8;inset:-2%;pointer-events:none;opacity:0;
+  background:
+    radial-gradient(ellipse at 50% 48%,rgba(255,39,58,.48) 0%,rgba(255,39,58,.12) 22%,transparent 52%),
+    linear-gradient(118deg,transparent 0%,transparent 43%,rgba(255,40,57,.06) 46%,rgba(255,45,63,.94) 49%,rgba(255,213,126,.96) 49.35%,rgba(255,50,66,.9) 49.7%,transparent 53%,transparent 100%),
+    linear-gradient(68deg,transparent 0%,transparent 48%,rgba(255,207,112,.78) 49.7%,rgba(255,37,55,.8) 50%,transparent 51.2%,transparent 100%);
+  mix-blend-mode:screen;filter:drop-shadow(0 0 12px rgba(255,30,52,.95));
+  animation:sithari-energy-discharge .92s cubic-bezier(.16,.72,.22,1) both;
+}
+.sithari-page .sithari-character-flow-board.sithari-energy-active .sithari-character-flow-lines{
+  filter:drop-shadow(0 0 5px rgba(255,37,54,.9));animation:sithari-energy-lines .92s ease-out both;
+}
+.sithari-page .sithari-slot-card.sithari-energy-source{
+  z-index:10!important;border-color:rgba(255,199,108,.98)!important;
+  box-shadow:0 0 0 1px rgba(255,41,60,.75),0 0 24px rgba(255,25,48,.8),inset 0 0 22px rgba(255,35,55,.22)!important;
+  animation:sithari-energy-source .92s cubic-bezier(.2,.8,.25,1) both;
+}
+.sithari-page .sithari-slot-card.is-selected:not(.sithari-energy-source){
+  border-color:rgba(255,195,104,.5)!important;box-shadow:inset 3px 0 0 rgba(255,48,64,.7)!important;
+}
+.sithari-page .sithari-action-panel.sithari-energy-arrival{
+  position:relative;isolation:isolate;overflow:hidden;
+  animation:sithari-panel-arrival .95s cubic-bezier(.15,.75,.2,1) both;
+  border-color:rgba(255,185,92,.95)!important;
+  box-shadow:0 0 0 1px rgba(255,35,55,.55),0 0 34px rgba(255,26,47,.38)!important;
+}
+.sithari-page .sithari-action-panel.sithari-energy-arrival:before{
+  content:"";position:absolute;z-index:-1;inset:-2px;pointer-events:none;opacity:0;
+  background:linear-gradient(105deg,transparent 0%,rgba(255,37,55,.0) 30%,rgba(255,40,57,.26) 46%,rgba(255,214,133,.28) 50%,rgba(255,39,57,.18) 54%,transparent 72%);
+  animation:sithari-energy-panel-sweep .9s ease-out both;
+}
+@keyframes sithari-energy-discharge{
+  0%{opacity:0;transform:scale(.84);filter:blur(8px) drop-shadow(0 0 0 rgba(255,30,52,0))}
+  16%{opacity:1;transform:scale(1);filter:blur(0) drop-shadow(0 0 15px rgba(255,30,52,.95))}
+  48%{opacity:.82}
+  100%{opacity:0;transform:scale(1.04);filter:blur(2px) drop-shadow(0 0 3px rgba(255,30,52,0))}
+}
+@keyframes sithari-energy-lines{0%{opacity:.35}20%{opacity:1}100%{opacity:.8;filter:none}}
+@keyframes sithari-energy-source{0%{transform:scale(.96);filter:brightness(1)}24%{transform:scale(1.045);filter:brightness(1.9)}55%{transform:scale(1);filter:brightness(1.3)}100%{transform:scale(1);filter:none}}
+@keyframes sithari-panel-arrival{0%{transform:translateY(12px);filter:brightness(.7)}24%{transform:translateY(0);filter:brightness(1.7)}62%{filter:brightness(1.2)}100%{transform:none;filter:none}}
+@keyframes sithari-energy-panel-sweep{0%{opacity:0;transform:translateX(-70%)}25%{opacity:1}100%{opacity:0;transform:translateX(70%)}}
+@media(prefers-reduced-motion:reduce){
+ .sithari-page .sithari-character-flow-board.sithari-energy-active:after,
+ .sithari-page .sithari-character-flow-board.sithari-energy-active .sithari-character-flow-lines,
+ .sithari-page .sithari-slot-card.sithari-energy-source,
+ .sithari-page .sithari-action-panel.sithari-energy-arrival,
+ .sithari-page .sithari-action-panel.sithari-energy-arrival:before{animation:none!important}
+ .sithari-page .sithari-character-flow-board.sithari-energy-active:after{opacity:.25}
+}
