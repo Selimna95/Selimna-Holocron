@@ -87,12 +87,6 @@ function sithariKyberSetRules(p){
 function sithariKyberSetChoices(p){
   return sithariKyberSetRules(p).map(x=>x.name).filter(Boolean);
 }
-function sithariTopKyberSets(p){
-  const rules=sithariKyberSetRules(p);
-  const names=[]; const seen=new Set();
-  for(const r of rules){for(const name of Object.keys(r.counts||{})){const k=compactKey(name);if(!seen.has(k)){seen.add(k);names.push({name,weight:Number(r.weight||0)});}}}
-  return names.slice(0,6);
-}
 function sithariPrimaryRefs(p,slot){
   if(SITHARI_FIXED_PRIMARY[slot]) return [{name:SITHARI_FIXED_PRIMARY[slot],weight:1}];
   return Object.entries(p?.slots?.[slot]?.primaries||{}).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([name,weight])=>({name,weight}));
@@ -168,14 +162,6 @@ function sithariSecondaryNames(profile=null){
     return ai-bi || a.localeCompare(b,'fr');
   });
 }
-function sithariSourceAllowed(status,scope){
-  if(scope==='ALL')return true;
-  if(status==='INCOMPLETS')return true;
-  if(status==='TRÈS FAIBLES')return true;
-  if(status==='FAIBLES')return true;
-  if(status==='MOYENS')return true;
-  return false;
-}
 function sithariScopeState(){
   const s=sithariActionState.scope||{};
   if(s.all===true)return 'ALL';
@@ -192,7 +178,16 @@ function sithariScopeLabel(){
 }
 let sithariModCache={signature:'',items:[],byOwner:new Map(),statusByOwner:new Map()};
 function sithariEnsureModCache(){
-  const signature=`${Array.isArray(mods)?mods.length:0}|${Array.isArray(rosterCharacters)?rosterCharacters.length:0}|${mods?.[0]?.game_id||mods?.[0]?.id||''}|${mods?.[mods.length-1]?.game_id||mods?.[mods.length-1]?.id||''}`;
+  // Fingerprint every mod's owner/slot/set/primary plus roster identities.
+  // Length and first/last ID alone left stale owners when two profiles had the
+  // same inventory size or when the export omitted mod IDs.
+  const modFingerprint=(mods||[]).map(m=>[
+    m?.game_id??m?.id??'',m?.character??m?.characterName??m?.equippedTo??m?.equipped_to??'',
+    m?.slot??m?.slot_id??m?.slotId??'',m?.set_name??m?.set??m?.setId??'',
+    m?.primary_stat??m?.primaryStat??''
+  ].join('~')).join('|');
+  const rosterFingerprint=(rosterCharacters||[]).map(c=>characterKey(c)).join('|');
+  const signature=`${modFingerprint}||${rosterFingerprint}`;
   if(sithariModCache.signature===signature)return sithariModCache;
   const aliases=new Map();
   for(const c of rosterCharacters||[]){
