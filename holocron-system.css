@@ -1042,3 +1042,110 @@ body[data-page="dashboard"] .decision-holocron .sithari-core strong,body[data-pa
 @keyframes sanctuaryRingPulse{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.72;transform:scale(1.04)}}
 @media(max-width:900px){body[data-page="dashboard"] .decision-stage>.decision-flow{display:none!important}}
 @media(prefers-reduced-motion:reduce){body[data-page="dashboard"] .decision-stage>.decision-flow,body[data-page="dashboard"] .decision-holocron-wrap .decision-energy-ring{animation:none!important}}
+
+
+/* V3.3.5 — Living Holocron: obsidian facets, internal pulse and reliable face hit-testing. */
+/* A face behind the artefact must never steal a click from the face currently facing the user. */
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="false"]{pointer-events:none!important}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{pointer-events:auto!important;cursor:pointer;z-index:2}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]:focus-visible{outline:2px solid #ffd0b1;outline-offset:4px}
+
+/* The Sanctuary artefact is a single faceted body with light moving through it,
+   not a set of disconnected flat red triangles. */
+body[data-page="dashboard"] .decision-holocron{
+  filter:drop-shadow(0 18px 26px rgba(0,0,0,.72)) drop-shadow(0 0 12px rgba(255,24,44,.22))!important;
+  transform:translateZ(0);
+  animation:sanctuaryEntityBreath 5.8s ease-in-out infinite;
+}
+body[data-page="dashboard"] .decision-holocron:before{
+  inset:3% 7% 4%!important;
+  clip-path:polygon(50% 0,91% 20%,100% 70%,50% 100%,0 70%,9% 20%)!important;
+  border:1px solid rgba(255,105,112,.52)!important;
+  background:
+    radial-gradient(ellipse at 50% 44%,rgba(255,40,56,.26),transparent 34%),
+    linear-gradient(118deg,transparent 0 17%,rgba(255,80,90,.2) 18%,transparent 27%),
+    linear-gradient(245deg,transparent 0 34%,rgba(255,42,56,.12) 35%,transparent 48%),
+    linear-gradient(145deg,#4a1018 0%,#1b080d 23%,#08070a 46%,#280910 67%,#090709 100%)!important;
+  box-shadow:inset 0 0 30px rgba(255,22,41,.28),inset 0 0 80px rgba(0,0,0,.72),0 0 30px rgba(255,22,41,.16)!important;
+  animation:sanctuaryObsidianPulse 4.8s ease-in-out infinite;
+}
+body[data-page="dashboard"] .decision-holocron:after{
+  inset:5% 9% 6%!important;
+  clip-path:polygon(50% 0,91% 20%,100% 70%,50% 100%,0 70%,9% 20%)!important;
+  background:
+    linear-gradient(112deg,transparent 0 26%,rgba(255,102,112,.0) 34%,rgba(255,85,99,.58) 48%,rgba(255,70,87,.06) 53%,transparent 61%),
+    linear-gradient(24deg,transparent 0 43%,rgba(255,35,54,.16) 44%,transparent 48%),
+    linear-gradient(155deg,transparent 0 65%,rgba(255,55,70,.12) 66%,transparent 70%)!important;
+  border:1px solid rgba(255,101,111,.34)!important;
+  box-shadow:inset 0 0 24px rgba(255,25,45,.14);
+  background-size:240% 240%,100% 100%,100% 100%!important;
+  animation:sanctuaryLivingVeins 5.2s linear infinite;
+  pointer-events:none;
+}
+body[data-page="dashboard"] .decision-holocron .holocron-face{
+  border:1px solid rgba(255,106,115,.44)!important;
+  background:
+    radial-gradient(ellipse at 50% 60%,rgba(255,38,55,.22),transparent 56%),
+    linear-gradient(145deg,rgba(73,17,27,.92),rgba(13,7,11,.98) 54%,rgba(34,8,15,.97))!important;
+  box-shadow:inset 0 0 22px rgba(255,35,51,.16),inset 0 1px rgba(255,190,187,.12),0 0 14px rgba(255,24,44,.1)!important;
+  text-shadow:0 0 10px rgba(255,42,60,.45);
+  overflow:hidden;
+}
+body[data-page="dashboard"] .decision-holocron .holocron-face:before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(118deg,transparent 16%,rgba(255,159,159,.13) 31%,transparent 44%),radial-gradient(ellipse at 50% 85%,rgba(255,28,48,.22),transparent 60%);
+  opacity:.8;animation:sanctuaryFacetLight 4.4s ease-in-out infinite;
+}
+body[data-page="dashboard"] .decision-holocron .holocron-face:after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,transparent 0%,rgba(255,50,67,.0) 36%,rgba(255,42,61,.45) 50%,rgba(255,40,58,.0) 64%,transparent 100%);
+  transform:translateY(-110%);animation:sanctuaryFaceCurrent 5.8s ease-in-out infinite;
+}
+body[data-page="dashboard"] .decision-holocron .holocron-face>*{position:relative;z-index:1}
+body[data-page="dashboard"] .decision-holocron .face-essential:after{animation-delay:-1.2s}
+body[data-page="dashboard"] .decision-holocron .face-understand:after{animation-delay:-2.4s}
+body[data-page="dashboard"] .decision-holocron .face-expert:after{animation-delay:-3.1s}
+body[data-page="dashboard"] .decision-holocron .sithari-core{
+  overflow:hidden;
+  border:1px solid rgba(255,139,143,.78)!important;
+  background:
+    radial-gradient(ellipse at 50% 36%,rgba(255,67,78,.62),rgba(126,8,24,.55) 26%,rgba(16,5,10,.98) 72%),
+    linear-gradient(180deg,#5b0c1b,#090609)!important;
+  box-shadow:inset 0 0 18px rgba(255,36,54,.48),0 0 22px rgba(255,24,44,.24)!important;
+  animation:sanctuaryCorePulse 3.2s ease-in-out infinite;
+}
+body[data-page="dashboard"] .decision-holocron .sithari-core:before{
+  inset:3px!important;
+  background:linear-gradient(130deg,transparent 20%,rgba(255,180,178,.2) 43%,transparent 55%);
+  border:1px solid rgba(255,124,132,.45)!important;
+  animation:sanctuaryCoreShimmer 3.8s linear infinite;
+}
+body[data-page="dashboard"] .decision-holocron .sithari-core:after{
+  content:"";position:absolute;left:18%;right:18%;top:16%;height:38%;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(255,80,91,.58),rgba(255,29,48,.16) 42%,transparent 72%);
+  filter:blur(7px);pointer-events:none;animation:sanctuaryCorePulse 3.2s ease-in-out infinite reverse;
+}
+body[data-page="dashboard"] .decision-holocron .sithari-core strong,
+body[data-page="dashboard"] .decision-holocron .sithari-core small,
+body[data-page="dashboard"] .decision-holocron .sithari-core-rune{z-index:2;text-shadow:0 0 12px rgba(255,65,80,.75)}
+body[data-page="dashboard"] .decision-holocron-wrap .decision-energy-ring{
+  border-color:rgba(255,68,82,.34)!important;
+  box-shadow:0 0 16px rgba(255,24,44,.08),inset 0 0 14px rgba(255,24,44,.06);
+}
+@keyframes sanctuaryEntityBreath{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2px) scale(1.012)}}
+@keyframes sanctuaryObsidianPulse{0%,100%{filter:brightness(.9);opacity:.94}50%{filter:brightness(1.2);opacity:1}}
+@keyframes sanctuaryLivingVeins{0%{background-position:160% 0,0 0,0 0;filter:brightness(.82)}50%{filter:brightness(1.4)}100%{background-position:-120% 0,0 0,0 0;filter:brightness(.9)}}
+@keyframes sanctuaryFacetLight{0%,100%{opacity:.42}50%{opacity:1}}
+@keyframes sanctuaryFaceCurrent{0%,20%{transform:translateY(-110%);opacity:0}45%,70%{opacity:.8}100%{transform:translateY(110%);opacity:0}}
+@keyframes sanctuaryCorePulse{0%,100%{filter:brightness(.82);box-shadow:inset 0 0 12px rgba(255,36,54,.32),0 0 12px rgba(255,24,44,.14)}50%{filter:brightness(1.35);box-shadow:inset 0 0 28px rgba(255,36,54,.62),0 0 28px rgba(255,24,44,.38)}}
+@keyframes sanctuaryCoreShimmer{0%{opacity:.22;transform:translateX(-18%)}50%{opacity:.9}100%{opacity:.22;transform:translateX(18%)}}
+@media(prefers-reduced-motion:reduce){
+  body[data-page="dashboard"] .decision-holocron,
+  body[data-page="dashboard"] .decision-holocron:before,
+  body[data-page="dashboard"] .decision-holocron:after,
+  body[data-page="dashboard"] .decision-holocron .holocron-face:before,
+  body[data-page="dashboard"] .decision-holocron .holocron-face:after,
+  body[data-page="dashboard"] .decision-holocron .sithari-core,
+  body[data-page="dashboard"] .decision-holocron .sithari-core:before,
+  body[data-page="dashboard"] .decision-holocron .sithari-core:after{animation:none!important}
+}
