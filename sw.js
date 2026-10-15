@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.10.1-awakening-red';
+const CACHE_NAME = 'holocron-static-v3.10.2-progression-red';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=3.5.1-awakening-red',
+  './holocron-system.css?v=3.5.2-progression-red',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js',
