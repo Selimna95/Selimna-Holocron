@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/icons/holocron-192.png" type="image/png">
 <link rel="stylesheet" href="app.css?v=3.2.1">
 <link rel="stylesheet" href="sithari.css?v=4.0.0-sith-storm-reveal">
-<link rel="stylesheet" href="holocron-system.css?v=3.4.2-sanctuary-obsidian">
+<link rel="stylesheet" href="holocron-system.css?v=3.5.0-sith-hand-gateway">
 
 
 
@@ -124,6 +124,32 @@
           <div class="decision-holocron-glow" aria-hidden="true"></div>
           <button type="button" class="sanctuary-holocron-door" id="sanctuaryKnowledgeDoor" data-page="knowledge" aria-label="Ouvrir Le savoir se mérite">
             <img src="assets/backgrounds/holocron-gate.jpg" alt="" aria-hidden="true">
+            <svg class="sanctuary-sith-hand" viewBox="0 0 360 360" aria-hidden="true" focusable="false">
+              <defs>
+                <linearGradient id="sithHandMetal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b7b2a5"/><stop offset=".28" stop-color="#55585a"/><stop offset=".62" stop-color="#25282d"/><stop offset="1" stop-color="#8d7951"/></linearGradient>
+                <linearGradient id="sithHandEdge" x1="0" y1="0" x2=".9" y2="1"><stop stop-color="#e6d5a4"/><stop offset=".45" stop-color="#777b7c"/><stop offset="1" stop-color="#26272c"/></linearGradient>
+                <linearGradient id="sithHolocronFace" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d9d1b8"/><stop offset=".38" stop-color="#6f7778"/><stop offset="1" stop-color="#20262b"/></linearGradient>
+                <radialGradient id="sithKyberGlow"><stop stop-color="#b8e7e7" stop-opacity=".75"/><stop offset="1" stop-color="#9dd9df" stop-opacity="0"/></radialGradient>
+                <filter id="sithHandGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+              </defs>
+              <ellipse cx="181" cy="158" rx="115" ry="125" fill="url(#sithKyberGlow)" opacity=".52" filter="url(#sithHandGlow)"/>
+              <path d="M137 344 C139 319 130 296 117 278 C105 262 91 250 78 236 C69 226 71 213 80 207 C90 200 100 207 111 216 L143 241 L119 192 C113 178 120 168 131 168 C141 168 147 179 153 190 L174 223 L159 171 C155 157 163 148 174 150 C185 152 190 166 195 180 L207 216 L202 177 C201 164 209 157 219 160 C231 164 232 180 233 194 L241 227 C251 213 261 210 270 218 C281 228 273 243 264 258 C251 280 235 298 232 322 L230 344 Z" fill="url(#sithHandMetal)" stroke="url(#sithHandEdge)" stroke-width="3" stroke-linejoin="round"/>
+              <path d="M82 216 L116 244 M132 181 L151 218 M169 162 L184 206 M215 174 L224 214 M121 276 C151 266 184 270 215 286" fill="none" stroke="#d7c99f" stroke-opacity=".7" stroke-width="2"/>
+              <path d="M104 253 L119 266 L132 259 M144 236 L158 246 L169 237 M183 226 L196 236 L207 227" fill="none" stroke="#111519" stroke-width="5" stroke-linecap="round"/>
+              <path d="M121 344 L129 316 M152 344 L154 314 M205 344 L205 316 M224 344 L222 319" fill="none" stroke="#d9c58e" stroke-opacity=".48" stroke-width="2"/>
+              <g transform="translate(180 118)">
+                <path d="M0 -72 L62 -31 L51 35 L0 64 L-51 35 L-62 -31 Z" fill="#0c1116" stroke="#d7c18b" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M0 -72 L0 64 L-51 35 L-62 -31 Z" fill="url(#sithHolocronFace)" stroke="#c2b48b" stroke-width="1.5"/>
+                <path d="M0 -72 L62 -31 L51 35 L0 64 Z" fill="#323b40" stroke="#9ca9a2" stroke-width="1.5"/>
+                <path d="M0 -72 L0 -13 L-62 -31 Z" fill="#d2c9a8" fill-opacity=".7"/>
+                <path d="M0 -13 L51 35 L0 64 L-51 35 Z" fill="#11191e" stroke="#b4c7c2" stroke-width="1.5"/>
+                <path d="M0 -54 L16 -28 L0 -2 L-16 -28 Z" fill="#a8dce0" fill-opacity=".88" stroke="#e4e3c9" stroke-width="1.5"/>
+                <path d="M0 -2 L16 24 L0 43 L-16 24 Z" fill="#75bfc7" fill-opacity=".65" stroke="#d4c79b" stroke-width="1.3"/>
+                <path d="M-62 -31 L0 -13 L62 -31 M-51 35 L0 13 L51 35" fill="none" stroke="#e1d2a5" stroke-opacity=".85" stroke-width="1.5"/>
+                <circle cx="0" cy="-28" r="28" fill="url(#sithKyberGlow)"/>
+              </g>
+              <path d="M88 299 Q179 330 270 292" fill="none" stroke="#c5b17d" stroke-opacity=".55" stroke-width="1.5"/>
+            </svg>
             <span class="sanctuary-door-label">LE SAVOIR SE MÉRITE <b>↗</b></span>
           </button>
           <div class="decision-pedestal" aria-hidden="true"></div>
@@ -548,7 +574,7 @@
 <script src="modules/disciple.js"></script>
 <script src="modules/seigneur.js"></script>
 <script src="modules/sithari.js?v=3.8.0-sith-storm-reveal"></script>
-<script src="modules/runtime.js?v=3.4.1-native-arrow-events"></script>
+<script src="modules/runtime.js?v=3.4.2-arrow-rotation-fix"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
