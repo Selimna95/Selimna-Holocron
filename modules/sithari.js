@@ -248,12 +248,14 @@ function sithariCandidatePool(slot,setName,primaryName,current,excludeCharacterK
   return pool;
 }
 function sithariSelectedSecondaryStats(m,first,second,profile){
-  const wanted=[sithariStatKey(first),sithariStatKey(second)].filter(Boolean);
-  if(wanted.length!==2||wanted[0]===wanted[1])return {coverage:0,score:0};
+  // One chosen secondary is enough to rank results; duplicate/empty choices
+  // never blank the whole panel.
+  const labels=[first,second].filter(Boolean);
+  const wanted=[...new Set(labels.map(sithariStatKey).filter(Boolean))];
   const values=sithariModSecondaryMap(m);
   let coverage=0,score=0;
-  for(const label of [first,second]){
-    const key=sithariStatKey(label),value=Number(values[key]||0);
+  for(const key of wanted){
+    const value=Number(values[key]||0);
     if(value<=0)continue;
     coverage++;
     const target=Number(Object.entries(profile?.secondary_focus||{}).find(([stat])=>sithariStatKey(stat)===key)?.[1]||0);
@@ -262,10 +264,10 @@ function sithariSelectedSecondaryStats(m,first,second,profile){
   return {coverage,score:coverage?score/coverage:0};
 }
 function sithariReinforcementResults(x){
-  // These selections are ranking priorities, not a requirement that both
-  // stats exist together on every candidate mod.
+  // Secondary choices are ranking priorities, never hard requirements. If
+  // the player clears both selectors, keep showing compatible candidates ranked
+  // by Kyber fit and speed instead of returning an empty result panel.
   const first=sithariActionState.secondaryA||'', second=sithariActionState.secondaryB||'';
-  if(!first||!second||sithariStatKey(first)===sithariStatKey(second))return [];
   const pool=sithariCandidatePool(x.slot,x.current?.set_name,x.current?.primary_stat,x.current,characterKey(x.character));
   return pool.map(m=>{
     const selected=sithariSelectedSecondaryStats(m,first,second,x.profile);
@@ -289,12 +291,9 @@ function sithariCalibrationResults(x){
     .slice(0,5);
 }
 function sithariDefaultSecondaries(profile){
-  // Defaults must come from Kyber's ranked secondary_focus, never from an
-  // alphabetical fallback of unrelated stats found in the inventory.
-  return Object.keys(profile?.secondary_focus||{})
-    .map(key=>sithariStatLabel(key))
-    .filter((name,index,all)=>name&&all.findIndex(x=>sithariStatKey(x)===sithariStatKey(name))===index)
-    .slice(0,2);
+  // Kyber priorities first; if the reference exposes fewer than two stats,
+  // complete the selectors from real inventory stats so reinforcement remains usable.
+  return sithariSecondaryNames(profile).slice(0,2);
 }
 function sithariActionKey(character,slot){return `${characterKey(character)}::${slot}`;}
 let sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
