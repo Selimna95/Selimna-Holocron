@@ -788,3 +788,76 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
  .sithari-page .sithari-result-stats>span{font-size:7px!important;display:block;max-height:28px;overflow:hidden}
  .sithari-page .sithari-result-stats>em{font-size:8px!important}
 }
+
+
+/* Sith'ari constellation: actual radial layout, not a vertical result list */
+.sithari-page .sithari-constellation{
+  min-height:600px!important; padding:12px!important; overflow:visible!important;
+  background:radial-gradient(ellipse at 50% 48%,rgba(255,25,50,.13),transparent 36%),#050607!important;
+}
+.sithari-page .sithari-constellation-stage{
+  position:relative!important; display:block!important; min-height:500px!important;
+  margin:0!important; overflow:visible!important;
+}
+.sithari-page .sithari-constellation-current{
+  position:absolute!important; z-index:3!important; left:50%!important; top:50%!important;
+  transform:translate(-50%,-50%)!important; width:190px!important; min-height:180px!important;
+  display:flex!important; flex-direction:column!important; align-items:center!important; justify-content:center!important;
+  padding:14px!important; border:1px solid rgba(255,48,72,.85)!important; border-radius:12px!important;
+  background:radial-gradient(ellipse,rgba(115,8,23,.45),rgba(5,6,7,.97) 72%)!important;
+  box-shadow:0 0 24px rgba(255,30,50,.2),inset 0 0 18px rgba(255,30,50,.09)!important;
+}
+.sithari-page .sithari-constellation-current .sithari-current-visual .mod-visual{width:76px!important;height:76px!important}
+.sithari-page .sithari-action-results{
+  display:contents!important;
+}
+.sithari-page .sithari-action-result.sithari-star-option{
+  position:absolute!important; z-index:2!important; width:min(255px,38%)!important; min-height:126px!important;
+  display:grid!important; grid-template-columns:42px minmax(0,1fr)!important; grid-template-areas:"visual owner" "visual stats"!important;
+  gap:5px 9px!important; align-content:center!important; margin:0!important; padding:10px!important;
+  border:1px solid rgba(255,48,72,.55)!important; border-radius:8px!important;
+  background:linear-gradient(145deg,rgba(35,8,13,.97),rgba(4,6,8,.98))!important;
+  box-shadow:0 0 18px rgba(255,30,50,.12)!important;
+}
+.sithari-page .sithari-star-option:nth-of-type(1){left:50%!important;top:0!important;transform:translateX(-50%)!important}
+.sithari-page .sithari-star-option:nth-of-type(2){left:0!important;top:27%!important}
+.sithari-page .sithari-star-option:nth-of-type(3){right:0!important;top:27%!important}
+.sithari-page .sithari-star-option:nth-of-type(4){left:4%!important;bottom:0!important}
+.sithari-page .sithari-star-option:nth-of-type(5){right:4%!important;bottom:0!important}
+.sithari-page .sithari-star-option .sithari-star-link{position:absolute!important;top:5px!important;left:7px!important;font-size:13px!important}
+.sithari-page .sithari-star-option .sithari-result-visual{grid-area:visual!important}
+.sithari-page .sithari-star-option .sithari-result-visual .mod-visual{width:42px!important;height:42px!important}
+.sithari-page .sithari-star-option .sithari-result-owner{grid-area:owner!important;grid-template-columns:22px minmax(0,1fr)!important;gap:2px 5px!important}
+.sithari-page .sithari-star-option .sithari-result-portrait{width:22px!important;height:22px!important}
+.sithari-page .sithari-star-option .sithari-result-owner strong{font-size:9px!important}
+.sithari-page .sithari-star-option .sithari-result-owner small{font-size:8px!important}
+.sithari-page .sithari-star-option .sithari-result-stats{grid-area:stats!important;gap:3px!important}
+.sithari-page .sithari-star-option .sithari-result-stats b,
+.sithari-page .sithari-star-option .sithari-result-stats span,
+.sithari-page .sithari-star-option .sithari-result-stats em{font-size:8px!important;line-height:1.25!important}
+.sithari-page .sithari-star-option:before{content:""!important;position:absolute!important;left:50%!important;top:50%!important;bottom:auto!important;width:1px!important;height:70px!important;transform-origin:top!important;background:linear-gradient(rgba(255,48,72,.75),transparent)!important;z-index:-1!important}
+.sithari-page .sithari-star-option:nth-of-type(1):before{left:50%!important;top:100%!important;height:48px!important}
+.sithari-page .sithari-star-option:nth-of-type(2):before{left:100%!important;top:60%!important;height:1px!important;width:70px!important;transform:rotate(12deg)!important}
+.sithari-page .sithari-star-option:nth-of-type(3):before{left:auto!important;right:100%!important;top:60%!important;height:1px!important;width:70px!important;transform:rotate(-12deg)!important}
+.sithari-page .sithari-star-option:nth-of-type(4):before{left:100%!important;top:0!important;height:1px!important;width:60px!important;transform:rotate(-28deg)!important}
+.sithari-page .sithari-star-option:nth-of-type(5):before{left:auto!important;right:100%!important;top:0!important;height:1px!important;width:60px!important;transform:rotate(28deg)!important}
+.sithari-page .sithari-action-empty{
+  position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;
+  max-width:260px!important;text-align:center!important;padding:18px!important;border:1px dashed rgba(255,48,72,.4)!important;
+  background:rgba(5,6,7,.92)!important;color:#d6caca!important;z-index:4!important;
+}
+@media(max-width:760px){
+ .sithari-page .sithari-constellation{min-height:770px!important}
+ .sithari-page .sithari-constellation-stage{min-height:660px!important}
+ .sithari-page .sithari-constellation-current{width:145px!important;min-height:145px!important;top:50%!important}
+ .sithari-page .sithari-action-result.sithari-star-option{width:46%!important;min-height:132px!important;padding:7px!important;grid-template-columns:30px minmax(0,1fr)!important;gap:4px!important}
+ .sithari-page .sithari-star-option:nth-of-type(1){top:0!important}
+ .sithari-page .sithari-star-option:nth-of-type(2){top:22%!important;left:0!important}
+ .sithari-page .sithari-star-option:nth-of-type(3){top:22%!important;right:0!important}
+ .sithari-page .sithari-star-option:nth-of-type(4){bottom:0!important;left:0!important}
+ .sithari-page .sithari-star-option:nth-of-type(5){bottom:0!important;right:0!important}
+ .sithari-page .sithari-star-option .sithari-result-visual .mod-visual{width:30px!important;height:30px!important}
+}
+
+.sithari-page .sithari-slots:has(.sithari-action-panel) .sithari-slot-card:has(.sithari-action-panel){grid-column:1/-1!important;z-index:5!important}
+.sithari-page .sithari-slots:has(.sithari-action-panel){align-items:start!important}
