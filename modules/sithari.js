@@ -483,23 +483,41 @@ function sithariBindActionControls(box){
     // Native select menus must finish their selection before any result DOM is replaced.
     // Listening to both input and change can redraw the constellation while the
     // operating-system dropdown is still committing the selected option.
-    sel.addEventListener('change',()=>{
+    sel.addEventListener('click',e=>e.stopPropagation());
+    sel.addEventListener('pointerdown',e=>e.stopPropagation());
+    sel.addEventListener('change',e=>{
+      e.stopPropagation();
       const a=sel.dataset.sithariSecondary;
       sithariActionState[a==='A'?'secondaryA':'secondaryB']=sel.value;
       sithariActionState.ran=true;
-      sithariRefreshActionPanel(sel.closest('.sithari-action-panel'));
+      // Re-render after the native select has committed its value. This keeps
+      // the selected option and refreshed proposals in one consistent state.
+      sithariRenderCharacter();
     });
   });
-  box.querySelectorAll('.sithari-source-options input').forEach(input=>input.addEventListener('change',()=>{
-    if(input.id==='sithariAllRoster'){
-      sithariActionState.scope.all=input.checked;
-    }else{
-      const map={sithariIncomplete:'incomplete',sithariVeryLow:'veryLow',sithariLow:'low',sithariMedium:'medium'};
-      sithariActionState.scope[map[input.id]]=input.checked;
-    }
-    sithariActionState.ran=true;
-    sithariRefreshActionPanel(input.closest('.sithari-action-panel'));
-  }));
+  box.querySelectorAll('.sithari-source-options input').forEach(input=>{
+    input.addEventListener('click',e=>e.stopPropagation());
+    input.addEventListener('pointerdown',e=>e.stopPropagation());
+    input.addEventListener('change',e=>{
+      e.stopPropagation();
+      if(input.id==='sithariAllRoster'){
+        sithariActionState.scope.all=input.checked;
+      }else{
+        const map={sithariIncomplete:'incomplete',sithariVeryLow:'veryLow',sithariLow:'low',sithariMedium:'medium'};
+        sithariActionState.scope[map[input.id]]=input.checked;
+        if(input.checked)sithariActionState.scope.all=false;
+      }
+      sithariActionState.ran=true;
+      // Rebuild controls too, so disabled states and checked values stay in sync.
+      sithariRenderCharacter();
+    });
+  });
+  // Do not let clicks inside the action panel activate an ancestor control.
+  box.querySelectorAll('.sithari-action-panel').forEach(panel=>{
+    panel.addEventListener('click',e=>{
+      if(e.target.closest('select,input,label,button'))e.stopPropagation();
+    });
+  });
 }
 function sithariRenderCharacter(){
   const box=$('sithariCharacterAnalysis'), empty=$('sithariAnalysisEmpty'); if(!box)return;
