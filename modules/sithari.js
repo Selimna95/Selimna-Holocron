@@ -31,7 +31,7 @@ function sithariFilteredCharacters(){
     .sort((a,b)=>String(a?.name||'').localeCompare(String(b?.name||''),'fr'));
 }
 function sithariStatLabel(value){
-  const raw=String(value??'').trim().replace(/\\s+/g,' ');
+  const raw=String(value??'').trim().replace(/\s+/g,' ');
   const percent=/%/.test(raw);
   const base=raw.replace(/%/g,'').trim();
   const key=compactKey(base);
