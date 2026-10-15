@@ -781,3 +781,27 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
   .holocron-gate .gate-input-wrap{height:46px !important}
   .holocron-gate .gate-login button{width:88% !important}
 }
+
+
+/* =========================================================================
+   V3.2.4 — SANCTUAIRE / SÉPARATION DES DESTINATIONS
+   Le Sanctuaire reste le centre de lecture du compte. Les voies d'apprentissage
+   vivent dans leur propre page, ouverte depuis le noyau énergétique.
+   ========================================================================= */
+.knowledge-page{position:relative;min-height:calc(100vh - 76px);padding:clamp(24px,4vw,54px);overflow:hidden;background:radial-gradient(ellipse at 50% 0%,rgba(219,36,56,.11),transparent 42%),linear-gradient(150deg,#070608,#0a090b 52%,#050505);color:#f2f0ee}
+.knowledge-page:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent 7%,rgba(255,255,255,.025) 7.05%,transparent 7.1% 92.9%,rgba(255,255,255,.025) 92.95%,transparent 93%);opacity:.55}
+.knowledge-header{position:relative;z-index:1;max-width:900px;margin:0 auto 26px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,.1)}
+.knowledge-kicker{display:flex;align-items:center;gap:10px;color:#ff596b;font:800 10px/1.4 var(--font-display);letter-spacing:.22em}
+.knowledge-kicker:after{content:"";width:72px;height:1px;background:linear-gradient(90deg,#ff596b,transparent)}
+.knowledge-header h1{margin:13px 0 10px;font:900 clamp(30px,4.4vw,54px)/1 var(--font-display);letter-spacing:.055em;color:#f8f6f2}
+.knowledge-header p{margin:0;max-width:650px;color:#a6a29f;font:400 13px/1.65 var(--font-ui)}
+.knowledge-path{position:relative;z-index:1;max-width:1120px;margin:0 auto!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.knowledge-page .holocron-path-intro{padding:0 0 18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.knowledge-page .holocron-path-grid{margin-top:18px}
+.knowledge-page .path-card{min-height:210px}
+.knowledge-page .path-card:focus-visible,.nav-knowledge:focus-visible{outline:2px solid #ff596b;outline-offset:3px}
+body[data-page="knowledge"] .nav-knowledge{color:#fff!important;border-color:rgba(255,75,95,.38)!important;background:rgba(255,48,72,.08)!important;box-shadow:inset 3px 0 #ff3048}
+body[data-page="knowledge"] .nav-knowledge .nav-icon{color:#ff596b;text-shadow:0 0 12px rgba(255,48,72,.5)}
+.sithari-core{cursor:pointer}
+.sithari-core:focus-visible{outline:2px solid #ff596b;outline-offset:5px}
+@media(max-width:760px){.knowledge-page{padding:24px 14px 40px}.knowledge-header{margin-bottom:18px}.knowledge-page .holocron-path-grid{grid-template-columns:1fr!important}.knowledge-page .path-card{min-height:170px}}
