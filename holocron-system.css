@@ -817,10 +817,10 @@ body[data-page="dashboard"] .decision-stage{display:none!important}
 .sanctuary-character-picker{display:block;flex:0 1 290px;min-width:220px;color:#bdb4b3;font-size:9px;font-weight:800;letter-spacing:.12em}
 .sanctuary-character-picker select{margin-top:8px;background:#0a090a!important;border:1px solid rgba(255,255,255,.14)!important;color:#f3eeee!important;border-radius:2px!important}
 .sanctuary-energy-board{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,1.14fr) minmax(0,1fr);align-items:stretch;gap:clamp(12px,2vw,28px);min-height:490px;padding:28px 0 22px}
-.sanctuary-energy-lines{position:absolute;inset:0;width:100%;height:100%;z-index:-1;overflow:visible;pointer-events:none}
+.sanctuary-energy-lines{position:absolute;inset:0;width:100%;height:100%;z-index:0;overflow:visible;pointer-events:none}
 .sanctuary-energy-lines path{fill:none;stroke:url(#sanctuaryFlow);stroke-width:1.5;stroke-dasharray:7 8;filter:drop-shadow(0 0 5px rgba(255,40,60,.55));animation:sanctuaryFlow 7s linear infinite}
 @keyframes sanctuaryFlow{to{stroke-dashoffset:-120}}
-.sanctuary-mod-column{display:flex;flex-direction:column;justify-content:space-around;gap:14px;min-width:0}
+.sanctuary-mod-column{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:space-around;gap:14px;min-width:0}
 .sanctuary-mod-node{position:relative;display:grid;grid-template-columns:56px minmax(0,1fr);align-items:center;gap:11px;width:100%;min-height:112px;padding:12px;text-align:left;color:#f2eceb;border:1px solid rgba(255,255,255,.1);border-radius:2px;background:linear-gradient(135deg,rgba(19,16,17,.96),rgba(8,8,9,.94));box-shadow:0 12px 28px rgba(0,0,0,.23);cursor:pointer;transition:border-color .18s,transform .18s,box-shadow .18s}
 .sanctuary-mod-node:before{content:"";position:absolute;top:12px;bottom:12px;left:0;width:2px;background:linear-gradient(180deg,transparent,#ff3048,transparent);opacity:.8}
 .sanctuary-mod-node:hover,.sanctuary-mod-node:focus-visible{border-color:rgba(255,48,72,.62);box-shadow:0 0 24px rgba(255,48,72,.12);transform:translateY(-2px);outline:none}
@@ -831,7 +831,7 @@ body[data-page="dashboard"] .decision-stage{display:none!important}
 .sanctuary-mod-node-copy span{color:#aaa1a0;font-size:10px;line-height:1.45;overflow-wrap:anywhere}
 .sanctuary-mod-node-copy em{color:#d9b96a;font-size:9px;font-style:normal;letter-spacing:.06em}
 .sanctuary-mod-empty{display:grid;place-items:center;width:54px;height:54px;border:1px dashed rgba(255,255,255,.14);color:#71696a;font-size:20px}
-.sanctuary-character-core{position:relative;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;padding:25px 16px 19px;text-align:center;border:1px solid rgba(255,48,72,.28);background:radial-gradient(ellipse at 50% 25%,rgba(164,11,29,.18),transparent 56%),linear-gradient(180deg,rgba(15,12,14,.97),rgba(5,5,6,.98));box-shadow:0 0 45px rgba(255,30,54,.07),inset 0 0 38px rgba(255,48,72,.035)}
+.sanctuary-character-core{position:relative;z-index:1;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;padding:25px 16px 19px;text-align:center;border:1px solid rgba(255,48,72,.28);background:radial-gradient(ellipse at 50% 25%,rgba(164,11,29,.18),transparent 56%),linear-gradient(180deg,rgba(15,12,14,.97),rgba(5,5,6,.98));box-shadow:0 0 45px rgba(255,30,54,.07),inset 0 0 38px rgba(255,48,72,.035)}
 .sanctuary-core-orbit{position:absolute;left:50%;top:100px;width:210px;height:210px;max-width:90%;border:1px solid rgba(255,48,72,.16);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
 .sanctuary-core-orbit:after{content:"";position:absolute;inset:12px;border:1px dashed rgba(217,185,106,.18);border-radius:50%}
 .sanctuary-core-orbit.orbit-two{width:250px;height:250px;border-color:rgba(255,255,255,.05);animation:sanctuaryOrbit 24s linear infinite}
