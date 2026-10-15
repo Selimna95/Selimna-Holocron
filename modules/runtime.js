@@ -158,7 +158,7 @@ document.addEventListener('click',e=>{
   stage.addEventListener('pointerdown',event=>{
     if(event.target.closest('[data-holocron-rotate]'))return;
     startX=event.clientX;startY=event.clientY;dragging=true;suppressFaceClick=false;
-    if(stage.setPointerCapture)try{stage.setPointerCapture(event.pointerId)}catch(_){}
+    // Keep the original button as the click target; capture on the stage swallowed face clicks.
   });
   stage.addEventListener('pointerup',event=>{
     if(!dragging)return;dragging=false;
