@@ -85,20 +85,8 @@
     <button type="button" class="nav active" data-page="dashboard"><span class="nav-icon">⌂</span><span>LE SANCTUAIRE</span></button>
     <button type="button" class="nav nav-knowledge" data-page="knowledge"><span class="nav-icon">✧</span><span>LE SAVOIR SE MÉRITE</span></button>
 
-    <div class="phase-nav-label acolyte"><span>Ⅰ</span> ACOLYTE <small>VOIR</small></div>
-    <button type="button" class="nav" data-page="top-changes"><span class="nav-icon">⇄</span><span>ACOLYTE — PRIORITÉS</span></button>
-
-    <div class="phase-nav-label disciple"><span>Ⅱ</span> DISCIPLE <small>COMPRENDRE</small></div>
-    <button type="button" class="nav" data-page="mods-analysis"><span class="nav-icon">◈</span><span>RÉAFFECTATION DES MODS</span></button>
-
-    <div class="phase-nav-label lord"><span>Ⅲ</span> SEIGNEUR SITH <small>MAÎTRISER</small></div>
-    <button type="button" class="nav nav-phase-entry nav-lord" data-page="optimizer"><span class="nav-icon">✦</span><span>FORGE PERSONNAGE</span><small>MAÎTRISER</small></button>
-
     <div class="phase-nav-label codex roster-codex-ui"><span>▦</span> CODEX DU ROSTER <small>CONSULTER</small></div>
     <button type="button" class="nav roster-codex-ui" data-page="data"><span class="nav-icon">▦</span><span>PERSONNAGES · VAISSEAUX · MODS</span></button>
-
-    <div class="phase-nav-label sithari"><span>✧</span> SITH’ARI <small>TRANSCENDER</small></div>
-    <button type="button" class="nav nav-sithari" data-page="sithari"><span class="nav-icon">◈</span><span>OPTIMISATION KYBER</span></button>
 
     <div class="phase-nav-label system"><span>⚙</span> SYSTÈME <small>AIDE</small></div>
     <button type="button" class="nav" data-page="help"><span class="nav-icon">?</span><span>SYSTÈME &amp; AIDE</span></button>
@@ -107,7 +95,7 @@
   <section class="content">
     <section id="dashboard" class="page active decision-page">
       <div class="decision-header">
-        <div class="decision-brand"><span class="eyebrow">SELIMNA’S HOLOCRON</span><h1>LE SANCTUAIRE</h1><p><span class="phase-inline acolyte">ACOLYTE // VOIR</span><span class="phase-inline disciple">DISCIPLE // COMPRENDRE</span><span class="phase-inline lord">SEIGNEUR SITH // MAÎTRISER</span><span class="phase-inline sithari">SITH’ARI // TRANSCENDER</span></p></div>
+        <div class="decision-brand"><span class="eyebrow">SELIMNA’S HOLOCRON</span><h1>LE SANCTUAIRE</h1><p>Les flux révèlent les voies. Le noyau rouge ouvre l’accès au savoir.</p></div>
         <div class="decision-status"><span class="status-dot"></span><span>ÉTAT DU ROSTER</span></div>
       </div>
 
@@ -127,7 +115,7 @@
             <div class="sanctuary-character-portrait"><span>✧</span></div>
             <div class="sanctuary-character-identity"><small>PERSONNAGE SÉLECTIONNÉ</small><h3>EN ATTENTE DU ROSTER</h3><p>Synchronise ton profil pour révéler les statistiques.</p></div>
             <div id="sanctuaryCharacterStats" class="sanctuary-character-stats"><div><span>SPEED</span><b>—</b></div><div><span>SANTÉ</span><b>—</b></div><div><span>PROTECTION</span><b>—</b></div><div><span>MODS</span><b>0 / 6</b></div></div>
-            <button type="button" class="sanctuary-knowledge-core" id="sanctuaryKnowledgeAccess" aria-label="Ouvrir l’onglet Le savoir se mérite"><span>✧</span><strong>LE SAVOIR SE MÉRITE</strong><small>ACCÉDER AU NŒUD CENTRAL</small></button>
+            <button type="button" class="sanctuary-knowledge-core" id="sanctuaryKnowledgeAccess" aria-label="Ouvrir Le savoir se mérite" title="Le savoir se mérite"><span class="sanctuary-mini-holocron" aria-hidden="true"><i></i><b></b><em></em></span><span class="sanctuary-core-sr">LE SAVOIR SE MÉRITE</span></button>
           </article>
           <div id="sanctuaryModsRight" class="sanctuary-mod-column" aria-label="Trois derniers emplacements de mods"></div>
         </div>
@@ -253,19 +241,38 @@
 
 
     <section id="knowledge" class="page knowledge-page">
-      <header class="knowledge-header"><div class="knowledge-kicker">HOLOCRON // TRANSMISSION</div><h1>LE SAVOIR SE MÉRITE</h1><p>Le Gardien ouvre les voies. À toi de choisir comment approfondir la maîtrise de ton roster.</p></header>
-      <section class="holocron-path knowledge-path" aria-label="Parcours de l’Holocron">
-        <div class="holocron-path-intro">
-          <div class="guardian-seal" aria-hidden="true">✦</div>
-          <div><span class="eyebrow">LE GARDIEN DE L’HOLOCRON</span><h2>Le savoir se mérite. L’accès reste libre.</h2><p>Choisis une voie conseillée ou ouvre directement l’outil dont tu as besoin.</p></div>
+      <header class="knowledge-header">
+        <div class="knowledge-kicker">HOLOCRON // CHAMBRE DES VOIES</div>
+        <h1>LE SAVOIR SE MÉRITE</h1>
+        <p>Un Holocron. Quatre faces. Quatre degrés de maîtrise. Fais-le pivoter, puis ouvre la voie qui t’appelle.</p>
+      </header>
+      <section class="knowledge-holocron-chamber" aria-label="Holocron rotatif des quatre voies">
+        <div class="knowledge-chamber-sigil" aria-hidden="true"><span></span><i></i><b></b></div>
+        <div class="knowledge-chamber-overline"><span>ARTEFACT DE CONNAISSANCE</span><span id="knowledgeFaceCounter">FACE 01 / 04</span></div>
+        <div class="knowledge-holocron-stage" id="knowledgeHolocronStage" tabindex="0" aria-label="Fais glisser horizontalement pour faire tourner l’Holocron">
+          <div class="knowledge-holocron-aura" aria-hidden="true"></div>
+          <div class="knowledge-holocron-shadow" aria-hidden="true"></div>
+          <div class="knowledge-holocron-cube" id="knowledgeHolocronCube" data-rotation="0" aria-label="Holocron rotatif. Face avant : Acolyte.">
+            <button type="button" class="knowledge-cube-face knowledge-face-acolyte" data-page="top-changes" data-face-index="0" aria-label="Ouvrir le niveau Acolyte">
+              <span class="knowledge-face-topline">01 // VOIR</span><span class="knowledge-face-rune">⌁</span><strong>ACOLYTE</strong><span class="knowledge-face-divider"></span><span class="knowledge-face-copy">Voir les priorités. Identifier le changement qui apporte le plus.</span><span class="knowledge-face-cta">OUVRIR LA VOIE <b>↗</b></span><span class="knowledge-face-corner corner-a"></span><span class="knowledge-face-corner corner-b"></span>
+            </button>
+            <button type="button" class="knowledge-cube-face knowledge-face-disciple" data-page="mods-analysis" data-face-index="1" aria-label="Ouvrir le niveau Disciple">
+              <span class="knowledge-face-topline">02 // COMPRENDRE</span><span class="knowledge-face-rune">◈</span><strong>DISCIPLE</strong><span class="knowledge-face-divider"></span><span class="knowledge-face-copy">Comprendre les secondaires et réaffecter les mods avec méthode.</span><span class="knowledge-face-cta">OUVRIR LA VOIE <b>↗</b></span><span class="knowledge-face-corner corner-a"></span><span class="knowledge-face-corner corner-b"></span>
+            </button>
+            <button type="button" class="knowledge-cube-face knowledge-face-lord" data-page="optimizer" data-face-index="2" aria-label="Ouvrir le niveau Seigneur Sith">
+              <span class="knowledge-face-topline">03 // MAÎTRISER</span><span class="knowledge-face-rune">✦</span><strong>SEIGNEUR SITH</strong><span class="knowledge-face-divider"></span><span class="knowledge-face-copy">Forger une configuration et optimiser un personnage en profondeur.</span><span class="knowledge-face-cta">OUVRIR LA VOIE <b>↗</b></span><span class="knowledge-face-corner corner-a"></span><span class="knowledge-face-corner corner-b"></span>
+            </button>
+            <button type="button" class="knowledge-cube-face knowledge-face-sithari" data-page="sithari" data-face-index="3" aria-label="Ouvrir le niveau Sith’ari">
+              <span class="knowledge-face-topline">04 // TRANSCENDER</span><span class="knowledge-face-rune">✧</span><strong>SITH’ARI</strong><span class="knowledge-face-divider"></span><span class="knowledge-face-copy">Comparer les six slots au Kyber, renforcer et calibrer.</span><span class="knowledge-face-cta">OUVRIR LA VOIE <b>↗</b></span><span class="knowledge-face-corner corner-a"></span><span class="knowledge-face-corner corner-b"></span>
+            </button>
+          </div>
         </div>
-        <div class="holocron-path-grid">
-          <button type="button" class="path-card path-acolyte" data-page="top-changes"><span class="path-step">01 <i>VOIR</i></span><span class="path-glyph">⌁</span><strong>Acolyte</strong><span class="path-description">Repérer les priorités du roster</span><span class="path-action">EXAMINER LES PRIORITÉS <b>↗</b></span></button>
-          <button type="button" class="path-card path-disciple" data-page="mods-analysis"><span class="path-step">02 <i>COMPRENDRE</i></span><span class="path-glyph">◈</span><strong>Disciple</strong><span class="path-description">Comprendre et réaffecter les mods</span><span class="path-action">ANALYSER LES MODS <b>↗</b></span></button>
-          <button type="button" class="path-card path-lord" data-page="optimizer"><span class="path-step">03 <i>MAÎTRISER</i></span><span class="path-glyph">✦</span><strong>Seigneur Sith</strong><span class="path-description">Optimiser un personnage</span><span class="path-action">ENTRER DANS LA FORGE <b>↗</b></span></button>
-          <button type="button" class="path-card path-sithari" data-page="sithari"><span class="path-step">04 <i>TRANSCENDER</i></span><span class="path-glyph">✧</span><strong>Sith’Ari</strong><span class="path-description">Comparer et affiner les mods selon Kyber</span><span class="path-action">OUVRIR LE NEXUS <b>↗</b></span></button>
-          <button type="button" class="path-card path-codex roster-codex-ui" data-page="data"><span class="path-step">CODEX <i>CONSULTER</i></span><span class="path-glyph">▦</span><strong>Archives du roster</strong><span class="path-description">Retrouver personnages, vaisseaux et mods</span><span class="path-action">PARCOURIR LES DONNÉES <b>↗</b></span></button>
+        <div class="knowledge-holocron-controls">
+          <button type="button" class="knowledge-rotate-control" data-holocron-rotate="-1" aria-label="Faire tourner l’Holocron vers la gauche">←</button>
+          <div class="knowledge-rotation-readout"><span id="knowledgeFaceName">ACOLYTE</span><small>FAIS TOURNER L’HOLOCRON</small></div>
+          <button type="button" class="knowledge-rotate-control" data-holocron-rotate="1" aria-label="Faire tourner l’Holocron vers la droite">→</button>
         </div>
+        <p class="knowledge-chamber-hint">FAIS GLISSER L’ARTEFACT OU UTILISE LES FLÈCHES · CLIQUE SUR UNE FACE POUR ENTRER</p>
       </section>
     </section>
 
