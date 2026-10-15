@@ -330,7 +330,7 @@ function sithariRenderActionPanel(x){
   const resultHtml=active.ran?`<div class="sithari-constellation" aria-label="Possibilités de mods calculées"><div class="sithari-constellation-core"><span>✧</span><b>CONSTELLATION DE PROPOSITIONS</b><small>${rows.length} résultat${rows.length>1?'s':''} · classés selon les critères réels</small></div><div class="sithari-constellation-stage"><div class="sithari-constellation-current"><span class="sithari-current-orbit">MOD ACTUEL</span><div class="sithari-current-visual">${x.current?modIconHtml(x.current,'72'):'<span class="sithari-no-mod">AUCUN MOD</span>'}</div><strong>${esc(SITHARI_SLOT_LABEL[x.slot]||x.slot)}</strong><small>${esc(x.current?.set_name||'À équiper')} · ${esc(x.current?.primary_stat||'—')} ${x.current?num(x.current.primary_value,1):''}</small><em>${x.current?`${num(modTotalSpeed(x.current))} Speed`:'Emplacement vide'}</em></div><div class="sithari-action-results">${rows.length?rows.map((r,i)=>{
     const m=r.m, owner=rosterCharacters.find(c=>characterKey(c)===sithariEquippedOwner(m));
     const other=[];
-    for(let j=1;j<=4;j++){const st=m?.[`secondary_${j}_stat`];if(st)other.push(`${secondaryDisplayName(st)} ${num(m[`secondary_${j}_value`],1)}`);}
+    for(let j=1;j<=4;j++){const st=m?.[`secondary_${j}_stat`];if(st)other.push(`${sithariStatLabel(st)} ${num(m[`secondary_${j}_value`],1)}`);}
     const currentSpeed=num(x.current?modTotalSpeed(x.current):0), speedDelta=num(r.speed)-currentSpeed;
     const gain=speedDelta>0?`+${speedDelta}`:String(speedDelta);
     return `<article class="sithari-action-result sithari-star-option" style="--star-delay:${Math.min(i,8)*.09}s"><span class="sithari-star-link" aria-hidden="true">✦</span><div class="sithari-result-visual">${modIconHtml(m,'52')}</div><div class="sithari-result-owner">${owner?`<span class="sithari-result-portrait">${sithariPortrait(owner)}</span><strong>${esc(owner.name||'Personnage')}</strong>`:'<span class="sithari-result-portrait free">◈</span><strong>MOD LIBRE</strong>'}<small>${esc(m.set_name||'—')} · ${esc(m.slot||'—')}</small></div><div class="sithari-result-stats"><b>${esc(m.primary_stat||'—')} <strong>${num(m.primary_value,1)}</strong></b><span>${esc(other.join(' · ')||'Aucune secondaire')}</span><em>${num(r.speed)} Speed <i>Δ ${gain} vs mod actuel</i></em></div></article>`;
@@ -421,7 +421,19 @@ function sithariRenderTeam(){
   document.querySelectorAll('[data-sithari-active]').forEach(btn=>btn.addEventListener('click',()=>{sithariActiveKey=btn.dataset.sithariActive;sithariRenderAll(false)}));
   team.querySelectorAll('.sithari-selected-chip i').forEach((x)=>x.addEventListener('click',e=>{e.stopPropagation();sithariToggleCharacter(x.closest('[data-sithari-active]').dataset.sithariActive)}));
 }
-function sithariModMini(m,slot,status){if(!m)return '<span class="sithari-no-mod">AUCUN MOD</span>';const x=modSpeedMetrics(m), sec=modSecondaries(m)||'—';return `<button type="button" class="sithari-mod-mini sithari-mod-trigger" data-sithari-mod-toggle="${esc(slot||m.slot||'')}" aria-label="Ouvrir les possibilités du mod ${esc(slot||m.slot||'')}"><span class="sithari-mod-trigger-icon">${modIconHtml(m,'54')}<i>✦</i></span><span class="sithari-mod-copy"><b>${esc(String(m.primary_stat||'—'))} ${num(m.primary_value,1)}</b><strong>${x.primary?'★ Primaire Speed':(x.secondary?`+${num(x.secondary)} Speed`:'Sans Speed')}</strong><small>${esc(sec)}</small><em>${status==='REINFORCE'?'Cliquer pour renforcer':'Cliquer pour calibrer'}</em></span></button>`;}
+function sithariSecondarySummary(m){
+  const parts=[];
+  for(let i=1;i<=4;i++){
+    const stat=m?.[`secondary_${i}_stat`];
+    if(stat)parts.push(`${sithariStatLabel(stat)} ${num(m?.[`secondary_${i}_value`],1)}`);
+  }
+  return parts.join(' · ')||'—';
+}
+function sithariModMini(m,slot,status){
+  if(!m)return '<span class="sithari-no-mod">AUCUN MOD</span>';
+  const x=modSpeedMetrics(m),sec=sithariSecondarySummary(m);
+  return `<button type="button" class="sithari-mod-mini sithari-mod-trigger" data-sithari-mod-toggle="${esc(slot||m.slot||'')}" aria-label="Ouvrir les possibilités du mod ${esc(slot||m.slot||'')}"><span class="sithari-mod-trigger-icon">${modIconHtml(m,'54')}<i>✦</i></span><span class="sithari-mod-copy"><b>${esc(String(m.primary_stat||'—'))} ${num(m.primary_value,1)}</b><strong>${x.primary?'★ Primaire Speed':(x.secondary?`+${num(x.secondary)} Speed`:'Sans Speed')}</strong><small>${esc(sec)}</small><em>${status==='REINFORCE'?'Cliquer pour renforcer':'Cliquer pour calibrer'}</em></span></button>`;
+}
 function sithariStatsReference(c,p){
   const op=optimizerProfileForCharacter(c)||{};
   const cur=op.current_stats||{};
