@@ -122,18 +122,29 @@ function sithariReferenceText(p,slot){
   const sec=Object.entries(focus).slice(0,4).map(([k,v])=>`${k} ${num(v,1)}`).join(' · ')||'—';
   return {sets,prim,sec};
 }
-function sithariSecondaryNames(){
+function sithariSecondaryNames(profile=null){
   const names=new Map();
+  // Keep Kyber's priority order first, even when a priority stat is absent
+  // from the currently equipped inventory.
+  for(const stat of Object.keys(profile?.secondary_focus||{})){
+    const label=secondaryDisplayName(stat);
+    if(label)names.set(compactKey(label),label);
+  }
   for(const m of sithariEnsureModCache().items){
     for(let i=1;i<=4;i++){
       const stat=m?.[`secondary_${i}_stat`];
       if(stat){
         const label=secondaryDisplayName(stat);
-        names.set(compactKey(label),label);
+        if(label&&!names.has(compactKey(label)))names.set(compactKey(label),label);
       }
     }
   }
-  return [...names.values()].sort((a,b)=>a.localeCompare(b,'fr'));
+  const priority=new Map(Object.keys(profile?.secondary_focus||{}).map((stat,index)=>[compactKey(secondaryDisplayName(stat)),index]));
+  return [...names.values()].sort((a,b)=>{
+    const ai=priority.has(compactKey(a))?priority.get(compactKey(a)):Number.MAX_SAFE_INTEGER;
+    const bi=priority.has(compactKey(b))?priority.get(compactKey(b)):Number.MAX_SAFE_INTEGER;
+    return ai-bi || a.localeCompare(b,'fr');
+  });
 }
 function sithariSourceAllowed(status,scope){
   if(scope==='ALL')return true;
@@ -201,12 +212,15 @@ function sithariSourceStatus(mod){
 }
 function sithariCandidatePool(slot,setName,primaryName,current,excludeCharacterKey=''){
   const cache=sithariEnsureModCache();
-  const currentId=String(current?.game_id||current?.id||''); const scope=sithariScopeState(); const pool=[];
+  const currentId=String(current?.game_id||current?.id||'');
+  const wantedSlot=modSlotLabel(slot);
+  const scope=sithariScopeState();
+  const pool=[];
   for(const m of cache.items){
-    if(String(m.slot||'')!==String(slot||''))continue;
+    if(modSlotLabel(m.slot??m.slot_id??m.slotId??m.modSlot)!==wantedSlot)continue;
     if(currentId && String(m.game_id||m.id||'')===currentId)continue;
-    if(setName && sithariCanonicalSet(m.set_name)!==sithariCanonicalSet(setName))continue;
-    if(primaryName && compactKey(m.primary_stat)!==compactKey(primaryName))continue;
+    if(setName && sithariCanonicalSet(m.set_name??m.set??m.setId??m.set_id)!==sithariCanonicalSet(setName))continue;
+    if(primaryName && compactKey(m.primary_stat??m.primaryStat??m.primary_stat_name)!==compactKey(primaryName))continue;
     if(excludeCharacterKey && m._sithariOwner===excludeCharacterKey)continue;
     const status=sithariSourceStatus(m);
     if(scope!=='ALL' && (!Array.isArray(scope)||!scope.includes(status)))continue;
@@ -250,11 +264,12 @@ function sithariCalibrationResults(x){
     .slice(0,5);
 }
 function sithariDefaultSecondaries(profile){
-  const names=sithariSecondaryNames();
-  const focus=Object.keys(profile?.secondary_focus||{});
-  const ordered=focus.map(key=>names.find(name=>compactKey(name)===compactKey(secondaryDisplayName(key))||compactKey(name)===compactKey(key))).filter(Boolean);
-  for(const name of names){if(ordered.length>=2)break;if(!ordered.some(x=>compactKey(x)===compactKey(name)))ordered.push(name);}
-  return [...new Map(ordered.map(name=>[compactKey(name),name])).values()].slice(0,2);
+  // Defaults must come from Kyber's ranked secondary_focus, never from an
+  // alphabetical fallback of unrelated stats found in the inventory.
+  return Object.keys(profile?.secondary_focus||{})
+    .map(key=>secondaryDisplayName(key))
+    .filter((name,index,all)=>name&&all.findIndex(x=>compactKey(x)===compactKey(name))===index)
+    .slice(0,2);
 }
 function sithariActionKey(character,slot){return `${characterKey(character)}::${slot}`;}
 let sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
@@ -276,7 +291,7 @@ function sithariActionFor(x){
 function sithariRenderActionPanel(x){
   const active=sithariActionFor(x);
   if(!active)return '';
-  const names=sithariSecondaryNames();
+  const names=sithariSecondaryNames(x.profile);
   const first=active.secondaryA, second=active.secondaryB;
   const options=names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
   const refSet=sithariSetReference(x.profile), refPrimary=sithariPrimaryReference(x.profile,x.slot);
@@ -400,11 +415,18 @@ function sithariRefreshActionPanel(panel){
   const slot=SITHARI_SLOT_ORDER.find(s=>sithariActionState.key.endsWith('::'+s));
   if(!c||!slot)return;
   const state=sithariSlotState(c,slot);
-  const host=panel.parentElement;
-  if(!host)return;
-  panel.outerHTML=sithariRenderActionPanel(state);
-  const fresh=host.querySelector('.sithari-action-panel');
-  if(fresh)sithariBindActionControls(fresh);
+  // Refresh only the result constellation. Rebuilding the whole panel removes
+  // the focused select from the DOM and made the secondary menu appear to vanish.
+  const template=document.createElement('template');
+  template.innerHTML=sithariRenderActionPanel(state);
+  const next=template.content.querySelector('.sithari-constellation');
+  const current=panel.querySelector('.sithari-constellation');
+  if(current&&next)current.replaceWith(next);
+  const scopeLabel=panel.querySelector('.sithari-action-scope>b');
+  if(scopeLabel)scopeLabel.textContent=sithariScopeLabel();
+  panel.querySelectorAll('.sithari-source-options input').forEach(input=>{
+    input.disabled=input.id!=='sithariAllRoster'&&sithariActionState.scope.all;
+  });
 }
 function sithariBindActionControls(box){
   box.querySelectorAll('[data-sithari-mod-toggle]').forEach(btn=>btn.addEventListener('click',()=>{
