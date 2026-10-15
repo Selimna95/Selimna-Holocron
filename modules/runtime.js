@@ -154,6 +154,12 @@ document.addEventListener('click',e=>{
   stage.querySelectorAll('[data-holocron-rotate]').forEach(button=>button.addEventListener('click',()=>{
     rotation+=Number(button.dataset.holocronRotate)||0;render();
   }));
+  // Le clic sur la face avant ouvre directement sa destination, sans dépendre du gestionnaire global.
+  cube.querySelectorAll('.knowledge-cube-face[data-page]').forEach(face=>face.addEventListener('click',event=>{
+    event.stopPropagation();
+    const page=String(face.dataset.page||'');
+    if(page && document.getElementById(page)) showPage(page);
+  }));
   let suppressFaceClick=false;
   stage.addEventListener('pointerdown',event=>{
     if(event.target.closest('[data-holocron-rotate]'))return;
