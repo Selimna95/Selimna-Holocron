@@ -29,7 +29,7 @@ function sanctuaryRenderEnergy(){
   const core=$('sanctuaryCharacterCore'),status=$('sanctuaryStatus');
   if(!character){
     left.innerHTML='';right.innerHTML='';
-    core.innerHTML='<div class="sanctuary-core-orbit orbit-one"></div><div class="sanctuary-core-orbit orbit-two"></div><div class="sanctuary-character-portrait"><span>✧</span></div><div class="sanctuary-character-identity"><small>PERSONNAGE SÉLECTIONNÉ</small><h3>EN ATTENTE DU ROSTER</h3><p>Synchronise ton profil pour révéler les statistiques.</p></div><div class="sanctuary-character-stats"><div><span>SPEED</span><b>—</b></div><div><span>SANTÉ</span><b>—</b></div><div><span>PROTECTION</span><b>—</b></div><div><span>MODS</span><b>0 / 6</b></div></div><button type="button" class="sanctuary-knowledge-core" id="sanctuaryKnowledgeAccess"><span>✧</span><strong>LE SAVOIR SE MÉRITE</strong><small>ACCÉDER AU NŒUD CENTRAL</small></button>';
+    core.innerHTML='<div class="sanctuary-core-orbit orbit-one"></div><div class="sanctuary-core-orbit orbit-two"></div><div class="sanctuary-character-portrait"><span>✧</span></div><div class="sanctuary-character-identity"><small>PERSONNAGE SÉLECTIONNÉ</small><h3>EN ATTENTE DU ROSTER</h3><p>Synchronise ton profil pour révéler les statistiques.</p></div><div class="sanctuary-character-stats"><div><span>SPEED</span><b>—</b></div><div><span>SANTÉ</span><b>—</b></div><div><span>PROTECTION</span><b>—</b></div><div><span>MODS</span><b>0 / 6</b></div></div><button type="button" class="sanctuary-knowledge-core" id="sanctuaryKnowledgeAccess" aria-label="Ouvrir Le savoir se mérite" title="Le savoir se mérite"><span class="sanctuary-mini-holocron" aria-hidden="true"><i></i><b></b><em></em></span><span class="sanctuary-core-sr">LE SAVOIR SE MÉRITE</span></button>';
     status.textContent='EN ATTENTE DU PROFIL';return;
   }
   const equipped=sithariCharacterMods(character);
@@ -190,6 +190,50 @@ document.addEventListener('click',e=>{
 });
 
 document.getElementById('sithariAccess')?.addEventListener('click',()=>showPage('knowledge'));
+
+// KNOWLEDGE HOLOCRON — four rotatable faces, Acolyte is the default orientation.
+(function initKnowledgeHolocron(){
+  const stage=document.getElementById('knowledgeHolocronStage');
+  const cube=document.getElementById('knowledgeHolocronCube');
+  if(!stage||!cube)return;
+  const names=['ACOLYTE','DISCIPLE','SEIGNEUR SITH','SITH’ARI'];
+  let rotation=0,startX=0,startY=0,dragging=false;
+  const normalize=n=>((n%4)+4)%4;
+  function render(){
+    rotation=normalize(rotation);
+    cube.dataset.rotation=String(rotation);
+    cube.style.setProperty('--knowledge-rotation',String(rotation));
+    const counter=document.getElementById('knowledgeFaceCounter');
+    const name=document.getElementById('knowledgeFaceName');
+    if(counter)counter.textContent='FACE '+String(rotation+1).padStart(2,'0')+' / 04';
+    if(name)name.textContent=names[rotation];
+    cube.setAttribute('aria-label','Holocron rotatif. Face avant : '+names[rotation]+'.');
+    cube.querySelectorAll('.knowledge-cube-face').forEach((face,index)=>{
+      face.setAttribute('aria-current',String(index===rotation));
+      face.tabIndex=index===rotation?0:-1;
+    });
+  }
+  stage.querySelectorAll('[data-holocron-rotate]').forEach(button=>button.addEventListener('click',()=>{
+    rotation+=Number(button.dataset.holocronRotate)||0;render();
+  }));
+  stage.addEventListener('pointerdown',event=>{
+    if(event.target.closest('button'))return;
+    startX=event.clientX;startY=event.clientY;dragging=true;
+    if(stage.setPointerCapture)try{stage.setPointerCapture(event.pointerId)}catch(_){}
+  });
+  stage.addEventListener('pointerup',event=>{
+    if(!dragging)return;dragging=false;
+    const dx=event.clientX-startX,dy=event.clientY-startY;
+    if(Math.abs(dx)>34&&Math.abs(dx)>Math.abs(dy)){rotation+=dx<0?1:-1;render();}
+  });
+  stage.addEventListener('pointercancel',()=>{dragging=false;});
+  stage.addEventListener('keydown',event=>{
+    if(event.key==='ArrowRight'){event.preventDefault();rotation++;render();}
+    if(event.key==='ArrowLeft'){event.preventDefault();rotation--;render();}
+  });
+  render();
+})();
+
 $('sithariFaction')?.addEventListener('change',e=>{sithariFaction=e.target.value;sithariRenderAll();});
 $('sithariCharacterSearch')?.addEventListener('input',e=>{sithariSearch=e.target.value||'';sithariRenderSelectors();});
 $('sithariClearSelection')?.addEventListener('click',()=>{sithariSelectedKeys=[];sithariActiveKey='';sithariRenderAll();});
