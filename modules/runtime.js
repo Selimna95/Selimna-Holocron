@@ -5,8 +5,7 @@ function sanctuaryStatValue(character, statName){
   const p=optimizerProfileForCharacter(character)||{};
   const stats=p.current_stats||character?.stats||character?.current_stats||{};
   const aliases={'Speed':['Speed','speed'],'Health':['Health','health'],'Protection':['Protection','protection']};
-  for(const key of aliases[statName]||[statName]){const v=stats[key];if(v!==undefined&&v!==null&&Number.isFinite(Number(v))&&Number(v)>0)return Number(v);}
-  if(statName==='Speed')return sithariCharacterSpeed(character);
+  for(const key of aliases[statName]||[statName]){const v=stats[key];const parsed=Number(String(v??'').replace(/,/g,''));if(v!==undefined&&v!==null&&Number.isFinite(parsed)&&parsed>0)return parsed;}
   return 0;
 }
 function sanctuaryFormatStat(value){return Number(value||0).toLocaleString('fr-FR',{maximumFractionDigits:0});}
