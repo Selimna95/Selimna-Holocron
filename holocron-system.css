@@ -1681,3 +1681,74 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
 @media(prefers-reduced-motion:reduce) {
   body[data-page="dashboard"] .sanctuary-holocron-door {transition:none!important}
 }
+
+
+/* V3.5.2 — La progression vers le cœur : Acolyte < Disciple < Seigneur Sith < Sith'ari.
+   Le rouge augmente avec la profondeur, jusqu'à l'énergie d'explosion de Sith'ari. */
+/* Acolyte : le premier signal rouge, encore retenu. */
+#top-changes .essential-command {
+  border-color:rgba(150,34,43,.28)!important;
+  background:linear-gradient(145deg,rgba(20,13,16,.96),rgba(7,7,10,.98))!important;
+  box-shadow:inset 2px 0 rgba(163,38,51,.48),0 12px 34px rgba(0,0,0,.22)!important;
+}
+#top-changes .essential-command-mark {
+  color:#d65b66!important;
+  background:radial-gradient(circle,rgba(160,25,43,.18),rgba(5,5,8,.2) 72%)!important;
+  border-color:rgba(180,47,60,.34)!important;
+  box-shadow:0 0 18px rgba(165,20,40,.12)!important;
+}
+#top-changes .essential-command-copy h2 em {color:#d75c68!important;text-shadow:0 0 16px rgba(160,18,38,.18)!important}
+#top-changes .topchange-result {border-color:rgba(151,40,52,.22)!important}
+#top-changes .topchange-rank {color:#d75b68!important}
+
+/* Disciple : le rouge circule dans les outils d'analyse, sans dominer les données. */
+#mods-analysis .disciple-analysis-header {
+  border-color:rgba(193,34,53,.38)!important;
+  background:linear-gradient(135deg,rgba(30,12,18,.96),rgba(9,8,12,.98))!important;
+  box-shadow:inset 3px 0 rgba(196,36,55,.62),0 14px 38px rgba(0,0,0,.24)!important;
+}
+#mods-analysis .disciple-analysis-header .panel-title,
+#mods-analysis .disciple-analysis-header .command-rune {color:#e16b78!important}
+#mods-analysis .disciple-analysis-badge {border-color:rgba(198,43,61,.32)!important;box-shadow:inset 0 0 22px rgba(175,15,38,.07)!important}
+#mods-analysis .disciple-logic-strip {border-color:rgba(185,35,53,.26)!important;background:linear-gradient(90deg,rgba(105,13,28,.13),rgba(10,8,12,.62))!important}
+#mods-analysis .disciple-step-title>span {color:#e17a83!important}
+
+/* Seigneur Sith : la forge révèle une énergie rouge plus dense et plus active. */
+#optimizer > .controls {border-top-color:rgba(214,37,56,.88)!important}
+#optimizer > .forge-character-panel {border-top-color:rgba(185,31,51,.72)!important}
+#optimizer > .forge-search-panel-wrap {border-top-color:rgba(255,45,65,.9)!important}
+#optimizer > .panel:last-child {border-top-color:rgba(214,37,56,.82)!important}
+#optimizer > .controls,
+#optimizer > .forge-character-panel,
+#optimizer > .forge-search-panel-wrap,
+#optimizer > .panel:last-child {
+  box-shadow:inset 0 2px rgba(255,55,73,.035),0 14px 38px rgba(0,0,0,.28)!important;
+}
+#optimizer .forge-control-title {color:#f07882!important}
+#optimizer .forge-results-heading,
+#optimizer .forge-audit-card.is-mismatch {border-color:rgba(225,34,57,.34)!important}
+#optimizer .forge-results-heading {background:linear-gradient(110deg,rgba(100,8,24,.2),rgba(8,7,10,.68))!important}
+
+/* Sith'ari : cœur incandescent, rouge vif réservé à la phase la plus profonde. */
+#sithari.sithari-page {
+  background:
+    radial-gradient(ellipse at 50% 0%,rgba(255,20,48,.13),transparent 34%),
+    radial-gradient(circle at 82% 48%,rgba(255,28,52,.085),transparent 32%),
+    radial-gradient(circle at 18% 80%,rgba(151,0,25,.09),transparent 36%),
+    linear-gradient(145deg,#050306,#10070c 50%,#050306)!important;
+}
+#sithari .sithari-header {
+  border-color:rgba(255,48,70,.4)!important;
+  box-shadow:inset 0 2px rgba(255,52,75,.16),0 16px 46px rgba(0,0,0,.3)!important;
+}
+#sithari .sithari-kicker,
+#sithari .sithari-thesis strong {color:#ff6478!important}
+#sithari .sithari-thesis {border-color:rgba(255,44,66,.32)!important;background:linear-gradient(90deg,rgba(120,4,25,.2),rgba(10,6,10,.55),rgba(120,4,25,.2))!important}
+#sithari .sithari-panel-title>span,
+#sithari .sithari-analysis-empty>span {color:#ff3d5c!important;text-shadow:0 0 20px rgba(255,24,51,.48)!important}
+#sithari .sithari-slot-card {border-color:rgba(255,46,67,.2)!important}
+#sithari .sithari-slot-card.is-mismatch {border-color:rgba(255,50,70,.62)!important;box-shadow:inset 0 0 20px rgba(210,0,32,.1)!important}
+#sithari .sithari-state .status-dot {background:#ff465f!important;box-shadow:0 0 14px rgba(255,35,60,.7)!important}
+@media(prefers-reduced-motion:reduce) {
+  #sithari .sithari-state .status-dot {box-shadow:none!important}
+}
