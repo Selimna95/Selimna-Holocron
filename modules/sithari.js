@@ -37,7 +37,7 @@ function sithariStatLabel(value){
   const key=compactKey(base);
   const labels={
     SPEED:'Speed',OFFENSE:'Offense',DEFENSE:'Defense',HEALTH:'Health',PROTECTION:'Protection',
-    POTENCY:'Potency',TENACITY:'Tenacity',CRITICALCHANCE:'Critical Chance',CRITCHANCE:'Crit Chance',
+    POTENCY:'Potency',TENACITY:'Tenacity',CRITICALCHANCE:'Critical Chance',CRITCHANCE:'Critical Chance',
     CRITICALDAMAGE:'Critical Damage',CRITICALAVOIDANCE:'Critical Avoidance',
     PHYSICALDAMAGE:'Physical Damage',SPECIALDAMAGE:'Special Damage',ARMOR:'Armor',RESISTANCE:'Resistance'
   };
