@@ -140,15 +140,27 @@ document.addEventListener('click',e=>{
     rotation=normalize(rotation);
     cube.dataset.rotation=String(rotation);
     cube.style.setProperty('--knowledge-rotation',String(rotation));
-    cube.style.transform='rotateY('+(-rotation*90)+'deg)';
+    // A single front-facing triangular panel is deliberate: never place four
+    // overlapping 3D buttons on top of one another and hope hit-testing works.
+    cube.style.transform='none';
+    cube.style.transformStyle='flat';
     const counter=document.getElementById('knowledgeFaceCounter');
     const name=document.getElementById('knowledgeFaceName');
     if(counter)counter.textContent='FACE '+String(rotation+1).padStart(2,'0')+' / 04';
     if(name)name.textContent=names[rotation];
-    cube.setAttribute('aria-label','Holocron rotatif. Face avant : '+names[rotation]+'.');
+    cube.setAttribute('aria-label','Holocron. Voie affichée : '+names[rotation]+'.');
     cube.querySelectorAll('.knowledge-cube-face').forEach((face,index)=>{
-      face.setAttribute('aria-current',String(index===rotation));
-      face.tabIndex=index===rotation?0:-1;
+      const active=index===rotation;
+      face.setAttribute('aria-current',String(active));
+      face.tabIndex=active?0:-1;
+      face.setAttribute('aria-hidden',String(!active));
+      if(active){
+        face.classList.remove('knowledge-face-active-enter');
+        void face.offsetWidth;
+        face.classList.add('knowledge-face-active-enter');
+      }else{
+        face.classList.remove('knowledge-face-active-enter');
+      }
     });
   }
   stage.querySelectorAll('[data-holocron-rotate]').forEach(button=>button.addEventListener('click',()=>{
