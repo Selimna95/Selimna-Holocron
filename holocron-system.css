@@ -918,3 +918,46 @@ body[data-page="knowledge"] .nav-knowledge{color:#fff!important;border-color:rgb
 @media(max-width:760px){.knowledge-holocron-chamber{--cube-face-width:220px;--cube-face-depth:110px;min-height:625px;padding:18px 10px 24px}.knowledge-holocron-stage{height:420px}.knowledge-holocron-cube{height:300px}.knowledge-cube-face{height:300px;padding:22px 15px 16px}.knowledge-face-rune{width:76px;height:76px;margin:21px auto 15px;font-size:34px}.knowledge-cube-face>strong{font-size:16px}.knowledge-face-copy{font-size:10px}.knowledge-chamber-sigil{width:340px;height:340px}}
 @media(max-width:420px){.knowledge-holocron-chamber{--cube-face-width:194px;--cube-face-depth:97px;min-height:590px;padding-inline:8px}.knowledge-holocron-stage{height:385px}.knowledge-holocron-cube{height:280px}.knowledge-cube-face{height:280px;padding:19px 12px 14px}.knowledge-face-rune{width:64px;height:64px;margin:18px auto 13px;font-size:30px}.knowledge-cube-face>strong{font-size:14px}.knowledge-face-copy{font-size:9px;min-height:43px}.knowledge-face-cta{font-size:8px}.knowledge-holocron-controls{gap:12px}.knowledge-rotate-control{width:42px;height:42px}.knowledge-rotation-readout{min-width:130px}.knowledge-rotation-readout small{font-size:7px}.knowledge-chamber-hint{font-size:7px}}
 @media(prefers-reduced-motion:reduce){.sanctuary-mini-holocron,.knowledge-holocron-aura{animation:none!important}.knowledge-holocron-cube{transition:none!important}}
+
+
+/* V3.3.1 — Sanctuary returns to account metrics; Sith'ari adopts the character-in-the-flows presentation. */
+body[data-page="dashboard"] .sanctuary-energy{display:none!important}
+body[data-page="dashboard"] .decision-stage{display:grid!important;position:relative!important;inset:auto!important;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:18px;width:100%;max-width:1400px;min-height:0;margin:24px auto 0;padding:0;background:transparent;border:0;box-shadow:none;overflow:visible}
+body[data-page="dashboard"] .decision-stage>.decision-flow,
+body[data-page="dashboard"] .decision-stage>.decision-holocron-wrap,
+body[data-page="dashboard"] .decision-stage>.holocron-verdict,
+body[data-page="dashboard"] .decision-stage>.decision-slogan{display:none!important}
+body[data-page="dashboard"] .decision-stage>.decision-card{position:relative!important;inset:auto!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;grid-column:auto!important;grid-row:auto!important;width:auto!important;min-width:0!important;max-width:none!important;transform:none!important;margin:0!important}
+body[data-page="dashboard"] .decision-stage>.decision-bottom-status{position:relative!important;inset:auto!important;grid-column:1/-1!important;margin:0!important;padding:16px 18px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(110deg,rgba(255,255,255,.035),rgba(255,255,255,.008));}
+body[data-page="dashboard"] .decision-header{margin-bottom:18px}
+body[data-page="dashboard"] .decision-status{display:flex;align-items:center;gap:9px;padding:10px 14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.025);font:800 10px var(--font-display);letter-spacing:.12em;color:#cfc6c6}
+body[data-page="dashboard"] .decision-card-head strong{font-size:clamp(25px,3vw,38px)}
+body[data-page="dashboard"] .decision-card-title{margin-top:18px}
+body[data-page="dashboard"] .decision-bottom-status small{display:block;margin-top:5px}
+.sithari-character-flow-board{--flow-red:#ff3048;position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.78fr) minmax(0,1fr);gap:clamp(10px,1.3vw,20px);align-items:stretch;margin:18px 0 20px;padding:18px 0;overflow:hidden}
+.sithari-character-flow-lines{position:absolute;inset:0;z-index:-1;width:100%;height:100%;pointer-events:none;overflow:visible}
+.sithari-character-flow-lines path{fill:none;stroke:url(#sithariCharacterFlow);stroke-width:1.4;stroke-dasharray:7 9;animation:sithariFlowTravel 7s linear infinite}
+.sithari-flow-mod-column{display:flex;flex-direction:column;justify-content:space-between;gap:12px;min-width:0}
+.sithari-flow-mod-column .sithari-slot-card{min-width:0;background:linear-gradient(145deg,rgba(18,13,13,.96),rgba(8,6,7,.98));border-color:rgba(255,255,255,.1);box-shadow:0 12px 26px rgba(0,0,0,.2)}
+.sithari-flow-mod-column .sithari-slot-card header{padding-right:0;flex-wrap:wrap}
+.sithari-flow-mod-column .sithari-slot-card header em{margin-left:auto}
+.sithari-flow-character-core{position:sticky;top:20px;align-self:center;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 16px 20px;text-align:center;border:1px solid rgba(255,48,72,.3);background:radial-gradient(ellipse at 50% 34%,rgba(150,10,28,.22),transparent 52%),linear-gradient(155deg,rgba(14,10,11,.98),rgba(4,4,5,.98));box-shadow:inset 0 0 45px rgba(255,28,48,.06),0 18px 50px rgba(0,0,0,.34)}
+.sithari-flow-character-core:before{content:"";position:absolute;inset:8px;border:1px solid rgba(255,70,87,.13);pointer-events:none}
+.sithari-flow-core-orbit{position:absolute;left:50%;top:25%;width:190px;height:190px;border:1px solid rgba(255,48,72,.14);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
+.sithari-flow-core-orbit.orbit-b{width:150px;height:150px;border-style:dashed;animation:sithariOrbitSpin 24s linear infinite}
+.sithari-flow-portrait{position:relative;z-index:1;display:grid;place-items:center;width:clamp(92px,10vw,140px);aspect-ratio:1;margin:8px 0 19px;border-radius:50%;border:1px solid rgba(255,64,82,.48);background:radial-gradient(circle,rgba(255,37,57,.13),rgba(7,5,6,.98) 70%);box-shadow:0 0 30px rgba(255,27,48,.16),inset 0 0 30px rgba(255,30,49,.1);overflow:hidden}
+.sithari-flow-portrait img{width:100%;height:100%;object-fit:contain}
+.sithari-flow-character-core>small{position:relative;z-index:1;color:#ff6878;font:800 8px/1.5 var(--font-display);letter-spacing:.16em}
+.sithari-flow-character-core>h3{position:relative;z-index:1;margin:9px 0 5px;color:#f5f0ef;font:900 clamp(15px,1.45vw,22px)/1.15 var(--font-display);overflow-wrap:anywhere}
+.sithari-flow-character-core>p{position:relative;z-index:1;margin:0;color:#958889;font-size:10px;line-height:1.5}
+.sithari-flow-core-kpis{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;width:100%;margin:20px 0 14px}
+.sithari-flow-core-kpis>div{padding:9px 3px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02)}
+.sithari-flow-core-kpis span{display:block;color:#8f7e80;font:800 7px var(--font-display);letter-spacing:.06em}
+.sithari-flow-core-kpis b{display:block;margin-top:5px;color:#ff7480;font:900 18px var(--font-display)}
+.sithari-flow-core-status{position:relative;z-index:1;width:100%;padding:8px 4px;border-top:1px solid rgba(255,255,255,.07);color:#a99899;font:800 7px/1.5 var(--font-display);letter-spacing:.08em}
+.sithari-flow-mobile-slots{display:none}
+@keyframes sithariFlowTravel{to{stroke-dashoffset:-128}}
+@keyframes sithariOrbitSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@media(max-width:1100px){.sithari-character-flow-board{grid-template-columns:minmax(0,1fr) minmax(190px,.7fr) minmax(0,1fr);gap:9px}.sithari-flow-mod-column .sithari-slot-card{padding:9px}.sithari-flow-mod-column .sithari-slot-compare{grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr);gap:5px}.sithari-flow-character-core{padding:22px 10px}.sithari-flow-core-kpis span{font-size:6px}}
+@media(max-width:760px){body[data-page="dashboard"] .decision-stage{grid-template-columns:1fr;gap:12px}body[data-page="dashboard"] .decision-stage>.decision-bottom-status{grid-column:1}body[data-page="dashboard"] .decision-stage>.decision-card{width:100%!important}.sithari-character-flow-board{grid-template-columns:1fr;gap:12px;padding:0;overflow:visible}.sithari-character-flow-lines{display:none}.sithari-flow-character-core{position:relative;top:auto;grid-row:1;padding:22px 16px}.sithari-flow-portrait{width:108px}.sithari-flow-mod-column{display:none}.sithari-flow-mobile-slots{display:grid;grid-template-columns:1fr;gap:10px}.sithari-flow-mobile-slots .sithari-slot-card{min-width:0}.sithari-flow-mobile-slots .sithari-slot-card header{padding-right:0;flex-wrap:wrap}.sithari-flow-mobile-slots .sithari-slot-card header em{margin-left:auto}}
+@media(prefers-reduced-motion:reduce){.sithari-character-flow-lines path,.sithari-flow-core-orbit.orbit-b{animation:none!important}}
