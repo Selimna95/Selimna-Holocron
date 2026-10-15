@@ -475,12 +475,24 @@ function sithariBindActionControls(box){
     if(c&&slotKey)sithariOpenAction(sithariSlotState(c,slotKey),btn.dataset.sithariAction);
   }));
   box.querySelectorAll('[data-sithari-close]').forEach(btn=>btn.addEventListener('click',()=>{sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};sithariRenderCharacter();}));
-  box.querySelectorAll('[data-sithari-secondary]').forEach(sel=>sel.addEventListener('change',()=>{
-    const a=sel.dataset.sithariSecondary;
-    sithariActionState[a==='A'?'secondaryA':'secondaryB']=sel.value;
-    sithariActionState.ran=true;
-    sithariRefreshActionPanel(sel.closest('.sithari-action-panel'));
-  }));
+  // Use both input/change and explicit focusability: these controls must remain
+  // operable while the constellation alone is refreshed.
+  box.querySelectorAll('[data-sithari-secondary]').forEach(sel=>{
+    sel.disabled=false;
+    sel.tabIndex=0;
+    sel.addEventListener('input',()=>{
+      const a=sel.dataset.sithariSecondary;
+      sithariActionState[a==='A'?'secondaryA':'secondaryB']=sel.value;
+      sithariActionState.ran=true;
+      sithariRefreshActionPanel(sel.closest('.sithari-action-panel'));
+    });
+    sel.addEventListener('change',()=>{
+      const a=sel.dataset.sithariSecondary;
+      sithariActionState[a==='A'?'secondaryA':'secondaryB']=sel.value;
+      sithariActionState.ran=true;
+      sithariRefreshActionPanel(sel.closest('.sithari-action-panel'));
+    });
+  });
   box.querySelectorAll('.sithari-source-options input').forEach(input=>input.addEventListener('change',()=>{
     if(input.id==='sithariAllRoster'){
       sithariActionState.scope.all=input.checked;
