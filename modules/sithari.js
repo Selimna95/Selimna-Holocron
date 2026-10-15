@@ -225,7 +225,8 @@ function sithariTwoSecondaryMatch(m,first,second){
   return wanted.every(x=>got.has(x));
 }
 function sithariReinforcementResults(x){
-  const first=x.secondaryA||'', second=x.secondaryB||'';
+  // The selected secondary stats live in the action state, not in the slot descriptor.
+  const first=sithariActionState.secondaryA||'', second=sithariActionState.secondaryB||'';
   if(!first||!second||compactKey(first)===compactKey(second))return [];
   const pool=sithariCandidatePool(x.slot,x.current?.set_name,x.current?.primary_stat,x.current,characterKey(x.character));
   return pool.filter(m=>sithariTwoSecondaryMatch(m,first,second))
@@ -246,7 +247,7 @@ function sithariCalibrationResults(x){
   }
   return pool.map(m=>({m,status:sithariSourceStatus(m),score:sithariSecondaryScore(m,x.profile),speed:modTotalSpeed(m)}))
     .sort((a,b)=>b.score-a.score||b.speed-a.speed)
-    .slice(0,8);
+    .slice(0,5);
 }
 function sithariDefaultSecondaries(profile){
   const names=sithariSecondaryNames();
