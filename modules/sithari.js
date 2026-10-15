@@ -538,6 +538,7 @@ function sithariRenderCharacter(){
     <article class="sithari-flow-character-core"><div class="sithari-flow-core-orbit orbit-a"></div><div class="sithari-flow-core-orbit orbit-b"></div><div class="sithari-flow-portrait">${portrait}</div><small>PERSONNAGE AU CŒUR DES FLUX</small><h3>${esc(c?.name||c?.baseId||'—')}</h3><p>${factionLabel}</p><div class="sithari-flow-core-kpis"><div><span>SLOTS</span><b>6</b></div><div><span>RENFORCER</span><b>${reinforcement}</b></div><div><span>CALIBRER</span><b>${calibration}</b></div></div><div class="sithari-flow-core-status">${loading?'RÉFÉRENCE KYBER EN CHARGEMENT':!p?'RÉFÉRENCE KYBER INDISPONIBLE':'RÉFÉRENCE KYBER ACTIVE'}</div></article>
     <div class="sithari-flow-mod-column sithari-flow-mod-right">${states.slice(3,6).map((x,i)=>sithariSlotCard(x,i+3)).join('')}</div>
   </section>
+  ${(()=>{const active=states.find(x=>sithariActionState.key===sithariActionKey(x.character,x.slot));return active?sithariRenderActionPanel(active):''})()}
   ${loading?'':sithariStatsPanel(c,p)}
   ${actionSummary}
 `;
@@ -574,7 +575,6 @@ function sithariSlotCard(x,i){
     <div class="sithari-slot-compare"><div class="sithari-current-mod"><small>TON MOD</small>${sithariModMini(x.current,x.slot,x.status)}</div><div class="sithari-slot-arrow">→</div><div class="sithari-kyber-ref"><small>RÉFÉRENCE KYBER</small><p><b>SETS</b> ${esc(x.reference.sets)}</p><p><b>PRIMAIRE</b> ${esc(x.reference.prim)}</p><p><b>SECONDAIRES</b> ${esc(x.reference.sec)}</p></div></div>
     <div class="sithari-rule-check"><span class="${x.setOk?'ok':'bad'}"><b>${x.setOk?'✓':'×'}</b> SET <em>${x.setOk?'CONFORME':'À CALIBRER'}</em></span><span class="${x.primaryOk?'ok':'bad'}"><b>${x.primaryOk?'✓':'×'}</b> PRIMAIRE <em>${x.primaryOk?'CONFORME':'À CALIBRER'}</em></span></div>
     ${actionBtn}
-    ${sithariRenderActionPanel(x)}
   </article>`;
 }
 function sithariRenderTeamResults(){
