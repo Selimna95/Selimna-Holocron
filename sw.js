@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.7.2-sanctuary-gateway-pyramid';
+const CACHE_NAME = 'holocron-static-v3.7.3-curved-energy-routes';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=3.6.0-pulse',
-  './holocron-system.css?v=3.3.6-gate-image-pyramid',
+  './holocron-system.css?v=3.3.7-curved-links',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js',
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
   './modules/disciple.js',
   './modules/seigneur.js',
   './modules/sithari.js?v=3.4.0-energy',
-  './modules/runtime.js?v=3.3.3-sanctuary-account-only',
+  './modules/runtime.js?v=3.3.4-knowledge-routes',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
   './python/kyber_data.py?v=3.2.1',
