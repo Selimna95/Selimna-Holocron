@@ -530,7 +530,6 @@ function sithariRenderCharacter(){
   box.hidden=false;empty.hidden=true;
   const factionLabel=(factionMap[characterKey(c)]||[]).map(esc).join(' · ')||'Faction non renseignée';
   const portrait=sithariPortrait(c);
-  const slotsHtml=states.map((x,i)=>sithariSlotCard(x,i)).join('');
   const actionSummary=loading?'<div class="sithari-no-reference">Récupération de la référence Kyber pour ce personnage…</div>':!p?'<div class="sithari-no-reference">Référence Kyber indisponible pour ce personnage.</div>':`<div class="sithari-action-summary"><div class="sithari-action-summary-main"><span class="sithari-action-icon">✧</span><div><strong>${reinforcement?`ACTION : ${reinforcement} renforcement${reinforcement>1?'s':''} possible${reinforcement>1?'s':''}`:'AUCUN RENFORCEMENT DISPONIBLE'}</strong><small>Set + primaire conformes = RENFORCEMENT. Sinon = CALIBRAGE avec la référence Kyber.</small></div></div><div class="sithari-action-pills"><b>${reinforcement} RENFORCEMENTS</b><b>${calibration} CALIBRAGES</b></div></div>`;
   box.innerHTML=`<header class="sithari-analysis-head"><div class="sithari-character-heading"><div class="sithari-analysis-portrait">${portrait}</div><div><small>SITH’ARI // ANALYSE PERSONNAGE</small><h3>${esc(c?.name||c?.baseId||'—')}</h3><p>${factionLabel} · ${num(sithariCharacterSpeed(c))} Speed max mod</p></div></div><div class="sithari-analysis-kpis"><span class="kpi-slots"><b>6</b><em>SLOTS</em></span><span class="kpi-replace"><b>${reinforcement}</b><em>RENFORCEMENTS</em></span><span class="kpi-search"><b>${calibration}</b><em>CALIBRAGES</em></span></div></header>
   <section class="sithari-character-flow-board" aria-label="Personnage au centre des six emplacements de mods">
@@ -541,7 +540,7 @@ function sithariRenderCharacter(){
   </section>
   ${loading?'':sithariStatsPanel(c,p)}
   ${actionSummary}
-  <div class="sithari-flow-mobile-slots" aria-label="Six emplacements de mods pour petits écrans">${slotsHtml}</div>`;
+`;
   sithariBindActionControls(box);
 }
 async function sithariEnsureProfilesForTeam(){
