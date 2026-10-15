@@ -1453,3 +1453,28 @@ body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation
  .knowledge-rotate-control{width:44px!important;height:44px!important}
 }
 @media(prefers-reduced-motion:reduce){.knowledge-holocron-stage:before{animation:none!important}}
+
+
+/* V3.4.1 — subtle energy pulses across the Sith crystal. */
+.knowledge-holocron-stage:before{animation:knowledgeSigilSpin 42s linear infinite,knowledgeSigilPulse 3.8s ease-in-out infinite!important}
+.knowledge-holocron-aura{animation:knowledgeAuraPulse 2.8s ease-in-out infinite!important}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{
+  animation:knowledgeCrystalPulse 4.2s ease-in-out infinite!important;
+}
+.knowledge-holocron-pyramid .knowledge-face-rune{
+  animation:knowledgeRunePulse 2.6s ease-in-out infinite;
+}
+.knowledge-holocron-pyramid .knowledge-face-cta{
+  animation:knowledgeCtaPulse 3.4s ease-in-out infinite;
+}
+.knowledge-rotate-control{touch-action:manipulation!important;pointer-events:auto!important;position:relative!important;z-index:999!important}
+.knowledge-holocron-controls{isolation:isolate!important;z-index:999!important;pointer-events:auto!important}
+.knowledge-holocron-controls:before,.knowledge-holocron-controls:after{pointer-events:none!important}
+@keyframes knowledgeSigilPulse{0%,100%{opacity:.42;filter:brightness(.85)}50%{opacity:.9;filter:brightness(1.35)}}
+@keyframes knowledgeAuraPulse{0%,100%{opacity:.45;transform:scale(.97);box-shadow:0 0 14px rgba(255,20,45,.06),inset 0 0 16px rgba(255,20,45,.04)}50%{opacity:1;transform:scale(1.035);box-shadow:0 0 30px rgba(255,20,45,.22),inset 0 0 25px rgba(255,20,45,.12)}}
+@keyframes knowledgeCrystalPulse{0%,100%{filter:brightness(.92) drop-shadow(0 0 8px rgba(255,20,42,.16)) drop-shadow(0 20px 20px rgba(0,0,0,.65))}50%{filter:brightness(1.12) drop-shadow(0 0 19px rgba(255,30,52,.38)) drop-shadow(0 20px 20px rgba(0,0,0,.65))}}
+@keyframes knowledgeRunePulse{0%,100%{box-shadow:0 0 12px rgba(255,24,46,.12),inset 0 0 8px rgba(255,30,50,.1)}50%{box-shadow:0 0 26px rgba(255,24,46,.42),inset 0 0 18px rgba(255,30,50,.25)}}
+@keyframes knowledgeCtaPulse{0%,100%{border-color:rgba(255,75,95,.28)}50%{border-color:rgba(255,105,123,.72)}}
+@media(prefers-reduced-motion:reduce){
+ .knowledge-holocron-stage:before,.knowledge-holocron-aura,.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"],.knowledge-holocron-pyramid .knowledge-face-rune,.knowledge-holocron-pyramid .knowledge-face-cta{animation:none!important}
+}
