@@ -250,24 +250,31 @@ function sithariCandidatePool(slot,setName,primaryName,current,excludeCharacterK
   }
   return pool;
 }
-function sithariTwoSecondaryMatch(m,first,second){
+function sithariSelectedSecondaryStats(m,first,second,profile){
   const wanted=[sithariStatKey(first),sithariStatKey(second)].filter(Boolean);
-  if(wanted.length!==2 || wanted[0]===wanted[1])return false;
-  const got=new Set();
-  for(let i=1;i<=4;i++){
-    const stat=m?.[`secondary_${i}_stat`];
-    if(stat)got.add(sithariStatKey(stat));
+  if(wanted.length!==2||wanted[0]===wanted[1])return {coverage:0,score:0};
+  const values=sithariModSecondaryMap(m);
+  let coverage=0,score=0;
+  for(const label of [first,second]){
+    const key=sithariStatKey(label),value=Number(values[key]||0);
+    if(value<=0)continue;
+    coverage++;
+    const target=Number(Object.entries(profile?.secondary_focus||{}).find(([stat])=>sithariStatKey(stat)===key)?.[1]||0);
+    score+=target>0?Math.min(1,value/target):1;
   }
-  return wanted.every(x=>got.has(x));
+  return {coverage,score:coverage?score/coverage:0};
 }
 function sithariReinforcementResults(x){
-  // The selected secondary stats live in the action state, not in the slot descriptor.
+  // These selections are ranking priorities, not a requirement that both
+  // stats exist together on every candidate mod.
   const first=sithariActionState.secondaryA||'', second=sithariActionState.secondaryB||'';
-  if(!first||!second||compactKey(first)===compactKey(second))return [];
+  if(!first||!second||sithariStatKey(first)===sithariStatKey(second))return [];
   const pool=sithariCandidatePool(x.slot,x.current?.set_name,x.current?.primary_stat,x.current,characterKey(x.character));
-  return pool.filter(m=>sithariTwoSecondaryMatch(m,first,second))
-    .map(m=>({m,status:sithariSourceStatus(m),score:sithariSecondaryScore(m,x.profile),speed:modTotalSpeed(m)}))
-    .sort((a,b)=>b.score-a.score||b.speed-a.speed)
+  return pool.map(m=>{
+    const selected=sithariSelectedSecondaryStats(m,first,second,x.profile);
+    return {m,status:sithariSourceStatus(m),coverage:selected.coverage,priorityScore:selected.score,score:sithariSecondaryScore(m,x.profile),speed:modTotalSpeed(m)};
+  }).filter(r=>r.coverage>0)
+    .sort((a,b)=>b.coverage-a.coverage||b.priorityScore-a.priorityScore||b.score-a.score||b.speed-a.speed)
     .slice(0,5);
 }
 function sithariCalibrationResults(x){
