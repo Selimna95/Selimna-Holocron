@@ -15,3 +15,12 @@
 - `node --check modules/sithari.js` : réussi.
 - `python -m unittest discover -s tests -v` : 13 tests réussis.
 - La validation visuelle dans un navigateur avec un roster réel reste à faire ; les tests automatisés ne garantissent pas le rendu pixel par pixel.
+
+
+## Correctif R2 — constellation effectivement orbitale
+
+- Le calibrage affiche les propositions dès le clic sur le mod, sans étape supplémentaire « Lancer le calibrage ».
+- Les cinq premiers candidats sont positionnés autour du mod central par zones de grille explicites : haut, gauche, droite, bas-gauche, bas-droite.
+- Les candidats supplémentaires restent visibles sous la constellation, au lieu de perturber la géométrie orbitale.
+- La feuille de style utilise un nouveau paramètre de version pour éviter le cache navigateur de l’ancienne présentation.
+- En renforcement, le choix des deux secondaires reste nécessaire, car le moteur métier filtre les mods selon ces deux statistiques.
