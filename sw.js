@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.7.3-curved-energy-routes';
+const CACHE_NAME = 'holocron-static-v3.7.4-curved-energy-pyramid-fix';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=3.6.0-pulse',
-  './holocron-system.css?v=3.3.7-curved-links',
+  './holocron-system.css?v=3.3.8-curved-links-pyramid-apex',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js',
