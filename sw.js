@@ -1,9 +1,9 @@
-const CACHE_NAME = 'holocron-static-v3.8.5-sith-energy-pulse';
+const CACHE_NAME = 'holocron-static-v3.8.6-sith-energy-pulse';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
-  './sithari.css?v=3.9.0-sith-energy-pulse',
+  './sithari.css?v=3.9.1-sith-energy-pulse',
   './holocron-system.css?v=3.4.2-sanctuary-obsidian',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
