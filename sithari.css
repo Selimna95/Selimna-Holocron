@@ -951,7 +951,7 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
 
 
 /* Sith’ari — décharge d’énergie à l’ouverture d’un mod, puis panneau de décision persistant. */
-.sithari-page .sithari-character-flow-board{isolation:isolate}
+.sithari-page .sithari-character-flow-board{position:relative;isolation:isolate}
 .sithari-page .sithari-character-flow-board.sithari-energy-active:after{
   content:"";position:absolute;z-index:8;inset:-2%;pointer-events:none;opacity:0;
   background:
