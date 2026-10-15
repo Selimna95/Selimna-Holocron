@@ -270,8 +270,7 @@ function sithariReinforcementResults(x){
   return pool.map(m=>{
     const selected=sithariSelectedSecondaryStats(m,first,second,x.profile);
     return {m,status:sithariSourceStatus(m),coverage:selected.coverage,priorityScore:selected.score,score:sithariSecondaryScore(m,x.profile),speed:modTotalSpeed(m)};
-  }).filter(r=>r.coverage>0)
-    .sort((a,b)=>b.coverage-a.coverage||b.priorityScore-a.priorityScore||b.score-a.score||b.speed-a.speed)
+  }).sort((a,b)=>b.coverage-a.coverage||b.priorityScore-a.priorityScore||b.score-a.score||b.speed-a.speed)
     .slice(0,5);
 }
 function sithariCalibrationResults(x){
