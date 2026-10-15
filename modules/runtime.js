@@ -1,73 +1,10 @@
 
-/* V3.2.5 — live Sanctuary character / mod energy view */
-let sanctuarySelectedKey = '';
-function sanctuaryStatValue(character, statName){
-  const p=optimizerProfileForCharacter(character)||{};
-  const stats=p.current_stats||character?.stats||character?.current_stats||{};
-  const aliases={'Speed':['Speed','speed'],'Health':['Health','health'],'Protection':['Protection','protection']};
-  for(const key of aliases[statName]||[statName]){const v=stats[key];const parsed=Number(String(v??'').replace(/,/g,''));if(v!==undefined&&v!==null&&Number.isFinite(parsed)&&parsed>0)return parsed;}
-  return 0;
-}
-function sanctuaryFormatStat(value){return Number(value||0).toLocaleString('fr-FR',{maximumFractionDigits:0});}
-function sanctuaryRenderModNode(character,slot){
-  const mod=sithariCharacterMods(character).find(m=>modSlotLabel(m.slot??m.slot_id??m.slotId)===slot);
-  const label=SITHARI_SLOT_LABEL[slot]||slot;
-  if(!mod)return `<button type="button" class="sanctuary-mod-node missing" data-sanctuary-slot="${slot}" aria-label="Analyser le slot ${label}, aucun mod équipé"><span class="sanctuary-mod-empty">＋</span><span class="sanctuary-mod-node-copy"><small>${label}</small><strong>EMPLACEMENT VIDE</strong><span>Aucun mod équipé</span><em>OUVRIR L’ANALYSE ↗</em></span></button>`;
-  const speed=modTotalSpeed(mod);
-  const primary=String(mod.primary_stat||'—');
-  return `<button type="button" class="sanctuary-mod-node" data-sanctuary-slot="${slot}" aria-label="Analyser le mod ${label} de ${esc(character.name||'ce personnage')}"><span>${modIconHtml(mod,'54')}</span><span class="sanctuary-mod-node-copy"><small>${label} · ${esc(String(mod.set_name||'SET INCONNU'))}</small><strong>${esc(primary)} ${num(mod.primary_value,1)}</strong><span>${speed?'+ '+num(speed)+' Speed':'Sans secondaire Speed'}</span><em>OUVRIR L’ANALYSE ↗</em></span></button>`;
-}
+/* V3.3.3 — Le Sanctuaire est une vue du compte, jamais un personnage choisi par tri alphabétique.
+   Les statistiques de compte sont alimentées par le moteur principal (core.js). */
 function sanctuaryRenderEnergy(){
-  const select=$('sanctuaryCharacterSelect'),left=$('sanctuaryModsLeft'),right=$('sanctuaryModsRight');
-  if(!select||!left||!right)return;
-  const chars=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship').slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr'));
-  const previous=sanctuarySelectedKey;
-  if(!sanctuarySelectedKey||!chars.some(c=>characterKey(c)===sanctuarySelectedKey))sanctuarySelectedKey=chars.length?characterKey(chars[0]):'';
-  select.innerHTML=chars.length?chars.map(c=>`<option value="${esc(characterKey(c))}">${esc(c.name||c.baseId||'Personnage')}</option>`).join(''):'<option value="">Charge un profil pour commencer</option>';
-  select.value=sanctuarySelectedKey;
-  const character=chars.find(c=>characterKey(c)===sanctuarySelectedKey);
-  const core=$('sanctuaryCharacterCore'),status=$('sanctuaryStatus');
-  if(!character){
-    left.innerHTML='';right.innerHTML='';
-    core.innerHTML='<div class="sanctuary-core-orbit orbit-one"></div><div class="sanctuary-core-orbit orbit-two"></div><div class="sanctuary-character-portrait"><span>✧</span></div><div class="sanctuary-character-identity"><small>PERSONNAGE SÉLECTIONNÉ</small><h3>EN ATTENTE DU ROSTER</h3><p>Synchronise ton profil pour révéler les statistiques.</p></div><div class="sanctuary-character-stats"><div><span>SPEED</span><b>—</b></div><div><span>SANTÉ</span><b>—</b></div><div><span>PROTECTION</span><b>—</b></div><div><span>MODS</span><b>0 / 6</b></div></div><button type="button" class="sanctuary-knowledge-core" id="sanctuaryKnowledgeAccess" aria-label="Ouvrir Le savoir se mérite" title="Le savoir se mérite"><span class="sanctuary-mini-holocron" aria-hidden="true"><i></i><b></b><em></em></span><span class="sanctuary-core-sr">LE SAVOIR SE MÉRITE</span></button>';
-    status.textContent='EN ATTENTE DU PROFIL';return;
-  }
-  const equipped=sithariCharacterMods(character);
-  const slots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
-  left.innerHTML=slots.slice(0,3).map(slot=>sanctuaryRenderModNode(character,slot)).join('');
-  right.innerHTML=slots.slice(3).map(slot=>sanctuaryRenderModNode(character,slot)).join('');
-  const portrait=sithariPortrait(character);
-  const speed=sanctuaryStatValue(character,'Speed'),health=sanctuaryStatValue(character,'Health'),protection=sanctuaryStatValue(character,'Protection');
-  const relic=Number(character.relic?.currentTier??character.relic_level??character.relicLevel??character.relic??0)||0;
-  const corePortrait=core.querySelector('.sanctuary-character-portrait');
-  if(corePortrait)corePortrait.innerHTML=portrait;
-  const identity=core.querySelector('.sanctuary-character-identity');
-  if(identity)identity.innerHTML=`<small>PERSONNAGE AU CŒUR DES FLUX</small><h3>${esc(character.name||character.baseId||'Personnage')}</h3><p>${relic>0?'RELIQUE '+relic+' · ':''}${equipped.length} MODS ÉQUIPÉS · ${num(sithariCharacterSpeed(character))} SPEED MOD MAX</p>`;
-  const stats=core.querySelector('.sanctuary-character-stats');
-  if(stats)stats.innerHTML=`<div><span>SPEED</span><b class="${speed?'good':''}">${speed?sanctuaryFormatStat(speed):'—'}</b></div><div><span>SANTÉ</span><b>${health?sanctuaryFormatStat(health):'—'}</b></div><div><span>PROTECTION</span><b>${protection?sanctuaryFormatStat(protection):'—'}</b></div><div><span>MODS</span><b>${equipped.length} / 6</b></div>`;
-  if(!core.querySelector('#sanctuaryKnowledgeAccess'))core.insertAdjacentHTML('beforeend','<button type="button" class="sanctuary-knowledge-core" id="sanctuaryKnowledgeAccess" aria-label="Ouvrir l’onglet Le savoir se mérite"><span>✧</span><strong>LE SAVOIR SE MÉRITE</strong><small>ACCÉDER AU NŒUD CENTRAL</small></button>');
-  status.textContent=chars.length?`SANCTUAIRE ACTIF · ${chars.length} PERSONNAGES DISPONIBLES`:'EN ATTENTE DU PROFIL';
+  if(typeof renderGalacticPower==='function') renderGalacticPower();
 }
-document.addEventListener('change',event=>{
-  if(event.target?.id==='sanctuaryCharacterSelect'){
-    sanctuarySelectedKey=event.target.value||'';
-    sanctuaryRenderEnergy();
-  }
-});
-document.addEventListener('click',event=>{
-  const knowledge=event.target.closest?.('#sanctuaryKnowledgeAccess');
-  if(knowledge){showPage('knowledge');return;}
-  const node=event.target.closest?.('[data-sanctuary-slot]');
-  if(!node)return;
-  const character=sithariCharacterByKey(sanctuarySelectedKey);
-  if(!character)return;
-  const slot=node.dataset.sanctuarySlot;
-  sithariSelectedKeys=[sanctuarySelectedKey];sithariActiveKey=sanctuarySelectedKey;
-  sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
-  showPage('sithari');sithariRenderAll(false);
-  const state=sithariSlotState(character,slot);
-  if(state.status==='REINFORCE'||state.status==='CALIBRATE')sithariOpenAction(state,state.status==='REINFORCE'?'REINFORCEMENT':'CALIBRATION');
-});
+
 window.addEventListener('holocron:data-updated',sanctuaryRenderEnergy);
 window.addEventListener('load',sanctuaryRenderEnergy);
 
@@ -189,7 +126,7 @@ document.addEventListener('click',e=>{
   navigateToPageFromElement(btn);
 });
 
-document.getElementById('sithariAccess')?.addEventListener('click',()=>showPage('knowledge'));
+// Les boutons de la pyramide utilisent le gestionnaire de navigation unique [data-page].
 
 // KNOWLEDGE HOLOCRON — four rotatable faces, Acolyte is the default orientation.
 (function initKnowledgeHolocron(){
