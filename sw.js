@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.7.0-sanctuary-energy-knowledge-gateway';
+const CACHE_NAME = 'holocron-static-v3.7.1-living-pyramid-clickfix';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=3.6.0-pulse',
-  './holocron-system.css?v=3.3.3-sanctuary-pyramid',
+  './holocron-system.css?v=3.3.5-living-pyramid',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js',
