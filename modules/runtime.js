@@ -216,16 +216,23 @@ document.getElementById('sithariAccess')?.addEventListener('click',()=>showPage(
   stage.querySelectorAll('[data-holocron-rotate]').forEach(button=>button.addEventListener('click',()=>{
     rotation+=Number(button.dataset.holocronRotate)||0;render();
   }));
+  let suppressFaceClick=false;
   stage.addEventListener('pointerdown',event=>{
-    if(event.target.closest('button'))return;
-    startX=event.clientX;startY=event.clientY;dragging=true;
+    if(event.target.closest('[data-holocron-rotate]'))return;
+    startX=event.clientX;startY=event.clientY;dragging=true;suppressFaceClick=false;
     if(stage.setPointerCapture)try{stage.setPointerCapture(event.pointerId)}catch(_){}
   });
   stage.addEventListener('pointerup',event=>{
     if(!dragging)return;dragging=false;
     const dx=event.clientX-startX,dy=event.clientY-startY;
-    if(Math.abs(dx)>34&&Math.abs(dx)>Math.abs(dy)){rotation+=dx<0?1:-1;render();}
+    if(Math.abs(dx)>34&&Math.abs(dx)>Math.abs(dy)){
+      rotation+=dx<0?1:-1;render();suppressFaceClick=true;
+    }
   });
+  stage.addEventListener('click',event=>{
+    if(!suppressFaceClick)return;
+    event.preventDefault();event.stopPropagation();suppressFaceClick=false;
+  },true);
   stage.addEventListener('pointercancel',()=>{dragging=false;});
   stage.addEventListener('keydown',event=>{
     if(event.key==='ArrowRight'){event.preventDefault();rotation++;render();}
