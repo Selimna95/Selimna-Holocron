@@ -231,7 +231,7 @@ function sithariReinforcementResults(x){
   return pool.filter(m=>sithariTwoSecondaryMatch(m,first,second))
     .map(m=>({m,status:sithariSourceStatus(m),score:sithariSecondaryScore(m,x.profile),speed:modTotalSpeed(m)}))
     .sort((a,b)=>b.score-a.score||b.speed-a.speed)
-    .slice(0,8);
+    .slice(0,5);
 }
 function sithariCalibrationResults(x){
   const setChoices=sithariCalibrationSetChoices(x.profile);
@@ -248,6 +248,13 @@ function sithariCalibrationResults(x){
     .sort((a,b)=>b.score-a.score||b.speed-a.speed)
     .slice(0,8);
 }
+function sithariDefaultSecondaries(profile){
+  const names=sithariSecondaryNames();
+  const focus=Object.keys(profile?.secondary_focus||{});
+  const ordered=focus.map(key=>names.find(name=>compactKey(name)===compactKey(secondaryDisplayName(key))||compactKey(name)===compactKey(key))).filter(Boolean);
+  for(const name of names){if(ordered.length>=2)break;if(!ordered.some(x=>compactKey(x)===compactKey(name)))ordered.push(name);}
+  return [...new Map(ordered.map(name=>[compactKey(name),name])).values()].slice(0,2);
+}
 function sithariActionKey(character,slot){return `${characterKey(character)}::${slot}`;}
 let sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
 function sithariOpenAction(x,mode){
@@ -256,7 +263,9 @@ function sithariOpenAction(x,mode){
   if(sithariActionState.key===key && sithariActionState.mode===mode){
     sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
   }else{
-    sithariActionState={key,mode,secondaryA:'',secondaryB:'',ran:mode==='CALIBRATION',scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
+    const profile=x.profile||sithariProfileForCharacter(x.character);
+    const defaults=mode==='REINFORCEMENT'?sithariDefaultSecondaries(profile):[];
+    sithariActionState={key,mode,secondaryA:defaults[0]||'',secondaryB:defaults[1]||'',ran:true,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
   }
   sithariRenderCharacter();
 }
@@ -272,10 +281,10 @@ function sithariRenderActionPanel(x){
   const refSet=sithariSetReference(x.profile), refPrimary=sithariPrimaryReference(x.profile,x.slot);
   const rows=active.ran?(active.mode==='REINFORCEMENT'?sithariReinforcementResults(x):sithariCalibrationResults(x)):[];
   const results=active.mode==='REINFORCEMENT'
-    ? `<div class="sithari-action-secondary"><label><span>SECONDAIRE 01</span><select data-sithari-secondary="A"><option value="">Choisir…</option>${names.map(n=>`<option value="${esc(n)}" ${compactKey(n)===compactKey(first)?'selected':''}>${esc(n)}</option>`).join('')}</select></label><label><span>SECONDAIRE 02</span><select data-sithari-secondary="B"><option value="">Choisir…</option>${names.map(n=>`<option value="${esc(n)}" ${compactKey(n)===compactKey(second)?'selected':''}>${esc(n)}</option>`).join('')}</select></label></div>
-       <button type="button" class="sithari-run-action" data-sithari-run ${(!first||!second||compactKey(first)===compactKey(second))?'disabled':''}>LANCER LE RENFORCEMENT</button>`
+    ? `<div class="sithari-action-secondary"><label><span>SECONDAIRES PRIORITAIRES KYBER · 01</span><select data-sithari-secondary="A"><option value="">Choisir…</option>${names.map(n=>`<option value="${esc(n)}" ${compactKey(n)===compactKey(first)?'selected':''}>${esc(n)}</option>`).join('')}</select></label><label><span>SECONDAIRE COMPLÉMENTAIRE · 02</span><select data-sithari-secondary="B"><option value="">Choisir…</option>${names.map(n=>`<option value="${esc(n)}" ${compactKey(n)===compactKey(second)?'selected':''}>${esc(n)}</option>`).join('')}</select></label></div>
+`
     : `<div class="sithari-calibration-target"><span>CONFIGURATION SET KYBER</span><b>${esc(refSet||'—')}</b><span>PRIMAIRE(S) KYBER</span><b>${esc(sithariPrimaryRefs(x.profile,x.slot).map(v=>v.name).join(' / ')||refPrimary||'—')}</b></div>
-       <button type="button" class="sithari-run-action calibration" data-sithari-run>LANCER LE CALIBRAGE</button>`;
+`;
   const resultHtml=active.ran?`<div class="sithari-constellation" aria-label="Possibilités de mods calculées"><div class="sithari-constellation-core"><span>✧</span><b>CONSTELLATION DE PROPOSITIONS</b><small>${rows.length} résultat${rows.length>1?'s':''} · classés selon les critères réels</small></div><div class="sithari-constellation-stage"><div class="sithari-constellation-current"><span class="sithari-current-orbit">MOD ACTUEL</span><div class="sithari-current-visual">${x.current?modIconHtml(x.current,'72'):'<span class="sithari-no-mod">AUCUN MOD</span>'}</div><strong>${esc(SITHARI_SLOT_LABEL[x.slot]||x.slot)}</strong><small>${esc(x.current?.set_name||'À équiper')} · ${esc(x.current?.primary_stat||'—')} ${x.current?num(x.current.primary_value,1):''}</small><em>${x.current?`${num(modTotalSpeed(x.current))} Speed`:'Emplacement vide'}</em></div><div class="sithari-action-results">${rows.length?rows.map((r,i)=>{
     const m=r.m, owner=rosterCharacters.find(c=>characterKey(c)===sithariEquippedOwner(m));
     const other=[];
@@ -398,7 +407,7 @@ function sithariBindActionControls(box){
   box.querySelectorAll('[data-sithari-secondary]').forEach(sel=>sel.addEventListener('change',()=>{
     const a=sel.dataset.sithariSecondary;
     sithariActionState[a==='A'?'secondaryA':'secondaryB']=sel.value;
-    sithariActionState.ran=false;
+    sithariActionState.ran=true;
     sithariRenderCharacter();
   }));
   box.querySelectorAll('.sithari-source-options input').forEach(input=>input.addEventListener('change',()=>{
@@ -408,10 +417,6 @@ function sithariBindActionControls(box){
       const map={sithariIncomplete:'incomplete',sithariVeryLow:'veryLow',sithariLow:'low',sithariMedium:'medium'};
       sithariActionState.scope[map[input.id]]=input.checked;
     }
-    sithariActionState.ran=false;
-    sithariRenderCharacter();
-  }));
-  box.querySelectorAll('[data-sithari-run]').forEach(btn=>btn.addEventListener('click',()=>{
     sithariActionState.ran=true;
     sithariRenderCharacter();
   }));
