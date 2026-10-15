@@ -128,85 +128,72 @@ document.addEventListener('click',e=>{
 
 // Les boutons de la pyramide utilisent le gestionnaire de navigation unique [data-page].
 
-// KNOWLEDGE HOLOCRON — four rotatable faces, Acolyte is the default orientation.
+// KNOWLEDGE HOLOCRON — robust direct controls, independent from the stage's gesture handlers.
 (function initKnowledgeHolocron(){
   const stage=document.getElementById('knowledgeHolocronStage');
   const cube=document.getElementById('knowledgeHolocronCube');
-  if(!stage||!cube)return;
+  if(!stage||!cube||stage.dataset.holocronBound==='true')return;
+  stage.dataset.holocronBound='true';
+  const faces=[...cube.querySelectorAll('.knowledge-cube-face[data-page]')];
   const names=['ACOLYTE','DISCIPLE','SEIGNEUR SITH','SITH’ARI'];
-  let rotation=0,startX=0,startY=0,dragging=false;
-  const normalize=n=>((n%4)+4)%4;
+  let rotation=0,startX=0,startY=0,dragging=false,moved=false;
+  const normalize=n=>((n%faces.length)+faces.length)%faces.length;
   function render(){
     rotation=normalize(rotation);
     cube.dataset.rotation=String(rotation);
-    cube.style.setProperty('--knowledge-rotation',String(rotation));
-    // A single front-facing triangular panel is deliberate: never place four
-    // overlapping 3D buttons on top of one another and hope hit-testing works.
-    cube.style.transform='none';
-    cube.style.transformStyle='flat';
     const counter=document.getElementById('knowledgeFaceCounter');
     const name=document.getElementById('knowledgeFaceName');
-    if(counter)counter.textContent='FACE '+String(rotation+1).padStart(2,'0')+' / 04';
+    if(counter)counter.textContent='FACE '+String(rotation+1).padStart(2,'0')+' / '+String(faces.length).padStart(2,'0');
     if(name)name.textContent=names[rotation];
-    cube.setAttribute('aria-label','Holocron. Voie affichée : '+names[rotation]+'.');
-    cube.querySelectorAll('.knowledge-cube-face').forEach((face,index)=>{
+    faces.forEach((face,index)=>{
       const active=index===rotation;
       face.setAttribute('aria-current',String(active));
-      face.tabIndex=active?0:-1;
       face.setAttribute('aria-hidden',String(!active));
-      if(active){
-        face.classList.remove('knowledge-face-active-enter');
-        void face.offsetWidth;
-        face.classList.add('knowledge-face-active-enter');
-      }else{
-        face.classList.remove('knowledge-face-active-enter');
-      }
+      face.tabIndex=active?0:-1;
+      face.hidden=!active;
+      face.style.display=active?'flex':'none';
+      face.style.pointerEvents=active?'auto':'none';
     });
   }
-  // Delegation on document is intentional: overlays/gesture handlers on the stage
-  // must never swallow the arrow controls, especially after a swipe.
-  document.addEventListener('click',event=>{
-    const button=event.target.closest?.('[data-holocron-rotate]');
-    if(!button || !stage.contains(button))return;
-    event.preventDefault();
-    event.stopPropagation();
-    const delta=Number(button.dataset.holocronRotate);
-    if(Number.isFinite(delta) && delta!==0){rotation+=delta;render();}
-  });
+  // Use native, per-button handlers. No bubbling or capture handler on the stage can cancel these.
   stage.querySelectorAll('[data-holocron-rotate]').forEach(button=>{
-    button.addEventListener('pointerdown',event=>event.stopPropagation());
+    button.addEventListener('click',event=>{
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const delta=Number(button.getAttribute('data-holocron-rotate'));
+      rotation+=Number.isFinite(delta)&&delta!==0?delta:1;
+      render();
+    },{capture:true});
+    button.addEventListener('pointerdown',event=>event.stopPropagation(),{capture:true});
     button.addEventListener('keydown',event=>{
-      if(event.key==='Enter' || event.key===' '){event.stopPropagation();}
+      if(event.key==='Enter'||event.key===' '){event.stopPropagation();}
+    },{capture:true});
+  });
+  faces.forEach(face=>{
+    face.addEventListener('click',event=>{
+      if(moved){event.preventDefault();event.stopPropagation();moved=false;return;}
+      const page=String(face.dataset.page||'');
+      if(page&&document.getElementById(page)){
+        event.preventDefault();event.stopPropagation();
+        if(typeof showPage==='function')showPage(page);
+        else document.dispatchEvent(new CustomEvent('holocron:navigate',{detail:{page}}));
+      }
     });
   });
-  // Le clic sur la face avant ouvre directement sa destination, sans dépendre du gestionnaire global.
-  cube.querySelectorAll('.knowledge-cube-face[data-page]').forEach(face=>face.addEventListener('click',event=>{
-    event.stopPropagation();
-    const page=String(face.dataset.page||'');
-    if(page && document.getElementById(page)) showPage(page);
-  }));
-  let suppressFaceClick=false;
   stage.addEventListener('pointerdown',event=>{
     if(event.target.closest('[data-holocron-rotate]'))return;
-    startX=event.clientX;startY=event.clientY;dragging=true;suppressFaceClick=false;
-    // Keep the original button as the click target; capture on the stage swallowed face clicks.
-  });
+    startX=event.clientX;startY=event.clientY;dragging=true;moved=false;
+  },{passive:true});
   stage.addEventListener('pointerup',event=>{
     if(!dragging)return;dragging=false;
     const dx=event.clientX-startX,dy=event.clientY-startY;
-    if(Math.abs(dx)>34&&Math.abs(dx)>Math.abs(dy)){
-      rotation+=dx<0?1:-1;render();suppressFaceClick=true;
+    if(Math.abs(dx)>36&&Math.abs(dx)>Math.abs(dy)){
+      rotation+=dx<0?1:-1;moved=true;render();
     }
-  });
-  stage.addEventListener('click',event=>{
-    if(!suppressFaceClick)return;
-    // Suppress only the click generated by a completed swipe on the face,
-    // never clicks on the previous/next controls.
-    if(event.target.closest?.('[data-holocron-rotate]'))return;
-    event.preventDefault();event.stopPropagation();suppressFaceClick=false;
-  },true);
+  },{passive:true});
   stage.addEventListener('pointercancel',()=>{dragging=false;});
   stage.addEventListener('keydown',event=>{
+    if(event.target.closest('[data-holocron-rotate]'))return;
     if(event.key==='ArrowRight'){event.preventDefault();rotation++;render();}
     if(event.key==='ArrowLeft'){event.preventDefault();rotation--;render();}
   });
