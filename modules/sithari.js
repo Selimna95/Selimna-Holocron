@@ -30,9 +30,30 @@ function sithariFilteredCharacters(){
     .filter(c=>!search || compactKey(c?.name||c?.baseId||'').includes(search))
     .sort((a,b)=>String(a?.name||'').localeCompare(String(b?.name||''),'fr'));
 }
+function sithariStatLabel(value){
+  const raw=String(value??'').trim().replace(/\\s+/g,' ');
+  const percent=/%/.test(raw);
+  const base=raw.replace(/%/g,'').trim();
+  const key=compactKey(base);
+  const labels={
+    SPEED:'Speed',OFFENSE:'Offense',DEFENSE:'Defense',HEALTH:'Health',PROTECTION:'Protection',
+    POTENCY:'Potency',TENACITY:'Tenacity',CRITICALCHANCE:'Critical Chance',CRITCHANCE:'Crit Chance',
+    CRITICALDAMAGE:'Critical Damage',CRITICALAVOIDANCE:'Critical Avoidance',
+    PHYSICALDAMAGE:'Physical Damage',SPECIALDAMAGE:'Special Damage',ARMOR:'Armor',RESISTANCE:'Resistance'
+  };
+  const label=labels[key]||base;
+  return percent?`${label} %`:label;
+}
+function sithariStatKey(value){
+  const label=sithariStatLabel(value);
+  return compactKey(label)+(label.includes('%')?'PCT':'');
+}
 function sithariModSecondaryMap(m){
   const out={};
-  for(let i=1;i<=4;i++){const stat=String(m?.[`secondary_${i}_stat`]||'').trim();if(stat)out[stat]=Number(m?.[`secondary_${i}_value`]||0)||0;}
+  for(let i=1;i<=4;i++){
+    const stat=String(m?.[`secondary_${i}_stat`]||'').trim();
+    if(stat)out[sithariStatKey(stat)]=Number(m?.[`secondary_${i}_value`]||0)||0;
+  }
   return out;
 }
 function sithariCanonicalSet(value){
@@ -110,9 +131,10 @@ function sithariEquippedOwner(m){
 }
 function sithariSecondaryScore(m,p){
   const focus=p?.secondary_focus||{}; const sec=sithariModSecondaryMap(m); let score=0,count=0;
-  for(const [stat,ref] of Object.entries(focus)){const v=Number(sec[stat]||0);if(v>0&&Number(ref)>0){score+=Math.min(1,v/Number(ref));count++;}}
-  const speed=modSpeedMetrics(m).secondary||0;
-  if(Number(focus.Speed)>0&&speed>0){score+=Math.min(1,speed/Number(focus.Speed));count++;}
+  for(const [stat,ref] of Object.entries(focus)){
+    const v=Number(sec[sithariStatKey(stat)]||0);
+    if(v>0&&Number(ref)>0){score+=Math.min(1,v/Number(ref));count++;}
+  }
   return count?score/count:0;
 }
 function sithariReferenceText(p,slot){
@@ -127,22 +149,22 @@ function sithariSecondaryNames(profile=null){
   // Keep Kyber's priority order first, even when a priority stat is absent
   // from the currently equipped inventory.
   for(const stat of Object.keys(profile?.secondary_focus||{})){
-    const label=secondaryDisplayName(stat);
-    if(label)names.set(compactKey(label),label);
+    const label=sithariStatLabel(stat);
+    if(label)names.set(sithariStatKey(label),label);
   }
   for(const m of sithariEnsureModCache().items){
     for(let i=1;i<=4;i++){
       const stat=m?.[`secondary_${i}_stat`];
       if(stat){
-        const label=secondaryDisplayName(stat);
-        if(label&&!names.has(compactKey(label)))names.set(compactKey(label),label);
+        const label=sithariStatLabel(stat);
+        if(label&&!names.has(sithariStatKey(label)))names.set(sithariStatKey(label),label);
       }
     }
   }
-  const priority=new Map(Object.keys(profile?.secondary_focus||{}).map((stat,index)=>[compactKey(secondaryDisplayName(stat)),index]));
+  const priority=new Map(Object.keys(profile?.secondary_focus||{}).map((stat,index)=>[sithariStatKey(stat),index]));
   return [...names.values()].sort((a,b)=>{
-    const ai=priority.has(compactKey(a))?priority.get(compactKey(a)):Number.MAX_SAFE_INTEGER;
-    const bi=priority.has(compactKey(b))?priority.get(compactKey(b)):Number.MAX_SAFE_INTEGER;
+    const ai=priority.has(sithariStatKey(a))?priority.get(sithariStatKey(a)):Number.MAX_SAFE_INTEGER;
+    const bi=priority.has(sithariStatKey(b))?priority.get(sithariStatKey(b)):Number.MAX_SAFE_INTEGER;
     return ai-bi || a.localeCompare(b,'fr');
   });
 }
@@ -229,12 +251,12 @@ function sithariCandidatePool(slot,setName,primaryName,current,excludeCharacterK
   return pool;
 }
 function sithariTwoSecondaryMatch(m,first,second){
-  const wanted=[compactKey(first),compactKey(second)].filter(Boolean);
+  const wanted=[sithariStatKey(first),sithariStatKey(second)].filter(Boolean);
   if(wanted.length!==2 || wanted[0]===wanted[1])return false;
   const got=new Set();
   for(let i=1;i<=4;i++){
     const stat=m?.[`secondary_${i}_stat`];
-    if(stat)got.add(compactKey(secondaryDisplayName(stat)));
+    if(stat)got.add(sithariStatKey(stat));
   }
   return wanted.every(x=>got.has(x));
 }
@@ -267,8 +289,8 @@ function sithariDefaultSecondaries(profile){
   // Defaults must come from Kyber's ranked secondary_focus, never from an
   // alphabetical fallback of unrelated stats found in the inventory.
   return Object.keys(profile?.secondary_focus||{})
-    .map(key=>secondaryDisplayName(key))
-    .filter((name,index,all)=>name&&all.findIndex(x=>compactKey(x)===compactKey(name))===index)
+    .map(key=>sithariStatLabel(key))
+    .filter((name,index,all)=>name&&all.findIndex(x=>sithariStatKey(x)===sithariStatKey(name))===index)
     .slice(0,2);
 }
 function sithariActionKey(character,slot){return `${characterKey(character)}::${slot}`;}
