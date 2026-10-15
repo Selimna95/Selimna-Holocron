@@ -325,14 +325,35 @@ function sithariRenderActionPanel(x){
 `
     : `<div class="sithari-calibration-target"><span>CONFIGURATION SET KYBER</span><b>${esc(refSet||'—')}</b><span>PRIMAIRE(S) KYBER</span><b>${esc(sithariPrimaryRefs(x.profile,x.slot).map(v=>v.name).join(' / ')||refPrimary||'—')}</b></div>
 `;
-  const resultHtml=active.ran?`<div class="sithari-constellation" aria-label="Possibilités de mods calculées"><div class="sithari-constellation-core"><span>✧</span><b>CONSTELLATION DE PROPOSITIONS</b><small>${rows.length} résultat${rows.length>1?'s':''} · classés selon les critères réels</small></div><div class="sithari-constellation-stage"><div class="sithari-constellation-current"><span class="sithari-current-orbit">MOD ACTUEL</span><div class="sithari-current-visual">${x.current?modIconHtml(x.current,'72'):'<span class="sithari-no-mod">AUCUN MOD</span>'}</div><strong>${esc(SITHARI_SLOT_LABEL[x.slot]||x.slot)}</strong><small>${esc(x.current?.set_name||'À équiper')} · ${esc(x.current?.primary_stat||'—')} ${x.current?num(x.current.primary_value,1):''}</small><em>${x.current?`${num(modTotalSpeed(x.current))} Speed`:'Emplacement vide'}</em></div><div class="sithari-action-results">${rows.length?rows.map((r,i)=>{
-    const m=r.m, owner=rosterCharacters.find(c=>characterKey(c)===sithariEquippedOwner(m));
-    const other=[];
-    for(let j=1;j<=4;j++){const st=m?.[`secondary_${j}_stat`];if(st)other.push(`${sithariStatLabel(st)} ${num(m[`secondary_${j}_value`],1)}`);}
-    const currentSpeed=num(x.current?modTotalSpeed(x.current):0), speedDelta=num(r.speed)-currentSpeed;
-    const gain=speedDelta>0?`+${speedDelta}`:String(speedDelta);
-    return `<article class="sithari-action-result sithari-star-option" style="--star-delay:${Math.min(i,8)*.09}s"><span class="sithari-star-link" aria-hidden="true">✦</span><div class="sithari-result-visual">${modIconHtml(m,'52')}</div><div class="sithari-result-owner">${owner?`<span class="sithari-result-portrait">${sithariPortrait(owner)}</span><strong>${esc(owner.name||'Personnage')}</strong>`:'<span class="sithari-result-portrait free">◈</span><strong>MOD LIBRE</strong>'}<small>${esc(m.set_name||'—')} · ${esc(m.slot||'—')}</small></div><div class="sithari-result-stats"><b>${esc(m.primary_stat||'—')} <strong>${num(m.primary_value,1)}</strong></b><span>${esc(other.join(' · ')||'Aucune secondaire')}</span><em>${num(r.speed)} Speed <i>Δ ${gain} vs mod actuel</i></em></div></article>`;
-  }).join(''):`<div class="sithari-action-empty">Aucun mod ne respecte ces critères dans <strong>${esc(sithariScopeLabel())}</strong>.</div>`}</div></div></div>`:'';
+  const resultHtml=active.ran?`<div class="sithari-proposals" aria-label="Mods proposés, classés par pertinence">
+    <div class="sithari-proposals-heading"><div><small>RÉSULTAT DE LA RECHERCHE</small><strong>Mods candidats à équiper</strong></div><span class="sithari-result-count">${rows.length} proposition${rows.length===1?'':'s'}</span></div>
+    <div class="sithari-current-summary">
+      <div class="sithari-current-summary-icon">${x.current?modIconHtml(x.current,'58'):'<span class="sithari-no-mod">VIDE</span>'}</div>
+      <div class="sithari-current-summary-main"><small>MOD ACTUEL · SLOT ${esc(SITHARI_SLOT_LABEL[x.slot]||x.slot)}</small><strong>${esc(x.current?.set_name||'Aucun mod')} · ${esc(x.current?.primary_stat||'—')} ${x.current?num(x.current.primary_value,1):''}</strong><span>Secondaires : ${x.current?Array.from({length:4},(_,j)=>{const st=x.current?.[`secondary_${j+1}_stat`];return st?`${sithariStatLabel(st)} ${num(x.current?.[`secondary_${j+1}_value`],1)}`:''}).filter(Boolean).join(' · ')||'Aucune':'Emplacement actuellement vide'}</span></div>
+      <div class="sithari-current-speed"><small>VITESSE ACTUELLE</small><strong>${x.current?num(modTotalSpeed(x.current)):'—'}</strong></div>
+    </div>
+    <div class="sithari-proposal-list">
+      ${rows.length?rows.map((r,i)=>{
+        const m=r.m, owner=rosterCharacters.find(c=>characterKey(c)===sithariEquippedOwner(m));
+        const secondaries=[];
+        for(let j=1;j<=4;j++){const st=m?.[`secondary_${j}_stat`];if(st)secondaries.push(`${sithariStatLabel(st)} ${num(m[`secondary_${j}_value`],1)}`);}
+        const currentSpeed=x.current?modTotalSpeed(x.current):0, speedDelta=num(r.speed)-num(currentSpeed);
+        const deltaLabel=speedDelta>0?`+${speedDelta}`:String(speedDelta);
+        const ownerName=owner?.name||'Mod libre';
+        return `<article class="sithari-proposal-row">
+          <div class="sithari-proposal-rank">${String(i+1).padStart(2,'0')}</div>
+          <div class="sithari-proposal-mod">${modIconHtml(m,'58')}</div>
+          <div class="sithari-proposal-main">
+            <div class="sithari-proposal-title"><strong>${esc(m.set_name||'Set inconnu')}</strong><span>${esc(m.slot||x.slot)} · ${esc(ownerName)}</span></div>
+            <div class="sithari-proposal-primary"><span>PRIMAIRE</span><strong>${esc(m.primary_stat||'—')} ${num(m.primary_value,1)}</strong></div>
+            <div class="sithari-proposal-secondaries"><span>SECONDAIRES</span><p>${esc(secondaries.join(' · ')||'Aucune secondaire renseignée')}</p></div>
+          </div>
+          <div class="sithari-proposal-speed"><small>VITESSE</small><strong>${num(r.speed)}</strong><em class="${speedDelta>0?'positive':speedDelta<0?'negative':'neutral'}">${deltaLabel} vs actuel</em></div>
+        </article>`;
+      }).join(''):'<div class="sithari-action-empty">Aucun mod ne respecte les critères sélectionnés. Élargis les sources autorisées ou vérifie les critères Kyber.</div>'}
+    </div>
+  </div>`:'';
+
   return `<section class="sithari-action-panel ${active.mode==='REINFORCEMENT'?'reinforcement':'calibration'}">
     <header><div><small>${active.mode==='REINFORCEMENT'?'RENFORCEMENT':'CALIBRAGE'} // RECHERCHE</small><strong>${esc(SITHARI_SLOT_LABEL[x.slot]||x.slot)} · ${active.mode==='REINFORCEMENT'?`SET ${x.current?.set_name||'—'} · ${x.current?.primary_stat||'—'}`:`RÉFÉRENCE KYBER`}</strong></div><button type="button" data-sithari-close>FERMER</button></header>
     <div class="sithari-action-scope"><span>SOURCES</span><b>${esc(sithariScopeLabel())}</b><small>Très faibles, faibles et incomplets par défaut · moyens / tout le roster en option.</small>
