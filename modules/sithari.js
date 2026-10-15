@@ -317,6 +317,7 @@ function sithariOpenAction(x,mode){
       sithariEnergyPulseKey='';
       const box=$('sithariCharacterAnalysis');
       box?.querySelector('.sithari-character-flow-board')?.classList.remove('sithari-energy-active');
+      box?.querySelector('.sithari-reveal-stage')?.classList.remove('sithari-energy-active');
       box?.querySelector('.sithari-slot-card.sithari-energy-source')?.classList.remove('sithari-energy-source');
       box?.querySelector('.sithari-action-panel.sithari-energy-arrival')?.classList.remove('sithari-energy-arrival');
     },1150);
@@ -565,16 +566,29 @@ function sithariRenderCharacter(){
   const factionLabel=(factionMap[characterKey(c)]||[]).map(esc).join(' · ')||'Faction non renseignée';
   const portrait=sithariPortrait(c);
   const actionSummary=loading?'<div class="sithari-no-reference">Récupération de la référence Kyber pour ce personnage…</div>':!p?'<div class="sithari-no-reference">Référence Kyber indisponible pour ce personnage.</div>':`<div class="sithari-action-summary"><div class="sithari-action-summary-main"><span class="sithari-action-icon">✧</span><div><strong>${reinforcement?`ACTION : ${reinforcement} renforcement${reinforcement>1?'s':''} possible${reinforcement>1?'s':''}`:'AUCUN RENFORCEMENT DISPONIBLE'}</strong><small>Set + primaire conformes = RENFORCEMENT. Sinon = CALIBRAGE avec la référence Kyber.</small></div></div><div class="sithari-action-pills"><b>${reinforcement} RENFORCEMENTS</b><b>${calibration} CALIBRAGES</b></div></div>`;
-  box.innerHTML=`<header class="sithari-analysis-head"><div class="sithari-character-heading"><div class="sithari-analysis-portrait">${portrait}</div><div><small>SITH’ARI // ANALYSE PERSONNAGE</small><h3>${esc(c?.name||c?.baseId||'—')}</h3><p>${factionLabel} · ${num(sithariCharacterSpeed(c))} Speed max mod</p></div></div><div class="sithari-analysis-kpis"><span class="kpi-slots"><b>6</b><em>SLOTS</em></span><span class="kpi-replace"><b>${reinforcement}</b><em>RENFORCEMENTS</em></span><span class="kpi-search"><b>${calibration}</b><em>CALIBRAGES</em></span></div></header>
-  <section class="sithari-character-flow-board ${sithariEnergyPulseKey.startsWith(characterKey(c)+'::')?'sithari-energy-active':''}" aria-label="Personnage au centre des six emplacements de mods">
+  const active=states.find(x=>sithariActionState.key===sithariActionKey(x.character,x.slot));
+  const actionView=active?`<section class="sithari-reveal-stage ${sithariEnergyPulseKey===sithariActionKey(active.character,active.slot)?'sithari-energy-active':''}" aria-label="Comparaison des mods sélectionnés">
+    <div class="sithari-energy-cloud" aria-hidden="true">
+      <svg viewBox="0 0 1000 560" preserveAspectRatio="none"><defs><filter id="sithariLightningGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <g filter="url(#sithariLightningGlow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path class="sithari-bolt sithari-bolt-red" d="M90 20 L145 95 119 125 205 178 173 217 288 266 249 302 364 338"/>
+        <path class="sithari-bolt sithari-bolt-gold" d="M270 0 L310 68 285 106 360 146 334 194 430 225"/>
+        <path class="sithari-bolt sithari-bolt-red" d="M920 15 L852 82 884 123 790 164 824 210 710 250 748 290 625 340"/>
+        <path class="sithari-bolt sithari-bolt-gold" d="M740 0 L700 72 724 110 654 151 678 194 578 230"/>
+        <path class="sithari-bolt sithari-bolt-red" d="M20 250 L105 272 82 306 190 326 166 360 278 378"/>
+        <path class="sithari-bolt sithari-bolt-gold" d="M980 260 L890 280 915 313 808 334 832 368 718 386"/>
+        <path class="sithari-bolt sithari-bolt-red" d="M370 540 L408 470 388 440 460 402 444 368 500 320 532 350 560 300 590 330 630 260"/>
+      </g>
+    </svg><div class="sithari-cloud-core"></div></div>
+    ${sithariRenderActionPanel(active)}</section>`: `<section class="sithari-character-flow-board" aria-label="Personnage au centre des six emplacements de mods">
     <svg class="sithari-character-flow-lines" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="sithariCharacterFlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3048" stop-opacity=".12"/><stop offset=".5" stop-color="#ff3048" stop-opacity=".8"/><stop offset="1" stop-color="#ff3048" stop-opacity=".18"/></linearGradient></defs><path d="M500 350 C360 310 280 120 145 100"/><path d="M500 350 C355 350 270 350 145 350"/><path d="M500 350 C360 390 280 580 145 600"/><path d="M500 350 C640 310 720 120 855 100"/><path d="M500 350 C645 350 730 350 855 350"/><path d="M500 350 C640 390 720 580 855 600"/></svg>
     <div class="sithari-flow-mod-column sithari-flow-mod-left">${states.slice(0,3).map((x,i)=>sithariSlotCard(x,i)).join('')}</div>
     <article class="sithari-flow-character-core"><div class="sithari-flow-core-orbit orbit-a"></div><div class="sithari-flow-core-orbit orbit-b"></div><div class="sithari-flow-portrait">${portrait}</div><small>PERSONNAGE AU CŒUR DES FLUX</small><h3>${esc(c?.name||c?.baseId||'—')}</h3><p>${factionLabel}</p><div class="sithari-flow-core-kpis"><div><span>SLOTS</span><b>6</b></div><div><span>RENFORCER</span><b>${reinforcement}</b></div><div><span>CALIBRER</span><b>${calibration}</b></div></div><div class="sithari-flow-core-status">${loading?'RÉFÉRENCE KYBER EN CHARGEMENT':!p?'RÉFÉRENCE KYBER INDISPONIBLE':'RÉFÉRENCE KYBER ACTIVE'}</div></article>
-    <div class="sithari-flow-mod-column sithari-flow-mod-right">${states.slice(3,6).map((x,i)=>sithariSlotCard(x,i+3)).join('')}</div>
-  </section>
-  ${(()=>{const active=states.find(x=>sithariActionState.key===sithariActionKey(x.character,x.slot));return active?sithariRenderActionPanel(active):''})()}
-  ${loading?'':sithariStatsPanel(c,p)}
-  ${actionSummary}
+    <div class="sithari-flow-mod-column sithari-flow-mod-right">${states.slice(3,6).map((x,i)=>sithariSlotCard(x,i+3)).join('')}</div></section>`;
+  box.innerHTML=`<header class="sithari-analysis-head"><div class="sithari-character-heading"><div class="sithari-analysis-portrait">${portrait}</div><div><small>SITH’ARI // ANALYSE PERSONNAGE</small><h3>${esc(c?.name||c?.baseId||'—')}</h3><p>${factionLabel} · ${num(sithariCharacterSpeed(c))} Speed max mod</p></div></div><div class="sithari-analysis-kpis"><span class="kpi-slots"><b>6</b><em>SLOTS</em></span><span class="kpi-replace"><b>${reinforcement}</b><em>RENFORCEMENTS</em></span><span class="kpi-search"><b>${calibration}</b><em>CALIBRAGES</em></span></div></header>
+  ${actionView}
+  ${active?'':(loading?'':sithariStatsPanel(c,p))}
+  ${active?'':actionSummary}
 `;
   sithariBindActionControls(box);
 }
