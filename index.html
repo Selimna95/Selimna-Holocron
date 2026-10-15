@@ -103,7 +103,8 @@
         <div class="decision-flow flow-left-top"></div><div class="decision-flow flow-left-bottom"></div><div class="decision-flow flow-right-top"></div><div class="decision-flow flow-right-bottom"></div><div class="decision-flow flow-bottom"></div>
 
         <article class="decision-card unit-card dashboard-info-card">
-          <div class="decision-card-head"><span class="card-icon">♙</span><div><span>PERSONNAGES</span><strong id="charsCount">—</strong><small>UNITÉS TOTALES</small></div><em id="unitsDelta">—</em></div>
+          <div class="decision-card-head"><span class="card-icon">♙</span><div><span>PERSONNAGES</span><strong id="charsCount">—</strong><small>PERSONNAGES</small></div><em id="unitsDelta">—</em></div>
+          <div class="account-secondary-stat"><span>VAISSEAUX</span><strong id="shipsCount">0</strong></div>
           <div class="decision-card-title">ROSTER · VUE D’ENSEMBLE</div>
           <div class="decision-bars" id="unitVentilation"></div>
           <div class="decision-legend" id="unitLegend"></div>
@@ -134,7 +135,7 @@
         </div>
 
         <article class="decision-card mod-card dashboard-info-card">
-          <div class="decision-card-head"><span class="card-icon">◈</span><div><span>MODS</span><strong id="modsCount">—</strong><small>MODS ÉQUIPÉS</small></div><em id="modsDelta">—</em></div>
+          <div class="decision-card-head"><span class="card-icon">◈</span><div><span>MODS</span><strong id="modsCount">—</strong><small>MODS CHARGÉS</small></div><em id="modsDelta">—</em></div>
           <div class="decision-card-title">ÉTAT DES MODS</div>
           <div class="decision-bars mods-bars" id="modVentilation"></div>
           <div class="decision-legend" id="modLegend"></div>
@@ -152,7 +153,7 @@
 
       <!-- Compatibilité avec le moteur existant : éléments de données conservés mais masqués. -->
       <div class="decision-compat" aria-hidden="true">
-        <span id="shipsCount">0</span><span id="unitsCount">0</span><span id="unitsCountSecondary">0</span><span id="gpBreakdown">En attente</span>
+        <span id="unitsCount">0</span><span id="unitsCountSecondary">0</span><span id="gpBreakdown">En attente</span>
         <div id="v18DashboardSpeed"></div><div id="log"></div>
       </div>
     </section>
