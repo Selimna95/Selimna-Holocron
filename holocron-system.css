@@ -1218,3 +1218,67 @@ body[data-page="dashboard"] .sanctuary-holocron-door:focus-visible{outline:2px s
  body[data-page="dashboard"] .sanctuary-holocron-door:after{animation:none!important}
  body[data-page="dashboard"] .sanctuary-holocron-door img{transition:none!important}
 }
+
+
+/* V3.3.7 — Fit the Sanctuary artefact, curve its energy, and make Knowledge navigation resilient. */
+/* The gate artwork was zoomed in; scale the whole source image down inside the circular viewport. */
+body[data-page="dashboard"] .sanctuary-holocron-door img{
+  object-fit:cover!important;
+  transform:scale(.86)!important;
+  transform-origin:center!important;
+}
+body[data-page="dashboard"] .sanctuary-holocron-door:hover img,
+body[data-page="dashboard"] .sanctuary-holocron-door:focus-visible img{
+  transform:scale(.91)!important;
+}
+/* SVG Bézier paths replace the five straight, rotated bars. */
+body[data-page="dashboard"] .decision-stage>.sanctuary-energy-arcs{
+  display:block!important;position:absolute;inset:0;width:100%;height:100%;
+  z-index:1;overflow:visible;pointer-events:none;opacity:.92;
+}
+body[data-page="dashboard"] .sanctuary-energy-arcs path{
+  fill:none;stroke:url(#sanctuaryArcFlow);stroke-width:1.7;
+  stroke-linecap:round;stroke-dasharray:3 10;
+  filter:drop-shadow(0 0 4px rgba(255,42,62,.62));
+  animation:sanctuaryArcTravel 5.8s linear infinite;
+}
+body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(2){animation-delay:-1.3s;stroke-width:1.2}
+body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(3){animation-delay:-.7s}
+body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(4){animation-delay:-2.2s;stroke-width:1.2}
+body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(5){animation-delay:-1.7s}
+body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation-delay:-3.1s;stroke-width:1.2}
+@keyframes sanctuaryArcTravel{to{stroke-dashoffset:-156;filter:drop-shadow(0 0 7px rgba(255,68,83,.9))}}
+@media(max-width:900px){body[data-page="dashboard"] .decision-stage>.sanctuary-energy-arcs{display:none!important}}
+@media(prefers-reduced-motion:reduce){body[data-page="dashboard"] .sanctuary-energy-arcs path{animation:none!important}}
+
+/* A true four-sided pyramid: each triangular face rotates around its apex,
+   then moves outward. Reversing these transforms makes all faces overlap. */
+.knowledge-holocron-pyramid .knowledge-face-acolyte{transform:rotateY(0deg) translateZ(var(--cube-face-depth))!important}
+.knowledge-holocron-pyramid .knowledge-face-disciple{transform:rotateY(90deg) translateZ(var(--cube-face-depth))!important}
+.knowledge-holocron-pyramid .knowledge-face-lord{transform:rotateY(180deg) translateZ(var(--cube-face-depth))!important}
+.knowledge-holocron-pyramid .knowledge-face-sithari{transform:rotateY(270deg) translateZ(var(--cube-face-depth))!important}
+
+/* Always-visible direct routes: module access no longer depends on 3D hit-testing. */
+.knowledge-module-links{
+  position:relative;z-index:5;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;max-width:860px;margin:18px auto 0;
+}
+.knowledge-module-links button{
+  position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:7px;
+  min-width:0;min-height:102px;padding:14px 13px;text-align:left;
+  border:1px solid rgba(255,72,88,.25);border-radius:8px;
+  background:linear-gradient(145deg,rgba(28,12,17,.92),rgba(6,5,8,.97));
+  color:#f7eeee;cursor:pointer;transition:border-color .2s,background .2s,transform .2s,box-shadow .2s;
+}
+.knowledge-module-links button:hover{
+  transform:translateY(-2px);border-color:rgba(255,90,105,.78);
+  background:linear-gradient(145deg,rgba(66,10,20,.95),rgba(9,5,8,.98));
+  box-shadow:0 0 24px rgba(255,25,45,.12);
+}
+.knowledge-module-links button:focus-visible{outline:2px solid #ffd0b1;outline-offset:3px}
+.knowledge-module-links button>span{color:#ff6576;font:800 9px var(--font-display);letter-spacing:.16em}
+.knowledge-module-links button>strong{font:900 11px/1.3 var(--font-display);letter-spacing:.06em}
+.knowledge-module-links button>small{color:#aa9698;font:400 10px/1.4 var(--font-ui)}
+.knowledge-module-links button>b{position:absolute;right:12px;top:11px;color:#ff6576;font-size:14px}
+@media(max-width:760px){.knowledge-module-links{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.knowledge-module-links button{min-height:90px;padding:12px 10px}.knowledge-module-links button>strong{font-size:10px}}
+@media(max-width:420px){.knowledge-module-links{grid-template-columns:minmax(0,1fr)}.knowledge-module-links button{min-height:72px;padding:12px 14px}}
