@@ -1,4 +1,4 @@
-const CACHE_NAME = 'holocron-static-v3.6.8-sanctuary-pyramid';
+const CACHE_NAME = 'holocron-static-v3.6.9-sanctuary-pyramid-clickfix';
 const STATIC_ASSETS = [
   './',
   './index.html',
