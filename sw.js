@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.8.0-prismatic-sigil';
+const CACHE_NAME = 'holocron-static-v3.8.1-energy-pulse';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=3.6.0-pulse',
-  './holocron-system.css?v=3.4.0-prismatic-sigil',
+  './holocron-system.css?v=3.4.1-energy-pulse',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js',
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
   './modules/disciple.js',
   './modules/seigneur.js',
   './modules/sithari.js?v=3.4.0-energy',
-  './modules/runtime.js?v=3.4.0-delegated-rotation',
+  './modules/runtime.js?v=3.4.1-native-arrow-events',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
   './python/kyber_data.py?v=3.2.1',
