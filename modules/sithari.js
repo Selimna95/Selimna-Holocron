@@ -480,12 +480,9 @@ function sithariBindActionControls(box){
   box.querySelectorAll('[data-sithari-secondary]').forEach(sel=>{
     sel.disabled=false;
     sel.tabIndex=0;
-    sel.addEventListener('input',()=>{
-      const a=sel.dataset.sithariSecondary;
-      sithariActionState[a==='A'?'secondaryA':'secondaryB']=sel.value;
-      sithariActionState.ran=true;
-      sithariRefreshActionPanel(sel.closest('.sithari-action-panel'));
-    });
+    // Native select menus must finish their selection before any result DOM is replaced.
+    // Listening to both input and change can redraw the constellation while the
+    // operating-system dropdown is still committing the selected option.
     sel.addEventListener('change',()=>{
       const a=sel.dataset.sithariSecondary;
       sithariActionState[a==='A'?'secondaryA':'secondaryB']=sel.value;
