@@ -256,7 +256,7 @@ function sithariOpenAction(x,mode){
   if(sithariActionState.key===key && sithariActionState.mode===mode){
     sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
   }else{
-    sithariActionState={key,mode,secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
+    sithariActionState={key,mode,secondaryA:'',secondaryB:'',ran:mode==='CALIBRATION',scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
   }
   sithariRenderCharacter();
 }
