@@ -394,6 +394,18 @@ function sithariStatsPanel(c,p){
   if(!rows.length)return '';
   return `<section class="sithari-stats-panel"><div class="sithari-stats-head"><div><small>COMPARAISON</small><strong>TES STATS VS RÉFÉRENCE KYBER</strong></div><span>VALEUR ACTUELLE → CIBLE KYBER</span></div><div class="sithari-stats-grid">${rows.map(r=>{const delta=r.current-r.kyber;const cls=delta>=0?'ahead':'behind';return `<div class="sithari-stat-row"><span>${esc(r.label)}</span><b class="${cls}">${sithariStatValue(r.current,r.key)}</b><i>→</i><strong>${sithariStatValue(r.kyber,r.key)}</strong><small class="${cls}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toLocaleString('fr-FR')}</small></div>`}).join('')}</div></section>`;
 }
+function sithariRefreshActionPanel(panel){
+  if(!panel || !sithariActionState.key)return;
+  const c=sithariCharacterByKey(sithariActiveKey);
+  const slot=SITHARI_SLOT_ORDER.find(s=>sithariActionState.key.endsWith('::'+s));
+  if(!c||!slot)return;
+  const state=sithariSlotState(c,slot);
+  const host=panel.parentElement;
+  if(!host)return;
+  panel.outerHTML=sithariRenderActionPanel(state);
+  const fresh=host.querySelector('.sithari-action-panel');
+  if(fresh)sithariBindActionControls(fresh);
+}
 function sithariBindActionControls(box){
   box.querySelectorAll('[data-sithari-mod-toggle]').forEach(btn=>btn.addEventListener('click',()=>{
     const c=sithariCharacterByKey(sithariActiveKey); const slotKey=btn.dataset.sithariModToggle;
@@ -409,7 +421,7 @@ function sithariBindActionControls(box){
     const a=sel.dataset.sithariSecondary;
     sithariActionState[a==='A'?'secondaryA':'secondaryB']=sel.value;
     sithariActionState.ran=true;
-    sithariRenderCharacter();
+    sithariRefreshActionPanel(sel.closest('.sithari-action-panel'));
   }));
   box.querySelectorAll('.sithari-source-options input').forEach(input=>input.addEventListener('change',()=>{
     if(input.id==='sithariAllRoster'){
@@ -419,7 +431,7 @@ function sithariBindActionControls(box){
       sithariActionState.scope[map[input.id]]=input.checked;
     }
     sithariActionState.ran=true;
-    sithariRenderCharacter();
+    sithariRefreshActionPanel(input.closest('.sithari-action-panel'));
   }));
 }
 function sithariRenderCharacter(){
