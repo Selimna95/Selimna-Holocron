@@ -1017,3 +1017,28 @@ body[data-page="dashboard"] .decision-bottom-status small{display:block;margin-t
 @media(max-width:760px){.knowledge-holocron-pyramid{height:300px}.knowledge-holocron-pyramid .knowledge-cube-face{height:300px;padding:80px 26px 22px}.knowledge-holocron-pyramid .knowledge-face-rune{width:46px;height:46px;margin:9px auto;font-size:22px}.knowledge-holocron-pyramid .knowledge-face-copy{font-size:8px}.knowledge-holocron-pyramid .knowledge-cube-face>strong{font-size:12px}}
 @media(max-width:420px){.knowledge-holocron-pyramid{height:280px}.knowledge-holocron-pyramid .knowledge-cube-face{height:280px;padding:70px 22px 18px}.knowledge-holocron-pyramid .knowledge-face-rune{width:40px;height:40px;margin:7px auto;font-size:20px}.knowledge-holocron-pyramid .knowledge-face-copy{font-size:7px}.knowledge-holocron-pyramid .knowledge-face-cta{font-size:6px}}
 @media(prefers-reduced-motion:reduce){.knowledge-holocron-pyramid{transition:none!important}}
+
+/* V3.3.4 — Restore the Sanctuary energy network and make the center a Knowledge gateway. */
+body[data-page="dashboard"] .decision-stage{isolation:isolate}
+body[data-page="dashboard"] .decision-stage>.decision-flow{display:block!important;position:absolute;z-index:1;pointer-events:none;opacity:.9;height:2px;border:0;border-radius:3px;background:linear-gradient(90deg,transparent,rgba(255,38,58,.28),#ff4055,rgba(255,66,83,.8),transparent);background-size:220% 100%;animation:sanctuaryEnergyTravel 3.6s linear infinite;box-shadow:0 0 8px rgba(255,31,52,.55),0 0 20px rgba(255,31,52,.2)}
+body[data-page="dashboard"] .decision-stage>.flow-left-top{left:24%;top:23%;width:14%;transform:rotate(18deg);transform-origin:left center}
+body[data-page="dashboard"] .decision-stage>.flow-left-bottom{left:23%;top:48%;width:15%;transform:rotate(-14deg);transform-origin:left center;animation-delay:-1.1s}
+body[data-page="dashboard"] .decision-stage>.flow-right-top{right:23%;top:23%;width:14%;transform:rotate(-18deg);transform-origin:right center;animation-delay:-.7s}
+body[data-page="dashboard"] .decision-stage>.flow-right-bottom{right:23%;top:48%;width:15%;transform:rotate(14deg);transform-origin:right center;animation-delay:-1.8s}
+body[data-page="dashboard"] .decision-stage>.flow-bottom{left:42%;top:66%;width:16%;transform:rotate(90deg);transform-origin:center center;animation-delay:-2.2s}
+body[data-page="dashboard"] .decision-stage>.decision-card{z-index:2}
+body[data-page="dashboard"] .decision-stage>.decision-holocron-wrap{z-index:4}
+body[data-page="dashboard"] .decision-holocron-wrap .decision-energy-ring{position:absolute;inset:8%;border:1px solid rgba(255,44,63,.38);border-radius:50%;pointer-events:none;animation:sanctuaryRingPulse 4s ease-in-out infinite}
+body[data-page="dashboard"] .decision-holocron-wrap .ring-b{inset:15%;border-style:dashed;animation-duration:13s;animation-direction:reverse}
+body[data-page="dashboard"] .decision-holocron-wrap .ring-c{inset:2%;border-color:rgba(255,44,63,.18);animation-duration:6s}
+body[data-page="dashboard"] .decision-holocron .holocron-face,body[data-page="dashboard"] .decision-holocron .sithari-core{position:absolute;cursor:pointer;pointer-events:auto;z-index:6}
+body[data-page="dashboard"] .decision-holocron .face-expert{z-index:8}
+body[data-page="dashboard"] .decision-holocron .face-essential{z-index:7}
+body[data-page="dashboard"] .decision-holocron .face-understand{z-index:7}
+body[data-page="dashboard"] .decision-holocron .sithari-core{z-index:10;left:25%;top:48%;width:50%;height:45%;padding:0 0 13%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;clip-path:polygon(0 0,100% 0,50% 100%);border:0;border-radius:0;background:linear-gradient(180deg,rgba(53,9,16,.98),rgba(9,6,8,.99));color:#fff}
+body[data-page="dashboard"] .decision-holocron .sithari-core:before{content:"";position:absolute;inset:2px;clip-path:polygon(0 0,100% 0,50% 100%);border:1px solid rgba(255,76,90,.65);pointer-events:none}
+body[data-page="dashboard"] .decision-holocron .sithari-core strong,body[data-page="dashboard"] .decision-holocron .sithari-core small,body[data-page="dashboard"] .decision-holocron .sithari-core-rune{position:relative;z-index:1}
+@keyframes sanctuaryEnergyTravel{0%{background-position:100% 0;filter:brightness(.75)}50%{filter:brightness(1.5)}100%{background-position:-120% 0;filter:brightness(.8)}}
+@keyframes sanctuaryRingPulse{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.72;transform:scale(1.04)}}
+@media(max-width:900px){body[data-page="dashboard"] .decision-stage>.decision-flow{display:none!important}}
+@media(prefers-reduced-motion:reduce){body[data-page="dashboard"] .decision-stage>.decision-flow,body[data-page="dashboard"] .decision-holocron-wrap .decision-energy-ring{animation:none!important}}
