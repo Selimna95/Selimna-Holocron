@@ -1,9 +1,9 @@
-const CACHE_NAME = 'holocron-static-v3.4.0-sithari';
+const CACHE_NAME = 'holocron-static-v3.5.0-flow';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
-  './sithari.css?v=3.4.0-energy',
+  './sithari.css?v=3.5.0-flow',
   './holocron-system.css?v=3.2.1',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
