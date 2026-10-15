@@ -4,7 +4,8 @@ function updateGuardianContext(page){
   if(!root || !copy) return;
   const hasProfile=!!(typeof currentData!=='undefined' && currentData);
   const messages={
-    dashboard: hasProfile ? 'Profil chargé · choisis la prochaine action utile.' : 'Commence par synchroniser ton roster.',
+    dashboard: hasProfile ? 'Profil chargé · consulte les signaux du Sanctuaire.' : 'Commence par synchroniser ton roster.',
+    knowledge: hasProfile ? 'Le savoir se mérite · choisis une voie pour approfondir ton roster.' : 'Synchronise ton roster pour révéler les voies de l’Holocron.',
     'top-changes': hasProfile ? 'Acolyte · commence par le gain prioritaire le plus utile.' : 'Charge un profil pour calculer les priorités.',
     'mods-analysis': hasProfile ? 'Disciple · avance du diagnostic à la recherche, étape par étape.' : 'Charge un profil pour examiner les mods disponibles.',
     optimizer: hasProfile ? 'Forge · diagnostique le personnage avant de lancer la recherche.' : 'Choisis ou charge un profil pour ouvrir la Forge.',
@@ -114,7 +115,7 @@ document.addEventListener('click',e=>{
   navigateToPageFromElement(btn);
 });
 
-document.getElementById('sithariAccess')?.addEventListener('click',()=>showPage('sithari'));
+document.getElementById('sithariAccess')?.addEventListener('click',()=>showPage('knowledge'));
 $('sithariFaction')?.addEventListener('change',e=>{sithariFaction=e.target.value;sithariRenderAll();});
 $('sithariCharacterSearch')?.addEventListener('input',e=>{sithariSearch=e.target.value||'';sithariRenderSelectors();});
 $('sithariClearSelection')?.addEventListener('click',()=>{sithariSelectedKeys=[];sithariActiveKey='';sithariRenderAll();});
