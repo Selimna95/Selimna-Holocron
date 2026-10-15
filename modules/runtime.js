@@ -203,6 +203,7 @@ document.getElementById('sithariAccess')?.addEventListener('click',()=>showPage(
     rotation=normalize(rotation);
     cube.dataset.rotation=String(rotation);
     cube.style.setProperty('--knowledge-rotation',String(rotation));
+    cube.style.transform='rotateY('+(-rotation*90)+'deg)';
     const counter=document.getElementById('knowledgeFaceCounter');
     const name=document.getElementById('knowledgeFaceName');
     if(counter)counter.textContent='FACE '+String(rotation+1).padStart(2,'0')+' / 04';
