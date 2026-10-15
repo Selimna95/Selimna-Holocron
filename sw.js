@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.9.0-sith-storm-reveal';
+const CACHE_NAME = 'holocron-static-v3.10.0-hand-gateway-arrow-fix';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=3.4.2-sanctuary-obsidian',
+  './holocron-system.css?v=3.5.0-sith-hand-gateway',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js',
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
   './modules/disciple.js',
   './modules/seigneur.js',
   './modules/sithari.js?v=3.8.0-sith-storm-reveal',
-  './modules/runtime.js?v=3.4.1-native-arrow-events',
+  './modules/runtime.js?v=3.4.2-arrow-rotation-fix',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
   './python/kyber_data.py?v=3.2.1',
