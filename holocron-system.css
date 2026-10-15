@@ -1251,12 +1251,11 @@ body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation
 @media(max-width:900px){body[data-page="dashboard"] .decision-stage>.sanctuary-energy-arcs{display:none!important}}
 @media(prefers-reduced-motion:reduce){body[data-page="dashboard"] .sanctuary-energy-arcs path{animation:none!important}}
 
-/* A true four-sided pyramid: each triangular face rotates around its apex,
-   then moves outward. Reversing these transforms makes all faces overlap. */
-.knowledge-holocron-pyramid .knowledge-face-acolyte{transform:rotateY(0deg) translateZ(var(--cube-face-depth))!important}
-.knowledge-holocron-pyramid .knowledge-face-disciple{transform:rotateY(90deg) translateZ(var(--cube-face-depth))!important}
-.knowledge-holocron-pyramid .knowledge-face-lord{transform:rotateY(180deg) translateZ(var(--cube-face-depth))!important}
-.knowledge-holocron-pyramid .knowledge-face-sithari{transform:rotateY(270deg) translateZ(var(--cube-face-depth))!important}
+/* Keep the apex fixed: rotate each triangular face around its top point, then offset it along the shared local depth axis. */
+.knowledge-holocron-pyramid .knowledge-face-acolyte{transform:translateZ(var(--cube-face-depth)) rotateY(0deg)!important}
+.knowledge-holocron-pyramid .knowledge-face-disciple{transform:translateZ(var(--cube-face-depth)) rotateY(90deg)!important}
+.knowledge-holocron-pyramid .knowledge-face-lord{transform:translateZ(var(--cube-face-depth)) rotateY(180deg)!important}
+.knowledge-holocron-pyramid .knowledge-face-sithari{transform:translateZ(var(--cube-face-depth)) rotateY(270deg)!important}
 
 /* Always-visible direct routes: module access no longer depends on 3D hit-testing. */
 .knowledge-module-links{
