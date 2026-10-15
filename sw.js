@@ -1,9 +1,9 @@
-const CACHE_NAME = 'holocron-static-v3.8.6-sith-energy-pulse';
+const CACHE_NAME = 'holocron-static-v3.9.0-sith-storm-reveal';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
-  './sithari.css?v=3.9.1-sith-energy-pulse',
+  './sithari.css?v=4.0.0-sith-storm-reveal',
   './holocron-system.css?v=3.4.2-sanctuary-obsidian',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
@@ -11,7 +11,7 @@ const STATIC_ASSETS = [
   './modules/acolyte.js',
   './modules/disciple.js',
   './modules/seigneur.js',
-  './modules/sithari.js?v=3.7.0-sith-energy-pulse',
+  './modules/sithari.js?v=3.8.0-sith-storm-reveal',
   './modules/runtime.js?v=3.4.1-native-arrow-events',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
