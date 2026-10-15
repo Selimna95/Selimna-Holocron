@@ -536,3 +536,155 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
   .module-intro { font-size: 14px; }
   .gate-instructions { font-size: 13px; }
 }
+
+
+/* Gate redesign: the Ally Code control is engraved into the Holocron,
+   not presented as a floating rectangular card. */
+.holocron-gate .gate-login{
+  top:67%;
+  width:min(430px,44vw);
+  padding:0 18px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  text-align:center;
+}
+.holocron-gate .gate-login > label{
+  display:block;
+  margin:0 0 11px;
+  color:#f0d9c0;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.28em;
+  text-shadow:0 0 9px rgba(255,35,48,.42),0 2px 8px #000;
+}
+.holocron-gate .gate-input-wrap{
+  position:relative;
+  isolation:isolate;
+  height:52px;
+  border:0;
+  border-radius:0;
+  padding:1px;
+  clip-path:polygon(7% 0,93% 0,100% 28%,100% 72%,93% 100%,7% 100%,0 72%,0 28%);
+  background:linear-gradient(100deg,rgba(255,35,48,.18),rgba(255,215,178,.8) 18%,rgba(255,52,65,.78) 50%,rgba(255,215,178,.58) 82%,rgba(255,35,48,.18));
+  box-shadow:0 0 18px rgba(255,24,42,.17);
+}
+.holocron-gate .gate-input-wrap:before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:1px;
+  clip-path:inherit;
+  background:linear-gradient(100deg,rgba(8,3,5,.84),rgba(15,4,7,.72) 48%,rgba(7,3,5,.86));
+  box-shadow:inset 0 0 20px rgba(255,35,48,.13);
+  pointer-events:none;
+}
+.holocron-gate .gate-input-wrap:after{
+  content:"";
+  position:absolute;
+  z-index:2;
+  left:12%;
+  right:12%;
+  bottom:2px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,220,190,.72),rgba(255,40,56,.9),rgba(255,220,190,.72),transparent);
+  box-shadow:0 0 8px rgba(255,35,48,.8);
+  pointer-events:none;
+}
+.holocron-gate .gate-input-wrap > span,
+.holocron-gate .gate-input-wrap > i{
+  position:relative;
+  z-index:3;
+  color:#f2c6b8;
+  text-shadow:0 0 10px rgba(255,40,56,.48);
+}
+.holocron-gate .gate-input-wrap input{
+  position:relative;
+  z-index:3;
+  min-width:0;
+  color:#fff5ef;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:.24em;
+  text-shadow:0 0 12px rgba(255,255,255,.18);
+}
+.holocron-gate .gate-input-wrap:focus-within{
+  background:linear-gradient(100deg,rgba(255,35,48,.42),#fff0d6 18%,#ff4657 50%,#fff0d6 82%,rgba(255,35,48,.42));
+  box-shadow:0 0 12px rgba(255,30,47,.3),0 0 34px rgba(255,30,47,.18);
+}
+.holocron-gate .gate-login button{
+  width:86%;
+  height:43px;
+  margin-top:9px;
+  border:0;
+  border-radius:0;
+  clip-path:polygon(5% 0,95% 0,100% 36%,96% 100%,4% 100%,0 36%);
+  background:linear-gradient(180deg,rgba(109,10,22,.68),rgba(18,3,6,.72));
+  color:#f7e9e3;
+  font-size:9px;
+  letter-spacing:.23em;
+  text-shadow:0 0 9px rgba(255,55,68,.42);
+  box-shadow:inset 0 1px rgba(255,220,210,.12),0 0 18px rgba(255,25,43,.12);
+}
+.holocron-gate .gate-login button:after{
+  inset:3px 5px;
+  border:1px solid rgba(255,130,130,.2);
+  border-radius:0;
+  clip-path:polygon(5% 0,95% 0,100% 36%,96% 100%,4% 100%,0 36%);
+}
+.holocron-gate .gate-login button:hover{
+  background:linear-gradient(180deg,rgba(150,15,30,.78),rgba(35,3,8,.8));
+  box-shadow:0 0 22px rgba(255,25,43,.24),inset 0 1px rgba(255,220,210,.2);
+}
+.holocron-gate .gate-instructions{
+  max-width:340px;
+  margin:10px auto 0;
+  color:rgba(235,218,213,.72);
+  font-size:10px;
+  line-height:1.5;
+  text-shadow:0 2px 7px #000;
+}
+.holocron-gate .gate-message{
+  max-width:370px;
+  margin:9px auto 0;
+  color:rgba(239,222,216,.78);
+  font-size:10px;
+  text-shadow:0 2px 8px #000;
+}
+.holocron-gate .gate-relay-settings{
+  max-width:350px;
+  margin:10px auto 0;
+  border-top:1px solid rgba(255,90,95,.16);
+}
+.holocron-gate .gate-relay-settings summary{
+  color:rgba(235,205,196,.75);
+  text-shadow:0 1px 6px #000;
+}
+.holocron-gate .gate-relay-settings p{color:rgba(235,218,213,.68)}
+.holocron-gate.is-loading .gate-input-wrap{
+  animation:gateRuneCurrent 1.2s ease-in-out infinite alternate;
+}
+.holocron-gate.is-success .gate-login{
+  transform:translate(-50%,-50%) scale(.96);
+}
+@keyframes gateRuneCurrent{
+  from{filter:drop-shadow(0 0 2px rgba(255,30,47,.18))}
+  to{filter:drop-shadow(0 0 10px rgba(255,30,47,.5))}
+}
+@media (max-width:760px){
+  .holocron-gate .gate-login{top:67%;width:min(420px,84vw);padding:0 10px}
+  .holocron-gate .gate-input-wrap{height:48px}
+  .holocron-gate .gate-login button{width:90%;height:41px}
+}
+@media (max-width:440px){
+  .holocron-gate .gate-login{top:63%;width:min(390px,92vw);padding:0 8px}
+  .holocron-gate .gate-instructions{max-width:290px;font-size:9px}
+  .holocron-gate .gate-login > label{font-size:8px;letter-spacing:.2em}
+  .holocron-gate .gate-relay-settings{max-width:290px}
+}
+@media (prefers-reduced-motion:reduce){
+  .holocron-gate.is-loading .gate-input-wrap{animation:none}
+}
