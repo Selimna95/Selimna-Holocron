@@ -4,6 +4,7 @@ let sithariSelectedKeys = [];
 let sithariActiveKey = '';
 let sithariKyberLoading = {};
 let sithariKyberAttempted = {};
+let sithariEnergyPulseKey = '';
 
 const SITHARI_SLOT_ORDER = ['Square','Arrow','Diamond','Triangle','Circle','Cross'];
 const SITHARI_SLOT_LABEL = {Square:'CARRÉ',Arrow:'FLÈCHE',Diamond:'LOSANGE',Triangle:'TRIANGLE',Circle:'CERCLE',Cross:'CROIX'};
@@ -299,15 +300,27 @@ function sithariActionKey(character,slot){return `${characterKey(character)}::${
 let sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
 function sithariOpenAction(x,mode){
   const key=sithariActionKey(x.character,x.slot);
-  // Second click on the same active mod collapses its constellation.
+  // Reclicking the active mod closes the panel; selecting a mod triggers one Sith energy pulse.
   if(sithariActionState.key===key && sithariActionState.mode===mode){
     sithariActionState={key:'',mode:'',secondaryA:'',secondaryB:'',ran:false,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
+    sithariEnergyPulseKey='';
   }else{
     const profile=x.profile||sithariProfileForCharacter(x.character);
     const defaults=mode==='REINFORCEMENT'?sithariDefaultSecondaries(profile):[];
     sithariActionState={key,mode,secondaryA:defaults[0]||'',secondaryB:defaults[1]||'',ran:true,scope:{incomplete:true,veryLow:true,low:true,medium:false,all:false}};
+    sithariEnergyPulseKey=key;
   }
   sithariRenderCharacter();
+  if(sithariEnergyPulseKey===key){
+    setTimeout(()=>{
+      if(sithariEnergyPulseKey!==key)return;
+      sithariEnergyPulseKey='';
+      const box=$('sithariCharacterAnalysis');
+      box?.querySelector('.sithari-character-flow-board')?.classList.remove('sithari-energy-active');
+      box?.querySelector('.sithari-slot-card.sithari-energy-source')?.classList.remove('sithari-energy-source');
+      box?.querySelector('.sithari-action-panel.sithari-energy-arrival')?.classList.remove('sithari-energy-arrival');
+    },1150);
+  }
 }
 function sithariActionFor(x){
   return sithariActionState.key===sithariActionKey(x.character,x.slot)?sithariActionState:null;
@@ -354,7 +367,7 @@ function sithariRenderActionPanel(x){
     </div>
   </div>`:'';
 
-  return `<section class="sithari-action-panel ${active.mode==='REINFORCEMENT'?'reinforcement':'calibration'}">
+  return `<section class="sithari-action-panel ${active.mode==='REINFORCEMENT'?'reinforcement':'calibration'} ${sithariEnergyPulseKey===sithariActionKey(x.character,x.slot)?'sithari-energy-arrival':''}">
     <header><div><small>${active.mode==='REINFORCEMENT'?'RENFORCEMENT':'CALIBRAGE'} // RECHERCHE</small><strong>${esc(SITHARI_SLOT_LABEL[x.slot]||x.slot)} · ${active.mode==='REINFORCEMENT'?`SET ${x.current?.set_name||'—'} · ${x.current?.primary_stat||'—'}`:`RÉFÉRENCE KYBER`}</strong></div><button type="button" data-sithari-close>FERMER</button></header>
     <div class="sithari-action-scope"><span>SOURCES</span><b>${esc(sithariScopeLabel())}</b><small>Très faibles, faibles et incomplets par défaut · moyens / tout le roster en option.</small>
       <div class="sithari-source-options">
@@ -553,7 +566,7 @@ function sithariRenderCharacter(){
   const portrait=sithariPortrait(c);
   const actionSummary=loading?'<div class="sithari-no-reference">Récupération de la référence Kyber pour ce personnage…</div>':!p?'<div class="sithari-no-reference">Référence Kyber indisponible pour ce personnage.</div>':`<div class="sithari-action-summary"><div class="sithari-action-summary-main"><span class="sithari-action-icon">✧</span><div><strong>${reinforcement?`ACTION : ${reinforcement} renforcement${reinforcement>1?'s':''} possible${reinforcement>1?'s':''}`:'AUCUN RENFORCEMENT DISPONIBLE'}</strong><small>Set + primaire conformes = RENFORCEMENT. Sinon = CALIBRAGE avec la référence Kyber.</small></div></div><div class="sithari-action-pills"><b>${reinforcement} RENFORCEMENTS</b><b>${calibration} CALIBRAGES</b></div></div>`;
   box.innerHTML=`<header class="sithari-analysis-head"><div class="sithari-character-heading"><div class="sithari-analysis-portrait">${portrait}</div><div><small>SITH’ARI // ANALYSE PERSONNAGE</small><h3>${esc(c?.name||c?.baseId||'—')}</h3><p>${factionLabel} · ${num(sithariCharacterSpeed(c))} Speed max mod</p></div></div><div class="sithari-analysis-kpis"><span class="kpi-slots"><b>6</b><em>SLOTS</em></span><span class="kpi-replace"><b>${reinforcement}</b><em>RENFORCEMENTS</em></span><span class="kpi-search"><b>${calibration}</b><em>CALIBRAGES</em></span></div></header>
-  <section class="sithari-character-flow-board" aria-label="Personnage au centre des six emplacements de mods">
+  <section class="sithari-character-flow-board ${sithariEnergyPulseKey.startsWith(characterKey(c)+'::')?'sithari-energy-active':''}" aria-label="Personnage au centre des six emplacements de mods">
     <svg class="sithari-character-flow-lines" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="sithariCharacterFlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3048" stop-opacity=".12"/><stop offset=".5" stop-color="#ff3048" stop-opacity=".8"/><stop offset="1" stop-color="#ff3048" stop-opacity=".18"/></linearGradient></defs><path d="M500 350 C360 310 280 120 145 100"/><path d="M500 350 C355 350 270 350 145 350"/><path d="M500 350 C360 390 280 580 145 600"/><path d="M500 350 C640 310 720 120 855 100"/><path d="M500 350 C645 350 730 350 855 350"/><path d="M500 350 C640 390 720 580 855 600"/></svg>
     <div class="sithari-flow-mod-column sithari-flow-mod-left">${states.slice(0,3).map((x,i)=>sithariSlotCard(x,i)).join('')}</div>
     <article class="sithari-flow-character-core"><div class="sithari-flow-core-orbit orbit-a"></div><div class="sithari-flow-core-orbit orbit-b"></div><div class="sithari-flow-portrait">${portrait}</div><small>PERSONNAGE AU CŒUR DES FLUX</small><h3>${esc(c?.name||c?.baseId||'—')}</h3><p>${factionLabel}</p><div class="sithari-flow-core-kpis"><div><span>SLOTS</span><b>6</b></div><div><span>RENFORCER</span><b>${reinforcement}</b></div><div><span>CALIBRER</span><b>${calibration}</b></div></div><div class="sithari-flow-core-status">${loading?'RÉFÉRENCE KYBER EN CHARGEMENT':!p?'RÉFÉRENCE KYBER INDISPONIBLE':'RÉFÉRENCE KYBER ACTIVE'}</div></article>
@@ -590,9 +603,12 @@ function sithariSlotCard(x,i){
     LOADING:['RÉFÉRENCE EN CHARGEMENT','noref']
   };
   const [label,cls]=labels[x.status]||labels.NOREF;
+  const slotKey=sithariActionKey(x.character,x.slot);
+  const selected=sithariActionState.key===slotKey;
+  const energyActive=sithariEnergyPulseKey===slotKey;
   const action=x.status==='REINFORCE'?'REINFORCEMENT':x.status==='CALIBRATE'?'CALIBRATION':'';
   const actionBtn=action?`<button type="button" class="sithari-slot-action ${action==='REINFORCEMENT'?'reinforcement':'calibration'}" data-sithari-action="${action}" data-sithari-slot="${x.slot}">${action==='REINFORCEMENT'?'↗ RENFORCEMENT':'⌁ CALIBRAGE'}</button>`:'';
-  return `<article class="sithari-slot-card ${cls}"><header><span>${String(i+1).padStart(2,'0')}</span><div><small>SLOT</small><strong>${SITHARI_SLOT_LABEL[x.slot]||x.slot}</strong></div><em>${label}</em></header>
+  return `<article class="sithari-slot-card ${cls} ${selected?'is-selected':''} ${energyActive?'sithari-energy-source':''}"><header><span>${String(i+1).padStart(2,'0')}</span><div><small>SLOT</small><strong>${SITHARI_SLOT_LABEL[x.slot]||x.slot}</strong></div><em>${label}</em></header>
     <div class="sithari-slot-compare"><div class="sithari-current-mod"><small>TON MOD</small>${sithariModMini(x.current,x.slot,x.status)}</div><div class="sithari-slot-arrow">→</div><div class="sithari-kyber-ref"><small>RÉFÉRENCE KYBER</small><p><b>SETS</b> ${esc(x.reference.sets)}</p><p><b>PRIMAIRE</b> ${esc(x.reference.prim)}</p><p><b>SECONDAIRES</b> ${esc(x.reference.sec)}</p></div></div>
     <div class="sithari-rule-check"><span class="${x.setOk?'ok':'bad'}"><b>${x.setOk?'✓':'×'}</b> SET <em>${x.setOk?'CONFORME':'À CALIBRER'}</em></span><span class="${x.primaryOk?'ok':'bad'}"><b>${x.primaryOk?'✓':'×'}</b> PRIMAIRE <em>${x.primaryOk?'CONFORME':'À CALIBRER'}</em></span></div>
     ${actionBtn}
