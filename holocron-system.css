@@ -1478,3 +1478,150 @@ body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation
 @media(prefers-reduced-motion:reduce){
  .knowledge-holocron-stage:before,.knowledge-holocron-aura,.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"],.knowledge-holocron-pyramid .knowledge-face-rune,.knowledge-holocron-pyramid .knowledge-face-cta{animation:none!important}
 }
+
+/* V3.4.2 — Sanctuary visual direction: obsidian, relic gold and cold kyber light.
+   Red is reserved for critical states instead of bathing the whole dashboard. */
+body[data-page="dashboard"] {
+  background:
+    radial-gradient(ellipse at 50% 25%, rgba(190,163,103,.075), transparent 36%),
+    radial-gradient(ellipse at 50% 70%, rgba(83,151,168,.055), transparent 40%),
+    linear-gradient(145deg,#07090b 0%,#101216 48%,#07080a 100%) !important;
+}
+body[data-page="dashboard"] .decision-brand .eyebrow,
+body[data-page="dashboard"] .decision-status,
+body[data-page="dashboard"] .decision-card-title { color:#c7b27d !important; }
+body[data-page="dashboard"] .decision-brand h1 {
+  color:#f2eee5 !important;
+  text-shadow:0 0 30px rgba(210,188,132,.11) !important;
+  letter-spacing:.12em !important;
+}
+body[data-page="dashboard"] .decision-brand p { color:#a9a9a8 !important; }
+body[data-page="dashboard"] .decision-status {
+  border-color:rgba(205,184,130,.24) !important;
+  background:linear-gradient(120deg,rgba(205,184,130,.065),rgba(255,255,255,.018)) !important;
+}
+body[data-page="dashboard"] .decision-stage {
+  isolation:isolate;
+  padding:24px 22px 26px !important;
+  border:1px solid rgba(210,199,171,.12) !important;
+  background:
+    radial-gradient(ellipse at 50% 35%,rgba(196,171,111,.065),transparent 35%),
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(145deg,rgba(13,15,18,.86),rgba(6,7,9,.96)) !important;
+  background-size:auto,36px 36px,36px 36px,auto !important;
+  border-radius:18px !important;
+  box-shadow:inset 0 1px rgba(255,255,255,.035),0 28px 70px rgba(0,0,0,.3) !important;
+}
+body[data-page="dashboard"] .decision-stage:before {
+  content:"";
+  position:absolute;inset:12px;z-index:-1;pointer-events:none;
+  border:1px solid rgba(211,190,137,.075);
+  clip-path:polygon(0 0,22% 0,25% 2px,75% 2px,78% 0,100% 0,100% 100%,78% 100%,75% calc(100% - 2px),25% calc(100% - 2px),22% 100%,0 100%);
+}
+body[data-page="dashboard"] .decision-stage:after {
+  content:"KYBER FIELD  //  ROSTER SIGNALS";
+  position:absolute;right:24px;top:10px;z-index:0;pointer-events:none;
+  color:rgba(198,180,130,.34);font:700 7px/1.4 var(--font-display);letter-spacing:.2em;
+}
+body[data-page="dashboard"] .decision-stage>.decision-card {
+  border:1px solid rgba(196,189,173,.15) !important;
+  border-radius:12px !important;
+  background:linear-gradient(145deg,rgba(25,27,30,.96),rgba(10,11,13,.98)) !important;
+  box-shadow:0 18px 42px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.045) !important;
+}
+body[data-page="dashboard"] .decision-stage>.decision-card:before {
+  content:"";position:absolute;left:16px;right:16px;top:0;width:auto;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(205,184,130,.7),rgba(127,183,192,.35),transparent);
+  box-shadow:0 0 12px rgba(205,184,130,.12);opacity:1;
+}
+body[data-page="dashboard"] .decision-card-head .card-icon {
+  border-color:rgba(205,184,130,.32) !important;
+  background:radial-gradient(circle,rgba(205,184,130,.14),rgba(255,255,255,.015) 70%) !important;
+  color:#d8c58e !important;box-shadow:inset 0 0 18px rgba(205,184,130,.05) !important;
+}
+body[data-page="dashboard"] .decision-card-head strong { color:#f3f0e8 !important;text-shadow:none !important; }
+body[data-page="dashboard"] .decision-card-head>div>span,
+body[data-page="dashboard"] .account-secondary-stat span { color:#b8b7b1 !important; }
+body[data-page="dashboard"] .account-secondary-stat {
+  border-color:rgba(205,184,130,.13) !important;
+  background:linear-gradient(100deg,rgba(205,184,130,.055),rgba(255,255,255,.012)) !important;
+}
+body[data-page="dashboard"] .account-secondary-stat strong { color:#e6d9b3 !important; }
+body[data-page="dashboard"] .decision-bars>span,
+body[data-page="dashboard"] .decision-bars .bar { filter:saturate(.72); }
+body[data-page="dashboard"] .decision-legend,
+body[data-page="dashboard"] .decision-detail-list { color:#aaa9a5 !important; }
+body[data-page="dashboard"] .decision-detail-list strong { color:#e8e4dc !important; }
+body[data-page="dashboard"] .decision-detail-list i { color:#a9c8c8 !important; }
+body[data-page="dashboard"] .decision-gp-track {
+  background:rgba(255,255,255,.07) !important;
+  border:1px solid rgba(255,255,255,.055);
+}
+body[data-page="dashboard"] .decision-gp-track span:first-child {
+  background:linear-gradient(90deg,#a88c55,#d8c38e) !important;
+  box-shadow:0 0 12px rgba(205,184,130,.22) !important;
+}
+body[data-page="dashboard"] .decision-gp-track span:last-child {
+  background:linear-gradient(90deg,#527f8b,#9cc6c8) !important;
+  box-shadow:0 0 12px rgba(108,175,187,.18) !important;
+}
+body[data-page="dashboard"] .decision-holocron-wrap .decision-energy-ring {
+  border-color:rgba(202,185,139,.2) !important;
+  box-shadow:0 0 24px rgba(202,185,139,.05),inset 0 0 18px rgba(202,185,139,.035) !important;
+}
+body[data-page="dashboard"] .decision-holocron-wrap .ring-b { border-color:rgba(117,177,188,.22) !important; }
+body[data-page="dashboard"] .decision-holocron-wrap .ring-c { border-color:rgba(255,255,255,.08) !important; }
+body[data-page="dashboard"] .decision-holocron-wrap .decision-holocron-glow {
+  background:radial-gradient(circle,rgba(206,184,125,.17),rgba(78,137,148,.09) 38%,transparent 72%) !important;
+}
+body[data-page="dashboard"] .sanctuary-holocron-door {
+  border:1px solid rgba(204,187,141,.45) !important;
+  outline:1px solid rgba(255,255,255,.06);
+  outline-offset:7px;
+  filter:grayscale(.46) saturate(.62) brightness(.82) contrast(1.13)
+    drop-shadow(0 18px 24px rgba(0,0,0,.7)) drop-shadow(0 0 16px rgba(191,170,113,.14)) !important;
+}
+body[data-page="dashboard"] .sanctuary-holocron-door img {
+  filter:grayscale(.5) sepia(.12) saturate(.65) brightness(.85) contrast(1.16) !important;
+}
+body[data-page="dashboard"] .sanctuary-holocron-door:before {
+  background:
+    radial-gradient(circle at 50% 48%,transparent 20%,rgba(197,174,117,.08) 43%,rgba(0,0,0,.22) 68%,rgba(0,0,0,.88) 100%),
+    linear-gradient(135deg,rgba(117,170,180,.1),transparent 44%,rgba(205,184,130,.09)) !important;
+  box-shadow:inset 0 0 38px rgba(205,184,130,.13),inset 0 0 80px rgba(0,0,0,.65) !important;
+}
+body[data-page="dashboard"] .sanctuary-holocron-door:after {
+  border-color:rgba(205,184,130,.3) !important;
+  background:linear-gradient(110deg,transparent 26%,rgba(135,191,198,0) 38%,rgba(172,211,210,.42) 49%,rgba(205,184,130,.15) 53%,transparent 68%) !important;
+}
+body[data-page="dashboard"] .sanctuary-door-label {
+  border-color:rgba(205,184,130,.38) !important;
+  background:linear-gradient(100deg,rgba(9,10,12,.92),rgba(29,29,27,.88)) !important;
+  color:#e7dcc0 !important;
+  box-shadow:0 6px 20px rgba(0,0,0,.38) !important;
+}
+body[data-page="dashboard"] .sanctuary-door-label b { color:#a9d1d3 !important; }
+body[data-page="dashboard"] .holocron-verdict {
+  border-color:rgba(205,184,130,.3) !important;
+  background:linear-gradient(135deg,rgba(27,28,29,.98),rgba(10,11,13,.98)) !important;
+  box-shadow:0 18px 44px rgba(0,0,0,.34),inset 3px 0 rgba(205,184,130,.75) !important;
+}
+body[data-page="dashboard"] .holocron-verdict-head b,
+body[data-page="dashboard"] .holocron-verdict-main strong { color:#e7d6aa !important; }
+body[data-page="dashboard"] .holocron-verdict-head .status-dot { background:#a9d1b7 !important;box-shadow:0 0 8px rgba(169,209,183,.2) !important; }
+body[data-page="dashboard"] .decision-bottom-status {
+  border-color:rgba(205,184,130,.16) !important;
+  background:linear-gradient(100deg,rgba(205,184,130,.055),rgba(105,160,168,.035),rgba(255,255,255,.008)) !important;
+}
+body[data-page="dashboard"] .decision-bottom-status b { color:#d9c99f !important; }
+body[data-page="dashboard"] .decision-bottom-status .status-dot { background:#a9d1b7 !important;box-shadow:0 0 8px rgba(169,209,183,.22) !important; }
+@media(max-width:760px) {
+  body[data-page="dashboard"] .decision-stage { padding:22px 12px 18px !important;border-radius:13px !important; }
+  body[data-page="dashboard"] .decision-stage:after { right:14px;top:8px;font-size:6px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  body[data-page="dashboard"] .sanctuary-holocron-door,
+  body[data-page="dashboard"] .sanctuary-holocron-door:before,
+  body[data-page="dashboard"] .sanctuary-holocron-door:after { animation:none !important; }
+}
