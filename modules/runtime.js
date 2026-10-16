@@ -152,8 +152,11 @@ document.addEventListener('click',e=>{
       face.setAttribute('aria-current',String(active));
       face.setAttribute('aria-hidden',String(!active));
       face.tabIndex=active?0:-1;
-      face.hidden=!active;
-      face.style.display=active?'flex':'none';
+      // Keep all four faces in the 3D scene; hide only interaction on inactive faces.
+      // Setting hidden/display:none made cube rotation impossible to see.
+      face.hidden=false;
+      face.style.display='flex';
+      face.style.visibility='visible';
       face.style.pointerEvents=active?'auto':'none';
     });
   }
