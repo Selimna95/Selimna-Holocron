@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/icons/holocron-192.png" type="image/png">
 <link rel="stylesheet" href="app.css?v=3.2.1">
 <link rel="stylesheet" href="sithari.css?v=4.0.0-sith-storm-reveal">
-<link rel="stylesheet" href="holocron-system.css?v=3.6.1-clean-pyramid">
+<link rel="stylesheet" href="holocron-system.css?v=3.6.2-buttons-only">
 
 
 
@@ -218,36 +218,15 @@
       <header class="knowledge-header">
         <div class="knowledge-kicker">HOLOCRON // CHAMBRE DES VOIES</div>
         <h1>LE SAVOIR SE MÉRITE</h1>
-        <p>Une pyramide Holocron. Quatre voies de maîtrise. Fais défiler les faces, puis ouvre le module affiché.</p>
+        <p>Choisis ton niveau pour accéder directement au module correspondant.</p>
       </header>
-      <section class="knowledge-holocron-chamber" aria-label="Holocron rotatif des quatre voies">
-        <div class="knowledge-chamber-sigil" aria-hidden="true"><span></span><i></i><b></b></div>
-        <div class="knowledge-chamber-overline"><span>ARTEFACT DE CONNAISSANCE</span><span id="knowledgeFaceCounter">FACE 01 / 04</span></div>
-        <div class="knowledge-holocron-stage" id="knowledgeHolocronStage" tabindex="0" aria-label="Fais glisser horizontalement pour faire tourner l’Holocron">
-          <div class="knowledge-holocron-aura" aria-hidden="true"></div>
-          <div class="knowledge-holocron-shadow" aria-hidden="true"></div>
-          <div class="knowledge-holocron-pyramid" id="knowledgeHolocronCube" data-rotation="0" aria-label="Holocron rotatif. Face avant : Acolyte.">
-            <button type="button" class="knowledge-cube-face knowledge-face-acolyte" data-page="top-changes" data-face-index="0" aria-label="Ouvrir le niveau Acolyte">
-              <span class="knowledge-face-topline">01 // VOIR</span><span class="knowledge-face-rune">⌁</span><strong>ACOLYTE</strong><span class="knowledge-face-divider"></span><span class="knowledge-face-copy">Voir les priorités. Identifier le changement qui apporte le plus.</span><span class="knowledge-face-cta">OUVRIR LA VOIE <b>↗</b></span><span class="knowledge-face-corner corner-a"></span><span class="knowledge-face-corner corner-b"></span>
-            </button>
-            <button type="button" class="knowledge-cube-face knowledge-face-disciple" data-page="mods-analysis" data-face-index="1" aria-label="Ouvrir le niveau Disciple">
-              <span class="knowledge-face-topline">02 // COMPRENDRE</span><span class="knowledge-face-rune">◈</span><strong>DISCIPLE</strong><span class="knowledge-face-divider"></span><span class="knowledge-face-copy">Comprendre les secondaires et réaffecter les mods avec méthode.</span><span class="knowledge-face-cta">OUVRIR LA VOIE <b>↗</b></span><span class="knowledge-face-corner corner-a"></span><span class="knowledge-face-corner corner-b"></span>
-            </button>
-            <button type="button" class="knowledge-cube-face knowledge-face-lord" data-page="optimizer" data-face-index="2" aria-label="Ouvrir le niveau Seigneur Sith">
-              <span class="knowledge-face-topline">03 // MAÎTRISER</span><span class="knowledge-face-rune">✦</span><strong>SEIGNEUR SITH</strong><span class="knowledge-face-divider"></span><span class="knowledge-face-copy">Forger une configuration et optimiser un personnage en profondeur.</span><span class="knowledge-face-cta">OUVRIR LA VOIE <b>↗</b></span><span class="knowledge-face-corner corner-a"></span><span class="knowledge-face-corner corner-b"></span>
-            </button>
-            <button type="button" class="knowledge-cube-face knowledge-face-sithari" data-page="sithari" data-face-index="3" aria-label="Ouvrir le niveau Sith’ari">
-              <span class="knowledge-face-topline">04 // TRANSCENDER</span><span class="knowledge-face-rune">✧</span><strong>SITH’ARI</strong><span class="knowledge-face-divider"></span><span class="knowledge-face-copy">Comparer les six slots au Kyber, renforcer et calibrer.</span><span class="knowledge-face-cta">OUVRIR LA VOIE <b>↗</b></span><span class="knowledge-face-corner corner-a"></span><span class="knowledge-face-corner corner-b"></span>
-            </button>
-          </div>
-        </div>
-        <div class="knowledge-holocron-controls">
-          <button type="button" class="knowledge-rotate-control" data-holocron-rotate="-1" aria-label="Faire tourner l’Holocron vers la gauche">←</button>
-          <div class="knowledge-rotation-readout"><span id="knowledgeFaceName">ACOLYTE</span><small>FAIS TOURNER L’HOLOCRON</small></div>
-          <button type="button" class="knowledge-rotate-control" data-holocron-rotate="1" aria-label="Faire tourner l’Holocron vers la droite">→</button>
-        </div>
-        <p class="knowledge-chamber-hint">UTILISE LES FLÈCHES OU LE GLISSEMENT POUR CHOISIR UNE FACE · CLIQUE DESSUS POUR ENTRER</p>
-        <nav class="knowledge-module-links" aria-label="Accès direct aux modules"><button type="button" data-page="top-changes"><span>01</span><strong>ACOLYTE</strong><small>Priorités du roster</small><b>↗</b></button><button type="button" data-page="mods-analysis"><span>02</span><strong>DISCIPLE</strong><small>Analyse des mods</small><b>↗</b></button><button type="button" data-page="optimizer"><span>03</span><strong>SEIGNEUR SITH</strong><small>Forge et optimisation</small><b>↗</b></button><button type="button" data-page="sithari"><span>04</span><strong>SITH’ARI</strong><small>Comparaison Kyber</small><b>↗</b></button></nav>
+      <section class="knowledge-holocron-chamber knowledge-buttons-only" aria-label="Les quatre voies de maîtrise">
+        <nav class="knowledge-module-links" aria-label="Accès aux quatre modules">
+          <button type="button" data-page="top-changes"><span>01</span><strong>ACOLYTE</strong><small>Priorités du roster</small><b aria-hidden="true">↗</b></button>
+          <button type="button" data-page="mods-analysis"><span>02</span><strong>DISCIPLE</strong><small>Analyse des mods</small><b aria-hidden="true">↗</b></button>
+          <button type="button" data-page="optimizer"><span>03</span><strong>SEIGNEUR SITH</strong><small>Forge et optimisation</small><b aria-hidden="true">↗</b></button>
+          <button type="button" data-page="sithari"><span>04</span><strong>SITH’ARI</strong><small>Comparaison Kyber</small><b aria-hidden="true">↗</b></button>
+        </nav>
       </section>
     </section>
 
