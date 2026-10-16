@@ -10,7 +10,7 @@
   function nfmt(v){ return Number(v||0).toLocaleString('fr-FR'); }
 
   function isSpeedStat(stat){
-    const value=String(stat||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+    const value=String(stat||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     return value.includes('speed') || value.includes('vitesse');
   }
 
