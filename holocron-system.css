@@ -1201,7 +1201,7 @@ body[data-page="dashboard"] .sanctuary-holocron-door:focus-visible{outline:2px s
 @keyframes sanctuaryGatewayCurrent{0%{background-position:180% 0;opacity:.35}50%{opacity:.95}100%{background-position:-100% 0;opacity:.35}}
 /* Four triangular faces now share one apex: a proper square-based pyramid, not a cube with clipped corners. */
 .knowledge-holocron-pyramid .knowledge-cube-face{
-  transform-origin:50% 0!important;
+  transform-origin:center center!important;
   clip-path:polygon(50% 0,100% 100%,0 100%)!important;
 }
 .knowledge-holocron-pyramid .knowledge-face-acolyte{transform:translateZ(var(--cube-face-depth)) rotateY(0deg)!important}
@@ -1817,7 +1817,7 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
   overflow:visible!important;
 }
 .knowledge-holocron-pyramid{
-  --cube-face-depth:98px;
+  --cube-face-depth:calc(min(82vw,340px)/2);
   position:relative!important;
   transform-style:preserve-3d!important;
   transform-origin:50% 50%!important;
@@ -1858,6 +1858,6 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
 .sanctuary-sith-hand{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 @media(max-width:760px){
   .knowledge-holocron-stage{perspective:900px!important;min-height:330px!important}
-  .knowledge-holocron-pyramid{--cube-face-depth:78px;width:min(82vw,300px)!important;height:290px!important}
+  .knowledge-holocron-pyramid{--cube-face-depth:calc(min(82vw,300px)/2);width:min(82vw,300px)!important;height:290px!important}
   .knowledge-holocron-pyramid .knowledge-cube-face{height:290px!important}
 }
