@@ -890,34 +890,12 @@ body[data-page="dashboard"] .decision-header{margin-bottom:12px}
 .knowledge-chamber-sigil span,.knowledge-chamber-sigil i,.knowledge-chamber-sigil b{position:absolute;display:block;left:50%;top:50%;width:7px;height:7px;background:#ff3048;box-shadow:0 0 16px #ff3048;transform:translate(-50%,-50%)}
 .knowledge-chamber-sigil i{width:11px;height:11px;transform:translate(-50%,-50%) rotate(45deg);background:#6d0612}.knowledge-chamber-sigil b{width:2px;height:45%;background:linear-gradient(transparent,rgba(255,48,72,.25),transparent)}
 .knowledge-chamber-overline{position:relative;z-index:4;display:flex;justify-content:space-between;gap:14px;color:#b56b72;font:800 9px/1.5 var(--font-display);letter-spacing:.2em}.knowledge-chamber-overline span:last-child{color:#ff6576}
-.knowledge-holocron-stage{position:relative;z-index:2;display:grid;place-items:center;height:460px;margin:0 auto;touch-action:pan-y;cursor:grab;perspective:1100px;outline:none}
-.knowledge-holocron-stage:active{cursor:grabbing}.knowledge-holocron-stage:focus-visible{outline:1px solid rgba(255,75,92,.45);outline-offset:-8px}
-.knowledge-holocron-aura{position:absolute;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(255,22,42,.18),rgba(102,0,13,.07) 44%,transparent 70%);filter:blur(8px);animation:knowledgeAuraPulse 4s ease-in-out infinite}
-.knowledge-holocron-shadow{position:absolute;left:50%;bottom:37px;width:280px;height:42px;transform:translateX(-50%);border-radius:50%;background:rgba(0,0,0,.85);filter:blur(18px)}
 .knowledge-holocron-cube{position:relative;width:var(--cube-face-width);height:320px;transform-style:preserve-3d;transform:rotateY(0deg);transition:transform .85s cubic-bezier(.2,.75,.15,1);will-change:transform}
-.knowledge-cube-face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;width:var(--cube-face-width);height:320px;padding:25px 19px 19px;overflow:hidden;border:1px solid rgba(255,62,78,.8);border-radius:2px;color:#fff2ef;text-align:center;cursor:pointer;background:linear-gradient(145deg,rgba(52,6,13,.98),rgba(9,5,8,.99) 47%,rgba(35,3,10,.98));box-shadow:inset 0 0 38px rgba(255,27,46,.11),inset 0 1px rgba(255,200,195,.16),0 0 28px rgba(255,20,39,.12);backface-visibility:hidden;transform-origin:center center;outline:none}
-.knowledge-cube-face:before{content:"";position:absolute;inset:8px;border:1px solid rgba(255,85,97,.24);clip-path:polygon(0 8%,8% 0,92% 0,100% 8%,100% 92%,92% 100%,8% 100%,0 92%);pointer-events:none}
-.knowledge-cube-face:after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 12%,rgba(255,60,75,.12) 35%,transparent 55%);pointer-events:none}
-.knowledge-face-acolyte{transform:rotateY(0deg) translateZ(var(--cube-face-depth))}.knowledge-face-disciple{transform:rotateY(90deg) translateZ(var(--cube-face-depth))}.knowledge-face-lord{transform:rotateY(180deg) translateZ(var(--cube-face-depth))}.knowledge-face-sithari{transform:rotateY(270deg) translateZ(var(--cube-face-depth))}
-.knowledge-cube-face[aria-current="true"]{box-shadow:inset 0 0 42px rgba(255,27,46,.17),inset 0 1px rgba(255,200,195,.2),0 0 38px rgba(255,20,39,.28)}
-.knowledge-face-topline{position:relative;z-index:1;align-self:stretch;color:#ff7884;font:800 9px var(--font-display);letter-spacing:.2em;text-align:left}
-.knowledge-face-rune{position:relative;z-index:1;display:grid;place-items:center;width:92px;height:92px;margin:24px auto 18px;border:1px solid rgba(255,65,80,.72);transform:rotate(45deg);color:#ff596b;font-size:42px;text-shadow:0 0 20px rgba(255,28,47,.8);background:radial-gradient(circle,rgba(255,30,50,.2),rgba(16,3,7,.8) 70%);box-shadow:0 0 35px rgba(255,26,44,.14),inset 0 0 25px rgba(255,26,44,.14)}
-.knowledge-face-rune:after{content:"";position:absolute;inset:9px;border:1px dashed rgba(255,83,97,.5)}
-.knowledge-cube-face>strong{position:relative;z-index:1;margin:0;color:#fff5f3;font:900 19px/1.25 var(--font-display);letter-spacing:.1em;text-shadow:0 0 15px rgba(255,34,52,.35)}
-.knowledge-face-divider{position:relative;z-index:1;width:65%;height:1px;margin:16px 0;background:linear-gradient(90deg,transparent,#ff3c52,transparent)}
-.knowledge-face-copy{position:relative;z-index:1;max-width:210px;min-height:48px;color:#b7a1a3;font:400 11px/1.65 var(--font-ui)}
-.knowledge-face-cta{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:auto;padding-top:17px;color:#ff7b86;font:800 9px var(--font-display);letter-spacing:.13em}.knowledge-face-cta b{font-size:16px}
-.knowledge-face-corner{position:absolute;z-index:1;width:20px;height:20px;border-color:#ff596b;border-style:solid;opacity:.8}.knowledge-face-corner.corner-a{top:15px;right:15px;border-width:1px 1px 0 0}.knowledge-face-corner.corner-b{bottom:15px;left:15px;border-width:0 0 1px 1px}
-.knowledge-holocron-controls{position:relative;z-index:3;display:flex;align-items:center;justify-content:center;gap:24px;margin-top:-1px}
-.knowledge-rotate-control{display:grid;place-items:center;width:48px;height:48px;border:1px solid rgba(255,54,70,.46);background:linear-gradient(145deg,rgba(91,5,17,.8),rgba(11,6,8,.95));color:#ff6877;font-size:24px;cursor:pointer;transition:background .2s,transform .2s,box-shadow .2s}
-.knowledge-rotate-control:hover{background:rgba(130,7,23,.8);transform:scale(1.05);box-shadow:0 0 22px rgba(255,25,45,.2)}.knowledge-rotate-control:focus-visible{outline:2px solid #ff6576;outline-offset:3px}
-.knowledge-rotation-readout{display:flex;flex-direction:column;gap:6px;min-width:170px;text-align:center}.knowledge-rotation-readout span{color:#ff596b;font:900 12px var(--font-display);letter-spacing:.2em}.knowledge-rotation-readout small{color:#807275;font:800 8px var(--font-display);letter-spacing:.14em}
-.knowledge-chamber-hint{position:relative;z-index:2;margin:24px 0 0;color:#79676a;text-align:center;font:800 8px/1.6 var(--font-display);letter-spacing:.15em}
 @keyframes knowledgeAuraPulse{0%,100%{opacity:.65;transform:scale(.96)}50%{opacity:1;transform:scale(1.05)}}
 body[data-page="knowledge"] .nav-knowledge{color:#fff!important;border-color:rgba(255,75,95,.38)!important;background:rgba(255,48,72,.08)!important;box-shadow:inset 3px 0 #ff3048}
-@media(max-width:760px){.knowledge-holocron-chamber{--cube-face-width:220px;--cube-face-depth:110px;min-height:625px;padding:18px 10px 24px}.knowledge-holocron-stage{height:420px}.knowledge-holocron-cube{height:300px}.knowledge-cube-face{height:300px;padding:22px 15px 16px}.knowledge-face-rune{width:76px;height:76px;margin:21px auto 15px;font-size:34px}.knowledge-cube-face>strong{font-size:16px}.knowledge-face-copy{font-size:10px}.knowledge-chamber-sigil{width:340px;height:340px}}
-@media(max-width:420px){.knowledge-holocron-chamber{--cube-face-width:194px;--cube-face-depth:97px;min-height:590px;padding-inline:8px}.knowledge-holocron-stage{height:385px}.knowledge-holocron-cube{height:280px}.knowledge-cube-face{height:280px;padding:19px 12px 14px}.knowledge-face-rune{width:64px;height:64px;margin:18px auto 13px;font-size:30px}.knowledge-cube-face>strong{font-size:14px}.knowledge-face-copy{font-size:9px;min-height:43px}.knowledge-face-cta{font-size:8px}.knowledge-holocron-controls{gap:12px}.knowledge-rotate-control{width:42px;height:42px}.knowledge-rotation-readout{min-width:130px}.knowledge-rotation-readout small{font-size:7px}.knowledge-chamber-hint{font-size:7px}}
-@media(prefers-reduced-motion:reduce){.sanctuary-mini-holocron,.knowledge-holocron-aura{animation:none!important}.knowledge-holocron-cube{transition:none!important}}
+@media(max-width:760px){.knowledge-holocron-chamber{--cube-face-width:220px;--cube-face-depth:110px;min-height:625px;padding:18px 10px 24px}.knowledge-holocron-cube{height:300px}.knowledge-chamber-sigil{width:340px;height:340px}}
+@media(max-width:420px){.knowledge-holocron-chamber{--cube-face-width:194px;--cube-face-depth:97px;min-height:590px;padding-inline:8px}.knowledge-holocron-cube{height:280px}}
+@media(prefers-reduced-motion:reduce){.sanctuary-mini-holocron{animation:none!important}.knowledge-holocron-cube{transition:none!important}}
 
 
 /* V3.3.3 — Sanctuary account overview + clickable pyramidal Holocron navigation. */
@@ -1001,22 +979,9 @@ body[data-page="dashboard"] .decision-card-title{margin-top:18px}
 body[data-page="dashboard"] .decision-bottom-status small{display:block;margin-top:5px}
 @media(max-width:900px){body[data-page="dashboard"] .decision-stage{grid-template-columns:minmax(0,1fr) minmax(240px,.85fr);grid-template-areas:"units pyramid" "gp pyramid" "mods mods" "status status";gap:12px;padding:8px 12px 22px}body[data-page="dashboard"] .decision-holocron-wrap{min-height:260px}body[data-page="dashboard"] .decision-holocron{width:min(100%,300px)!important}body[data-page="dashboard"] .decision-holocron .holocron-face b{font-size:8px}}
 @media(max-width:600px){body[data-page="dashboard"] .decision-header{display:block!important;padding:16px 14px 0}body[data-page="dashboard"] .decision-stage{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"pyramid" "units" "gp" "mods" "status";gap:12px;padding:12px 12px 36px!important}body[data-page="dashboard"] .decision-stage>.decision-holocron-wrap{width:min(82vw,310px)!important;justify-self:center;min-height:0}body[data-page="dashboard"] .decision-stage>.decision-card{width:100%!important}body[data-page="dashboard"] .decision-stage>.unit-card,body[data-page="dashboard"] .decision-stage>.gp-card,body[data-page="dashboard"] .decision-stage>.mod-card{max-width:none!important}body[data-page="dashboard"] .decision-holocron .holocron-face b{font-size:9px}}
-
-/* La Chambre des voies utilise également quatre faces triangulaires : une pyramide, pas un cube. */
-.knowledge-holocron-pyramid{position:relative;width:var(--cube-face-width);height:320px;transform-style:preserve-3d;transform:rotateY(0deg);transition:transform .85s cubic-bezier(.2,.75,.15,1);will-change:transform}
-.knowledge-holocron-pyramid .knowledge-cube-face{inset:0;width:var(--cube-face-width);height:320px;padding:88px 34px 28px;border:1px solid rgba(255,62,78,.9);border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(145deg,rgba(52,6,13,.99),rgba(9,5,8,.99) 47%,rgba(35,3,10,.99));box-shadow:inset 0 0 38px rgba(255,27,46,.16),0 0 28px rgba(255,20,39,.18);backface-visibility:hidden}
-.knowledge-holocron-pyramid .knowledge-cube-face:before{inset:18px 22px 20px;clip-path:polygon(50% 0,100% 100%,0 100%);border:1px solid rgba(255,85,97,.35)}
-.knowledge-holocron-pyramid .knowledge-cube-face:after{background:linear-gradient(120deg,transparent 12%,rgba(255,60,75,.16) 35%,transparent 55%);clip-path:polygon(50% 0,100% 100%,0 100%)}
-.knowledge-holocron-pyramid .knowledge-face-topline{align-self:center;text-align:center;font-size:7px;letter-spacing:.12em}
-.knowledge-holocron-pyramid .knowledge-face-rune{width:56px;height:56px;margin:12px auto 10px;font-size:27px}
-.knowledge-holocron-pyramid .knowledge-cube-face>strong{font-size:clamp(11px,1.2vw,16px);letter-spacing:.06em;text-align:center}
-.knowledge-holocron-pyramid .knowledge-face-divider{margin:10px 0;width:75%}
-.knowledge-holocron-pyramid .knowledge-face-copy{font-size:9px;line-height:1.4;min-height:0;text-align:center}
-.knowledge-holocron-pyramid .knowledge-face-cta{justify-content:center;gap:7px;margin-top:12px;padding-top:8px;font-size:7px;letter-spacing:.08em}
-.knowledge-holocron-pyramid .knowledge-face-corner{display:none}
-@media(max-width:760px){.knowledge-holocron-pyramid{height:300px}.knowledge-holocron-pyramid .knowledge-cube-face{height:300px;padding:80px 26px 22px}.knowledge-holocron-pyramid .knowledge-face-rune{width:46px;height:46px;margin:9px auto;font-size:22px}.knowledge-holocron-pyramid .knowledge-face-copy{font-size:8px}.knowledge-holocron-pyramid .knowledge-cube-face>strong{font-size:12px}}
-@media(max-width:420px){.knowledge-holocron-pyramid{height:280px}.knowledge-holocron-pyramid .knowledge-cube-face{height:280px;padding:70px 22px 18px}.knowledge-holocron-pyramid .knowledge-face-rune{width:40px;height:40px;margin:7px auto;font-size:20px}.knowledge-holocron-pyramid .knowledge-face-copy{font-size:7px}.knowledge-holocron-pyramid .knowledge-face-cta{font-size:6px}}
-@media(prefers-reduced-motion:reduce){.knowledge-holocron-pyramid{transition:none!important}}
+@media(max-width:760px){}
+@media(max-width:420px){}
+@media(prefers-reduced-motion:reduce){}
 
 /* V3.3.4 — Restore the Sanctuary energy network and make the center a Knowledge gateway. */
 body[data-page="dashboard"] .decision-stage{isolation:isolate}
@@ -1042,13 +1007,6 @@ body[data-page="dashboard"] .decision-holocron .sithari-core strong,body[data-pa
 @keyframes sanctuaryRingPulse{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.72;transform:scale(1.04)}}
 @media(max-width:900px){body[data-page="dashboard"] .decision-stage>.decision-flow{display:none!important}}
 @media(prefers-reduced-motion:reduce){body[data-page="dashboard"] .decision-stage>.decision-flow,body[data-page="dashboard"] .decision-holocron-wrap .decision-energy-ring{animation:none!important}}
-
-
-/* V3.3.5 — Living Holocron: obsidian facets, internal pulse and reliable face hit-testing. */
-/* A face behind the artefact must never steal a click from the face currently facing the user. */
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="false"]{pointer-events:none!important}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{pointer-events:auto!important;cursor:pointer;z-index:2}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]:focus-visible{outline:2px solid #ffd0b1;outline-offset:4px}
 
 /* The Sanctuary artefact is a single faceted body with light moving through it,
    not a set of disconnected flat red triangles. */
@@ -1199,15 +1157,6 @@ body[data-page="dashboard"] .sanctuary-holocron-door:focus-visible{outline:2px s
 @keyframes sanctuaryGatewayBreath{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.012)}}
 @keyframes sanctuaryGatewayAura{0%,100%{opacity:.55;filter:brightness(.82)}50%{opacity:1;filter:brightness(1.35)}}
 @keyframes sanctuaryGatewayCurrent{0%{background-position:180% 0;opacity:.35}50%{opacity:.95}100%{background-position:-100% 0;opacity:.35}}
-/* Four triangular faces now share one apex: a proper square-based pyramid, not a cube with clipped corners. */
-.knowledge-holocron-pyramid .knowledge-cube-face{
-  transform-origin:center center!important;
-  clip-path:polygon(50% 0,100% 100%,0 100%)!important;
-}
-.knowledge-holocron-pyramid .knowledge-face-acolyte{transform:translateZ(var(--cube-face-depth)) rotateY(0deg)!important}
-.knowledge-holocron-pyramid .knowledge-face-disciple{transform:translateZ(var(--cube-face-depth)) rotateY(90deg)!important}
-.knowledge-holocron-pyramid .knowledge-face-lord{transform:translateZ(var(--cube-face-depth)) rotateY(180deg)!important}
-.knowledge-holocron-pyramid .knowledge-face-sithari{transform:translateZ(var(--cube-face-depth)) rotateY(270deg)!important}
 @media(max-width:760px){
  body[data-page="dashboard"] .sanctuary-holocron-door{width:min(82vw,310px)}
  body[data-page="dashboard"] .sanctuary-door-label{font-size:9px;bottom:11%}
@@ -1251,12 +1200,6 @@ body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation
 @media(max-width:900px){body[data-page="dashboard"] .decision-stage>.sanctuary-energy-arcs{display:none!important}}
 @media(prefers-reduced-motion:reduce){body[data-page="dashboard"] .sanctuary-energy-arcs path{animation:none!important}}
 
-/* Keep the apex fixed: rotate each triangular face around its top point, then offset it along the shared local depth axis. */
-.knowledge-holocron-pyramid .knowledge-face-acolyte{transform:translateZ(var(--cube-face-depth)) rotateY(0deg)!important}
-.knowledge-holocron-pyramid .knowledge-face-disciple{transform:translateZ(var(--cube-face-depth)) rotateY(90deg)!important}
-.knowledge-holocron-pyramid .knowledge-face-lord{transform:translateZ(var(--cube-face-depth)) rotateY(180deg)!important}
-.knowledge-holocron-pyramid .knowledge-face-sithari{transform:translateZ(var(--cube-face-depth)) rotateY(270deg)!important}
-
 /* Always-visible direct routes: module access no longer depends on 3D hit-testing. */
 .knowledge-module-links{
   position:relative;z-index:5;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
@@ -1281,64 +1224,11 @@ body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation
 .knowledge-module-links button>b{position:absolute;right:12px;top:11px;color:#ff6576;font-size:14px}
 @media(max-width:760px){.knowledge-module-links{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.knowledge-module-links button{min-height:90px;padding:12px 10px}.knowledge-module-links button>strong{font-size:10px}}
 @media(max-width:420px){.knowledge-module-links{grid-template-columns:minmax(0,1fr)}.knowledge-module-links button{min-height:72px;padding:12px 14px}}
-
-
-/* V3.3.9 — Reliable Knowledge navigation: one visible triangular face at a time.
-   We intentionally stop stacking clickable controls in 3D space: browser hit-testing
-   on intersecting transformed triangles is inconsistent across browsers. */
-.knowledge-holocron-pyramid{
-  transform:none!important;
-  transform-style:flat!important;
-  transition:none!important;
-  perspective:none!important;
-  width:min(82vw,var(--cube-face-width,340px))!important;
-  height:320px!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face{
-  inset:0!important;
-  width:100%!important;
-  height:320px!important;
-  display:none!important;
-  transform:none!important;
-  transform-origin:center!important;
-  backface-visibility:visible!important;
-  -webkit-backface-visibility:visible!important;
-  pointer-events:none!important;
-  z-index:1!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{
-  display:flex!important;
-  transform:none!important;
-  pointer-events:auto!important;
-  cursor:pointer!important;
-  z-index:3!important;
-  isolation:isolate;
-  filter:drop-shadow(0 12px 16px rgba(0,0,0,.4));
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="false"]{
-  display:none!important;
-  pointer-events:none!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-hidden="true"]{visibility:hidden!important}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]:focus-visible{
-  outline:2px solid #ffd0b1!important;outline-offset:5px;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face:before{
-  pointer-events:none!important;
-  border-color:rgba(255,112,124,.56)!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face:after{pointer-events:none!important}
-.knowledge-holocron-pyramid .knowledge-face-active-enter{
-  animation:knowledgeFaceReveal .42s cubic-bezier(.2,.8,.2,1) both;
-}
 @keyframes knowledgeFaceReveal{
   from{opacity:.35;filter:brightness(.55) drop-shadow(0 0 0 rgba(255,30,50,0));transform:rotateX(7deg) scale(.96)!important}
   to{opacity:1;filter:brightness(1) drop-shadow(0 12px 16px rgba(0,0,0,.4));transform:rotateX(0) scale(1)!important}
 }
-.knowledge-holocron-stage{touch-action:pan-y!important;cursor:default!important}
-.knowledge-holocron-stage:active{cursor:default!important}
 @media(prefers-reduced-motion:reduce){
-  .knowledge-holocron-pyramid .knowledge-face-active-enter{animation:none!important}
 }
 
 
@@ -1349,134 +1239,16 @@ body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation
     radial-gradient(ellipse at 50% 42%,rgba(119,10,27,.18),transparent 37%),
     radial-gradient(ellipse at 50% 80%,rgba(255,32,55,.08),transparent 52%);
 }
-.knowledge-holocron-stage{
-  position:relative;display:grid;place-items:center;min-height:370px;
-  overflow:visible;isolation:isolate;z-index:2;
-}
-.knowledge-holocron-stage:before{
-  content:"";position:absolute;width:min(68vw,420px);aspect-ratio:1;border-radius:50%;
-  border:1px solid rgba(255,45,67,.25);
-  background:repeating-conic-gradient(from 0deg,rgba(255,40,60,.12) 0deg 1deg,transparent 1deg 18deg);
-  mask:radial-gradient(circle,transparent 53%,#000 54%,#000 55%,transparent 56%);
-  animation:knowledgeSigilSpin 36s linear infinite;pointer-events:none;z-index:-1;
-}
-.knowledge-holocron-stage:after{
-  content:"";position:absolute;bottom:24px;width:min(46vw,280px);height:34px;border-radius:50%;
-  background:radial-gradient(ellipse,rgba(255,22,48,.3),rgba(255,22,48,.08) 45%,transparent 72%);
-  filter:blur(7px);pointer-events:none;z-index:-1;
-}
-.knowledge-holocron-aura{
-  position:absolute!important;width:min(60vw,360px);aspect-ratio:1;border-radius:50%;
-  border:1px solid rgba(255,55,73,.23);
-  box-shadow:0 0 28px rgba(255,20,45,.08),inset 0 0 28px rgba(255,20,45,.05);
-  pointer-events:none;z-index:0;
-}
-.knowledge-holocron-shadow{z-index:0!important;opacity:.85}
-.knowledge-holocron-pyramid{
-  position:relative!important;z-index:2;width:min(82vw,340px)!important;height:320px!important;
-  filter:drop-shadow(0 0 10px rgba(255,20,42,.24)) drop-shadow(0 20px 20px rgba(0,0,0,.65));
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{
-  overflow:hidden;padding-top:76px!important;
-  border:0!important;
-  clip-path:polygon(50% 0,100% 100%,0 100%)!important;
-  background:
-    linear-gradient(148deg,transparent 0 48%,rgba(255,49,67,.13) 48.2% 48.8%,transparent 49%),
-    linear-gradient(32deg,rgba(255,35,55,.14) 0 24%,transparent 24.3% 68%,rgba(255,35,55,.07) 68.3%),
-    radial-gradient(ellipse at 50% 36%,rgba(130,8,25,.7),transparent 55%),
-    linear-gradient(135deg,#251018 0%,#08070b 40%,#310712 72%,#09070a 100%)!important;
-  box-shadow:none!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]:before{
-  content:"";position:absolute!important;inset:12px 14px 14px!important;
-  border:1px solid rgba(255,95,112,.65)!important;
-  clip-path:polygon(50% 0,100% 100%,0 100%)!important;
-  background:
-    linear-gradient(150deg,transparent 0 49.5%,rgba(255,67,84,.2) 50%,transparent 50.5%),
-    linear-gradient(30deg,transparent 0 49.5%,rgba(255,67,84,.18) 50%,transparent 50.5%),
-    linear-gradient(90deg,transparent 49.7%,rgba(255,67,84,.2) 50%,transparent 50.3%);
-  opacity:.9;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]:after{
-  content:"";position:absolute!important;inset:0!important;clip-path:polygon(50% 0,100% 100%,0 100%)!important;
-  background:
-    radial-gradient(circle at 50% 15%,rgba(255,96,111,.8) 0 1px,transparent 3px),
-    linear-gradient(150deg,transparent 49.7%,rgba(255,74,94,.28) 50%,transparent 50.4%),
-    linear-gradient(30deg,transparent 49.7%,rgba(255,74,94,.22) 50%,transparent 50.4%),
-    linear-gradient(90deg,transparent 49.7%,rgba(255,74,94,.18) 50%,transparent 50.4%),
-    linear-gradient(180deg,rgba(255,40,59,.07),transparent 55%);
-}
-.knowledge-holocron-pyramid .knowledge-face-topline,
-.knowledge-holocron-pyramid .knowledge-face-rune,
-.knowledge-holocron-pyramid .knowledge-cube-face>strong,
-.knowledge-holocron-pyramid .knowledge-face-divider,
-.knowledge-holocron-pyramid .knowledge-face-copy,
-.knowledge-holocron-pyramid .knowledge-face-cta{position:relative;z-index:2}
-.knowledge-holocron-pyramid .knowledge-face-rune{
-  width:62px!important;height:62px!important;display:grid;place-items:center;
-  border:1px solid rgba(255,84,103,.62);border-radius:50%;
-  background:radial-gradient(circle,rgba(255,39,60,.2),rgba(5,4,7,.75) 68%);
-  box-shadow:0 0 22px rgba(255,24,46,.22),inset 0 0 14px rgba(255,30,50,.18);
-  color:#ffe0e3;text-shadow:0 0 14px rgba(255,45,67,.95);
-}
-.knowledge-holocron-pyramid .knowledge-cube-face>strong{
-  color:#fff!important;text-shadow:0 0 16px rgba(255,50,68,.4);
-}
-.knowledge-holocron-pyramid .knowledge-face-divider{
-  height:1px;background:linear-gradient(90deg,transparent,#ff4b61,rgba(255,175,183,.7),#ff4b61,transparent);
-}
-.knowledge-holocron-pyramid .knowledge-face-cta{
-  padding:8px 13px!important;border:1px solid rgba(255,75,95,.4);
-  background:rgba(9,5,8,.66);box-shadow:0 0 15px rgba(255,20,45,.1);
-}
-.knowledge-holocron-controls{position:relative;z-index:20;display:flex;align-items:center;justify-content:center;gap:22px;margin-top:2px}
-.knowledge-rotate-control{
-  position:relative;z-index:21;display:grid;place-items:center;width:48px!important;height:48px!important;
-  border:1px solid rgba(255,81,99,.7)!important;border-radius:50%!important;
-  background:radial-gradient(circle at 35% 25%,#4b1420,#0a070b 72%)!important;
-  color:#ffe6e9!important;font-size:26px!important;line-height:1;cursor:pointer!important;
-  box-shadow:0 0 18px rgba(255,25,49,.18),inset 0 0 12px rgba(255,30,50,.12);
-  pointer-events:auto!important;touch-action:manipulation;
-}
-.knowledge-rotate-control:hover{border-color:#ffb3bc!important;box-shadow:0 0 24px rgba(255,28,52,.4);transform:translateY(-1px)}
-.knowledge-rotate-control:focus-visible{outline:2px solid #ffd0b1;outline-offset:4px}
-.knowledge-rotation-readout{min-width:165px!important;text-align:center}
-.knowledge-rotation-readout span{display:block;color:#ffe9eb;text-shadow:0 0 12px rgba(255,35,55,.35);letter-spacing:.13em}
-.knowledge-rotation-readout small{color:#ad858c;letter-spacing:.12em}
-.knowledge-chamber-hint{position:relative;z-index:5;color:#c29da2!important}
 @keyframes knowledgeSigilSpin{to{transform:rotate(360deg)}}
 @media(max-width:760px){
- .knowledge-holocron-stage{min-height:330px}
- .knowledge-holocron-pyramid,.knowledge-holocron-pyramid .knowledge-cube-face{height:290px!important}
- .knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{padding-top:68px!important}
- .knowledge-holocron-controls{gap:12px}
- .knowledge-rotate-control{width:44px!important;height:44px!important}
 }
-@media(prefers-reduced-motion:reduce){.knowledge-holocron-stage:before{animation:none!important}}
-
-
-/* V3.4.1 — subtle energy pulses across the Sith crystal. */
-.knowledge-holocron-stage:before{animation:knowledgeSigilSpin 42s linear infinite,knowledgeSigilPulse 3.8s ease-in-out infinite!important}
-.knowledge-holocron-aura{animation:knowledgeAuraPulse 2.8s ease-in-out infinite!important}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{
-  animation:knowledgeCrystalPulse 4.2s ease-in-out infinite!important;
-}
-.knowledge-holocron-pyramid .knowledge-face-rune{
-  animation:knowledgeRunePulse 2.6s ease-in-out infinite;
-}
-.knowledge-holocron-pyramid .knowledge-face-cta{
-  animation:knowledgeCtaPulse 3.4s ease-in-out infinite;
-}
-.knowledge-rotate-control{touch-action:manipulation!important;pointer-events:auto!important;position:relative!important;z-index:999!important}
-.knowledge-holocron-controls{isolation:isolate!important;z-index:999!important;pointer-events:auto!important}
-.knowledge-holocron-controls:before,.knowledge-holocron-controls:after{pointer-events:none!important}
+@media(prefers-reduced-motion:reduce){}
 @keyframes knowledgeSigilPulse{0%,100%{opacity:.42;filter:brightness(.85)}50%{opacity:.9;filter:brightness(1.35)}}
 @keyframes knowledgeAuraPulse{0%,100%{opacity:.45;transform:scale(.97);box-shadow:0 0 14px rgba(255,20,45,.06),inset 0 0 16px rgba(255,20,45,.04)}50%{opacity:1;transform:scale(1.035);box-shadow:0 0 30px rgba(255,20,45,.22),inset 0 0 25px rgba(255,20,45,.12)}}
 @keyframes knowledgeCrystalPulse{0%,100%{filter:brightness(.92) drop-shadow(0 0 8px rgba(255,20,42,.16)) drop-shadow(0 20px 20px rgba(0,0,0,.65))}50%{filter:brightness(1.12) drop-shadow(0 0 19px rgba(255,30,52,.38)) drop-shadow(0 20px 20px rgba(0,0,0,.65))}}
 @keyframes knowledgeRunePulse{0%,100%{box-shadow:0 0 12px rgba(255,24,46,.12),inset 0 0 8px rgba(255,30,50,.1)}50%{box-shadow:0 0 26px rgba(255,24,46,.42),inset 0 0 18px rgba(255,30,50,.25)}}
 @keyframes knowledgeCtaPulse{0%,100%{border-color:rgba(255,75,95,.28)}50%{border-color:rgba(255,105,123,.72)}}
 @media(prefers-reduced-motion:reduce){
- .knowledge-holocron-stage:before,.knowledge-holocron-aura,.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"],.knowledge-holocron-pyramid .knowledge-face-rune,.knowledge-holocron-pyramid .knowledge-face-cta{animation:none!important}
 }
 
 /* V3.4.2 — Sanctuary visual direction: obsidian, relic gold and cold kyber light.
@@ -1752,112 +1524,44 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
 @media(prefers-reduced-motion:reduce) {
   #sithari .sithari-state .status-dot {box-shadow:none!important}
 }
-
-
-/* V3.5.3 — Restore the actual 3D Holocron. Earlier V3.3.9 rules flattened
-   the cube and hid every inactive face, so the arrows changed the counter only. */
-.knowledge-holocron-pyramid{
-  width:var(--cube-face-width)!important;
-  height:320px!important;
-  transform-style:preserve-3d!important;
-  transition:transform .85s cubic-bezier(.2,.75,.15,1)!important;
-  perspective:none!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face{
-  inset:0!important;
-  width:var(--cube-face-width)!important;
-  height:320px!important;
-  display:flex!important;
-  transform-origin:center center!important;
-  backface-visibility:hidden!important;
-  -webkit-backface-visibility:hidden!important;
-  visibility:visible!important;
-  pointer-events:none!important;
-  z-index:1!important;
-}
-.knowledge-holocron-pyramid .knowledge-face-acolyte{
-  transform:rotateY(0deg) translateZ(var(--cube-face-depth))!important;
-}
-.knowledge-holocron-pyramid .knowledge-face-disciple{
-  transform:rotateY(90deg) translateZ(var(--cube-face-depth))!important;
-}
-.knowledge-holocron-pyramid .knowledge-face-lord{
-  transform:rotateY(180deg) translateZ(var(--cube-face-depth))!important;
-}
-.knowledge-holocron-pyramid .knowledge-face-sithari{
-  transform:rotateY(270deg) translateZ(var(--cube-face-depth))!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{
-  display:flex!important;
-  visibility:visible!important;
-  pointer-events:auto!important;
-  z-index:3!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="false"]{
-  display:flex!important;
-  visibility:visible!important;
-  pointer-events:none!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-hidden="true"]{
-  visibility:visible!important;
-}
-.knowledge-holocron-controls,
-.knowledge-rotate-control{
-  pointer-events:auto!important;
-}
 .sanctuary-sith-hand{display:none!important}
-
-
-/* V3.5.4 — definitive 3D face/navigation overrides.
-   Earlier V3.3.9 rules flattened the pyramid and hid faces with display:none,
-   conflicting with the runtime rotation and causing mirrored/backface states. */
-.knowledge-holocron-stage{
-  perspective:1100px!important;
-  perspective-origin:50% 42%!important;
-  overflow:visible!important;
-}
-.knowledge-holocron-pyramid{
-  --cube-face-depth:calc(min(82vw,340px)/2);
-  position:relative!important;
-  transform-style:preserve-3d!important;
-  transform-origin:50% 50%!important;
-  perspective:none!important;
-  transition:transform .62s cubic-bezier(.2,.75,.2,1)!important;
-  width:min(82vw,340px)!important;
-  height:320px!important;
-  filter:drop-shadow(0 0 10px rgba(255,20,42,.24)) drop-shadow(0 20px 20px rgba(0,0,0,.65))!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face{
-  position:absolute!important;
-  inset:0!important;
-  width:100%!important;
-  height:320px!important;
-  display:flex!important;
-  visibility:visible!important;
-  transform-origin:center center!important;
-  backface-visibility:hidden!important;
-  -webkit-backface-visibility:hidden!important;
-  clip-path:polygon(50% 0,100% 100%,0 100%)!important;
-}
-.knowledge-holocron-pyramid .knowledge-face-acolyte{transform:rotateY(0deg) translateZ(var(--cube-face-depth))!important}
-.knowledge-holocron-pyramid .knowledge-face-disciple{transform:rotateY(90deg) translateZ(var(--cube-face-depth))!important}
-.knowledge-holocron-pyramid .knowledge-face-lord{transform:rotateY(180deg) translateZ(var(--cube-face-depth))!important}
-.knowledge-holocron-pyramid .knowledge-face-sithari{transform:rotateY(270deg) translateZ(var(--cube-face-depth))!important}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{
-  z-index:4!important;
-  pointer-events:auto!important;
-  visibility:visible!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="false"]{
-  z-index:1!important;
-  pointer-events:none!important;
-  visibility:visible!important;
-}
-.knowledge-holocron-pyramid .knowledge-cube-face[aria-hidden="true"]{visibility:visible!important}
-.knowledge-rotate-control,.knowledge-holocron-controls{position:relative;z-index:50!important;pointer-events:auto!important}
 .sanctuary-sith-hand{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 @media(max-width:760px){
-  .knowledge-holocron-stage{perspective:900px!important;min-height:330px!important}
-  .knowledge-holocron-pyramid{--cube-face-depth:calc(min(82vw,300px)/2);width:min(82vw,300px)!important;height:290px!important}
-  .knowledge-holocron-pyramid .knowledge-cube-face{height:290px!important}
 }
+
+/* Knowledge Holocron — single source of truth.
+   Four inclined triangular faces form a square-based pyramid.
+   Rotation is handled only by modules/runtime.js. */
+.knowledge-holocron-stage{position:relative;z-index:2;display:grid;place-items:center;height:420px;margin:0 auto;overflow:visible;perspective:1000px;perspective-origin:50% 42%;touch-action:pan-y;cursor:grab;outline:none}
+.knowledge-holocron-stage:active{cursor:grabbing}
+.knowledge-holocron-stage:focus-visible{outline:1px solid rgba(255,75,92,.45);outline-offset:-8px}
+.knowledge-holocron-aura{display:none!important}
+.knowledge-holocron-shadow{position:absolute;left:50%;bottom:44px;width:190px;height:20px;transform:translateX(-50%);border-radius:50%;background:rgba(0,0,0,.65);filter:blur(10px);pointer-events:none}
+.knowledge-holocron-pyramid{position:relative;width:min(76vw,320px);height:280px;transform-style:preserve-3d;transform-origin:50% 0;transform:rotateY(0deg);transition:transform .62s cubic-bezier(.2,.75,.2,1);will-change:transform;filter:drop-shadow(0 12px 12px rgba(0,0,0,.48))}
+.knowledge-cube-face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;width:100%;height:100%;padding:55px 28px 18px;overflow:hidden;clip-path:polygon(50% 0,100% 100%,0 100%);border:1px solid rgba(255,62,78,.78);border-radius:0;color:#fff2ef;text-align:center;cursor:pointer;background:linear-gradient(155deg,rgba(36,7,13,.98),rgba(8,6,9,.99) 70%);backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-origin:50% 0;pointer-events:none;visibility:visible;outline:none}
+.knowledge-cube-face:before{content:"";position:absolute;inset:14px;border:1px solid rgba(255,85,97,.28);clip-path:polygon(50% 0,100% 100%,0 100%);pointer-events:none}
+.knowledge-face-acolyte{transform:rotateY(0deg) rotateX(35deg)}
+.knowledge-face-disciple{transform:rotateY(90deg) rotateX(35deg)}
+.knowledge-face-lord{transform:rotateY(180deg) rotateX(35deg)}
+.knowledge-face-sithari{transform:rotateY(270deg) rotateX(35deg)}
+.knowledge-cube-face[aria-current="true"]{pointer-events:auto;z-index:2}
+.knowledge-cube-face[aria-current="false"]{pointer-events:none;z-index:1}
+.knowledge-face-topline{position:relative;z-index:1;align-self:center;color:#ff7884;font:800 7px/1.4 var(--font-display);letter-spacing:.1em;white-space:nowrap}
+.knowledge-face-rune{position:relative;z-index:1;display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;margin:12px auto 10px;border:1px solid rgba(255,65,80,.62);transform:rotate(45deg);color:#ff6576;font-size:23px;background:rgba(65,5,15,.52)}
+.knowledge-cube-face>strong{position:relative;z-index:1;margin:0;color:#fff5f3;font:900 14px/1.2 var(--font-display);letter-spacing:.045em;white-space:nowrap}
+.knowledge-face-divider{position:relative;z-index:1;width:62%;height:1px;flex:0 0 1px;margin:10px 0;background:rgba(255,60,82,.72)}
+.knowledge-face-copy{position:relative;z-index:1;max-width:190px;min-height:0;color:#c1abad;font:400 9px/1.4 var(--font-ui)}
+.knowledge-face-cta{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:auto;padding-top:10px;color:#ff7b86;font:800 7px/1.3 var(--font-display);letter-spacing:.07em}
+.knowledge-face-cta b{font-size:12px}
+.knowledge-face-corner{display:none!important}
+.knowledge-holocron-controls{position:relative;z-index:5;display:flex;align-items:center;justify-content:center;gap:18px;margin-top:0}
+.knowledge-rotate-control{display:grid;place-items:center;width:44px;height:44px;border:1px solid rgba(255,54,70,.42);background:#10080b;color:#ff6877;font-size:23px;cursor:pointer;touch-action:manipulation}
+.knowledge-rotate-control:hover{border-color:rgba(255,120,135,.8);background:#210910}
+.knowledge-rotate-control:focus-visible{outline:2px solid #ff6576;outline-offset:3px}
+.knowledge-rotation-readout{display:flex;flex-direction:column;gap:5px;min-width:160px;text-align:center}
+.knowledge-rotation-readout span{color:#ff596b;font:900 11px var(--font-display);letter-spacing:.14em}
+.knowledge-rotation-readout small{color:#a18b8e;font:800 7px var(--font-display);letter-spacing:.1em}
+.knowledge-chamber-hint{position:relative;z-index:2;margin:18px 0 0;color:#a58b8f;text-align:center;font:700 8px/1.6 var(--font-display);letter-spacing:.08em}
+@media(max-width:760px){.knowledge-holocron-stage{height:360px;perspective:900px}.knowledge-holocron-pyramid{width:min(82vw,290px);height:255px}.knowledge-cube-face{padding:49px 24px 16px}.knowledge-face-rune{width:36px;height:36px;flex-basis:36px;margin:10px auto 8px;font-size:20px}.knowledge-cube-face>strong{font-size:12px}.knowledge-face-copy{font-size:8px}.knowledge-holocron-controls{gap:10px}.knowledge-rotate-control{width:40px;height:40px}.knowledge-rotation-readout{min-width:130px}}
+@media(max-width:420px){.knowledge-holocron-stage{height:330px}.knowledge-holocron-pyramid{width:min(86vw,270px);height:240px}.knowledge-cube-face{padding:45px 20px 14px}.knowledge-face-rune{width:32px;height:32px;flex-basis:32px;margin:9px auto 7px;font-size:18px}.knowledge-cube-face>strong{font-size:11px}.knowledge-face-copy{font-size:7px}.knowledge-face-cta{font-size:6px}}
+@media(prefers-reduced-motion:reduce){.knowledge-holocron-pyramid{transition:none}}
