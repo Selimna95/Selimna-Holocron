@@ -1679,3 +1679,32 @@ body[data-page="dashboard"] .sidebar-level-portrait {
     min-height: clamp(100px, 32vw, 140px) !important;
   }
 }
+
+
+/* Cadrage des portraits : afficher un seul personnage entier par carte.
+   Le sprite contient quatre panneaux côte à côte ; chaque portrait doit
+   cadrer un quart de l'image au lieu de redimensionner les quatre ensemble. */
+.knowledge-page .knowledge-module-links .knowledge-portrait {
+  flex: 0 0 clamp(150px, 17vw, 205px) !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: clamp(150px, 17vw, 205px) !important;
+  background-size: 400% 100% !important;
+  background-position: var(--sith-portrait-position, 0%) 24% !important;
+  background-repeat: no-repeat !important;
+  margin: 0 0 6px !important;
+  transform: none;
+}
+.knowledge-page .knowledge-module-links button {
+  justify-content: flex-end !important;
+}
+.knowledge-page .knowledge-module-links button:hover .knowledge-portrait {
+  transform: scale(1.01);
+}
+@media (max-width: 760px) {
+  .knowledge-page .knowledge-module-links .knowledge-portrait {
+    flex-basis: clamp(135px, 32vw, 180px) !important;
+    height: clamp(135px, 32vw, 180px) !important;
+  }
+}
