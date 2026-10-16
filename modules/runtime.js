@@ -175,14 +175,14 @@ document.addEventListener('click',e=>{
       if(event.key==='Enter'||event.key===' '){event.stopPropagation();}
     },{capture:true});
   });
+  // The document-level [data-page] handler owns navigation.
+  // This local handler only suppresses the synthetic click after a swipe.
   faces.forEach(face=>{
     face.addEventListener('click',event=>{
-      if(moved){event.preventDefault();event.stopPropagation();moved=false;return;}
-      const page=String(face.dataset.page||'');
-      if(page&&document.getElementById(page)){
-        event.preventDefault();event.stopImmediatePropagation();
-        if(typeof showPage==='function')showPage(page);
-        else document.dispatchEvent(new CustomEvent('holocron:navigate',{detail:{page}}));
+      if(moved){
+        event.preventDefault();
+        event.stopPropagation();
+        moved=false;
       }
     });
   });
