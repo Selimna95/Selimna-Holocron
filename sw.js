@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.11.1-single-navigation';
+const CACHE_NAME = 'holocron-static-v3.11.2-clean-pyramid';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=3.6.0-single-pyramid',
+  './holocron-system.css?v=3.6.1-clean-pyramid',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.5.4-six-slot-owner-fix',
