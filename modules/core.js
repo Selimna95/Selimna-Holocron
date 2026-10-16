@@ -689,21 +689,23 @@ function normalizeModForDisplay(m){
   const out={...m};
   out.set_name=modSetLabel(out.set_name??out.set??out.setId??out.set_id);
   out.slot=modSlotLabel(out.slot??out.slot_id??out.slotId??out.modSlot);
-  // Normalize the equipped owner once. Comlink/export variants can expose
-  // the owner as a name, baseId, characterId, equippedTo, or an object.
-  const ownerCandidates=[out.characterName,out.equippedTo,out.equipped_to,out.character,
-    out.characterId,out.character_id,out.equippedToId,out.equipped_to_id,out.ownerId,out.owner_id];
+  // SWGOH exports use several owner fields; preserve the first usable identity
+  // and correctly unpack object-valued unit references.
+  const ownerCandidates=[out.characterName,out.equippedTo,out.equipped_to,out.unit_equiped,out.unitEquiped,
+    out.character,out.location,out.usingIn,out.characterId,out.character_id,out.equippedToId,
+    out.equipped_to_id,out.ownerId,out.owner_id];
   let owner='';
   for(const value of ownerCandidates){
     if(value==null)continue;
+    let candidate='';
     if(typeof value==='object'){
-      owner=String(value.baseId??value.base_id??value.characterId??value.character_id??value.name??value.id??'').trim();
-    }else owner=String(value).trim();
-    if(owner && owner!=='[object Object]')break;
+      candidate=String(value.baseId??value.base_id??value.characterId??value.character_id??value.name??value.id??'').trim();
+    }else candidate=String(value).trim();
+    if(candidate && candidate!=='[object Object]' && candidate!=='[object object]'){owner=candidate;break;}
   }
   out.character=owner;
   out.ownerKey=compactKey(owner);
-  out.ownerBaseId=compactKey(out.characterId??out.character_id??'');
+  out.ownerBaseId=compactKey(out.characterId??out.character_id??out.equippedToId??out.equipped_to_id??'');
   out.level=Number(out.level??0);
   out.rarity=Number(out.rarity??out.pips??0);
   out.dots=Number(out.dots??out.dotCount??out.pips??out.rarity??0);
@@ -887,13 +889,45 @@ function modOwnerKey(m){
 }
 function getCharacterMods(c){
   if(!c) return [];
-  const targets=new Set([characterKey(c),compactKey(c.name),compactKey(c.baseId),compactKey(c.base_id),compactKey(c.characterId),compactKey(c.character_id)].filter(Boolean));
-  return mods.map((raw,i)=>({...normalizeModForDisplay(raw),_index:i})).filter(m=>{
+  const aliases=new Set([
+    compactKey(c.baseId),compactKey(c.base_id),compactKey(c.characterId),compactKey(c.character_id),
+    compactKey(c.name),compactKey(c.character)
+  ].filter(Boolean));
+  const slots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
+  const rankOwner=(m)=>{
+    const raw=m?._rawOwnerFields||[];
+    // Prefer an explicit equipped-unit base ID over a display label.
+    for(const value of raw){
+      if(value==null)continue;
+      const k=compactKey(typeof value==='object'?(value.baseId??value.base_id??value.characterId??value.character_id??value.id??value.name??''):value);
+      if(k&&aliases.has(k))return 3;
+    }
     const owner=modOwnerKey(m);
-    // Match the exact unit identity. Substring matching merges variants such as
-    // Ahsoka Tano and Ahsoka Tano (Fulcrum), incorrectly displaying 12 mods.
-    return owner && targets.has(owner);
-  }).sort((a,b)=>({Square:0,Arrow:1,Diamond:2,Triangle:3,Circle:4,Cross:5}[a.slot]??99)-({Square:0,Arrow:1,Diamond:2,Triangle:3,Circle:4,Cross:5}[b.slot]??99));
+    if(owner&&aliases.has(owner))return 2;
+    const base=compactKey(m?.ownerBaseId||m?.equippedToId||m?.equipped_to_id||'');
+    if(base&&aliases.has(base))return 3;
+    return 0;
+  };
+  const matched=mods.map((raw,i)=>{
+    const normalized=normalizeModForDisplay(raw);
+    return {...normalized,_index:i,_rawOwnerFields:[
+      raw?.characterId,raw?.character_id,raw?.equippedToId,raw?.equipped_to_id,
+      raw?.unit_equiped,raw?.unitEquiped,raw?.equippedTo,raw?.equipped_to,
+      raw?.characterName,raw?.character,raw?.location,raw?.usingIn
+    ]};
+  }).filter(m=>rankOwner(m)>0);
+  // One equipped mod per physical slot. Duplicate API aliases/rows must never
+  // inflate a character's equipment grid beyond the six real slots.
+  const bySlot=new Map();
+  for(const m of matched){
+    const slot=String(m.slot||'');
+    if(!slots.includes(slot))continue;
+    const previous=bySlot.get(slot);
+    const score=rankOwner(m);
+    const previousScore=previous?rankOwner(previous):0;
+    if(!previous||score>previousScore)bySlot.set(slot,m);
+  }
+  return slots.map(slot=>bySlot.get(slot)).filter(Boolean);
 }
 function modSpeedMetrics(m){
   const primary=compactKey(m.primary_stat)==='SPEED';
