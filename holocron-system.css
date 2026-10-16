@@ -1806,3 +1806,58 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
   pointer-events:auto!important;
 }
 .sanctuary-sith-hand{display:none!important}
+
+
+/* V3.5.4 — definitive 3D face/navigation overrides.
+   Earlier V3.3.9 rules flattened the pyramid and hid faces with display:none,
+   conflicting with the runtime rotation and causing mirrored/backface states. */
+.knowledge-holocron-stage{
+  perspective:1100px!important;
+  perspective-origin:50% 42%!important;
+  overflow:visible!important;
+}
+.knowledge-holocron-pyramid{
+  --cube-face-depth:98px;
+  position:relative!important;
+  transform-style:preserve-3d!important;
+  transform-origin:50% 50%!important;
+  perspective:none!important;
+  transition:transform .62s cubic-bezier(.2,.75,.2,1)!important;
+  width:min(82vw,340px)!important;
+  height:320px!important;
+  filter:drop-shadow(0 0 10px rgba(255,20,42,.24)) drop-shadow(0 20px 20px rgba(0,0,0,.65))!important;
+}
+.knowledge-holocron-pyramid .knowledge-cube-face{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:320px!important;
+  display:flex!important;
+  visibility:visible!important;
+  transform-origin:50% 0!important;
+  backface-visibility:hidden!important;
+  -webkit-backface-visibility:hidden!important;
+  clip-path:polygon(50% 0,100% 100%,0 100%)!important;
+}
+.knowledge-holocron-pyramid .knowledge-face-acolyte{transform:rotateY(0deg) translateZ(var(--cube-face-depth))!important}
+.knowledge-holocron-pyramid .knowledge-face-disciple{transform:rotateY(90deg) translateZ(var(--cube-face-depth))!important}
+.knowledge-holocron-pyramid .knowledge-face-lord{transform:rotateY(180deg) translateZ(var(--cube-face-depth))!important}
+.knowledge-holocron-pyramid .knowledge-face-sithari{transform:rotateY(270deg) translateZ(var(--cube-face-depth))!important}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{
+  z-index:4!important;
+  pointer-events:auto!important;
+  visibility:visible!important;
+}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="false"]{
+  z-index:1!important;
+  pointer-events:none!important;
+  visibility:visible!important;
+}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-hidden="true"]{visibility:visible!important}
+.knowledge-rotate-control,.knowledge-holocron-controls{position:relative;z-index:50!important;pointer-events:auto!important}
+.sanctuary-sith-hand{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+@media(max-width:760px){
+  .knowledge-holocron-stage{perspective:900px!important;min-height:330px!important}
+  .knowledge-holocron-pyramid{--cube-face-depth:78px;width:min(82vw,300px)!important;height:290px!important}
+  .knowledge-holocron-pyramid .knowledge-cube-face{height:290px!important}
+}
