@@ -161,7 +161,8 @@ document.addEventListener('click',e=>{
     });
   }
   // Use native, per-button handlers. No bubbling or capture handler on the stage can cancel these.
-  stage.querySelectorAll('[data-holocron-rotate]').forEach(button=>{
+  // The arrow buttons are siblings of the stage in index.html, not its children.
+  document.querySelectorAll('[data-holocron-rotate]').forEach(button=>{
     button.addEventListener('click',event=>{
       event.preventDefault();
       event.stopImmediatePropagation();
