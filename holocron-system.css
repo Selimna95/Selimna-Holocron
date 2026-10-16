@@ -1834,7 +1834,7 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
   height:320px!important;
   display:flex!important;
   visibility:visible!important;
-  transform-origin:50% 0!important;
+  transform-origin:center center!important;
   backface-visibility:hidden!important;
   -webkit-backface-visibility:hidden!important;
   clip-path:polygon(50% 0,100% 100%,0 100%)!important;
