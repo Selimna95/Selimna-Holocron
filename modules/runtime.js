@@ -141,7 +141,7 @@ document.addEventListener('click',e=>{
   function render(){
     rotation=normalize(rotation);
     cube.dataset.rotation=String(rotation);
-    cube.style.transform=`rotateY(${-rotation*90}deg)`;
+    cube.style.setProperty('transform',`rotateY(${-rotation*90}deg)`,'important');
     cube.setAttribute('aria-label',`Holocron rotatif. Face avant : ${names[rotation]}.`);
     const counter=document.getElementById('knowledgeFaceCounter');
     const name=document.getElementById('knowledgeFaceName');
