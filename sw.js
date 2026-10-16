@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.10.6-six-slots-face-fix';
+const CACHE_NAME = 'holocron-static-v3.10.7-pyramid-geometry';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=3.5.4-face-orientation-fix',
+  './holocron-system.css?v=3.5.5-pyramid-geometry',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.5.4-six-slot-owner-fix',
