@@ -28,10 +28,26 @@ function updateGuardianContext(page){
   root.setAttribute('aria-label','Conseil du Gardien : '+message);
   root.title=message;
 }
+function updateSidebarLevelPortrait(page){
+  const portrait=document.querySelector('.sidebar-level-portrait');
+  if(!portrait)return;
+  const levels={
+    'top-changes':{name:'ACOLYTE',position:'0%'},
+    'mods-analysis':{name:'DISCIPLE',position:'33.333%'},
+    optimizer:{name:'SEIGNEUR SITH',position:'66.667%'},
+    sithari:{name:'SITH’ARI',position:'100%'}
+  };
+  const level=levels[page]||levels['top-changes'];
+  portrait.dataset.level=page;
+  portrait.style.setProperty('--sith-portrait-position',level.position);
+  const label=portrait.querySelector('.sidebar-level-portrait-label');
+  if(label)label.textContent=level.name;
+}
 function showPage(page){
   // Chaque destination visible doit ouvrir son écran réel. Le Codex est une
   // destination de consultation à part entière, accessible depuis le Sanctuaire.
   document.body.dataset.page=page;
+  updateSidebarLevelPortrait(page);
   document.querySelectorAll('.nav').forEach(x=>{
     const active=x.dataset.page===page;
     x.classList.toggle('active',active);
