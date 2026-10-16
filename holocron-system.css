@@ -881,7 +881,7 @@ body[data-page="dashboard"] .decision-header{margin-bottom:12px}
 .sanctuary-core-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 @keyframes miniHolocronFloat{0%,100%{transform:translateY(0) rotateY(-8deg)}50%{transform:translateY(-3px) rotateY(8deg)}}
 .knowledge-page{perspective:1400px}
-.knowledge-holocron-chamber{--cube-face-width:250px;--cube-face-depth:125px;position:relative;isolation:isolate;max-width:980px;min-height:670px;margin:0 auto;padding:22px 18px 28px;overflow:hidden;border:1px solid rgba(255,52,67,.16);background:radial-gradient(ellipse at 50% 45%,rgba(115,6,21,.16),transparent 43%),linear-gradient(180deg,rgba(10,8,10,.78),rgba(3,3,4,.98));box-shadow:inset 0 0 80px rgba(255,25,45,.035),0 30px 90px rgba(0,0,0,.36)}
+.knowledge-holocron-chamber{position:relative;isolation:isolate;max-width:980px;min-height:670px;margin:0 auto;padding:22px 18px 28px;overflow:hidden;border:1px solid rgba(255,52,67,.16);background:radial-gradient(ellipse at 50% 45%,rgba(115,6,21,.16),transparent 43%),linear-gradient(180deg,rgba(10,8,10,.78),rgba(3,3,4,.98));box-shadow:inset 0 0 80px rgba(255,25,45,.035),0 30px 90px rgba(0,0,0,.36)}
 .knowledge-holocron-chamber:before,.knowledge-holocron-chamber:after{content:"";position:absolute;pointer-events:none;z-index:-1;background:linear-gradient(90deg,transparent,rgba(255,46,65,.18),transparent)}
 .knowledge-holocron-chamber:before{left:8%;right:8%;top:70px;height:1px}.knowledge-holocron-chamber:after{left:8%;right:8%;bottom:84px;height:1px}
 .knowledge-chamber-sigil{position:absolute;left:50%;top:48%;width:480px;height:480px;transform:translate(-50%,-50%);border:1px solid rgba(255,42,60,.08);border-radius:50%;pointer-events:none}
@@ -890,12 +890,11 @@ body[data-page="dashboard"] .decision-header{margin-bottom:12px}
 .knowledge-chamber-sigil span,.knowledge-chamber-sigil i,.knowledge-chamber-sigil b{position:absolute;display:block;left:50%;top:50%;width:7px;height:7px;background:#ff3048;box-shadow:0 0 16px #ff3048;transform:translate(-50%,-50%)}
 .knowledge-chamber-sigil i{width:11px;height:11px;transform:translate(-50%,-50%) rotate(45deg);background:#6d0612}.knowledge-chamber-sigil b{width:2px;height:45%;background:linear-gradient(transparent,rgba(255,48,72,.25),transparent)}
 .knowledge-chamber-overline{position:relative;z-index:4;display:flex;justify-content:space-between;gap:14px;color:#b56b72;font:800 9px/1.5 var(--font-display);letter-spacing:.2em}.knowledge-chamber-overline span:last-child{color:#ff6576}
-.knowledge-holocron-cube{position:relative;width:var(--cube-face-width);height:320px;transform-style:preserve-3d;transform:rotateY(0deg);transition:transform .85s cubic-bezier(.2,.75,.15,1);will-change:transform}
 @keyframes knowledgeAuraPulse{0%,100%{opacity:.65;transform:scale(.96)}50%{opacity:1;transform:scale(1.05)}}
 body[data-page="knowledge"] .nav-knowledge{color:#fff!important;border-color:rgba(255,75,95,.38)!important;background:rgba(255,48,72,.08)!important;box-shadow:inset 3px 0 #ff3048}
-@media(max-width:760px){.knowledge-holocron-chamber{--cube-face-width:220px;--cube-face-depth:110px;min-height:625px;padding:18px 10px 24px}.knowledge-holocron-cube{height:300px}.knowledge-chamber-sigil{width:340px;height:340px}}
-@media(max-width:420px){.knowledge-holocron-chamber{--cube-face-width:194px;--cube-face-depth:97px;min-height:590px;padding-inline:8px}.knowledge-holocron-cube{height:280px}}
-@media(prefers-reduced-motion:reduce){.sanctuary-mini-holocron{animation:none!important}.knowledge-holocron-cube{transition:none!important}}
+@media(max-width:760px){.knowledge-holocron-chamber{min-height:625px;padding:18px 10px 24px}.knowledge-chamber-sigil{width:340px;height:340px}}
+@media(max-width:420px){.knowledge-holocron-chamber{min-height:590px;padding-inline:8px}}
+@media(prefers-reduced-motion:reduce){.sanctuary-mini-holocron{animation:none!important}}
 
 
 /* V3.3.3 — Sanctuary account overview + clickable pyramidal Holocron navigation. */
@@ -979,10 +978,6 @@ body[data-page="dashboard"] .decision-card-title{margin-top:18px}
 body[data-page="dashboard"] .decision-bottom-status small{display:block;margin-top:5px}
 @media(max-width:900px){body[data-page="dashboard"] .decision-stage{grid-template-columns:minmax(0,1fr) minmax(240px,.85fr);grid-template-areas:"units pyramid" "gp pyramid" "mods mods" "status status";gap:12px;padding:8px 12px 22px}body[data-page="dashboard"] .decision-holocron-wrap{min-height:260px}body[data-page="dashboard"] .decision-holocron{width:min(100%,300px)!important}body[data-page="dashboard"] .decision-holocron .holocron-face b{font-size:8px}}
 @media(max-width:600px){body[data-page="dashboard"] .decision-header{display:block!important;padding:16px 14px 0}body[data-page="dashboard"] .decision-stage{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"pyramid" "units" "gp" "mods" "status";gap:12px;padding:12px 12px 36px!important}body[data-page="dashboard"] .decision-stage>.decision-holocron-wrap{width:min(82vw,310px)!important;justify-self:center;min-height:0}body[data-page="dashboard"] .decision-stage>.decision-card{width:100%!important}body[data-page="dashboard"] .decision-stage>.unit-card,body[data-page="dashboard"] .decision-stage>.gp-card,body[data-page="dashboard"] .decision-stage>.mod-card{max-width:none!important}body[data-page="dashboard"] .decision-holocron .holocron-face b{font-size:9px}}
-@media(max-width:760px){}
-@media(max-width:420px){}
-@media(prefers-reduced-motion:reduce){}
-
 /* V3.3.4 — Restore the Sanctuary energy network and make the center a Knowledge gateway. */
 body[data-page="dashboard"] .decision-stage{isolation:isolate}
 body[data-page="dashboard"] .decision-stage>.decision-flow{display:block!important;position:absolute;z-index:1;pointer-events:none;opacity:.9;height:2px;border:0;border-radius:3px;background:linear-gradient(90deg,transparent,rgba(255,38,58,.28),#ff4055,rgba(255,66,83,.8),transparent);background-size:220% 100%;animation:sanctuaryEnergyTravel 3.6s linear infinite;box-shadow:0 0 8px rgba(255,31,52,.55),0 0 20px rgba(255,31,52,.2)}
@@ -1228,10 +1223,6 @@ body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation
   from{opacity:.35;filter:brightness(.55) drop-shadow(0 0 0 rgba(255,30,50,0));transform:rotateX(7deg) scale(.96)!important}
   to{opacity:1;filter:brightness(1) drop-shadow(0 12px 16px rgba(0,0,0,.4));transform:rotateX(0) scale(1)!important}
 }
-@media(prefers-reduced-motion:reduce){
-}
-
-
 /* V3.4.0 — More artifact, less flat triangle: layered Sith crystal + reliable controls. */
 .knowledge-holocron-chamber{
   position:relative;isolation:isolate;
@@ -1240,17 +1231,11 @@ body[data-page="dashboard"] .sanctuary-energy-arcs path:nth-of-type(6){animation
     radial-gradient(ellipse at 50% 80%,rgba(255,32,55,.08),transparent 52%);
 }
 @keyframes knowledgeSigilSpin{to{transform:rotate(360deg)}}
-@media(max-width:760px){
-}
-@media(prefers-reduced-motion:reduce){}
 @keyframes knowledgeSigilPulse{0%,100%{opacity:.42;filter:brightness(.85)}50%{opacity:.9;filter:brightness(1.35)}}
 @keyframes knowledgeAuraPulse{0%,100%{opacity:.45;transform:scale(.97);box-shadow:0 0 14px rgba(255,20,45,.06),inset 0 0 16px rgba(255,20,45,.04)}50%{opacity:1;transform:scale(1.035);box-shadow:0 0 30px rgba(255,20,45,.22),inset 0 0 25px rgba(255,20,45,.12)}}
 @keyframes knowledgeCrystalPulse{0%,100%{filter:brightness(.92) drop-shadow(0 0 8px rgba(255,20,42,.16)) drop-shadow(0 20px 20px rgba(0,0,0,.65))}50%{filter:brightness(1.12) drop-shadow(0 0 19px rgba(255,30,52,.38)) drop-shadow(0 20px 20px rgba(0,0,0,.65))}}
 @keyframes knowledgeRunePulse{0%,100%{box-shadow:0 0 12px rgba(255,24,46,.12),inset 0 0 8px rgba(255,30,50,.1)}50%{box-shadow:0 0 26px rgba(255,24,46,.42),inset 0 0 18px rgba(255,30,50,.25)}}
 @keyframes knowledgeCtaPulse{0%,100%{border-color:rgba(255,75,95,.28)}50%{border-color:rgba(255,105,123,.72)}}
-@media(prefers-reduced-motion:reduce){
-}
-
 /* V3.4.2 — Sanctuary visual direction: obsidian, relic gold and cold kyber light.
    Red is reserved for critical states instead of bathing the whole dashboard. */
 body[data-page="dashboard"] {
@@ -1526,9 +1511,6 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
 }
 .sanctuary-sith-hand{display:none!important}
 .sanctuary-sith-hand{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-@media(max-width:760px){
-}
-
 /* Knowledge Holocron — single source of truth.
    Four inclined triangular faces form a square-based pyramid.
    Rotation is handled only by modules/runtime.js. */
