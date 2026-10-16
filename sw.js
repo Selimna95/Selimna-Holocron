@@ -1,4 +1,4 @@
-const CACHE_NAME = 'holocron-static-v3.11.0-single-pyramid';
+const CACHE_NAME = 'holocron-static-v3.11.1-single-navigation';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
   './modules/disciple.js',
   './modules/seigneur.js?v=3.5.4-six-slot-owner-fix',
   './modules/sithari.js?v=3.8.0-sith-storm-reveal',
-  './modules/runtime.js?v=3.5.6-face-navigation-fix',
+  './modules/runtime.js?v=3.6.0-single-navigation',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
   './python/kyber_data.py?v=3.2.1',
