@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/icons/holocron-192.png" type="image/png">
 <link rel="stylesheet" href="app.css?v=3.2.1">
 <link rel="stylesheet" href="sithari.css?v=4.0.0-sith-storm-reveal">
-<link rel="stylesheet" href="holocron-system.css?v=3.6.2-buttons-only">
+<link rel="stylesheet" href="holocron-system.css?v=3.7.0-sith-portraits">
 
 
 
@@ -81,6 +81,7 @@
 </header>
 <main class="layout">
   <aside class="sidebar">
+    <div class="sidebar-level-portrait" aria-hidden="true"><span class="sidebar-level-portrait-label">ACOLYTE</span></div>
     <div class="phase-nav-label sanctuary"><span>⌂</span> SANCTUAIRE <small>ACCUEIL</small></div>
     <button type="button" class="nav active" data-page="dashboard"><span class="nav-icon">⌂</span><span>LE SANCTUAIRE</span></button>
     <button type="button" class="nav nav-knowledge" data-page="knowledge"><span class="nav-icon">✧</span><span>LE SAVOIR SE MÉRITE</span></button>
@@ -222,10 +223,10 @@
       </header>
       <section class="knowledge-holocron-chamber knowledge-buttons-only" aria-label="Les quatre voies de maîtrise">
         <nav class="knowledge-module-links" aria-label="Accès aux quatre modules">
-          <button type="button" data-page="top-changes"><span>01</span><strong>ACOLYTE</strong><small>Priorités du roster</small><b aria-hidden="true">↗</b></button>
-          <button type="button" data-page="mods-analysis"><span>02</span><strong>DISCIPLE</strong><small>Analyse des mods</small><b aria-hidden="true">↗</b></button>
-          <button type="button" data-page="optimizer"><span>03</span><strong>SEIGNEUR SITH</strong><small>Forge et optimisation</small><b aria-hidden="true">↗</b></button>
-          <button type="button" data-page="sithari"><span>04</span><strong>SITH’ARI</strong><small>Comparaison Kyber</small><b aria-hidden="true">↗</b></button>
+          <button type="button" data-page="top-changes"><span>01</span><span class="knowledge-portrait knowledge-portrait-acolyte" aria-hidden="true"></span><strong>ACOLYTE</strong><small>Priorités du roster</small><b aria-hidden="true">↗</b></button>
+          <button type="button" data-page="mods-analysis"><span>02</span><span class="knowledge-portrait knowledge-portrait-disciple" aria-hidden="true"></span><strong>DISCIPLE</strong><small>Analyse des mods</small><b aria-hidden="true">↗</b></button>
+          <button type="button" data-page="optimizer"><span>03</span><span class="knowledge-portrait knowledge-portrait-lord" aria-hidden="true"></span><strong>SEIGNEUR SITH</strong><small>Forge et optimisation</small><b aria-hidden="true">↗</b></button>
+          <button type="button" data-page="sithari"><span>04</span><span class="knowledge-portrait knowledge-portrait-emperor" aria-hidden="true"></span><strong>SITH’ARI</strong><small>Comparaison Kyber</small><b aria-hidden="true">↗</b></button>
         </nav>
       </section>
     </section>
@@ -527,7 +528,7 @@
 <script src="modules/disciple.js"></script>
 <script src="modules/seigneur.js?v=3.5.4-six-slot-owner-fix"></script>
 <script src="modules/sithari.js?v=3.8.0-sith-storm-reveal"></script>
-<script src="modules/runtime.js?v=3.6.0-single-navigation"></script>
+<script src="modules/runtime.js?v=3.7.0-sith-portraits"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
