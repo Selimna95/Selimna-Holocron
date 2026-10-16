@@ -152,12 +152,12 @@ document.addEventListener('click',e=>{
       face.setAttribute('aria-current',String(active));
       face.setAttribute('aria-hidden',String(!active));
       face.tabIndex=active?0:-1;
-      // Keep all four faces in the 3D scene; hide only interaction on inactive faces.
-      // Setting hidden/display:none made cube rotation impossible to see.
       face.hidden=false;
-      face.style.display='flex';
-      face.style.visibility='visible';
-      face.style.pointerEvents=active?'auto':'none';
+      // Do not hide faces: that breaks 3D depth and can desync selection state.
+      face.style.setProperty('display','flex','important');
+      face.style.setProperty('visibility','visible','important');
+      face.style.setProperty('pointer-events',active?'auto':'none','important');
+      face.setAttribute('aria-label',`Ouvrir ${names[index]}.`);
     });
   }
   // Use native, per-button handlers. No bubbling or capture handler on the stage can cancel these.
@@ -180,7 +180,7 @@ document.addEventListener('click',e=>{
       if(moved){event.preventDefault();event.stopPropagation();moved=false;return;}
       const page=String(face.dataset.page||'');
       if(page&&document.getElementById(page)){
-        event.preventDefault();event.stopPropagation();
+        event.preventDefault();event.stopImmediatePropagation();
         if(typeof showPage==='function')showPage(page);
         else document.dispatchEvent(new CustomEvent('holocron:navigate',{detail:{page}}));
       }
