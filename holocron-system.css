@@ -1547,3 +1547,60 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
 @media(max-width:760px){.knowledge-holocron-stage{height:360px;perspective:900px}.knowledge-holocron-pyramid{width:min(82vw,290px);height:255px}.knowledge-cube-face{padding:49px 24px 16px}.knowledge-face-rune{width:36px;height:36px;flex-basis:36px;margin:10px auto 8px;font-size:20px}.knowledge-cube-face>strong{font-size:12px}.knowledge-face-copy{font-size:8px}.knowledge-holocron-controls{gap:10px}.knowledge-rotate-control{width:40px;height:40px}.knowledge-rotation-readout{min-width:130px}}
 @media(max-width:420px){.knowledge-holocron-stage{height:330px}.knowledge-holocron-pyramid{width:min(86vw,270px);height:240px}.knowledge-cube-face{padding:45px 20px 14px}.knowledge-face-rune{width:32px;height:32px;flex-basis:32px;margin:9px auto 7px;font-size:18px}.knowledge-cube-face>strong{font-size:11px}.knowledge-face-copy{font-size:7px}.knowledge-face-cta{font-size:6px}}
 @media(prefers-reduced-motion:reduce){.knowledge-holocron-pyramid{transition:none}}
+
+
+/* KNOWLEDGE PAGE — four direct module buttons, no pyramid or rotating Holocron. */
+.knowledge-page .knowledge-buttons-only{
+  min-height:0;
+  max-width:1100px;
+  margin:26px auto 0;
+  padding:clamp(16px,3vw,32px);
+  overflow:visible;
+  border:1px solid rgba(255,62,78,.16);
+  background:linear-gradient(145deg,rgba(16,12,16,.78),rgba(5,5,7,.88));
+  box-shadow:0 24px 70px rgba(0,0,0,.28);
+}
+.knowledge-page .knowledge-buttons-only::before,
+.knowledge-page .knowledge-buttons-only::after{display:none;content:none}
+.knowledge-page .knowledge-module-links{
+  position:relative;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:clamp(10px,1.8vw,20px);
+  margin:0;
+}
+.knowledge-page .knowledge-module-links button{
+  position:relative;
+  display:flex;
+  min-width:0;
+  min-height:145px;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:10px;
+  padding:22px 18px;
+  border:1px solid rgba(255,80,96,.28);
+  border-radius:12px;
+  background:linear-gradient(155deg,rgba(39,13,19,.88),rgba(10,8,11,.96) 72%);
+  text-align:left;
+  transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease;
+}
+.knowledge-page .knowledge-module-links button:hover{
+  transform:translateY(-3px);
+  border-color:rgba(255,92,109,.7);
+  background:linear-gradient(155deg,rgba(61,14,24,.92),rgba(12,8,12,.98) 72%);
+  box-shadow:0 12px 28px rgba(0,0,0,.28),0 0 22px rgba(255,35,54,.08);
+}
+.knowledge-page .knowledge-module-links button>span{font-size:10px}
+.knowledge-page .knowledge-module-links button>strong{font-size:clamp(10px,.95vw,13px);line-height:1.35}
+.knowledge-page .knowledge-module-links button>small{font-size:11px;line-height:1.45}
+.knowledge-page .knowledge-module-links button>b{top:14px;right:14px}
+@media(max-width:760px){
+  .knowledge-page .knowledge-buttons-only{padding:12px;margin-top:18px}
+  .knowledge-page .knowledge-module-links{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .knowledge-page .knowledge-module-links button{min-height:112px;padding:16px 13px}
+}
+@media(max-width:420px){
+  .knowledge-page .knowledge-module-links{grid-template-columns:1fr}
+  .knowledge-page .knowledge-module-links button{min-height:78px;padding:14px 16px}
+}
