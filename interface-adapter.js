@@ -1,4 +1,4 @@
-/* Selimna's Holocron V100.2
+/* Selimna's Holocron V100.3
    VISUAL ADAPTER ONLY.
    The V90 technical/data engine is intentionally untouched. */
 (function(){
@@ -9,13 +9,22 @@
   function text(id,v){ const n=el(id); if(n) n.textContent=String(v ?? ''); }
   function nfmt(v){ return Number(v||0).toLocaleString('fr-FR'); }
 
+  function isSpeedStat(stat){
+    const value=String(stat||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+    return value.includes('speed') || value.includes('vitesse');
+  }
+
+  function primarySpeedOf(mod){
+    return isSpeedStat(mod?.primary_stat ?? mod?.primaryStat ?? mod?.primary);
+  }
+
   function speedOf(mod){
     if(!mod) return 0;
     const vals=[];
     for(let i=1;i<=4;i++){
-      const stat=String(mod['secondary_'+i+'_stat']||'').toLowerCase();
+      const stat=mod['secondary_'+i+'_stat'];
       const value=Number(mod['secondary_'+i+'_value']||0);
-      if(stat.includes('speed') && Number.isFinite(value)) vals.push(value);
+      if(isSpeedStat(stat) && Number.isFinite(value)) vals.push(value);
     }
     return vals.reduce((a,b)=>a+b,0);
   }
@@ -80,11 +89,11 @@
     // The previous visual adapter looked for "relic" and therefore put almost
     // every character in "Autres", even though the technical engine had the data.
     const groups=[
-      {label:'R9–R10', value:chars.filter(c=>relicOf(c)>=9).length},
+      {label:'R9', value:chars.filter(c=>relicOf(c)>=9).length},
       {label:'R7–R8', value:chars.filter(c=>{const r=relicOf(c);return r>=7&&r<9;}).length},
       {label:'R5–R6', value:chars.filter(c=>{const r=relicOf(c);return r>=5&&r<7;}).length},
-      {label:'G13', value:chars.filter(c=>relicOf(c)<5&&gearOf(c)>=13).length},
-      {label:'Autres', value:chars.filter(c=>relicOf(c)<5&&gearOf(c)<13).length}
+      {label:'R0–R4', value:chars.filter(c=>{const r=relicOf(c);return r<5&&(r>=1||gearOf(c)>=13);}).length},
+      {label:'G12 ou moins', value:chars.filter(c=>relicOf(c)===0&&gearOf(c)<13).length}
     ];
     if(hasRoster){
       renderBars('unitVentilation',groups);
@@ -95,12 +104,16 @@
       if(unitLegend) unitLegend.textContent='';
     }
 
+    // Les flèches à primaire Speed ont leur propre catégorie :
+    // elles ne doivent pas gonfler artificiellement la catégorie « 0 secondaire ».
+    const secondarySpeedMods=allMods.filter(m=>!primarySpeedOf(m));
     const speedGroups=[
-      {label:'20+', value:allMods.filter(m=>speedOf(m)>=20).length},
-      {label:'15–19', value:allMods.filter(m=>{const s=speedOf(m);return s>=15&&s<20;}).length},
-      {label:'10–14', value:allMods.filter(m=>{const s=speedOf(m);return s>=10&&s<15;}).length},
-      {label:'1–9', value:allMods.filter(m=>{const s=speedOf(m);return s>=1&&s<10;}).length},
-      {label:'0', value:allMods.filter(m=>speedOf(m)<1).length}
+      {label:'Primaire Speed', value:allMods.filter(primarySpeedOf).length},
+      {label:'20+', value:secondarySpeedMods.filter(m=>speedOf(m)>=20).length},
+      {label:'15–19', value:secondarySpeedMods.filter(m=>{const s=speedOf(m);return s>=15&&s<20;}).length},
+      {label:'10–14', value:secondarySpeedMods.filter(m=>{const s=speedOf(m);return s>=10&&s<15;}).length},
+      {label:'1–9', value:secondarySpeedMods.filter(m=>{const s=speedOf(m);return s>=1&&s<10;}).length},
+      {label:'0 secondaire', value:secondarySpeedMods.filter(m=>speedOf(m)<1).length}
     ];
     if(hasRoster){
       renderBars('modVentilation',speedGroups);
