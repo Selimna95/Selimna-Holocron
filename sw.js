@@ -1,10 +1,10 @@
-const CACHE_NAME = 'holocron-static-v3.11.3-buttons-only';
+const CACHE_NAME = 'holocron-static-v3.12.0-sith-portraits';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=3.6.2-buttons-only',
+  './holocron-system.css?v=3.7.0-sith-portraits',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.5.4-six-slot-owner-fix',
@@ -12,13 +12,14 @@ const STATIC_ASSETS = [
   './modules/disciple.js',
   './modules/seigneur.js?v=3.5.4-six-slot-owner-fix',
   './modules/sithari.js?v=3.8.0-sith-storm-reveal',
-  './modules/runtime.js?v=3.6.0-single-navigation',
+  './modules/runtime.js?v=3.7.0-sith-portraits',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
   './python/kyber_data.py?v=3.2.1',
   './python/optimizer_profiles.json?v=3.2.1',
   './python/kyber_profiles.json?v=3.2.1',
   './assets/backgrounds/holocron-gate.jpg',
+  './assets/sith-sprite.webp',
   './assets/icons/holocron-192.png',
   './assets/icons/holocron-512.png'
 ];
