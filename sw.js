@@ -1,4 +1,4 @@
-const CACHE_NAME = 'holocron-static-v3.10.4-rotation-handler';
+const CACHE_NAME = 'holocron-static-v3.10.5-important-transform';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
   './modules/disciple.js',
   './modules/seigneur.js?v=3.5.3-six-mods',
   './modules/sithari.js?v=3.8.0-sith-storm-reveal',
-  './modules/runtime.js?v=3.5.4-rotation-handler',
+  './modules/runtime.js?v=3.5.5-important-transform',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
   './python/kyber_data.py?v=3.2.1',
