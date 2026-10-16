@@ -246,12 +246,23 @@ function renderForgeCharacterPanel(character,profile){
   const first=secondaries[0]||'Offense %', second=secondaries.find(x=>x!==first)||'Health %';
   const characterPortrait=essentialPortraitHtml(character);
   const currentSlots=audit.issues.map(m=>`<button type="button" class="forge-current-mod ${m._mismatch?'is-mismatch':'is-match'}" data-forge-slot="${esc(m.slot)}"><span>${modIconHtml(m,'48')}</span><b>${esc(m.slot||'—')}</b><small>${m._mismatch?'ÉCART':'CONFORME'}</small><em>${esc(m.set_name||'—')}</em></button>`).join('');
-  const mismatchHtml=mismatches.length?mismatches.map(m=>`<article class="forge-audit-card is-mismatch"><div class="forge-audit-mod">${modIconHtml(m,'54')}</div><div><b>${esc(m.slot||'—')} · ${esc(m.set_name||'—')}</b><span>${m._set.ok===false?'✕ SET HORS RÉFÉRENCE':'✓ SET'} · ${m._primary.ok===false?`✕ PRIMAIRE · attendu ${esc(m._primary.expected)}`:'✓ PRIMAIRE'}</span></div><button type="button" class="forge-analyse-mod" data-forge-slot="${esc(m.slot)}">RECHERCHER</button></article>`).join(''):`<div class="forge-audit-empty">Les 6 mods sont conformes aux critères identifiés. Aucun remplacement prioritaire.</div>`;
+  const mismatchHtml=mismatches.length
+    ? `<div class="forge-audit-empty">${mismatches.length} emplacement(s) présentent un écart. Sélectionne l’un des 6 mods ci-dessus pour cibler son slot, puis lance explicitement la recherche.</div>`
+    : `<div class="forge-audit-empty">Les mods équipés sont conformes aux critères disponibles. Aucun remplacement prioritaire détecté.</div>`;
   $('forgeCharacterAudit').innerHTML=`<div class="forge-audit-character"><div class="forge-audit-character-portrait">${characterPortrait}</div><div><span>PERSONNAGE ANALYSÉ</span><strong>${esc(character?.name||'Personnage')}</strong><small>Référence Kyber appliquée aux 6 slots.</small></div></div><div class="forge-audit-summary"><div><span>MODS DU PERSONNAGE</span><b>${audit.equipped.length}/6</b></div><div><span>ÉCARTS DÉTECTÉS</span><b>${mismatches.length}</b></div><div><span>SETS KYBER</span><b>${audit.setRules.length?'IDENTIFIÉS':'À RÉCUPÉRER'}</b></div></div><div class="forge-current-mods">${currentSlots}</div><div class="forge-mismatch-list">${mismatchHtml}</div>`;
   const selects=(id,val)=>`<select id="${id}">${secondaries.map(n=>`<option value="${esc(n)}" ${n===val?'selected':''}>${esc(n)}</option>`).join('')}</select>`;
   $('forgeSearchPanel').innerHTML=`<div class="forge-search-grid"><label>MOD À REMPLACER<select id="forgeTargetSlot">${audit.issues.map(m=>`<option value="${esc(m.slot)}" ${m._mismatch?'selected':''}>${esc(m.slot)} · ${m._mismatch?'ÉCART':'conforme'}</option>`).join('')}</select></label><label>SECONDAIRE 1 ${selects('forgeSecondaryA',first)}</label><label>SECONDAIRE 2 ${selects('forgeSecondaryB',second)}</label><button type="button" id="forgeSearchBtn" class="primary">RECHERCHER 5 OPTIONS</button></div><div class="forge-search-note">La vitesse n'est pas une secondaire recherchée. Elle sert uniquement à départager les candidats.</div><div id="forgeSearchResults"></div>`;
   $('forgeSearchBtn')?.addEventListener('click',()=>renderForgeSearchResults(character,profile));
-  document.querySelectorAll('[data-forge-slot]').forEach(btn=>btn.addEventListener('click',()=>{const s=btn.dataset.forgeSlot;const el=$('forgeTargetSlot');if(el)el.value=s;}));
+  document.querySelectorAll('[data-forge-slot]').forEach(btn=>btn.addEventListener('click',()=>{
+    const slot=btn.dataset.forgeSlot;
+    const target=$('forgeTargetSlot');
+    if(target)target.value=slot;
+    document.querySelectorAll('.forge-current-mod').forEach(card=>card.classList.toggle('is-selected',card===btn));
+    const searchButton=$('forgeSearchBtn');
+    if(searchButton)searchButton.textContent='RECHERCHER CE SLOT';
+    const results=$('forgeSearchResults');
+    if(results)results.innerHTML='<div class="forge-audit-empty">Slot '+esc(slot)+' sélectionné. La recherche ne démarre qu’après validation du bouton.</div>';
+  }));
 }
 function forgeModDeltaMarkup(current,candidate){
   if(!current||!candidate)return '<div class="forge-delta-empty">Comparaison indisponible.</div>';
