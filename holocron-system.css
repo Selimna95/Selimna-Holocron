@@ -1648,3 +1648,34 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
  .knowledge-portrait{min-height:125px;max-height:135px}
 }
 @media(prefers-reduced-motion:reduce){.knowledge-portrait{transition:none}}
+
+
+/* Ajustements demandés — niveaux plus lisibles et navigation épurée. */
+/* Les portraits Acolyte, Disciple, Seigneur Sith et Sith’ari gagnent en hauteur. */
+.knowledge-module-links .knowledge-portrait {
+  height: clamp(112px, 13vw, 164px) !important;
+  min-height: clamp(112px, 13vw, 164px) !important;
+  background-size: auto 100% !important;
+}
+.knowledge-module-links > button {
+  align-content: start;
+}
+.knowledge-module-links > button .knowledge-portrait {
+  width: 100%;
+  margin-block: 4px 10px;
+}
+/* Le Sanctuaire ne porte aucun portrait de niveau dans le menu latéral. */
+body[data-page="dashboard"] .sidebar-level-portrait {
+  display: none !important;
+}
+/* Le Codex et son entrée de navigation restent dans le HTML et le moteur,
+   mais ne sont plus affichés dans le menu de gauche. */
+.sidebar .roster-codex-ui {
+  display: none !important;
+}
+@media (max-width: 760px) {
+  .knowledge-module-links .knowledge-portrait {
+    height: clamp(100px, 32vw, 140px) !important;
+    min-height: clamp(100px, 32vw, 140px) !important;
+  }
+}
