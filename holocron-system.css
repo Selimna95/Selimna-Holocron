@@ -1752,3 +1752,57 @@ body[data-page="dashboard"] .sanctuary-door-label b {color:#f06476!important}
 @media(prefers-reduced-motion:reduce) {
   #sithari .sithari-state .status-dot {box-shadow:none!important}
 }
+
+
+/* V3.5.3 — Restore the actual 3D Holocron. Earlier V3.3.9 rules flattened
+   the cube and hid every inactive face, so the arrows changed the counter only. */
+.knowledge-holocron-pyramid{
+  width:var(--cube-face-width)!important;
+  height:320px!important;
+  transform-style:preserve-3d!important;
+  transition:transform .85s cubic-bezier(.2,.75,.15,1)!important;
+  perspective:none!important;
+}
+.knowledge-holocron-pyramid .knowledge-cube-face{
+  inset:0!important;
+  width:var(--cube-face-width)!important;
+  height:320px!important;
+  display:flex!important;
+  transform-origin:center center!important;
+  backface-visibility:hidden!important;
+  -webkit-backface-visibility:hidden!important;
+  visibility:visible!important;
+  pointer-events:none!important;
+  z-index:1!important;
+}
+.knowledge-holocron-pyramid .knowledge-face-acolyte{
+  transform:rotateY(0deg) translateZ(var(--cube-face-depth))!important;
+}
+.knowledge-holocron-pyramid .knowledge-face-disciple{
+  transform:rotateY(90deg) translateZ(var(--cube-face-depth))!important;
+}
+.knowledge-holocron-pyramid .knowledge-face-lord{
+  transform:rotateY(180deg) translateZ(var(--cube-face-depth))!important;
+}
+.knowledge-holocron-pyramid .knowledge-face-sithari{
+  transform:rotateY(270deg) translateZ(var(--cube-face-depth))!important;
+}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="true"]{
+  display:flex!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+  z-index:3!important;
+}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-current="false"]{
+  display:flex!important;
+  visibility:visible!important;
+  pointer-events:none!important;
+}
+.knowledge-holocron-pyramid .knowledge-cube-face[aria-hidden="true"]{
+  visibility:visible!important;
+}
+.knowledge-holocron-controls,
+.knowledge-rotate-control{
+  pointer-events:auto!important;
+}
+.sanctuary-sith-hand{display:none!important}
