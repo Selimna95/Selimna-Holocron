@@ -1,18 +1,18 @@
-const CACHE_NAME = 'holocron-static-v3.10.2-progression-red';
+const CACHE_NAME = 'holocron-static-v3.10.3-six-mods-3d-cache-fix';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=3.5.2-progression-red',
+  './holocron-system.css?v=3.5.3-3d-cache-fix',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
-  './modules/core.js',
+  './modules/core.js?v=3.5.3-exact-mod-owner',
   './modules/acolyte.js',
   './modules/disciple.js',
-  './modules/seigneur.js',
+  './modules/seigneur.js?v=3.5.3-six-mods',
   './modules/sithari.js?v=3.8.0-sith-storm-reveal',
-  './modules/runtime.js?v=3.4.2-arrow-rotation-fix',
+  './modules/runtime.js?v=3.5.3-3d-rotation',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
   './python/kyber_data.py?v=3.2.1',
