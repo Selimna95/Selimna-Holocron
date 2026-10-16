@@ -1,18 +1,18 @@
-const CACHE_NAME = 'holocron-static-v3.10.5-important-transform';
+const CACHE_NAME = 'holocron-static-v3.10.6-six-slots-face-fix';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.2.1',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=3.5.3-3d-cache-fix',
+  './holocron-system.css?v=3.5.4-face-orientation-fix',
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
-  './modules/core.js?v=3.5.3-exact-mod-owner',
+  './modules/core.js?v=3.5.4-six-slot-owner-fix',
   './modules/acolyte.js',
   './modules/disciple.js',
-  './modules/seigneur.js?v=3.5.3-six-mods',
+  './modules/seigneur.js?v=3.5.4-six-slot-owner-fix',
   './modules/sithari.js?v=3.8.0-sith-storm-reveal',
-  './modules/runtime.js?v=3.5.5-important-transform',
+  './modules/runtime.js?v=3.5.6-face-navigation-fix',
   './optimizer-worker.mjs',
   './python/optimizer.py?v=3.2.1',
   './python/kyber_data.py?v=3.2.1',
