@@ -890,7 +890,9 @@ function getCharacterMods(c){
   const targets=new Set([characterKey(c),compactKey(c.name),compactKey(c.baseId),compactKey(c.base_id),compactKey(c.characterId),compactKey(c.character_id)].filter(Boolean));
   return mods.map((raw,i)=>({...normalizeModForDisplay(raw),_index:i})).filter(m=>{
     const owner=modOwnerKey(m);
-    return owner && [...targets].some(t=>owner===t || owner.includes(t) || t.includes(owner));
+    // Match the exact unit identity. Substring matching merges variants such as
+    // Ahsoka Tano and Ahsoka Tano (Fulcrum), incorrectly displaying 12 mods.
+    return owner && targets.has(owner);
   }).sort((a,b)=>({Square:0,Arrow:1,Diamond:2,Triangle:3,Circle:4,Cross:5}[a.slot]??99)-({Square:0,Arrow:1,Diamond:2,Triangle:3,Circle:4,Cross:5}[b.slot]??99));
 }
 function modSpeedMetrics(m){
