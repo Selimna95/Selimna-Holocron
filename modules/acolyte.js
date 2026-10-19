@@ -52,7 +52,7 @@ function holocronTopChangeCandidates(){
       }
     }
   }
-  out.sort((a,b)=>b.priority-a.priority||b.netGainPct-a.netGainPct||b.gainPct-a.gainPct||b.kyberGain-a.kyberGain);
+  out.sort((a,b)=>(Number(!!b.isGL)-Number(!!a.isGL))||(Number(b.gacUses??0)-Number(a.gacUses??0))||b.priority-a.priority||b.netGainPct-a.netGainPct||b.gainPct-a.gainPct||b.kyberGain-a.kyberGain);
   const seenSlots=new Set(),seenDonorMods=new Set();
   return out.filter(x=>{
     const slotKey=[characterKey(x.recipient),x.oldMod.slot].join('|'),donorModKey=String(x.newMod?._index??x.newMod.id??(characterKey(x.donor)+'|'+x.newMod.slot));
@@ -180,7 +180,7 @@ function renderHolocronTopChanges(){
  const topTen=rows.slice(0,10);renderHolocronVerdict(topTen);
  box.innerHTML='<div class="essential-inline-note">'+note+' <span>Indice Holocron = comparaison de mods, pas une simulation de combat.</span> · '+topTen.length+' RECOMMANDATION(S) MAXIMUM</div>'+topTen.map((r,i)=>{
    const delta=topChangeStatDelta(r.oldMod,r.newMod),shownDelta=delta.filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>b.delta-a.delta).slice(0,8);
-   const stats=shownDelta.length?shownDelta.map(x=>'<span class="topchange-stat '+(x.delta>0?'impact-positive':'impact-negative')+'"><b>'+esc(x.name)+'</b><small>'+topChangeStatValue(x.from,x.name)+' → '+topChangeStatValue(x.to,x.name)+'</small><strong>'+(x.delta>0?'+':'')+topChangeStatValue(x.delta,x.name)+'</strong></span>').join(''):'<span class="topchange-no-stats">Aucun écart secondaire détecté</span>';
+   const stats=shownDelta.length?shownDelta.map(x=>'<span class="topchange-stat '+(x.delta>0?'impact-positive':'impact-negative')+'"><b>'+esc(x.name)+'</b><strong>'+(x.delta>0?'+':'')+topChangeStatValue(x.delta,x.name)+'</strong></span>').join(''):'<span class="topchange-no-stats">Aucun écart secondaire détecté</span>';
    const portraitHtml=essentialPortraitHtml(r.recipient),recipient=esc(r.recipient.name||r.recipient.baseId),donor=esc(r.donor.name||r.donor.baseId);
    const oldSpeed=num(modTotalSpeed(r.oldMod),1),newSpeed=num(modTotalSpeed(r.newMod),1),sign=v=>v>0?'+':'',usage=r.hasGac?' · '+num(r.gacUses)+' usages GAC':'';
    return '<article class="topchange-result"><div class="topchange-rank">'+String(i+1).padStart(2,'0')+'</div>'+portraitHtml+
