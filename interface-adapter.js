@@ -109,7 +109,8 @@
     const secondarySpeedMods=allMods.filter(m=>!primarySpeedOf(m));
     const speedGroups=[
       {label:'Primaire Speed', value:allMods.filter(primarySpeedOf).length},
-      {label:'20+', value:secondarySpeedMods.filter(m=>speedOf(m)>=20).length},
+      {label:'25+', value:secondarySpeedMods.filter(m=>speedOf(m)>=25).length},
+      {label:'20–24', value:secondarySpeedMods.filter(m=>{const s=speedOf(m);return s>=20&&s<25;}).length},
       {label:'15–19', value:secondarySpeedMods.filter(m=>{const s=speedOf(m);return s>=15&&s<20;}).length},
       {label:'10–14', value:secondarySpeedMods.filter(m=>{const s=speedOf(m);return s>=10&&s<15;}).length},
       {label:'1–9', value:secondarySpeedMods.filter(m=>{const s=speedOf(m);return s>=1&&s<10;}).length},
