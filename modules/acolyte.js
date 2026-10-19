@@ -44,10 +44,33 @@ function holocronTopChangeCandidates(){
     return 0;
   };
   const modIdentity=mod=>String(mod?._index??mod?.id??[mod?.slot,mod?.set_name,mod?.primary_stat,mod?.level].join('|'));
-  // Un même mod physique ne peut appartenir qu'à un seul personnage.
-  // getCharacterMods accepte plusieurs alias d'API ; si un alias ambigu rattache
-  // le même _index à plusieurs unités, on l'exclut des échanges au lieu de
-  // présenter un mod comme équipé chez le mauvais donneur.
+  // Vérification stricte de l'équipement à partir des champs de propriétaire
+  // présents dans la donnée du mod. Une simple correspondance par slot/set,
+  // ou un rattachement approximatif de getCharacterMods, ne suffit pas.
+  const ownerAliases=character=>{
+    const values=[
+      character?.baseId,character?.base_id,character?.characterId,character?.character_id,
+      character?.name,character?.character
+    ].map(compactKey).filter(Boolean);
+    return new Set(values);
+  };
+  const explicitOwnerValues=mod=>{
+    const values=mod?._rawOwnerFields||[];
+    return values.map(value=>{
+      if(value==null)return '';
+      if(typeof value==='object'){
+        return compactKey(value.baseId??value.base_id??value.characterId??value.character_id??value.name??value.id??'');
+      }
+      return compactKey(value);
+    }).filter(Boolean);
+  };
+  const isExplicitlyEquippedBy=(mod,character)=>{
+    const owners=explicitOwnerValues(mod);
+    const aliases=ownerAliases(character);
+    // Au moins un champ propriétaire doit exister et tous les champs
+    // identifiants exploitables doivent désigner ce personnage.
+    return owners.length>0 && owners.every(owner=>aliases.has(owner));
+  };
   const modOwners=new Map();
   for(const unit of units){
     for(const mod of unit.mods){
@@ -57,10 +80,12 @@ function holocronTopChangeCandidates(){
       modOwners.get(key).add(characterKey(unit.c));
     }
   }
-  const isExclusivelyEquippedBy=(mod,character)=>{
+  const isUnambiguouslyOwnedBy=(mod,character)=>{
     const key=String(mod?._index ?? '');
     const owners=modOwners.get(key);
-    return !!key && !!owners && owners.size===1 && owners.has(characterKey(character));
+    return !!key && !!owners && owners.size===1 &&
+      owners.has(characterKey(character)) &&
+      isExplicitlyEquippedBy(mod,character);
   };
 
   const out=[];
@@ -74,6 +99,7 @@ function holocronTopChangeCandidates(){
       num(modTotalSpeed(a),0)-num(modTotalSpeed(b),0)
     );
     for(const currentMod of targetMods){
+      if(!isUnambiguouslyOwnedBy(currentMod,r.c))continue;
       const oldSecondarySpeed=secondarySpeedValue(currentMod);
       if(oldSecondarySpeed>9)continue;
       const before=holocronModScoreForCharacter(currentMod,r.c);
@@ -87,10 +113,15 @@ function holocronTopChangeCandidates(){
         if(d.isGL)continue;
         for(const donorMod of d.mods){
           // Sécurité impérative : le mod proposé doit être équipé exclusivement sur ce donneur.
-          if(!isExclusivelyEquippedBy(donorMod,d.c))continue;
+          if(!isUnambiguouslyOwnedBy(donorMod,d.c))continue;
           if(donorMod.slot!==currentMod.slot)continue;
           if(compactKey(donorMod.set_name)!==compactKey(currentMod.set_name))continue;
           if(compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
+          // Même primaire ne signifie pas même valeur : ne jamais accepter une
+          // baisse de primaire sur le personnage cible.
+          const oldPrimaryValue=num(currentMod.primary_value,0);
+          const newPrimaryValue=num(donorMod.primary_value,0);
+          if(newPrimaryValue<oldPrimaryValue)continue;
 
           const newSecondarySpeed=secondarySpeedValue(donorMod);
           const newSpeed=num(modTotalSpeed(donorMod),0);
@@ -164,14 +195,28 @@ function holocronTopChangeCandidates(){
 }
 function topChangeStatDelta(fromMod,toMod){
  const stats=new Map();
- for(const m of [fromMod,toMod]) for(let i=1;i<=4;i++){
+ const add=(key,name,value,side)=>{
+  if(!stats.has(key))stats.set(key,{name,from:0,to:0});
+  stats.get(key)[side]+=Number(value||0);
+ };
+ // La primaire fait partie intégrante de la comparaison : afficher toute perte
+ // et ne pas la masquer derrière le seul écart des secondaires.
+ const fromPrimary=String(fromMod?.primary_stat||'').trim();
+ const toPrimary=String(toMod?.primary_stat||'').trim();
+ if(fromPrimary||toPrimary){
+  add('__primary__',`Primaire · ${fromPrimary||'—'}`,fromMod?.primary_value,'from');
+  add('__primary__',`Primaire · ${toPrimary||'—'}`,toMod?.primary_value,'to');
+ }
+ for(const [m,side] of [[fromMod,'from'],[toMod,'to']]) for(let i=1;i<=4;i++){
   const name=String(m?.[`secondary_${i}_stat`]||'').trim();
   if(!name)continue;
-  const key=['speed','vitesse'].includes(name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase())?'__speed__':name.toLowerCase();
-  if(!stats.has(key))stats.set(key,{name:key==='__speed__'?'Vitesse':name,from:0,to:0});
-  stats.get(key)[m===fromMod?'from':'to']+=Number(m[`secondary_${i}_value`]||0);
+  const normalized=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const key=['speed','vitesse'].includes(normalized)?'__speed__':name.toLowerCase();
+  add(key,key==='__speed__'?'Vitesse':name,m[`secondary_${i}_value`],side);
  }
- return [...stats.values()].map(x=>({...x,delta:x.to-x.from})).filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+ return [...stats.values()].map(x=>({...x,delta:x.to-x.from}))
+  .filter(x=>Math.abs(x.delta)>0.00001)
+  .sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
 }
 function topChangeStatValue(value,name){
  const percent=/%|potency|tenacity|critical|chance|avoidance/i.test(name);
