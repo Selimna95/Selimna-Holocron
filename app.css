@@ -2776,36 +2776,40 @@ textarea:disabled{
   .decision-page .holocron-verdict{width:calc(100% - 28px);max-width:none}
 }
 
-/* Sanctuaire — rendre toutes les tranches de vitesse des mods visibles */
+/* Sanctuaire — légende de vitesse lisible sans chevauchement */
 .decision-card.mod-card{
-  width:min(620px,48%);
-  min-width:460px;
-  padding:18px 22px 20px;
-  bottom:4%;
+  width:min(700px,54%);
+  min-width:520px;
+  padding:18px 24px 22px;
+  bottom:3%;
 }
 .decision-card.mod-card .decision-legend{
   display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:10px 14px;
-  margin-top:14px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px 18px;
+  margin-top:15px;
   font-size:10px;
-  line-height:1.35;
+  line-height:1.4;
 }
 .decision-card.mod-card .decision-legend span{
-  display:flex;
+  display:grid;
+  grid-template-columns:8px minmax(0,1fr) auto;
   min-width:0;
   align-items:center;
-  gap:6px;
+  gap:7px;
   white-space:nowrap;
 }
 .decision-card.mod-card .decision-legend b{
+  min-width:0;
   font-weight:500;
+  overflow:visible;
 }
 .decision-card.mod-card .decision-legend strong{
   display:inline;
-  margin-left:auto;
+  margin-left:0;
   color:#fff;
   font-size:11px;
+  text-align:right;
 }
 @media(max-width:900px){
   .decision-card.mod-card{
@@ -2815,6 +2819,12 @@ textarea:disabled{
   }
   .decision-card.mod-card .decision-legend{
     grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px 12px;
+  }
+}
+@media(max-width:480px){
+  .decision-card.mod-card .decision-legend{
+    grid-template-columns:minmax(0,1fr);
   }
 }
 
