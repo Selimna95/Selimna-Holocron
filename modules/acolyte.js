@@ -31,11 +31,21 @@ function holocronTopChangeCandidates(){
       for(const donorMod of d.mods){
         if(donorMod.slot!==currentMod.slot||compactKey(donorMod.set_name)!==compactKey(currentMod.set_name)||compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
         const oldSpeed=num(modTotalSpeed(currentMod),0),newSpeed=num(modTotalSpeed(donorMod),0);
-        // Garde-fou absolu : comparer la vitesse totale des six mods équipés
-        // avant/après échange, en plus de la vitesse individuelle du mod.
+        // La vitesse secondaire ne doit jamais diminuer : c'est précisément
+        // l'écart rouge que le joueur voit dans le détail des secondaires.
+        const secondarySpeedValue = mod => {
+          for(let i=1;i<=4;i++){
+            const stat=compactKey(mod?.[`secondary_${i}_stat`]);
+            if(stat==='SPEED'||stat==='VITESSE')return num(mod?.[`secondary_${i}_value`],0);
+          }
+          return 0;
+        };
+        const oldSecondarySpeed=secondarySpeedValue(currentMod),newSecondarySpeed=secondarySpeedValue(donorMod);
+        // Garde-fou absolu : ni la vitesse secondaire du mod, ni la vitesse
+        // totale apportée par le mod, ni la vitesse cumulée de la cible ne peuvent baisser.
         const recipientSpeedBefore=r.mods.reduce((sum,m)=>sum+num(modTotalSpeed(m),0),0);
         const recipientSpeedAfter=recipientSpeedBefore-oldSpeed+newSpeed;
-        if(newSpeed<oldSpeed || recipientSpeedAfter<recipientSpeedBefore)continue;
+        if(newSecondarySpeed<oldSecondarySpeed || newSpeed<oldSpeed || recipientSpeedAfter<recipientSpeedBefore)continue;
         const after=holocronModScoreForCharacter(donorMod,r.c),gain=after-before,kyberGain=holocronKyberFit(donorMod,r.c)-kyberBefore;
         const gainPct=(gain/Math.max(Math.abs(before),1))*100;
         if(gainPct<1&&kyberGain<1)continue;
