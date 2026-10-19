@@ -136,7 +136,8 @@ function renderHolocronVerdict(rowsOverride){
  const recipient=String(lead?.recipient?.name||lead?.recipient?.baseId||'personnage cible');
  const donor=String(lead?.donor?.name||lead?.donor?.baseId||'donneur');
  const gain=Number(lead?.gain||0);
- const netGain=Number(lead?.netGain||0);\n action.textContent=`Priorité : ${recipient} ↔ ${donor}${netGain>0?` · bilan net estimé +${num(netGain,1)} indice Holocron`:''}.`;
+ const netGain=Number(lead?.netGain||0);
+ action.textContent=`Priorité : ${recipient} ↔ ${donor}${netGain>0?` · bilan net estimé +${num(netGain,1)} indice Holocron`:''}.`;
  count.textContent=String(rows.length);
  urgent.textContent=String(urgentCount);
  opp.textContent=String(opportunityCount);
