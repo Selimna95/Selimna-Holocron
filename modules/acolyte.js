@@ -320,7 +320,7 @@ function renderHolocronTopChanges(){
  const box=$('holocronTopChanges');if(!box)return;
  if(!Array.isArray(rosterCharacters)||!rosterCharacters.length){box.className='topchanges-empty';box.innerHTML='<strong>Profil requis</strong><span>Charge ton profil SWGOH pour analyser les mods réels.</span>';return;}
  const rows=holocronTopChangeCandidates();
- if(!rows.length){box.className='topchanges-empty';box.innerHTML='<strong>Aucun échange positif suffisamment pertinent</strong><span>Le moteur n’a trouvé aucun échange réciproque dont le bilan estimé soit positif, avec les contraintes de slot, set et primaire actuelles.</span>';return;}
+ if(!rows.length){box.className='topchanges-empty';box.innerHTML='<strong>Aucun échange réel validé</strong><span>Aucune proposition n’est affichée sans propriétaire de mod vérifié, emplacement/set/primaire compatibles, gain de vitesse réel et primaire cible non dégradée. Il peut donc y avoir moins de 10 propositions, voire aucune.</span>';return;}
  box.className='topchanges-results essential-results-grid';
  const gacSeason=holocronLatestGacSeason();
  const note=gacSeason?'Saison GAC '+esc(gacSeason.season)+' · GL d’abord, puis usages GAC · mods ciblés : 0 ou 1–9 de vitesse secondaire.':'GL d’abord, puis usages GAC quand disponibles · mods ciblés : 0 ou 1–9 de vitesse secondaire.';
@@ -333,7 +333,7 @@ function renderHolocronTopChanges(){
    return '<article class="topchange-result"><div class="topchange-rank">'+String(i+1).padStart(2,'0')+'</div>'+portraitHtml+
    '<div class="topchange-main"><header class="topchange-heading"><div><span class="topchange-kicker">'+(r.isGL?'CIBLE GL PRIORITAIRE':'REMPLACEMENT D’UN MOD LENT')+'</span><strong>'+recipient+'</strong></div><small>'+esc(r.oldMod.slot||'—')+' · Donneur <b>'+donor+'</b>'+usage+'</small></header>'+
    '<div class="topchange-mods"><span><b>MOD ACTUEL</b><div class="topchange-mod-visual">'+modIconHtml(r.oldMod,'42')+'</div><strong>'+esc(r.oldMod.set_name||'—')+'</strong><small>'+esc(r.oldMod.primary_stat||'—')+' · '+oldSpeed+' vit.</small></span><span class="is-received"><b>MOD REÇU</b><div class="topchange-mod-visual">'+modIconHtml(r.newMod,'42')+'</div><strong>'+esc(r.newMod.set_name||'—')+'</strong><small>'+esc(r.newMod.primary_stat||'—')+' · '+newSpeed+' vit.</small></span></div>'+
-   '<section class="topchange-stat-panel topchange-stat-panel-expanded"><div class="topchange-stat-title"><strong>ÉCART DES SECONDAIRES</strong><span>mod actuel → mod reçu · vert = gain · rouge = baisse</span></div><div class="topchange-stat-grid">'+stats+'</div></section></div>'+
+   '<section class="topchange-stat-panel topchange-stat-panel-expanded"><div class="topchange-stat-title"><strong>ÉCART DES STATISTIQUES</strong><span>primaire et secondaires · vert = gain · rouge = baisse</span></div><div class="topchange-stat-grid">'+stats+'</div></section></div>'+
    '<aside class="topchange-action"><span>ÉCHANGE RÉCIPROQUE</span><strong>'+donor+' ↔ '+recipient+'</strong><small>Vitesse cible : '+oldSpeed+' → '+newSpeed+' ('+(newSpeed-oldSpeed>0?'+':'')+num(newSpeed-oldSpeed,1)+'). Le donneur reçoit le mod actuel de la cible.</small><i>↗</i></aside></article>';
  }).join('');
  bindEssentialPortraits();
