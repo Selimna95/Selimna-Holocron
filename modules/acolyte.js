@@ -15,62 +15,130 @@ function holocronGacUsage(c, season=holocronLatestGacSeason()){
   return Math.max(0,Number(record.uses ?? record.usage ?? 0)||0);
 }
 function holocronTopChangeCandidates(){
-  const donors=[],recipients=[];
   const gacSeason=holocronLatestGacSeason();
-  for(const c of rosterCharacters){
-    if(rosterUnitType(c)==='ship')continue;
-    const cm=getCharacterMods(c); const st=v176ModStatus(cm);
-    if(!holocronIsGalacticLegend(c) && ['INCOMPLETS','TRÈS FAIBLES','FAIBLES'].includes(st.status) && cm.length) donors.push({c,mods:cm,status:st.status,totalSpeed:st.totalSpeed});
-    if((holocronIsGalacticLegend(c) || ['MOYENS','BONS'].includes(st.status)) && cm.length===6) recipients.push({c,mods:cm,status:st.status,totalSpeed:st.totalSpeed,isGL:holocronIsGalacticLegend(c),gacUses:holocronGacUsage(c,gacSeason)});
-  }
-  const donorPriority={'INCOMPLETS':3,'TRÈS FAIBLES':2,'FAIBLES':1},recipientPriority={'BONS':2,'MOYENS':1},out=[];
-  for(const r of recipients)for(const currentMod of r.mods){
-    const before=holocronModScoreForCharacter(currentMod,r.c),kyberBefore=holocronKyberFit(currentMod,r.c);
-    for(const d of donors){
-      if(characterKey(d.c)===characterKey(r.c))continue;
-      for(const donorMod of d.mods){
-        if(donorMod.slot!==currentMod.slot||compactKey(donorMod.set_name)!==compactKey(currentMod.set_name)||compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
-        const oldSpeed=num(modTotalSpeed(currentMod),0),newSpeed=num(modTotalSpeed(donorMod),0);
-        // La vitesse secondaire ne doit jamais diminuer : c'est précisément
-        // l'écart rouge que le joueur voit dans le détail des secondaires.
-        const secondarySpeedValue = mod => {
-          for(let i=1;i<=4;i++){
-            const stat=compactKey(mod?.[`secondary_${i}_stat`]);
-            if(stat==='SPEED'||stat==='VITESSE')return num(mod?.[`secondary_${i}_value`],0);
-          }
-          return 0;
-        };
-        const oldSecondarySpeed=secondarySpeedValue(currentMod),newSecondarySpeed=secondarySpeedValue(donorMod);
-        // Garde-fou absolu : ni la vitesse secondaire du mod, ni la vitesse
-        // totale apportée par le mod, ni la vitesse cumulée de la cible ne peuvent baisser.
-        const recipientSpeedBefore=r.mods.reduce((sum,m)=>sum+num(modTotalSpeed(m),0),0);
-        const recipientSpeedAfter=recipientSpeedBefore-oldSpeed+newSpeed;
-        if(newSecondarySpeed<oldSecondarySpeed || newSpeed<oldSpeed || recipientSpeedAfter<recipientSpeedBefore)continue;
-        const after=holocronModScoreForCharacter(donorMod,r.c),gain=after-before,kyberGain=holocronKyberFit(donorMod,r.c)-kyberBefore;
-        const gainPct=(gain/Math.max(Math.abs(before),1))*100;
-        if(gainPct<1&&kyberGain<1)continue;
-        // Le donneur récupère le mod actuel de la cible : comparer les variations relatives des deux côtés.
-        const donorBefore=holocronModScoreForCharacter(donorMod,d.c),donorAfter=holocronModScoreForCharacter(currentMod,d.c),donorGain=donorAfter-donorBefore;
-        const donorGainPct=(donorGain/Math.max(Math.abs(donorBefore),1))*100;
-        const netGain=gain+donorGain,netGainPct=gainPct+donorGainPct;
-        if(netGainPct<0.5)continue;
-        const recipientProfile=profileForCharacter(r.c),donorProfile=profileForCharacter(d.c),hasReference=!!recipientProfile,hasGac=!!gacSeason&&r.gacUses!==null;
-        let confidence=55+(hasReference?15:0)+(donorProfile?8:0)+(hasGac?10:0);
-        if(r.mods.length===6&&d.mods.length>0)confidence+=5;
-        confidence=Math.max(35,Math.min(93,confidence));
-        const confidenceLabel=confidence>=80?'ÉLEVÉE':confidence>=65?'CORRECTE':'INDICATIVE';
-        const gacPriority=hasGac?Math.log1p(Math.max(0,r.gacUses))*2:0;
-        const priority=netGainPct*10+Math.max(0,gainPct)*2.5+Math.max(0,kyberGain)*4+(r.isGL?24:0)+(recipientPriority[r.status]||0)*3+(donorPriority[d.status]||0)*1.5+gacPriority;
-        out.push({donor:d.c,recipient:r.c,oldMod:currentMod,newMod:donorMod,gain,donorGain,donorLoss:Math.max(0,-donorGain),netGain,netGainPct,gainPct,donorGainPct,oldSpeed,newSpeed,speedGain:newSpeed-oldSpeed,kyberGain,status:d.status,priority,recipientStatus:r.status,isGL:r.isGL,gacUses:r.gacUses,gacSeason:gacSeason?.season??null,confidence,confidenceLabel,hasReference,hasGac,recipientBefore:before,recipientAfter:after,donorBefore,donorAfter});
+  const units=rosterCharacters
+    .filter(c=>rosterUnitType(c)!=='ship')
+    .map(c=>{
+      const mods=getCharacterMods(c);
+      const status=v176ModStatus(mods);
+      return {
+        c,mods,status:status.status,totalSpeed:status.totalSpeed,
+        isGL:holocronIsGalacticLegend(c),
+        gacUses:holocronGacUsage(c,gacSeason)
+      };
+    })
+    .filter(x=>x.mods.length);
+
+  // Priorité de scan : tous les GL d'abord, puis le nombre d'utilisations GAC.
+  // Les unités sans données GAC passent après les unités dont l'usage est connu.
+  units.sort((a,b)=>
+    Number(b.isGL)-Number(a.isGL) ||
+    (b.gacUses===null?-1:b.gacUses) - (a.gacUses===null?-1:a.gacUses)
+  );
+
+  const secondarySpeedValue=mod=>{
+    for(let i=1;i<=4;i++){
+      const stat=compactKey(mod?.[`secondary_${i}_stat`]);
+      if(stat==='SPEED'||stat==='VITESSE')return num(mod?.[`secondary_${i}_value`],0);
+    }
+    return 0;
+  };
+  const modIdentity=mod=>String(mod?._index??mod?.id??[mod?.slot,mod?.set_name,mod?.primary_stat,mod?.level].join('|'));
+  const out=[];
+
+  // Acolyte cible d'abord les mods les plus lents du personnage prioritaire.
+  // Catégories visées : aucune vitesse secondaire, puis 1–9 de vitesse secondaire.
+  // Le mod reçu doit réellement améliorer la vitesse de la cible.
+  for(const r of units){
+    const targetMods=[...r.mods].sort((a,b)=>
+      secondarySpeedValue(a)-secondarySpeedValue(b) ||
+      num(modTotalSpeed(a),0)-num(modTotalSpeed(b),0)
+    );
+    for(const currentMod of targetMods){
+      const oldSecondarySpeed=secondarySpeedValue(currentMod);
+      if(oldSecondarySpeed>9)continue;
+      const before=holocronModScoreForCharacter(currentMod,r.c);
+      const kyberBefore=holocronKyberFit(currentMod,r.c);
+      const oldSpeed=num(modTotalSpeed(currentMod),0);
+      const recipientSpeedBefore=r.mods.reduce((sum,m)=>sum+num(modTotalSpeed(m),0),0);
+
+      for(const d of units){
+        if(characterKey(d.c)===characterKey(r.c))continue;
+        // Ne pas dépouiller un autre GL : les GL sont toujours prioritaires.
+        if(d.isGL)continue;
+        for(const donorMod of d.mods){
+          if(donorMod.slot!==currentMod.slot)continue;
+          if(compactKey(donorMod.set_name)!==compactKey(currentMod.set_name))continue;
+          if(compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
+
+          const newSecondarySpeed=secondarySpeedValue(donorMod);
+          const newSpeed=num(modTotalSpeed(donorMod),0);
+          // La cible doit gagner de la vitesse. La baisse éventuelle est tolérée
+          // uniquement côté donneur, qui récupère le mod lent de la cible.
+          if(newSecondarySpeed<=oldSecondarySpeed || newSpeed<=oldSpeed)continue;
+          const recipientSpeedAfter=recipientSpeedBefore-oldSpeed+newSpeed;
+          if(recipientSpeedAfter<recipientSpeedBefore)continue;
+
+          const after=holocronModScoreForCharacter(donorMod,r.c);
+          const gain=after-before;
+          const gainPct=(gain/Math.max(Math.abs(before),1))*100;
+          const kyberGain=holocronKyberFit(donorMod,r.c)-kyberBefore;
+          if(gainPct<1&&kyberGain<1)continue;
+
+          const donorBefore=holocronModScoreForCharacter(donorMod,d.c);
+          const donorAfter=holocronModScoreForCharacter(currentMod,d.c);
+          const donorGain=donorAfter-donorBefore;
+          const donorGainPct=(donorGain/Math.max(Math.abs(donorBefore),1))*100;
+          const hasReference=!!profileForCharacter(r.c);
+          const hasGac=!!gacSeason&&r.gacUses!==null;
+          let confidence=55+(hasReference?15:0)+(profileForCharacter(d.c)?8:0)+(hasGac?10:0)+5;
+          confidence=Math.max(35,Math.min(93,confidence));
+          const confidenceLabel=confidence>=80?'ÉLEVÉE':confidence>=65?'CORRECTE':'INDICATIVE';
+          const gacPriority=hasGac?Math.log1p(Math.max(0,r.gacUses))*2:0;
+          const priority=
+            (r.isGL?100000:0)+
+            (hasGac?Math.max(0,r.gacUses)*100:0)+
+            Math.max(0,gainPct)*3+
+            Math.max(0,newSecondarySpeed-oldSecondarySpeed)*2+
+            Math.max(0,kyberGain)*4+
+            donorGainPct*0.05+
+            gacPriority;
+          out.push({
+            donor:d.c,recipient:r.c,oldMod:currentMod,newMod:donorMod,
+            gain,donorGain,donorLoss:Math.max(0,-donorGain),
+            netGain:gain+donorGain,netGainPct:gainPct+donorGainPct,
+            gainPct,donorGainPct,oldSpeed,newSpeed,
+            speedGain:newSpeed-oldSpeed,
+            oldSecondarySpeed,newSecondarySpeed,
+            kyberGain,status:d.status,priority,
+            recipientStatus:r.status,isGL:r.isGL,gacUses:r.gacUses,
+            gacSeason:gacSeason?.season??null,confidence,confidenceLabel,
+            hasReference,hasGac,recipientBefore:before,recipientAfter:after,
+            donorBefore,donorAfter
+          });
+        }
       }
     }
   }
-  out.sort((a,b)=>(Number(!!b.isGL)-Number(!!a.isGL))||(Number(b.gacUses??0)-Number(a.gacUses??0))||b.priority-a.priority||b.netGainPct-a.netGainPct||b.gainPct-a.gainPct||b.kyberGain-a.kyberGain);
+
+  // Classement strict par importance de la cible (GL puis usage GAC),
+  // puis par le gain de vitesse obtenu sur le mod lent.
+  out.sort((a,b)=>
+    Number(b.isGL)-Number(a.isGL) ||
+    (b.gacUses===null?-1:b.gacUses) - (a.gacUses===null?-1:a.gacUses) ||
+    a.oldSecondarySpeed-b.oldSecondarySpeed ||
+    b.speedGain-a.speedGain ||
+    b.gainPct-a.gainPct ||
+    b.kyberGain-a.kyberGain
+  );
+
   const seenSlots=new Set(),seenDonorMods=new Set();
   return out.filter(x=>{
-    const slotKey=[characterKey(x.recipient),x.oldMod.slot].join('|'),donorModKey=String(x.newMod?._index??x.newMod.id??(characterKey(x.donor)+'|'+x.newMod.slot));
+    const slotKey=[characterKey(x.recipient),x.oldMod.slot].join('|');
+    const donorModKey=modIdentity(x.newMod);
     if(seenSlots.has(slotKey)||seenDonorMods.has(donorModKey))return false;
-    seenSlots.add(slotKey);seenDonorMods.add(donorModKey);return true;
+    seenSlots.add(slotKey);seenDonorMods.add(donorModKey);
+    return true;
   }).slice(0,10);
 }
 function topChangeStatDelta(fromMod,toMod){
