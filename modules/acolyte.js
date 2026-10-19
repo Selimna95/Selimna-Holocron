@@ -141,9 +141,8 @@ function renderHolocronVerdict(rowsOverride){
  const lead=rows[0];
  const recipient=String(lead?.recipient?.name||lead?.recipient?.baseId||'personnage cible');
  const donor=String(lead?.donor?.name||lead?.donor?.baseId||'donneur');
- const gain=Number(lead?.gain||0);
- const netGain=Number(lead?.netGain||0);
- action.textContent=`Priorité : ${recipient} ↔ ${donor}${netGain>0?` · bilan net estimé +${num(netGain,1)} indice Holocron`:''}.`;
+ const netGainPct=Number(lead?.netGainPct||0);
+ action.textContent=`Priorité : ${recipient} ↔ ${donor}${netGainPct>0?` · bilan relatif estimé +${num(netGainPct,1)} %`:''}.`;
  count.textContent=String(rows.length);
  urgent.textContent=String(urgentCount);
  opp.textContent=String(opportunityCount);
@@ -189,7 +188,7 @@ function renderHolocronTopChanges(){
    '<div class="topchange-mods"><span><b>MOD ACTUEL</b><div class="topchange-mod-visual">'+modIconHtml(r.oldMod,'42')+'</div><strong>'+esc(r.oldMod.set_name||'—')+'</strong><small>'+esc(r.oldMod.primary_stat||'—')+' · '+oldSpeed+' vit.</small></span><span class="is-received"><b>MOD REÇU</b><div class="topchange-mod-visual">'+modIconHtml(r.newMod,'42')+'</div><strong>'+esc(r.newMod.set_name||'—')+'</strong><small>'+esc(r.newMod.primary_stat||'—')+' · '+newSpeed+' vit.</small></span></div>'+
    '<section class="topchange-stat-panel"><div class="topchange-stat-title"><strong>ÉCART DES SECONDAIRES</strong><span>mod actuel → mod reçu</span></div><div class="topchange-stat-grid">'+stats+'</div></section>'+
    '<section class="topchange-impact-grid" aria-label="Bilan relatif estimé de l’échange"><div><span>GAIN CIBLE</span><strong class="impact-positive">'+sign(r.gainPct)+num(r.gainPct,1)+' %</strong><small>indice cible relatif</small></div><div><span>IMPACT DONNEUR</span><strong class="'+(r.donorGainPct>=0?'impact-positive':'impact-negative')+'">'+sign(r.donorGainPct)+num(r.donorGainPct,1)+' %</strong><small>'+(r.donorGainPct<0?'perte relative donneur':r.donorGainPct>0?'gain relatif donneur':'neutre')+'</small></div><div><span>BILAN NET</span><strong class="impact-net">'+sign(r.netGainPct)+num(r.netGainPct,1)+' %</strong><small>cumul des variations relatives</small></div><div><span>FIABILITÉ</span><strong class="impact-confidence">'+r.confidenceLabel+'</strong><small>'+(r.hasReference?'référence Kyber disponible':'référence Kyber partielle')+(r.hasGac?' · GAC inclus':'')+'</small></div></section></div>'+
-   '<aside class="topchange-action"><span>ÉCHANGE RÉCIPROQUE</span><strong>'+donor+' ↔ '+recipient+'</strong><small>Le donneur reçoit le mod actuel de la cible.</small><i>↗</i></aside></article>';
+   '<aside class="topchange-action"><span>ÉCHANGE RÉCIPROQUE</span><strong>'+donor+' ↔ '+recipient+'</strong><small>Vitesse cible : '+oldSpeed+' → '+newSpeed+' (+'+num(newSpeed-oldSpeed,1)+'). Le donneur reçoit le mod actuel de la cible.</small><i>↗</i></aside></article>';
  }).join('');
  bindEssentialPortraits();
 }
