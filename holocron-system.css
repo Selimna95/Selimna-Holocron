@@ -1820,3 +1820,9 @@ body[data-page="dashboard"] .sidebar-level-portrait {
 #top-changes .topchange-stat-panel-expanded .topchange-stat small { font-size:11px; }
 #top-changes .topchange-stat-panel-expanded .topchange-stat strong { font-size:18px; }
 @media(max-width:760px) { #top-changes .topchange-stat-panel-expanded { padding:10px; } #top-changes .topchange-stat-panel-expanded .topchange-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; } }
+
+
+/* ACOLYTE v4.6 — secondaires synthétiques : nom + variation, sans ligne avant/après. */
+#top-changes .topchange-stat-panel-expanded .topchange-stat { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:10px; min-height:44px; }
+#top-changes .topchange-stat-panel-expanded .topchange-stat b { font-size:12px; line-height:1.25; }
+#top-changes .topchange-stat-panel-expanded .topchange-stat strong { flex:0 0 auto; font-size:17px; text-align:right; }
