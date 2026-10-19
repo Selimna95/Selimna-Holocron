@@ -2776,3 +2776,45 @@ textarea:disabled{
   .decision-page .holocron-verdict{width:calc(100% - 28px);max-width:none}
 }
 
+/* Sanctuaire — rendre toutes les tranches de vitesse des mods visibles */
+.decision-card.mod-card{
+  width:min(620px,48%);
+  min-width:460px;
+  padding:18px 22px 20px;
+  bottom:4%;
+}
+.decision-card.mod-card .decision-legend{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px 14px;
+  margin-top:14px;
+  font-size:10px;
+  line-height:1.35;
+}
+.decision-card.mod-card .decision-legend span{
+  display:flex;
+  min-width:0;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+}
+.decision-card.mod-card .decision-legend b{
+  font-weight:500;
+}
+.decision-card.mod-card .decision-legend strong{
+  display:inline;
+  margin-left:auto;
+  color:#fff;
+  font-size:11px;
+}
+@media(max-width:900px){
+  .decision-card.mod-card{
+    width:calc(100% - 28px);
+    min-width:0;
+    bottom:2%;
+  }
+  .decision-card.mod-card .decision-legend{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
