@@ -223,7 +223,7 @@ function renderHolocronVerdict(rowsOverride){
  const recipient=String(lead?.recipient?.name||lead?.recipient?.baseId||'personnage cible');
  const donor=String(lead?.donor?.name||lead?.donor?.baseId||'donneur');
  const netGainPct=Number(lead?.netGainPct||0);
- action.textContent=`Priorité : ${recipient} reçoit un mod de ${donor} · gain cible +${num(Number(lead?.speedGain||0),1) de vitesse totale.`;
+ action.textContent=`Priorité : ${recipient} reçoit un mod de ${donor} · gain cible +${num(Number(lead?.speedGain||0),1)} de vitesse totale.`;
  count.textContent=String(rows.length);
  urgent.textContent=String(urgentCount);
  opp.textContent=String(opportunityCount);
