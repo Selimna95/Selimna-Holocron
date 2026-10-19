@@ -58,16 +58,6 @@ function holocronTopChangeCandidates(){
       rosterAliasOwners.get(alias).add(characterKey(unit.c));
     }
   }
-  const ownerTokens=value=>{
-    if(value==null)return [];
-    if(typeof value!=='object'){
-      const token=compactKey(value);
-      return token&&token!=='OBJECTOBJECT'?[token]:[];
-    }
-    return ['baseId','base_id','characterId','character_id','name','id']
-      .map(key=>compactKey(value[key])).filter(token=>token&&token!=='OBJECTOBJECT');
-  };
-  const explicitOwnerValues=mod=>(mod?._rawOwnerFields||[]).flatMap(ownerTokens);
   const modOwners=new Map();
   for(const unit of units){
     for(const mod of unit.mods){
@@ -81,16 +71,13 @@ function holocronTopChangeCandidates(){
     const key=String(mod?._index??'');
     const assigned=modOwners.get(key);
     if(!key||!assigned||assigned.size!==1||!assigned.has(characterKey(character)))return false;
-    const tokens=explicitOwnerValues(mod);
-    if(!tokens.length)return false;
-    const matchedRosterOwners=new Set();
-    for(const token of tokens){
-      const knownOwners=rosterAliasOwners.get(token);
-      if(knownOwners)knownOwners.forEach(owner=>matchedRosterOwners.add(owner));
-    }
-    // Un champ propriétaire doit réellement correspondre à une unité du roster.
-    // Si plusieurs personnages sont désignés, l'identité est ambiguë : on refuse.
-    return matchedRosterOwners.size===1&&matchedRosterOwners.has(characterKey(character));
+    // getCharacterMods has already normalized the owner's source fields using
+    // a deterministic priority. Trust that canonical owner only; do not let
+    // weaker alternate fields (e.g. a display label/location) reassign the mod.
+    const owner=compactKey(mod?.character??mod?.ownerKey??'');
+    if(!owner)return false;
+    const matched=rosterAliasOwners.get(owner);
+    return !!matched&&matched.size===1&&matched.has(characterKey(character));
   };
 
   const out=[];
