@@ -1,4 +1,4 @@
-const CACHE_NAME = 'holocron-static-v3.12.0-sith-portraits';
+const CACHE_NAME = 'holocron-static-v3.4.2-acolyte-audit';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,7 @@ const STATIC_ASSETS = [
   './interface-adapter.js?v=3.2.1',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.5.4-six-slot-owner-fix',
-  './modules/acolyte.js',
+  './modules/acolyte.js?v=3.4.2-full-audit',
   './modules/disciple.js',
   './modules/seigneur.js?v=3.5.4-six-slot-owner-fix',
   './modules/sithari.js?v=3.8.0-sith-storm-reveal',
