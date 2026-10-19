@@ -210,12 +210,12 @@ function renderHolocronVerdict(rowsOverride){
  const rows=Array.isArray(rowsOverride)?rowsOverride:(Array.isArray(rosterCharacters)&&rosterCharacters.length?holocronTopChangeCandidates():[]);
  if(!rows.length){
    state.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'SCAN COMPLET':'EN ATTENTE';
-   title.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Aucune modification prioritaire détectée.':'Le Holocron attend le scan du roster.';
-   action.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Les données sont chargées ; aucun transfert ne franchit actuellement le seuil de décision.':'Charge le profil pour faire émerger les décisions.';
+   title.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Aucun mod lent remplaçable détecté.':'Le Holocron attend le scan du roster.';
+   action.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Les mods ciblés (0 ou 1–9 de vitesse secondaire) ont été examinés ; aucun mod compatible n'améliore la vitesse de la cible.':'Charge le profil pour faire émerger les décisions.';
    count.textContent='0'; urgent.textContent='0'; opp.textContent='0';
    return;
  }
- const urgentCount=Math.min(3,rows.filter(r=>r.isGL || r.netGainPct>=10 || r.kyberGain>=2).length);
+ const urgentCount=Math.min(3,rows.filter(r=>r.isGL || r.speedGain>=10 || r.kyberGain>=2).length);
  const opportunityCount=Math.max(0,Math.min(9,rows.length-urgentCount));
  state.textContent='VERDICT ACTIF';
  title.textContent=`${rows.length} modification${rows.length>1?'s':''} détectée${rows.length>1?'s':''}.`;
@@ -223,7 +223,7 @@ function renderHolocronVerdict(rowsOverride){
  const recipient=String(lead?.recipient?.name||lead?.recipient?.baseId||'personnage cible');
  const donor=String(lead?.donor?.name||lead?.donor?.baseId||'donneur');
  const netGainPct=Number(lead?.netGainPct||0);
- action.textContent=`Priorité : ${recipient} ↔ ${donor}${netGainPct>0?` · bilan relatif estimé +${num(netGainPct,1)} %`:''}.`;
+ action.textContent=`Priorité : ${recipient} reçoit un mod de ${donor} · gain cible +${num(Number(lead?.speedGain||0),1) de vitesse totale.`;
  count.textContent=String(rows.length);
  urgent.textContent=String(urgentCount);
  opp.textContent=String(opportunityCount);
@@ -257,7 +257,7 @@ function renderHolocronTopChanges(){
  if(!rows.length){box.className='topchanges-empty';box.innerHTML='<strong>Aucun échange positif suffisamment pertinent</strong><span>Le moteur n’a trouvé aucun échange réciproque dont le bilan estimé soit positif, avec les contraintes de slot, set et primaire actuelles.</span>';return;}
  box.className='topchanges-results essential-results-grid';
  const gacSeason=holocronLatestGacSeason();
- const note=gacSeason?'Saison GAC '+esc(gacSeason.season)+' · usages de référence intégrés · bilan net des deux personnages.':'Bilan net des deux personnages · données GAC de référence indisponibles, aucun usage GAC n’est supposé.';
+ const note=gacSeason?'Saison GAC '+esc(gacSeason.season)+' · GL d’abord, puis usages GAC · mods ciblés : 0 ou 1–9 de vitesse secondaire.':'GL d’abord, puis usages GAC quand disponibles · mods ciblés : 0 ou 1–9 de vitesse secondaire.';
  const topTen=rows.slice(0,10);renderHolocronVerdict(topTen);
  box.innerHTML='<div class="essential-inline-note">'+note+' <span>Indice Holocron = comparaison de mods, pas une simulation de combat.</span> · '+topTen.length+' RECOMMANDATION(S) MAXIMUM</div>'+topTen.map((r,i)=>{
    const delta=topChangeStatDelta(r.oldMod,r.newMod),shownDelta=delta.filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>b.delta-a.delta).slice(0,8);
@@ -265,7 +265,7 @@ function renderHolocronTopChanges(){
    const portraitHtml=essentialPortraitHtml(r.recipient),recipient=esc(r.recipient.name||r.recipient.baseId),donor=esc(r.donor.name||r.donor.baseId);
    const oldSpeed=num(modTotalSpeed(r.oldMod),1),newSpeed=num(modTotalSpeed(r.newMod),1),sign=v=>v>0?'+':'',usage=r.hasGac?' · '+num(r.gacUses)+' usages GAC':'';
    return '<article class="topchange-result"><div class="topchange-rank">'+String(i+1).padStart(2,'0')+'</div>'+portraitHtml+
-   '<div class="topchange-main"><header class="topchange-heading"><div><span class="topchange-kicker">'+(r.isGL?'CIBLE GL PRIORITAIRE':'ÉCHANGE À BILAN POSITIF')+'</span><strong>'+recipient+'</strong></div><small>'+esc(r.oldMod.slot||'—')+' · Donneur <b>'+donor+'</b>'+usage+'</small></header>'+
+   '<div class="topchange-main"><header class="topchange-heading"><div><span class="topchange-kicker">'+(r.isGL?'CIBLE GL PRIORITAIRE':'REMPLACEMENT D’UN MOD LENT')+'</span><strong>'+recipient+'</strong></div><small>'+esc(r.oldMod.slot||'—')+' · Donneur <b>'+donor+'</b>'+usage+'</small></header>'+
    '<div class="topchange-mods"><span><b>MOD ACTUEL</b><div class="topchange-mod-visual">'+modIconHtml(r.oldMod,'42')+'</div><strong>'+esc(r.oldMod.set_name||'—')+'</strong><small>'+esc(r.oldMod.primary_stat||'—')+' · '+oldSpeed+' vit.</small></span><span class="is-received"><b>MOD REÇU</b><div class="topchange-mod-visual">'+modIconHtml(r.newMod,'42')+'</div><strong>'+esc(r.newMod.set_name||'—')+'</strong><small>'+esc(r.newMod.primary_stat||'—')+' · '+newSpeed+' vit.</small></span></div>'+
    '<section class="topchange-stat-panel topchange-stat-panel-expanded"><div class="topchange-stat-title"><strong>ÉCART DES SECONDAIRES</strong><span>mod actuel → mod reçu · vert = gain · rouge = baisse</span></div><div class="topchange-stat-grid">'+stats+'</div></section></div>'+
    '<aside class="topchange-action"><span>ÉCHANGE RÉCIPROQUE</span><strong>'+donor+' ↔ '+recipient+'</strong><small>Vitesse cible : '+oldSpeed+' → '+newSpeed+' ('+(newSpeed-oldSpeed>0?'+':'')+num(newSpeed-oldSpeed,1)+'). Le donneur reçoit le mod actuel de la cible.</small><i>↗</i></aside></article>';
