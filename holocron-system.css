@@ -1789,3 +1789,8 @@ body[data-page="dashboard"] .sidebar-level-portrait {
 #top-changes .topchange-stat.impact-negative { border-left-color:#ff5967 !important; background:rgba(255,50,65,.07) !important; }
 #top-changes .topchange-action > strong { overflow-wrap:anywhere; }
 @media(max-width:760px) { #top-changes .topchange-impact-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } #top-changes .topchange-impact-grid > div { padding:4px 2px; } }
+
+/* Acolyte v4.1 — gains relatifs mis au premier plan. */
+#top-changes .topchange-impact-grid > div:first-child strong,
+#top-changes .topchange-impact-grid > div:nth-child(3) strong { font-size:16px; }
+#top-changes .topchange-impact-grid > div small { max-width:150px; }
