@@ -43,6 +43,34 @@ function holocronTopChangeCandidates(){
     }
     return 0;
   };
+  // Filtre expérimental V3.4.3 : sélectionner les donneurs selon la faiblesse
+  // globale de leurs mods, sans interdire leurs meilleurs mods individuels.
+  const donorWeakness=unit=>{
+    const speeds=unit.mods.map(secondarySpeedValue).sort((a,b)=>a-b);
+    const count=speeds.length||1;
+    const noSpeed=speeds.filter(v=>v===0).length;
+    const veryLow=speeds.filter(v=>v>0&&v<=5).length;
+    const low=speeds.filter(v=>v>5&&v<=9).length;
+    const median=speeds.length%2
+      ? speeds[(speeds.length-1)/2]
+      : (speeds[speeds.length/2-1]+speeds[speeds.length/2])/2;
+    const average=speeds.reduce((sum,v)=>sum+v,0)/count;
+    return noSpeed*5 + veryLow*4 + low*2 + Math.max(0,12-median)*0.35 + Math.max(0,10-average)*0.15;
+  };
+  const donorPool=units
+    .filter(unit=>!unit.isGL)
+    .map(unit=>({...unit,weaknessScore:donorWeakness(unit)}))
+    .sort((a,b)=>b.weaknessScore-a.weaknessScore ||
+      (a.gacUses===null?Number.POSITIVE_INFINITY:a.gacUses) -
+      (b.gacUses===null?Number.POSITIVE_INFINITY:b.gacUses));
+  // Environ les 30 % des non-GL les moins bien moddés deviennent donneurs.
+  // Tous leurs mods restent candidats, même un mod rapide comme 20 de vitesse.
+  const donorCount=donorPool.length?Math.max(1,Math.ceil(donorPool.length*0.30)):0;
+  const eligibleDonorKeys=new Set(donorPool.slice(0,donorCount).map(unit=>characterKey(unit.c)));
+  for(const unit of units){
+    unit.weaknessScore=donorWeakness(unit);
+    unit.isWeakDonor=eligibleDonorKeys.has(characterKey(unit.c));
+  }
   const modIdentity=mod=>String(mod?._index??mod?.id??[mod?.slot,mod?.set_name,mod?.primary_stat,mod?.level].join('|'));
   // Vérification stricte de l'équipement à partir des champs de propriétaire
   // présents dans la donnée du mod. Une simple correspondance par slot/set,
@@ -82,9 +110,9 @@ function holocronTopChangeCandidates(){
 
   const out=[];
 
-  // Acolyte cible d'abord les mods les plus lents du personnage prioritaire.
-  // Catégories visées : aucune vitesse secondaire, puis 1–9 de vitesse secondaire.
-  // Le mod reçu doit réellement améliorer la vitesse de la cible.
+  // Acolyte cible les mods lents des personnages prioritaires.
+  // Les donneurs sont les ~30 % de non-GL les moins bien moddés ; tous leurs mods
+  // peuvent être proposés, même un mod individuel avec une vitesse élevée.
   for(const r of units){
     const targetMods=[...r.mods].sort((a,b)=>
       secondarySpeedValue(a)-secondarySpeedValue(b) ||
@@ -102,7 +130,7 @@ function holocronTopChangeCandidates(){
       for(const d of units){
         if(characterKey(d.c)===characterKey(r.c))continue;
         // Ne pas dépouiller un autre GL : les GL sont toujours prioritaires.
-        if(d.isGL)continue;
+        if(d.isGL||!d.isWeakDonor)continue;
         // Pour une cible non-GL, ne jamais prendre un mod à un personnage
         // autant ou plus utilisé en GAC, ni à un donneur dont l'usage est inconnu.
         if(!r.isGL && (r.gacUses===null || d.gacUses===null || d.gacUses>=r.gacUses))continue;
@@ -269,8 +297,8 @@ function renderHolocronVerdict(rowsOverride){
  const rows=Array.isArray(rowsOverride)?rowsOverride:(Array.isArray(rosterCharacters)&&rosterCharacters.length?holocronTopChangeCandidates():[]);
  if(!rows.length){
    state.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'SCAN COMPLET':'EN ATTENTE';
-   title.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Aucun mod lent remplaçable détecté.':'Le Holocron attend le scan du roster.';
-   action.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Les mods ciblés (0 ou 1–9 de vitesse secondaire) ont été examinés ; aucun mod compatible n’améliore la vitesse de la cible.':'Charge le profil pour faire émerger les décisions.';
+   title.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Aucun échange pertinent détecté.':'Le Holocron attend le scan du roster.';
+   action.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Les cibles prioritaires et les donneurs les moins bien moddés ont été examinés ; aucun échange compatible n’améliore suffisamment la cible.':'Charge le profil pour faire émerger les décisions.';
    count.textContent='0'; urgent.textContent='0'; opp.textContent='0';
    return;
  }
@@ -316,7 +344,7 @@ function renderHolocronTopChanges(){
  if(!rows.length){box.className='topchanges-empty';box.innerHTML='<strong>Aucun échange réel validé</strong><span>Aucune proposition n’est affichée sans propriétaire de mod vérifié, emplacement/set/primaire compatibles, gain de vitesse réel et primaire cible non dégradée. Il peut donc y avoir moins de 10 propositions, voire aucune.</span>';return;}
  box.className='topchanges-results essential-results-grid';
  const gacSeason=holocronLatestGacSeason();
- const note=gacSeason?'Saison GAC '+esc(gacSeason.season)+' · GL d’abord, puis usages GAC · mods ciblés : 0 ou 1–9 de vitesse secondaire.':'GL d’abord, puis usages GAC quand disponibles · mods ciblés : 0 ou 1–9 de vitesse secondaire.';
+ const note=gacSeason?'Saison GAC '+esc(gacSeason.season)+' · GL d’abord, puis usages GAC · donneurs : 30 % des non-GL les moins bien moddés ; tous leurs mods sont candidats.':'GL d’abord, puis usages GAC quand disponibles · donneurs : 30 % des non-GL les moins bien moddés ; tous leurs mods sont candidats.';
  const topTen=rows.slice(0,10);renderHolocronVerdict(topTen);
  box.innerHTML='<div class="essential-inline-note">'+note+' <span>Indice Holocron = comparaison de mods, pas une simulation de combat.</span> · '+topTen.length+' RECOMMANDATION(S) MAXIMUM</div>'+topTen.map((r,i)=>{
    const delta=topChangeStatDelta(r.oldMod,r.newMod),shownDelta=delta.filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta)).slice(0,8);
