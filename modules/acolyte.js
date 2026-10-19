@@ -30,23 +30,29 @@ function holocronTopChangeCandidates(){
       if(characterKey(d.c)===characterKey(r.c))continue;
       for(const donorMod of d.mods){
         if(donorMod.slot!==currentMod.slot||compactKey(donorMod.set_name)!==compactKey(currentMod.set_name)||compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
+        const oldSpeed=num(modTotalSpeed(currentMod),0),newSpeed=num(modTotalSpeed(donorMod),0);
+        // Règle absolue : une proposition ne peut jamais faire baisser la vitesse totale de la cible.
+        if(newSpeed<oldSpeed)continue;
         const after=holocronModScoreForCharacter(donorMod,r.c),gain=after-before,kyberGain=holocronKyberFit(donorMod,r.c)-kyberBefore;
-        if(gain<3&&kyberGain<1)continue;
-        // Le donneur récupère le mod actuel de la cible : bilan réel de l'échange.
-        const donorBefore=holocronModScoreForCharacter(donorMod,d.c),donorAfter=holocronModScoreForCharacter(currentMod,d.c),donorGain=donorAfter-donorBefore,netGain=gain+donorGain;
-        if(netGain<1)continue;
+        const gainPct=(gain/Math.max(Math.abs(before),1))*100;
+        if(gainPct<1&&kyberGain<1)continue;
+        // Le donneur récupère le mod actuel de la cible : comparer les variations relatives des deux côtés.
+        const donorBefore=holocronModScoreForCharacter(donorMod,d.c),donorAfter=holocronModScoreForCharacter(currentMod,d.c),donorGain=donorAfter-donorBefore;
+        const donorGainPct=(donorGain/Math.max(Math.abs(donorBefore),1))*100;
+        const netGain=gain+donorGain,netGainPct=gainPct+donorGainPct;
+        if(netGainPct<0.5)continue;
         const recipientProfile=profileForCharacter(r.c),donorProfile=profileForCharacter(d.c),hasReference=!!recipientProfile,hasGac=!!gacSeason&&r.gacUses!==null;
         let confidence=55+(hasReference?15:0)+(donorProfile?8:0)+(hasGac?10:0);
         if(r.mods.length===6&&d.mods.length>0)confidence+=5;
         confidence=Math.max(35,Math.min(93,confidence));
         const confidenceLabel=confidence>=80?'ÉLEVÉE':confidence>=65?'CORRECTE':'INDICATIVE';
         const gacPriority=hasGac?Math.log1p(Math.max(0,r.gacUses))*2:0;
-        const priority=netGain*10+Math.max(0,gain)*2.5+Math.max(0,kyberGain)*4+(r.isGL?24:0)+(recipientPriority[r.status]||0)*3+(donorPriority[d.status]||0)*1.5+gacPriority;
-        out.push({donor:d.c,recipient:r.c,oldMod:currentMod,newMod:donorMod,gain,donorGain,donorLoss:Math.max(0,-donorGain),netGain,kyberGain,status:d.status,priority,recipientStatus:r.status,isGL:r.isGL,gacUses:r.gacUses,gacSeason:gacSeason?.season??null,confidence,confidenceLabel,hasReference,hasGac,recipientBefore:before,recipientAfter:after,donorBefore,donorAfter});
+        const priority=netGainPct*10+Math.max(0,gainPct)*2.5+Math.max(0,kyberGain)*4+(r.isGL?24:0)+(recipientPriority[r.status]||0)*3+(donorPriority[d.status]||0)*1.5+gacPriority;
+        out.push({donor:d.c,recipient:r.c,oldMod:currentMod,newMod:donorMod,gain,donorGain,donorLoss:Math.max(0,-donorGain),netGain,netGainPct,gainPct,donorGainPct,oldSpeed,newSpeed,speedGain:newSpeed-oldSpeed,kyberGain,status:d.status,priority,recipientStatus:r.status,isGL:r.isGL,gacUses:r.gacUses,gacSeason:gacSeason?.season??null,confidence,confidenceLabel,hasReference,hasGac,recipientBefore:before,recipientAfter:after,donorBefore,donorAfter});
       }
     }
   }
-  out.sort((a,b)=>b.priority-a.priority||b.netGain-a.netGain||b.kyberGain-a.kyberGain||b.gain-a.gain);
+  out.sort((a,b)=>b.priority-a.priority||b.netGainPct-a.netGainPct||b.gainPct-a.gainPct||b.kyberGain-a.kyberGain);
   const seenSlots=new Set(),seenDonorMods=new Set();
   return out.filter(x=>{
     const slotKey=[characterKey(x.recipient),x.oldMod.slot].join('|'),donorModKey=String(x.newMod?._index??x.newMod.id??(characterKey(x.donor)+'|'+x.newMod.slot));
@@ -128,7 +134,7 @@ function renderHolocronVerdict(rowsOverride){
    count.textContent='0'; urgent.textContent='0'; opp.textContent='0';
    return;
  }
- const urgentCount=Math.min(3,rows.filter(r=>r.isGL || r.netGain>=10 || r.kyberGain>=2).length);
+ const urgentCount=Math.min(3,rows.filter(r=>r.isGL || r.netGainPct>=10 || r.kyberGain>=2).length);
  const opportunityCount=Math.max(0,Math.min(9,rows.length-urgentCount));
  state.textContent='VERDICT ACTIF';
  title.textContent=`${rows.length} modification${rows.length>1?'s':''} détectée${rows.length>1?'s':''}.`;
@@ -182,7 +188,7 @@ function renderHolocronTopChanges(){
    '<div class="topchange-main"><header class="topchange-heading"><div><span class="topchange-kicker">'+(r.isGL?'CIBLE GL PRIORITAIRE':'ÉCHANGE À BILAN POSITIF')+'</span><strong>'+recipient+'</strong></div><small>'+esc(r.oldMod.slot||'—')+' · Donneur <b>'+donor+'</b>'+usage+'</small></header>'+
    '<div class="topchange-mods"><span><b>MOD ACTUEL</b><div class="topchange-mod-visual">'+modIconHtml(r.oldMod,'42')+'</div><strong>'+esc(r.oldMod.set_name||'—')+'</strong><small>'+esc(r.oldMod.primary_stat||'—')+' · '+oldSpeed+' vit.</small></span><span class="is-received"><b>MOD REÇU</b><div class="topchange-mod-visual">'+modIconHtml(r.newMod,'42')+'</div><strong>'+esc(r.newMod.set_name||'—')+'</strong><small>'+esc(r.newMod.primary_stat||'—')+' · '+newSpeed+' vit.</small></span></div>'+
    '<section class="topchange-stat-panel"><div class="topchange-stat-title"><strong>ÉCART DES SECONDAIRES</strong><span>mod actuel → mod reçu</span></div><div class="topchange-stat-grid">'+stats+'</div></section>'+
-   '<section class="topchange-impact-grid" aria-label="Bilan estimé de l’échange"><div><span>GAIN CIBLE</span><strong class="impact-positive">'+sign(r.gain)+num(r.gain,1)+'</strong></div><div><span>IMPACT DONNEUR</span><strong class="'+(r.donorGain>=0?'impact-positive':'impact-negative')+'">'+sign(r.donorGain)+num(r.donorGain,1)+'</strong><small>'+(r.donorGain<0?'coût à compenser':r.donorGain>0?'le donneur progresse':'neutre')+'</small></div><div><span>BILAN NET</span><strong class="impact-net">+'+num(r.netGain,1)+'</strong></div><div><span>FIABILITÉ</span><strong class="impact-confidence">'+r.confidenceLabel+'</strong><small>'+(r.hasReference?'référence Kyber disponible':'référence Kyber partielle')+(r.hasGac?' · GAC inclus':'')+'</small></div></section></div>'+
+   '<section class="topchange-impact-grid" aria-label="Bilan relatif estimé de l’échange"><div><span>GAIN CIBLE</span><strong class="impact-positive">'+sign(r.gainPct)+num(r.gainPct,1)+' %</strong><small>indice cible relatif</small></div><div><span>IMPACT DONNEUR</span><strong class="'+(r.donorGainPct>=0?'impact-positive':'impact-negative')+'">'+sign(r.donorGainPct)+num(r.donorGainPct,1)+' %</strong><small>'+(r.donorGainPct<0?'perte relative donneur':r.donorGainPct>0?'gain relatif donneur':'neutre')+'</small></div><div><span>BILAN NET</span><strong class="impact-net">'+sign(r.netGainPct)+num(r.netGainPct,1)+' %</strong><small>cumul des variations relatives</small></div><div><span>FIABILITÉ</span><strong class="impact-confidence">'+r.confidenceLabel+'</strong><small>'+(r.hasReference?'référence Kyber disponible':'référence Kyber partielle')+(r.hasGac?' · GAC inclus':'')+'</small></div></section></div>'+
    '<aside class="topchange-action"><span>ÉCHANGE RÉCIPROQUE</span><strong>'+donor+' ↔ '+recipient+'</strong><small>Le donneur reçoit le mod actuel de la cible.</small><i>↗</i></aside></article>';
  }).join('');
  bindEssentialPortraits();
