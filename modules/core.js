@@ -930,10 +930,10 @@ function getCharacterMods(c){
   return slots.map(slot=>bySlot.get(slot)).filter(Boolean);
 }
 function modSpeedMetrics(m){
-  const primary=compactKey(m.primary_stat)==='SPEED';
+  const primary=['SPEED','VITESSE'].includes(compactKey(m.primary_stat));
   let secondary=null;
   for(let i=1;i<=4;i++){
-    if(compactKey(m[`secondary_${i}_stat`])==='SPEED'){ secondary=Number(m[`secondary_${i}_value`]); break; }
+    if(['SPEED','VITESSE'].includes(compactKey(m[`secondary_${i}_stat`]))){ secondary=Number(m[`secondary_${i}_value`]); break; }
   }
   return {secondary:Number.isFinite(secondary)?secondary:null,primary};
 }
@@ -944,10 +944,11 @@ function speedCategory(v){
   if(n<=0)return 'no_speed';
   if(n<=10)return '1_10';
   if(n<=15)return '11_15';
-  if(n<=21)return '16_21';
-  return '22plus';
+  if(n<=19)return '16_19';
+  if(n<=24)return '20_24';
+  return '25plus';
 }
-function speedCategoryLabel(k){ return ({'1_10':'1 – 10','11_15':'11 – 15','16_21':'16 – 21','22plus':'> 21','no_speed':'Sans Speed','primary_speed':'Primaire Speed'})[k]||k; }
+function speedCategoryLabel(k){ return ({'1_10':'1 – 10','11_15':'11 – 15','16_19':'16 – 19','20_24':'20 – 24','25plus':'25+','no_speed':'Sans Speed','primary_speed':'Primaire Speed'})[k]||k; }
 function v176ModStatus(modsForCharacter){
   const list=Array.isArray(modsForCharacter)?modsForCharacter:[];
   const count=Math.min(6,list.length);
@@ -992,7 +993,7 @@ function allFactions(){
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function speedBreakdown(list=mods){
-  const out={'1_10':0,'11_15':0,'16_21':0,'22plus':0,'no_speed':0,'primary_speed':0,total:0};
+  const out={'1_10':0,'11_15':0,'16_19':0,'20_24':0,'25plus':0,'no_speed':0,'primary_speed':0,total:0};
   for(const raw of list){
     const m=normalizeModForDisplay(raw); out.total++;
     const x=modSpeedMetrics(m);
@@ -1012,7 +1013,7 @@ function renderV18SpeedRecap(containerId='v18SpeedRecap'){
   const box=$(containerId); if(!box)return;
   const b=speedBreakdown(mods);
   const cards=[
-    ['1_10','1 – 10','secondary'],['11_15','11 – 15','secondary'],['16_21','16 – 21','secondary'],['22plus','> 21','secondary'],
+    ['1_10','1 – 10','secondary'],['11_15','11 – 15','secondary'],['16_19','16 – 19','secondary'],['20_24','20 – 24','secondary'],['25plus','25+','secondary'],
     ['primary_speed','Primaire Speed','primary'],['no_speed','Sans Speed','secondary']
   ];
   box.innerHTML=cards.map(([k,label])=>`<button class="speed-recap-card speed-${k}" data-speed-category="${k}"><span>${label}</span><strong>${num(b[k])}</strong><small>${b.total?((b[k]/b.total)*100).toFixed(1):'0.0'} %</small></button>`).join('');
