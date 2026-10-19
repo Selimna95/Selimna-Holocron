@@ -1708,3 +1708,27 @@ body[data-page="dashboard"] .sidebar-level-portrait {
     height: clamp(135px, 32vw, 180px) !important;
   }
 }
+
+
+/* Chambre des voies : les cartes expliquent la fonction de chaque module. */
+.knowledge-page .knowledge-module-links button {
+  gap: 8px !important;
+}
+.knowledge-page .knowledge-module-links button > small {
+  display: block !important;
+  width: min(100%, 260px);
+  margin: 2px auto 0;
+  color: #c0b2b1 !important;
+  font-size: 11px !important;
+  line-height: 1.55 !important;
+  font-weight: 400;
+  letter-spacing: .01em;
+  text-align: center;
+  text-wrap: pretty;
+}
+@media (max-width: 760px) {
+  .knowledge-page .knowledge-module-links button > small {
+    font-size: 10px !important;
+    line-height: 1.45 !important;
+  }
+}
