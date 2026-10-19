@@ -31,8 +31,11 @@ function holocronTopChangeCandidates(){
       for(const donorMod of d.mods){
         if(donorMod.slot!==currentMod.slot||compactKey(donorMod.set_name)!==compactKey(currentMod.set_name)||compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
         const oldSpeed=num(modTotalSpeed(currentMod),0),newSpeed=num(modTotalSpeed(donorMod),0);
-        // Règle absolue : une proposition ne peut jamais faire baisser la vitesse totale de la cible.
-        if(newSpeed<oldSpeed)continue;
+        // Garde-fou absolu : comparer la vitesse totale des six mods équipés
+        // avant/après échange, en plus de la vitesse individuelle du mod.
+        const recipientSpeedBefore=r.mods.reduce((sum,m)=>sum+num(modTotalSpeed(m),0),0);
+        const recipientSpeedAfter=recipientSpeedBefore-oldSpeed+newSpeed;
+        if(newSpeed<oldSpeed || recipientSpeedAfter<recipientSpeedBefore)continue;
         const after=holocronModScoreForCharacter(donorMod,r.c),gain=after-before,kyberGain=holocronKyberFit(donorMod,r.c)-kyberBefore;
         const gainPct=(gain/Math.max(Math.abs(before),1))*100;
         if(gainPct<1&&kyberGain<1)continue;
