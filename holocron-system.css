@@ -1772,3 +1772,20 @@ body[data-page="dashboard"] .sidebar-level-portrait {
     line-height: 1.45 !important;
   }
 }
+
+
+/* ACOLYTE — bilan net explicite, sans confondre indice de mod et gain de combat. */
+#top-changes .essential-inline-note { display:flex; flex-wrap:wrap; align-items:center; gap:7px 12px; }
+#top-changes .essential-inline-note span { color:#b4a6a2; letter-spacing:0; text-transform:none; }
+#top-changes .topchange-impact-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-top:8px; padding:8px; border:1px solid rgba(216,183,122,.16); background:rgba(0,0,0,.22); border-radius:7px; }
+#top-changes .topchange-impact-grid > div { min-width:0; display:flex; flex-direction:column; gap:4px; }
+#top-changes .topchange-impact-grid span { color:#a99b97; font-size:9px; letter-spacing:.09em; }
+#top-changes .topchange-impact-grid strong { font-size:14px; line-height:1.15; overflow-wrap:anywhere; }
+#top-changes .topchange-impact-grid small { color:#92827f; font-size:9px; line-height:1.3; }
+#top-changes .impact-positive { color:#e7d3a3 !important; }
+#top-changes .impact-negative { color:#ff7c83 !important; }
+#top-changes .impact-net { color:#ff4658 !important; text-shadow:0 0 12px rgba(255,40,58,.17); }
+#top-changes .impact-confidence { color:#d4c6c0 !important; font-size:10px !important; }
+#top-changes .topchange-stat.impact-negative { border-left-color:#ff5967 !important; background:rgba(255,50,65,.07) !important; }
+#top-changes .topchange-action > strong { overflow-wrap:anywhere; }
+@media(max-width:760px) { #top-changes .topchange-impact-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } #top-changes .topchange-impact-grid > div { padding:4px 2px; } }
