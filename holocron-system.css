@@ -1794,3 +1794,18 @@ body[data-page="dashboard"] .sidebar-level-portrait {
 #top-changes .topchange-impact-grid > div:first-child strong,
 #top-changes .topchange-impact-grid > div:nth-child(3) strong { font-size:16px; }
 #top-changes .topchange-impact-grid > div small { max-width:150px; }
+
+
+/* ACOLYTE v4.3 — les anciennes zones Impact donneur / Bilan net deviennent des emplacements pour les secondaires. */
+#top-changes .topchange-secondary-expanded { grid-template-columns:minmax(0,1fr) !important; }
+#top-changes .topchange-secondary-heading { display:flex; flex-direction:row !important; align-items:center; justify-content:space-between; gap:8px; padding-bottom:5px; border-bottom:1px solid rgba(216,183,122,.14); }
+#top-changes .topchange-secondary-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; padding-top:6px; }
+#top-changes .topchange-secondary-detail-grid .topchange-stat { display:flex; flex-direction:column; gap:4px; min-width:0; padding:8px; border:1px solid rgba(216,183,122,.13); border-left:2px solid rgba(231,211,163,.6); border-radius:5px; background:rgba(0,0,0,.22); }
+#top-changes .topchange-secondary-detail-grid .topchange-stat b { font-size:10px; line-height:1.25; overflow-wrap:anywhere; }
+#top-changes .topchange-secondary-detail-grid .topchange-stat small { color:#b9aaa5; font-size:10px; }
+#top-changes .topchange-secondary-detail-grid .topchange-stat strong { font-size:16px; }
+#top-changes .topchange-secondary-detail-grid .topchange-no-stats { grid-column:1/-1; }
+@media(max-width:760px) {
+ #top-changes .topchange-secondary-detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #top-changes .topchange-secondary-heading { align-items:flex-start; flex-direction:column !important; }
+}
