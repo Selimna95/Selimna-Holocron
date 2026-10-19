@@ -47,47 +47,50 @@ function holocronTopChangeCandidates(){
   // Vérification stricte de l'équipement à partir des champs de propriétaire
   // présents dans la donnée du mod. Une simple correspondance par slot/set,
   // ou un rattachement approximatif de getCharacterMods, ne suffit pas.
-  const ownerAliases=character=>{
-    const values=[
-      character?.baseId,character?.base_id,character?.characterId,character?.character_id,
-      character?.name,character?.character
-    ].map(compactKey).filter(Boolean);
-    return new Set(values);
+  const ownerAliases=character=>new Set([
+    character?.baseId,character?.base_id,character?.characterId,character?.character_id,
+    character?.name,character?.character
+  ].map(compactKey).filter(Boolean));
+  const rosterAliasOwners=new Map();
+  for(const unit of units){
+    for(const alias of ownerAliases(unit.c)){
+      if(!rosterAliasOwners.has(alias))rosterAliasOwners.set(alias,new Set());
+      rosterAliasOwners.get(alias).add(characterKey(unit.c));
+    }
+  }
+  const ownerTokens=value=>{
+    if(value==null)return [];
+    if(typeof value!=='object'){
+      const token=compactKey(value);
+      return token&&token!=='OBJECTOBJECT'?[token]:[];
+    }
+    return ['baseId','base_id','characterId','character_id','name','id']
+      .map(key=>compactKey(value[key])).filter(token=>token&&token!=='OBJECTOBJECT');
   };
-  const explicitOwnerValues=mod=>{
-    const values=mod?._rawOwnerFields||[];
-    // L'index 9 correspond à raw.character, que normalizeMod peut synthétiser
-    // à partir d'un autre champ : il ne constitue pas, seul, une preuve.
-    return values.filter((value,index)=>index!==9).map(value=>{
-      if(value==null)return '';
-      if(typeof value==='object'){
-        return compactKey(value.baseId??value.base_id??value.characterId??value.character_id??value.name??value.id??'');
-      }
-      return compactKey(value);
-    }).filter(Boolean);
-  };
-  const isExplicitlyEquippedBy=(mod,character)=>{
-    const owners=explicitOwnerValues(mod);
-    const aliases=ownerAliases(character);
-    // Au moins un champ propriétaire doit exister et tous les champs
-    // identifiants exploitables doivent désigner ce personnage.
-    return owners.length>0 && owners.every(owner=>aliases.has(owner));
-  };
+  const explicitOwnerValues=mod=>(mod?._rawOwnerFields||[]).flatMap(ownerTokens);
   const modOwners=new Map();
   for(const unit of units){
     for(const mod of unit.mods){
-      const key=String(mod?._index ?? '');
+      const key=String(mod?._index??'');
       if(!key)continue;
       if(!modOwners.has(key))modOwners.set(key,new Set());
       modOwners.get(key).add(characterKey(unit.c));
     }
   }
   const isUnambiguouslyOwnedBy=(mod,character)=>{
-    const key=String(mod?._index ?? '');
-    const owners=modOwners.get(key);
-    return !!key && !!owners && owners.size===1 &&
-      owners.has(characterKey(character)) &&
-      isExplicitlyEquippedBy(mod,character);
+    const key=String(mod?._index??'');
+    const assigned=modOwners.get(key);
+    if(!key||!assigned||assigned.size!==1||!assigned.has(characterKey(character)))return false;
+    const tokens=explicitOwnerValues(mod);
+    if(!tokens.length)return false;
+    const matchedRosterOwners=new Set();
+    for(const token of tokens){
+      const knownOwners=rosterAliasOwners.get(token);
+      if(knownOwners)knownOwners.forEach(owner=>matchedRosterOwners.add(owner));
+    }
+    // Un champ propriétaire doit réellement correspondre à une unité du roster.
+    // Si plusieurs personnages sont désignés, l'identité est ambiguë : on refuse.
+    return matchedRosterOwners.size===1&&matchedRosterOwners.has(characterKey(character));
   };
 
   const out=[];
@@ -201,24 +204,22 @@ function topChangeStatDelta(fromMod,toMod){
   if(!stats.has(key))stats.set(key,{name,from:0,to:0});
   stats.get(key)[side]+=Number(value||0);
  };
- // La primaire fait partie intégrante de la comparaison : afficher toute perte
- // et ne pas la masquer derrière le seul écart des secondaires.
  const fromPrimary=String(fromMod?.primary_stat||'').trim();
  const toPrimary=String(toMod?.primary_stat||'').trim();
- if(fromPrimary||toPrimary){
-  add('__primary__',`Primaire · ${fromPrimary||'—'}`,fromMod?.primary_value,'from');
-  add('__primary__',`Primaire · ${toPrimary||'—'}`,toMod?.primary_value,'to');
- }
+ // Séparer les primaires par nom : une primaire différente ne doit jamais
+ // être présentée comme un simple gain numérique sur la même caractéristique.
+ if(fromPrimary)add('__primary_from__'+compactKey(fromPrimary),'Primaire actuelle · '+fromPrimary,fromMod?.primary_value,'from');
+ if(toPrimary)add('__primary_to__'+compactKey(toPrimary),'Primaire reçue · '+toPrimary,toMod?.primary_value,'to');
  for(const [m,side] of [[fromMod,'from'],[toMod,'to']]) for(let i=1;i<=4;i++){
   const name=String(m?.[`secondary_${i}_stat`]||'').trim();
   if(!name)continue;
   const normalized=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  const key=['speed','vitesse'].includes(normalized)?'__speed__':name.toLowerCase();
+  const key=['speed','vitesse'].includes(normalized)?'__speed__':normalized;
   add(key,key==='__speed__'?'Vitesse':name,m[`secondary_${i}_value`],side);
  }
  return [...stats.values()].map(x=>({...x,delta:x.to-x.from}))
   .filter(x=>Math.abs(x.delta)>0.00001)
-  .sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+  .sort((a,b)=>Math.abs(a.delta)-Math.abs(b.delta));
 }
 function topChangeStatValue(value,name){
  const percent=/%|potency|tenacity|critical|chance|avoidance/i.test(name);
