@@ -56,7 +56,9 @@ function holocronTopChangeCandidates(){
   };
   const explicitOwnerValues=mod=>{
     const values=mod?._rawOwnerFields||[];
-    return values.map(value=>{
+    // L'index 9 correspond à raw.character, que normalizeMod peut synthétiser
+    // à partir d'un autre champ : il ne constitue pas, seul, une preuve.
+    return values.filter((value,index)=>index!==9).map(value=>{
       if(value==null)return '';
       if(typeof value==='object'){
         return compactKey(value.baseId??value.base_id??value.characterId??value.character_id??value.name??value.id??'');
