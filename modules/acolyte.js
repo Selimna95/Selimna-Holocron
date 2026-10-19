@@ -103,6 +103,9 @@ function holocronTopChangeCandidates(){
         if(characterKey(d.c)===characterKey(r.c))continue;
         // Ne pas dépouiller un autre GL : les GL sont toujours prioritaires.
         if(d.isGL)continue;
+        // Pour une cible non-GL, ne jamais prendre un mod à un personnage
+        // autant ou plus utilisé en GAC, ni à un donneur dont l'usage est inconnu.
+        if(!r.isGL && (r.gacUses===null || d.gacUses===null || d.gacUses>=r.gacUses))continue;
         for(const donorMod of d.mods){
           // Sécurité impérative : le mod proposé doit être équipé exclusivement sur ce donneur.
           if(!isUnambiguouslyOwnedBy(donorMod,d.c))continue;
@@ -111,9 +114,9 @@ function holocronTopChangeCandidates(){
           if(compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
           // Même primaire ne signifie pas même valeur : ne jamais accepter une
           // baisse de primaire sur le personnage cible.
-          const oldPrimaryValue=Number(currentMod.primary_value||0);
-          const newPrimaryValue=Number(donorMod.primary_value||0);
-          if(newPrimaryValue<oldPrimaryValue)continue;
+          const oldPrimaryValue=Number(currentMod.primary_value);
+          const newPrimaryValue=Number(donorMod.primary_value);
+          if(!Number.isFinite(oldPrimaryValue)||!Number.isFinite(newPrimaryValue)||newPrimaryValue<oldPrimaryValue)continue;
 
           const newSecondarySpeed=secondarySpeedValue(donorMod);
           const newSpeed=num(modTotalSpeed(donorMod),0);
@@ -317,13 +320,15 @@ function renderHolocronTopChanges(){
  const topTen=rows.slice(0,10);renderHolocronVerdict(topTen);
  box.innerHTML='<div class="essential-inline-note">'+note+' <span>Indice Holocron = comparaison de mods, pas une simulation de combat.</span> · '+topTen.length+' RECOMMANDATION(S) MAXIMUM</div>'+topTen.map((r,i)=>{
    const delta=topChangeStatDelta(r.oldMod,r.newMod),shownDelta=delta.filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta)).slice(0,8);
-   const stats=shownDelta.length?shownDelta.map(x=>'<span class="topchange-stat '+(x.delta>0?'impact-positive':'impact-negative')+'"><b>'+esc(x.name)+'</b><strong>'+(x.delta>0?'+':'')+topChangeStatValue(x.delta,x.name)+'</strong></span>').join(''):'<span class="topchange-no-stats">Aucun écart secondaire détecté</span>';
+   const stats=shownDelta.length?shownDelta.map(x=>'<span class="topchange-stat '+(x.delta>0?'impact-positive':'impact-negative')+'"><b>'+esc(x.name)+'</b><strong>'+(x.delta>0?'+':'')+topChangeStatValue(x.delta,x.name)+'</strong></span>').join(''):'<span class="topchange-no-stats">Aucun écart de statistique détecté</span>';
+   const donorDelta=topChangeStatDelta(r.newMod,r.oldMod).filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta)).slice(0,6);
+   const donorStats=donorDelta.length?donorDelta.map(x=>'<span class="topchange-stat '+(x.delta>0?'impact-positive':'impact-negative')+'"><b>'+esc(x.name)+'</b><strong>'+(x.delta>0?'+':'')+topChangeStatValue(x.delta,x.name)+'</strong></span>').join(''):'<span class="topchange-no-stats">Aucun écart de statistique détecté</span>';
    const portraitHtml=essentialPortraitHtml(r.recipient),recipient=esc(r.recipient.name||r.recipient.baseId),donor=esc(r.donor.name||r.donor.baseId);
    const oldSpeed=num(modTotalSpeed(r.oldMod),1),newSpeed=num(modTotalSpeed(r.newMod),1),sign=v=>v>0?'+':'',usage=r.hasGac?' · '+num(r.gacUses)+' usages GAC':'';
    return '<article class="topchange-result"><div class="topchange-rank">'+String(i+1).padStart(2,'0')+'</div>'+portraitHtml+
    '<div class="topchange-main"><header class="topchange-heading"><div><span class="topchange-kicker">'+(r.isGL?'CIBLE GL PRIORITAIRE':'REMPLACEMENT D’UN MOD LENT')+'</span><strong>'+recipient+'</strong></div><small>'+esc(r.oldMod.slot||'—')+' · Donneur <b>'+donor+'</b>'+usage+'</small></header>'+
    '<div class="topchange-mods"><span><b>MOD ACTUEL</b><div class="topchange-mod-visual">'+modIconHtml(r.oldMod,'42')+'</div><strong>'+esc(r.oldMod.set_name||'—')+'</strong><small>'+esc(r.oldMod.primary_stat||'—')+' · '+oldSpeed+' vit.</small></span><span class="is-received"><b>MOD REÇU</b><div class="topchange-mod-visual">'+modIconHtml(r.newMod,'42')+'</div><strong>'+esc(r.newMod.set_name||'—')+'</strong><small>'+esc(r.newMod.primary_stat||'—')+' · '+newSpeed+' vit.</small></span></div>'+
-   '<section class="topchange-stat-panel topchange-stat-panel-expanded"><div class="topchange-stat-title"><strong>ÉCART DES STATISTIQUES</strong><span>primaire et secondaires · vert = gain · rouge = baisse</span></div><div class="topchange-stat-grid">'+stats+'</div></section></div>'+
+   '<section class="topchange-stat-panel topchange-stat-panel-expanded"><div class="topchange-stat-title"><strong>CIBLE · MOD ACTUEL → MOD REÇU</strong><span>primaire et secondaires · vert = gain · rouge = baisse</span></div><div class="topchange-stat-grid">'+stats+'</div><div class="topchange-stat-title"><strong>DONNEUR · MOD ACTUEL → MOD REÇU</strong><span>le donneur récupère le mod lent de la cible</span></div><div class="topchange-stat-grid">'+donorStats+'</div></section></div>'+
    '<aside class="topchange-action"><span>ÉCHANGE RÉCIPROQUE</span><strong>'+donor+' ↔ '+recipient+'</strong><small>Vitesse cible : '+oldSpeed+' → '+newSpeed+' ('+(newSpeed-oldSpeed>0?'+':'')+num(newSpeed-oldSpeed,1)+'). Le donneur reçoit le mod actuel de la cible.</small><i>↗</i></aside></article>';
  }).join('');
  bindEssentialPortraits();
