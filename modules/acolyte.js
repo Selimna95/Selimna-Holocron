@@ -211,7 +211,7 @@ function renderHolocronVerdict(rowsOverride){
  if(!rows.length){
    state.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'SCAN COMPLET':'EN ATTENTE';
    title.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Aucun mod lent remplaçable détecté.':'Le Holocron attend le scan du roster.';
-   action.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Les mods ciblés (0 ou 1–9 de vitesse secondaire) ont été examinés ; aucun mod compatible n'améliore la vitesse de la cible.':'Charge le profil pour faire émerger les décisions.';
+   action.textContent=Array.isArray(rosterCharacters)&&rosterCharacters.length?'Les mods ciblés (0 ou 1–9 de vitesse secondaire) ont été examinés ; aucun mod compatible n’améliore la vitesse de la cible.':'Charge le profil pour faire émerger les décisions.';
    count.textContent='0'; urgent.textContent='0'; opp.textContent='0';
    return;
  }
