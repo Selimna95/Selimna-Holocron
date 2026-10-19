@@ -78,8 +78,8 @@ function topChangeStatDelta(fromMod,toMod){
  for(const m of [fromMod,toMod]) for(let i=1;i<=4;i++){
   const name=String(m?.[`secondary_${i}_stat`]||'').trim();
   if(!name)continue;
-  const key=name.toLowerCase();
-  if(!stats.has(key))stats.set(key,{name,from:0,to:0});
+  const key=['speed','vitesse'].includes(name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase())?'__speed__':name.toLowerCase();
+  if(!stats.has(key))stats.set(key,{name:key==='__speed__'?'Vitesse':name,from:0,to:0});
   stats.get(key)[m===fromMod?'from':'to']+=Number(m[`secondary_${i}_value`]||0);
  }
  return [...stats.values()].map(x=>({...x,delta:x.to-x.from})).filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
