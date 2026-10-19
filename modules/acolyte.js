@@ -208,8 +208,8 @@ function topChangeStatDelta(fromMod,toMod){
  const toPrimary=String(toMod?.primary_stat||'').trim();
  // Séparer les primaires par nom : une primaire différente ne doit jamais
  // être présentée comme un simple gain numérique sur la même caractéristique.
- if(fromPrimary)add('__primary_from__'+compactKey(fromPrimary),'Primaire actuelle · '+fromPrimary,fromMod?.primary_value,'from');
- if(toPrimary)add('__primary_to__'+compactKey(toPrimary),'Primaire reçue · '+toPrimary,toMod?.primary_value,'to');
+ if(fromPrimary)add('__primary__'+compactKey(fromPrimary),'Primaire · '+fromPrimary,fromMod?.primary_value,'from');
+ if(toPrimary)add('__primary__'+compactKey(toPrimary),'Primaire · '+toPrimary,toMod?.primary_value,'to');
  for(const [m,side] of [[fromMod,'from'],[toMod,'to']]) for(let i=1;i<=4;i++){
   const name=String(m?.[`secondary_${i}_stat`]||'').trim();
   if(!name)continue;
@@ -329,7 +329,7 @@ function renderHolocronTopChanges(){
  const note=gacSeason?'Saison GAC '+esc(gacSeason.season)+' · GL d’abord, puis usages GAC · mods ciblés : 0 ou 1–9 de vitesse secondaire.':'GL d’abord, puis usages GAC quand disponibles · mods ciblés : 0 ou 1–9 de vitesse secondaire.';
  const topTen=rows.slice(0,10);renderHolocronVerdict(topTen);
  box.innerHTML='<div class="essential-inline-note">'+note+' <span>Indice Holocron = comparaison de mods, pas une simulation de combat.</span> · '+topTen.length+' RECOMMANDATION(S) MAXIMUM</div>'+topTen.map((r,i)=>{
-   const delta=topChangeStatDelta(r.oldMod,r.newMod),shownDelta=delta.filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>b.delta-a.delta).slice(0,8);
+   const delta=topChangeStatDelta(r.oldMod,r.newMod),shownDelta=delta.filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta)).slice(0,8);
    const stats=shownDelta.length?shownDelta.map(x=>'<span class="topchange-stat '+(x.delta>0?'impact-positive':'impact-negative')+'"><b>'+esc(x.name)+'</b><strong>'+(x.delta>0?'+':'')+topChangeStatValue(x.delta,x.name)+'</strong></span>').join(''):'<span class="topchange-no-stats">Aucun écart secondaire détecté</span>';
    const portraitHtml=essentialPortraitHtml(r.recipient),recipient=esc(r.recipient.name||r.recipient.baseId),donor=esc(r.donor.name||r.donor.baseId);
    const oldSpeed=num(modTotalSpeed(r.oldMod),1),newSpeed=num(modTotalSpeed(r.newMod),1),sign=v=>v>0?'+':'',usage=r.hasGac?' · '+num(r.gacUses)+' usages GAC':'';
