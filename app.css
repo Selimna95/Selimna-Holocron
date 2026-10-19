@@ -2776,55 +2776,62 @@ textarea:disabled{
   .decision-page .holocron-verdict{width:calc(100% - 28px);max-width:none}
 }
 
-/* Sanctuaire — légende de vitesse lisible sans chevauchement */
+/* Sanctuaire — légende des mods : lignes aérées, libellés et compteurs séparés */
 .decision-card.mod-card{
-  width:min(700px,54%);
-  min-width:520px;
-  padding:18px 24px 22px;
+  width:min(760px,62%);
+  min-width:600px;
+  padding:18px 26px 22px;
   bottom:3%;
 }
 .decision-card.mod-card .decision-legend{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:12px 18px;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:11px 26px;
   margin-top:15px;
   font-size:10px;
-  line-height:1.4;
+  line-height:1.45;
 }
 .decision-card.mod-card .decision-legend span{
   display:grid;
   grid-template-columns:8px minmax(0,1fr) auto;
   min-width:0;
   align-items:center;
-  gap:7px;
-  white-space:nowrap;
+  gap:9px;
+  white-space:normal;
 }
+.decision-card.mod-card .decision-legend i{grid-column:1}
 .decision-card.mod-card .decision-legend b{
+  grid-column:2;
   min-width:0;
   font-weight:500;
-  overflow:visible;
+  white-space:normal;
+  overflow-wrap:anywhere;
 }
 .decision-card.mod-card .decision-legend strong{
-  display:inline;
-  margin-left:0;
+  grid-column:3;
+  display:block;
+  margin:0;
   color:#fff;
   font-size:11px;
+  font-variant-numeric:tabular-nums;
   text-align:right;
+  white-space:nowrap;
 }
 @media(max-width:900px){
   .decision-card.mod-card{
     width:calc(100% - 28px);
     min-width:0;
     bottom:2%;
+    padding:16px 18px 18px;
   }
   .decision-card.mod-card .decision-legend{
     grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:10px 12px;
+    gap:10px 16px;
   }
 }
 @media(max-width:480px){
   .decision-card.mod-card .decision-legend{
     grid-template-columns:minmax(0,1fr);
+    gap:8px;
   }
 }
-
