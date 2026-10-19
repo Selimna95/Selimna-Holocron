@@ -46,7 +46,7 @@ function holocronTopChangeCandidates(){
       }
     }
   }
-  out.sort((a,b)=>b.netGain-a.netGain||b.priority-a.priority||b.kyberGain-a.kyberGain||b.gain-a.gain);
+  out.sort((a,b)=>b.priority-a.priority||b.netGain-a.netGain||b.kyberGain-a.kyberGain||b.gain-a.gain);
   const seenSlots=new Set(),seenDonorMods=new Set();
   return out.filter(x=>{
     const slotKey=[characterKey(x.recipient),x.oldMod.slot].join('|'),donorModKey=String(x.newMod?._index??x.newMod.id??(characterKey(x.donor)+'|'+x.newMod.slot));
@@ -128,7 +128,7 @@ function renderHolocronVerdict(rowsOverride){
    count.textContent='0'; urgent.textContent='0'; opp.textContent='0';
    return;
  }
- const urgentCount=Math.min(3,rows.filter(r=>r.isGL || r.gain>=10 || r.kyberGain>=2).length);
+ const urgentCount=Math.min(3,rows.filter(r=>r.isGL || r.netGain>=10 || r.kyberGain>=2).length);
  const opportunityCount=Math.max(0,Math.min(9,rows.length-urgentCount));
  state.textContent='VERDICT ACTIF';
  title.textContent=`${rows.length} modification${rows.length>1?'s':''} détectée${rows.length>1?'s':''}.`;
@@ -136,7 +136,7 @@ function renderHolocronVerdict(rowsOverride){
  const recipient=String(lead?.recipient?.name||lead?.recipient?.baseId||'personnage cible');
  const donor=String(lead?.donor?.name||lead?.donor?.baseId||'donneur');
  const gain=Number(lead?.gain||0);
- action.textContent=`Priorité : ${recipient} ← ${donor}${gain>0?` · +${num(gain,1)} impact mod`:''}.`;
+ const netGain=Number(lead?.netGain||0);\n action.textContent=`Priorité : ${recipient} ↔ ${donor}${netGain>0?` · bilan net estimé +${num(netGain,1)} indice Holocron`:''}.`;
  count.textContent=String(rows.length);
  urgent.textContent=String(urgentCount);
  opp.textContent=String(opportunityCount);
