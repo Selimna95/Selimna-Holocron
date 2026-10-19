@@ -44,6 +44,25 @@ function holocronTopChangeCandidates(){
     return 0;
   };
   const modIdentity=mod=>String(mod?._index??mod?.id??[mod?.slot,mod?.set_name,mod?.primary_stat,mod?.level].join('|'));
+  // Un même mod physique ne peut appartenir qu'à un seul personnage.
+  // getCharacterMods accepte plusieurs alias d'API ; si un alias ambigu rattache
+  // le même _index à plusieurs unités, on l'exclut des échanges au lieu de
+  // présenter un mod comme équipé chez le mauvais donneur.
+  const modOwners=new Map();
+  for(const unit of units){
+    for(const mod of unit.mods){
+      const key=String(mod?._index ?? '');
+      if(!key)continue;
+      if(!modOwners.has(key))modOwners.set(key,new Set());
+      modOwners.get(key).add(characterKey(unit.c));
+    }
+  }
+  const isExclusivelyEquippedBy=(mod,character)=>{
+    const key=String(mod?._index ?? '');
+    const owners=modOwners.get(key);
+    return !!key && !!owners && owners.size===1 && owners.has(characterKey(character));
+  };
+
   const out=[];
 
   // Acolyte cible d'abord les mods les plus lents du personnage prioritaire.
@@ -67,6 +86,8 @@ function holocronTopChangeCandidates(){
         // Ne pas dépouiller un autre GL : les GL sont toujours prioritaires.
         if(d.isGL)continue;
         for(const donorMod of d.mods){
+          // Sécurité impérative : le mod proposé doit être équipé exclusivement sur ce donneur.
+          if(!isExclusivelyEquippedBy(donorMod,d.c))continue;
           if(donorMod.slot!==currentMod.slot)continue;
           if(compactKey(donorMod.set_name)!==compactKey(currentMod.set_name))continue;
           if(compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
