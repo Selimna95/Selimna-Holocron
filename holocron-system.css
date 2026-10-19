@@ -1809,3 +1809,14 @@ body[data-page="dashboard"] .sidebar-level-portrait {
  #top-changes .topchange-secondary-detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
  #top-changes .topchange-secondary-heading { align-items:center; flex-direction:row !important; }
 }
+
+
+/* ACOLYTE v4.5 — agrandit l’écart des secondaires et supprime le doublon avant/après. */
+#top-changes .topchange-stat-panel-expanded { width:100%; box-sizing:border-box; padding:14px 16px; margin-top:12px; }
+#top-changes .topchange-stat-panel-expanded .topchange-stat-title { margin-bottom:12px; }
+#top-changes .topchange-stat-panel-expanded .topchange-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+#top-changes .topchange-stat-panel-expanded .topchange-stat { min-width:0; padding:12px 10px; }
+#top-changes .topchange-stat-panel-expanded .topchange-stat b { font-size:12px; }
+#top-changes .topchange-stat-panel-expanded .topchange-stat small { font-size:11px; }
+#top-changes .topchange-stat-panel-expanded .topchange-stat strong { font-size:18px; }
+@media(max-width:760px) { #top-changes .topchange-stat-panel-expanded { padding:10px; } #top-changes .topchange-stat-panel-expanded .topchange-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; } }
