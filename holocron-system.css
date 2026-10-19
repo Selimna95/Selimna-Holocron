@@ -1732,3 +1732,43 @@ body[data-page="dashboard"] .sidebar-level-portrait {
     line-height: 1.45 !important;
   }
 }
+
+
+/* FIX — rendre les résumés de la Chambre des voies réellement visibles.
+   Les anciennes règles de cartes/portraits contraignaient leur hauteur et
+   pouvaient couper le texte placé sous les portraits. */
+.knowledge-page .knowledge-module-links > button {
+  height: auto !important;
+  min-height: 320px !important;
+  overflow: visible !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding-bottom: 18px !important;
+}
+.knowledge-page .knowledge-module-links > button > small {
+  display: block !important;
+  position: relative !important;
+  z-index: 3 !important;
+  flex: 0 0 auto !important;
+  width: calc(100% - 8px) !important;
+  max-width: 280px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: normal !important;
+  color: #e0d2d1 !important;
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  text-align: center !important;
+  text-wrap: pretty;
+}
+@media (max-width: 760px) {
+  .knowledge-page .knowledge-module-links > button { min-height: 300px !important; }
+  .knowledge-page .knowledge-module-links > button > small {
+    font-size: 11px !important;
+    line-height: 1.45 !important;
+  }
+}
