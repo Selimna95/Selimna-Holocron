@@ -119,8 +119,8 @@ function holocronTopChangeCandidates(){
           if(compactKey(donorMod.primary_stat)!==compactKey(currentMod.primary_stat))continue;
           // Même primaire ne signifie pas même valeur : ne jamais accepter une
           // baisse de primaire sur le personnage cible.
-          const oldPrimaryValue=num(currentMod.primary_value,0);
-          const newPrimaryValue=num(donorMod.primary_value,0);
+          const oldPrimaryValue=Number(currentMod.primary_value||0);
+          const newPrimaryValue=Number(donorMod.primary_value||0);
           if(newPrimaryValue<oldPrimaryValue)continue;
 
           const newSecondarySpeed=secondarySpeedValue(donorMod);
