@@ -96,7 +96,7 @@ try {
   assert.deepEqual(counts, { forge: 6, sithari: 6 });
 
   await page.waitForTimeout(500);
-  assert.deepEqual(pageErrors, [], \`Unexpected uncaught browser errors: \${pageErrors.join(" | ")}\`);
+  assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
   console.log("Browser smoke passed: shell, navigation, and six-slot mod invariant.");
 } finally {
   await browser.close();
