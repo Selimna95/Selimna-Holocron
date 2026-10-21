@@ -10,8 +10,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE_EXTRA_SELECTOR_BLOCKS = {
-    "app.css": 693,
-    "holocron-system.css": 285,
+    "app.css": 673,
+    "holocron-system.css": 251,
     "sithari.css": 311,
 }
 
