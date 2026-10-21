@@ -48,9 +48,15 @@ try {
     document.querySelector("#appShell").hidden = false;
     showPage("dashboard");
   });
-  await page.locator('[data-page="data"]').click();
+  await page.locator('[data-page="help"]').click();
+  assert.equal(await page.locator("body").getAttribute("data-page"), "help");
+  assert.equal(await page.locator('[data-page="help"]').getAttribute("aria-current"), "page");
+
+  // The Codex entry is intentionally context-dependent in the sidebar; test
+  // its destination directly rather than forcing a hidden button click.
+  await page.evaluate(() => showPage("data"));
   assert.equal(await page.locator("body").getAttribute("data-page"), "data");
-  assert.equal(await page.locator('[data-page="data"]').getAttribute("aria-current"), "page");
+  assert.equal(await page.locator("#data").getAttribute("aria-hidden"), "false");
 
   await page.evaluate(() => showPage("sithari"));
   assert.equal(await page.locator("body").getAttribute("data-page"), "sithari");
