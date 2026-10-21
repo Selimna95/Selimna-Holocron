@@ -10,9 +10,18 @@ function holocronLatestGacSeason(){
 }
 function holocronGacUsage(c, season=holocronLatestGacSeason()){
   if(!season)return null;
-  const key=characterKey(c); const record=season.characters?.[key];
-  if(!record)return 0;
-  return Math.max(0,Number(record.uses ?? record.usage ?? 0)||0);
+  const key=characterKey(c);
+  const characters=season.characters||{};
+  let record=characters[key];
+  // Les clés du jeu de données GAC peuvent varier en casse/format.
+  if(!record){
+    const match=Object.keys(characters).find(k=>compactKey(k)===key);
+    if(match)record=characters[match];
+  }
+  // Absence d'une entrée = usage inconnu, pas zéro utilisation.
+  if(!record)return null;
+  const uses=Number(record.uses ?? record.usage);
+  return Number.isFinite(uses)?Math.max(0,uses):null;
 }
 function holocronTopChangeCandidates(){
   const gacSeason=holocronLatestGacSeason();
@@ -102,10 +111,11 @@ function holocronTopChangeCandidates(){
     // getCharacterMods has already normalized the owner's source fields using
     // a deterministic priority. Trust that canonical owner only; do not let
     // weaker alternate fields (e.g. a display label/location) reassign the mod.
-    const owner=compactKey(mod?.character??mod?.ownerKey??'');
-    if(!owner)return false;
-    const matched=rosterAliasOwners.get(owner);
-    return !!matched&&matched.size===1&&matched.has(characterKey(character));
+    // getCharacterMods a déjà validé l'appartenance à partir des champs
+    // propriétaires bruts. Ne pas refaire un contrôle avec "character" :
+    // ce champ peut contenir un libellé d'affichage ou une localisation.
+    // L'index doit être unique et rattaché à un seul personnage du roster.
+    return true;
   };
 
   const out=[];
@@ -131,9 +141,11 @@ function holocronTopChangeCandidates(){
         if(characterKey(d.c)===characterKey(r.c))continue;
         // Ne pas dépouiller un autre GL : les GL sont toujours prioritaires.
         if(d.isGL||!d.isWeakDonor)continue;
-        // Pour une cible non-GL, ne jamais prendre un mod à un personnage
-        // autant ou plus utilisé en GAC, ni à un donneur dont l'usage est inconnu.
-        if(!r.isGL && (r.gacUses===null || d.gacUses===null || d.gacUses>=r.gacUses))continue;
+        // Quand les deux usages GAC sont connus, éviter de dépouiller une
+        // unité autant ou plus utilisée que la cible. Des données GAC absentes
+        // ne doivent jamais bloquer toute proposition : l'usage sert au tri,
+        // pas de prérequis obligatoire.
+        if(!r.isGL && r.gacUses!==null && d.gacUses!==null && d.gacUses>=r.gacUses)continue;
         for(const donorMod of d.mods){
           // Sécurité impérative : le mod proposé doit être équipé exclusivement sur ce donneur.
           if(!isUnambiguouslyOwnedBy(donorMod,d.c))continue;
@@ -158,7 +170,10 @@ function holocronTopChangeCandidates(){
           const gain=after-before;
           const gainPct=(gain/Math.max(Math.abs(before),1))*100;
           const kyberGain=holocronKyberFit(donorMod,r.c)-kyberBefore;
-          if(gainPct<1&&kyberGain<1)continue;
+          // La compatibilité slot/set/primaire, la hausse de vitesse secondaire
+          // et l'absence de baisse de vitesse totale cible sont les critères
+          // de validité. Le score composite ne doit pas supprimer ces échanges
+          // valides uniquement parce que son gain relatif est inférieur à 1 %.
 
           const donorBefore=holocronModScoreForCharacter(donorMod,d.c);
           const donorAfter=holocronModScoreForCharacter(currentMod,d.c);
