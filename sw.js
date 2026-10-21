@@ -1,23 +1,23 @@
-const CACHE_NAME = 'holocron-static-v3.4.3-weak-donor-pool';
+const CACHE_NAME = 'holocron-static-v3.4.4-cache-sync';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './app.css?v=3.2.1',
+  './app.css?v=3.6.3-sanctuary-mod-legend-clean',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=3.7.0-sith-portraits',
-  './interface-adapter.js?v=3.2.1',
+  './holocron-system.css?v=4.2.0-secondary-delta-only',
+  './interface-adapter.js?v=3.2.3-sanctuary-speed-buckets',
   './gac-usage.js?v=3.2.1',
-  './modules/core.js?v=3.5.4-six-slot-owner-fix',
+  './modules/core.js?v=3.4.4-cache-sync',
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
-  './modules/disciple.js',
-  './modules/seigneur.js?v=3.5.4-six-slot-owner-fix',
+  './modules/disciple.js?v=3.4.4-cache-sync',
+  './modules/seigneur.js?v=3.4.4-cache-sync',
   './modules/sithari.js?v=3.8.0-sith-storm-reveal',
   './modules/runtime.js?v=3.7.0-sith-portraits',
-  './optimizer-worker.mjs',
-  './python/optimizer.py?v=3.2.1',
-  './python/kyber_data.py?v=3.2.1',
-  './python/optimizer_profiles.json?v=3.2.1',
-  './python/kyber_profiles.json?v=3.2.1',
+  './optimizer-worker.mjs?v=3.4.4-cache-sync',
+  './python/optimizer.py?v=3.4.4-cache-sync',
+  './python/kyber_data.py?v=3.4.4-cache-sync',
+  './python/optimizer_profiles.json?v=3.4.4-cache-sync',
+  './python/kyber_profiles.json?v=3.4.4-cache-sync',
   './assets/backgrounds/holocron-gate.jpg',
   './assets/sith-sprite.webp',
   './assets/icons/holocron-192.png',
@@ -25,22 +25,69 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
+  );
 });
+
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('holocron-static-') && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key.startsWith('holocron-static-') && key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
 });
+
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
-  // Never cache relay/profile responses. Only known static files are eligible.
-  if (url.pathname.includes('/?ally=') || url.searchParams.has('ally')) return;
-  event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
-    if (response.ok && (request.destination === 'script' || request.destination === 'style' || request.destination === 'image' || url.pathname.endsWith('.json') || url.pathname.endsWith('.mjs') || url.pathname.endsWith('.py'))) {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-    }
-    return response;
-  })));
+
+  // Les données de profil/relais ne sont jamais mises en cache.
+  if (url.searchParams.has('ally')) return;
+
+  // Les navigations sont réseau d'abord pour éviter de servir un ancien index.
+  // La copie réseau est conservée pour le mode hors ligne.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).then(response => {
+        if (response.ok) {
+          const copy = response.clone();
+          const indexUrl = new URL('./index.html', self.registration.scope).href;
+          caches.open(CACHE_NAME).then(cache => cache.put(indexUrl, copy));
+        }
+        return response;
+      }).catch(async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        const indexUrl = new URL('./index.html', self.registration.scope).href;
+        return caches.match(indexUrl);
+      })
+    );
+    return;
+  }
+
+  // Cache-first uniquement pour les ressources statiques, dont les URLs
+  // versionnées sont alignées avec index.html.
+  event.respondWith(
+    caches.match(request).then(cached => cached || fetch(request).then(response => {
+      if (response.ok && (
+        request.destination === 'script' ||
+        request.destination === 'style' ||
+        request.destination === 'image' ||
+        url.pathname.endsWith('.json') ||
+        url.pathname.endsWith('.mjs') ||
+        url.pathname.endsWith('.py')
+      )) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      }
+      return response;
+    }))
+  );
 });
