@@ -5,12 +5,11 @@ async function loadOptimizerReferenceData(){
   // si le script embarqué n'a pas été publié par GitHub Pages.
   const candidates=[
     new URL('./python/optimizer_profiles.json',document.baseURI).href,
-    new URL('/SWGOH-Optimizer-Web/python/optimizer_profiles.json',location.origin).href,
   ];
   let loaded=null;
   for(const url of candidates){
     try{
-      const r=await fetch(url+'?v=3.0.0',{cache:'force-cache'});
+      const r=await fetch(url+'?v=3.4.4-cache-sync',{cache:'force-cache'});
       if(!r.ok)continue;
       const json=await r.json();
       if(json&&typeof json==='object'&&Object.keys(json).length){loaded=json;break;}
@@ -27,12 +26,11 @@ async function loadOptimizerReferenceData(){
   // puis le profil local du Worker sert de secours.
   const kyberCandidates=[
     new URL('./python/kyber_profiles.json',document.baseURI).href,
-    new URL('/SWGOH-Optimizer-Web/python/kyber_profiles.json',location.origin).href,
   ];
   profiles={};
   for(const url of kyberCandidates){
     try{
-      const r=await fetch(url+'?v=3.0.0',{cache:'force-cache'});
+      const r=await fetch(url+'?v=3.4.4-cache-sync',{cache:'force-cache'});
       if(r.ok){const json=await r.json();if(json&&typeof json==='object'){profiles=json;break;}}
     }catch(e){}
   }
@@ -69,7 +67,7 @@ async function boot(){
   try{
     if(typeof loadPyodide==='function'){
       pyodide=await loadPyodide();
-      const optimizerResponse=await fetch(new URL('./python/optimizer.py',document.baseURI).href+'?v=3.0.0',{cache:'force-cache'});
+      const optimizerResponse=await fetch(new URL('./python/optimizer.py',document.baseURI).href+'?v=3.4.4-cache-sync',{cache:'force-cache'});
       if(!optimizerResponse.ok) throw new Error(`optimizer.py HTTP ${optimizerResponse.status}`);
       const optimizer=await optimizerResponse.text();
       pyodide.FS.writeFile('/home/pyodide/optimizer.py',optimizer);
