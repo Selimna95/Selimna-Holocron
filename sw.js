@@ -2,9 +2,9 @@ const CACHE_NAME = 'holocron-static-v3.4.4-cache-sync';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './app.css?v=3.6.3-sanctuary-mod-legend-clean',
+  './app.css?v=3.6.4-legacy-selector-cleanup',
   './sithari.css?v=4.0.0-sith-storm-reveal',
-  './holocron-system.css?v=4.2.0-secondary-delta-only',
+  './holocron-system.css?v=4.2.1-legacy-selector-cleanup',
   './interface-adapter.js?v=3.2.3-sanctuary-speed-buckets',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.4.4-cache-sync',
