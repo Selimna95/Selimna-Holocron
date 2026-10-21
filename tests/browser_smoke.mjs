@@ -45,6 +45,7 @@ try {
 
   // Exercise the real navigation handler without requiring an account login.
   await page.evaluate(() => {
+    document.querySelector("#holocronGate").style.display = "none";
     document.querySelector("#appShell").hidden = false;
     showPage("dashboard");
   });
