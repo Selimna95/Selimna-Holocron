@@ -49,9 +49,9 @@ try {
     document.querySelector("#appShell").hidden = false;
     showPage("dashboard");
   });
-  await page.locator('[data-page="help"]').click();
+  await page.locator('aside.sidebar button.nav[data-page="help"]').click();
   assert.equal(await page.locator("body").getAttribute("data-page"), "help");
-  assert.equal(await page.locator('[data-page="help"]').getAttribute("aria-current"), "page");
+  assert.equal(await page.locator('aside.sidebar button.nav[data-page="help"]').getAttribute("aria-current"), "page");
 
   // The Codex entry is intentionally context-dependent in the sidebar; test
   // its destination directly rather than forcing a hidden button click.
