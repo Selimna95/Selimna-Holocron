@@ -37,9 +37,15 @@ class AssetIntegrityTests(unittest.TestCase):
         }
         self.assertTrue(expected.issubset(self.cached_assets))
         self.assertIn("optimizer-worker.mjs?v=3.4.4-cache-sync", self.core)
-        for asset in expected:
-            filename = asset.split("?", 1)[0].rsplit("/", 1)[-1]
-            self.assertIn(filename + "?v=3.4.4-cache-sync", self.worker + self.seigneur)
+        for asset in (
+            "python/optimizer.py?v=3.4.4-cache-sync",
+            "python/kyber_data.py?v=3.4.4-cache-sync",
+            "python/optimizer_profiles.json?v=3.4.4-cache-sync",
+        ):
+            self.assertIn(asset, self.worker)
+        self.assertIn("optimizer_profiles.json", self.seigneur)
+        self.assertIn("kyber_profiles.json", self.seigneur)
+        self.assertIn("?v=3.4.4-cache-sync", self.seigneur)
 
     def test_obsolete_repository_fallback_is_removed(self):
         self.assertNotIn("/SWGOH-Optimizer-Web/", self.seigneur)
