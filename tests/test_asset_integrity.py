@@ -1,0 +1,59 @@
+"""Regression checks for versioned assets and the PWA service-worker cache."""
+from pathlib import Path
+import re
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class AssetIntegrityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.html = (ROOT / "index.html").read_text(encoding="utf-8")
+        cls.sw = (ROOT / "sw.js").read_text(encoding="utf-8")
+        cls.core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        cls.seigneur = (ROOT / "modules" / "seigneur.js").read_text(encoding="utf-8")
+        cls.worker = (ROOT / "optimizer-worker.mjs").read_text(encoding="utf-8")
+        section = cls.sw.split("const STATIC_ASSETS = [", 1)[1].split("];", 1)[0]
+        cls.cached_assets = {
+            value.removeprefix("./")
+            for value in re.findall(r"""['"]([^'"]+)['"]""", section)
+        }
+
+    def test_local_stylesheets_and_scripts_are_pre_cached_at_exact_versions(self):
+        refs = re.findall(r'<link\b[^>]*\brel=["\']stylesheet["\'][^>]*\bhref=["\']([^"\']+)', self.html, re.I)
+        refs += re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']+)', self.html, re.I)
+        local_refs = [ref.removeprefix("./") for ref in refs if "://" not in ref]
+        missing = sorted(set(local_refs) - self.cached_assets)
+        self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
+
+    def test_worker_and_python_reference_urls_match_cache(self):
+        expected = {
+            "optimizer-worker.mjs?v=3.4.4-cache-sync",
+            "python/optimizer.py?v=3.4.4-cache-sync",
+            "python/kyber_data.py?v=3.4.4-cache-sync",
+            "python/optimizer_profiles.json?v=3.4.4-cache-sync",
+            "python/kyber_profiles.json?v=3.4.4-cache-sync",
+        }
+        self.assertTrue(expected.issubset(self.cached_assets))
+        self.assertIn("optimizer-worker.mjs?v=3.4.4-cache-sync", self.core)
+        for asset in expected:
+            filename = asset.split("?", 1)[0].rsplit("/", 1)[-1]
+            self.assertIn(filename + "?v=3.4.4-cache-sync", self.worker + self.seigneur)
+
+    def test_obsolete_repository_fallback_is_removed(self):
+        self.assertNotIn("/SWGOH-Optimizer-Web/", self.seigneur)
+
+    def test_service_worker_has_new_cache_and_network_first_navigation(self):
+        self.assertIn("holocron-static-v3.4.4-cache-sync", self.sw)
+        self.assertNotIn("holocron-static-v3.4.3-weak-donor-pool", self.sw)
+        self.assertIn("request.mode === 'navigate'", self.sw)
+        self.assertIn("fetch(request).then(response =>", self.sw)
+
+    def test_displayed_release_version_is_consistent(self):
+        self.assertIn("Selimna’s Holocron — V3.4.4", self.html)
+        self.assertNotIn("V3.4.3", self.html)
+
+
+if __name__ == "__main__":
+    unittest.main()
