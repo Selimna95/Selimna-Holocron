@@ -8,7 +8,7 @@ The three stylesheets are intentionally layered in this order:
 2. \`sithari.css\` — Sith'ari-specific visual rules.
 3. \`holocron-system.css\` — shared experience and page-level refinements.
 
-No stylesheet was rewritten during this maintenance pass. The files contain many repeated selectors; a large share are responsive overrides, keyframes, or later cascade rules. Removing repeated selectors globally without a browser comparison can change the interface, even if declarations look similar.
+This pass removed only selector branches tied to legacy navigation/pyramid classes that have no references in the current HTML or JavaScript. Responsive overrides and repeated selectors with active references were left intact. No business logic or active Sith’ari selectors were changed.
 
 ## Measured baseline
 
@@ -25,6 +25,7 @@ These are maintenance indicators, not a count of confirmed defects. In particula
 ## Guardrails added
 
 - CI now fails if this repeated-selector baseline grows.
+- Unreferenced legacy pyramid/path selector branches were removed from `app.css` and `holocron-system.css`; active selectors and stylesheet load order were preserved.
 - CI verifies that the three visual layers stay in the intended load order.
 - A Playwright browser smoke test exercises navigation and checks that forge/Sith'ari equipment grids cannot display more than one mod per physical slot.
 - The follow-up CSS refactor should merge only rules whose media/supports/keyframe context and cascade behavior have been verified in a browser.
