@@ -43,7 +43,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: npm install --no-save playwright@1.55.0
-      - run: npx playwright install --with-deps chromium
       - name: Serve the static app
         run: python -m http.server 8765 --bind 127.0.0.1 > /tmp/holocron-http.log 2>&1 & echo $! > /tmp/holocron-http.pid
       - run: node tests/browser_smoke.mjs
