@@ -16,13 +16,13 @@ await page.route("https://cdn.jsdelivr.net/pyodide/**", async route => {
     await route.fulfill({
       status: 200,
       contentType: "text/javascript",
-      body: 'export async function loadPyodide(){ throw new Error("Pyodide stubbed by browser smoke test"); }',
+      body: 'const fakePyodide = { FS: { writeFile() {} }, runPython() {}, globals: { set() {} }, runPythonAsync: async () => "[]" }; export async function loadPyodide(){ return fakePyodide; }',
     });
   } else {
     await route.fulfill({
       status: 200,
       contentType: "text/javascript",
-      body: 'window.loadPyodide = async () => { throw new Error("Pyodide stubbed by browser smoke test"); };',
+      body: 'window.loadPyodide = async () => ({ FS: { writeFile() {} }, runPython() {}, globals: { set() {} }, runPythonAsync: async () => "[]" });',
     });
   }
 });
