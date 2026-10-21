@@ -2,19 +2,19 @@ import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodi
 
 let pyodideReadyPromise = (async () => {
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
-  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.1.0", import.meta.url), { cache: "force-cache" });
+  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.4.4-cache-sync", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
   const optimizerSource = await optimizerResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer.py", optimizerSource);
 
-  const kyberResponse = await fetch(new URL("./python/kyber_data.py?v=3.1.0", import.meta.url), { cache: "force-cache" });
+  const kyberResponse = await fetch(new URL("./python/kyber_data.py?v=3.4.4-cache-sync", import.meta.url), { cache: "force-cache" });
   if (kyberResponse.ok) {
     pyodide.FS.writeFile("/home/pyodide/kyber_data.py", await kyberResponse.text());
   }
 
   // The optimizer reference data is loaded by the Worker itself.
   // This removes the fragile dependency on a browser-side script tag.
-  const profilesResponse = await fetch(new URL("./python/optimizer_profiles.json?v=3.1.0", import.meta.url), { cache: "force-cache" });
+  const profilesResponse = await fetch(new URL("./python/optimizer_profiles.json?v=3.4.4-cache-sync", import.meta.url), { cache: "force-cache" });
   if (!profilesResponse.ok) throw new Error(`Impossible de charger optimizer_profiles.json (HTTP ${profilesResponse.status})`);
   const profilesText = await profilesResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer_profiles.json", profilesText);
