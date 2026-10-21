@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 3.2.0** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 3.4.4** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
@@ -45,6 +45,9 @@ Le relais par défaut est `https://swgoh-optimizer-relay.lorg75017.workers.dev`.
 Les scripts navigateur restent pour le moment des scripts classiques car ils partagent un contrat historique de variables globales. Une migration ES modules doit se faire par étapes avec des tests de non-régression, pas par renommage mécanique des fichiers.
 
 ## Qualité
+
+La CI vérifie les tests Python, la syntaxe JavaScript, la cohérence des ressources versionnées du service worker et un smoke test navigateur Playwright (navigation et invariant des six emplacements de mods). Le test navigateur utilise un stub Pyodide : il valide le shell et les interactions locales, pas l'exécution complète du moteur d’optimisation ni l’accès au relais.
+
 Tests Python :
 
 ```bash
