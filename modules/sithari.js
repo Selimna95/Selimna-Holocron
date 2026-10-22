@@ -249,20 +249,61 @@ function sithariSourceStatus(mod){
   if(!owner)return 'LIBRE';
   return sithariEnsureModCache().statusByOwner.get(owner)||'LIBRE';
 }
+function sithariIsSpeedSet(mod){
+  return sithariCanonicalSet(mod?.set_name??mod?.set??mod?.setId??mod?.set_id??'')==='SPEED';
+}
+function sithariBaseSpeed(character){
+  const raw=character?.raw||character?.data||character||{};
+  const candidates=[
+    character?.base_stats?.Speed,character?.base_stats?.speed,
+    character?.baseStats?.Speed,character?.baseStats?.speed,
+    character?.base_speed,character?.baseSpeed,
+    raw?.base_stats?.Speed,raw?.base_stats?.speed,
+    raw?.baseStats?.Speed,raw?.baseStats?.speed,
+    raw?.base_speed,raw?.baseSpeed
+  ];
+  for(const value of candidates){
+    const n=Number(value);
+    if(Number.isFinite(n)&&n>0)return n;
+  }
+  return 0;
+}
+function sithariProjectedSpeed(character,modList){
+  const list=Array.isArray(modList)?modList:[];
+  const modSpeed=list.reduce((sum,m)=>sum+num(modTotalSpeed(m),0),0);
+  const speedSetPieces=list.filter(sithariIsSpeedSet).length;
+  const baseSpeed=sithariBaseSpeed(character);
+  // If the base stat is unavailable, the caller still rejects losing the
+  // 4-piece Speed set, rather than risking an invisible speed decrease.
+  const setBonus=speedSetPieces>=4&&baseSpeed>0?baseSpeed*0.1:0;
+  return {total:modSpeed+setBonus,modSpeed,speedSetPieces,setBonus,baseSpeed};
+}
+function sithariReplacementPreservesSpeed(character,current,candidate){
+  const equipped=sithariCharacterMods(character);
+  const slot=modSlotLabel(current?.slot??current?.slot_id??current?.slotId??current?.modSlot);
+  const before=sithariProjectedSpeed(character,equipped);
+  const afterMods=equipped.filter(m=>modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot)!==slot);
+  afterMods.push(candidate);
+  const after=sithariProjectedSpeed(character,afterMods);
+  if(before.speedSetPieces>=4&&after.speedSetPieces<4)return false;
+  if(before.baseSpeed>0&&after.total+1e-9<before.total)return false;
+  if(before.baseSpeed<=0&&after.modSpeed+1e-9<before.modSpeed)return false;
+  return true;
+}
 function sithariCandidatePool(slot,setName,primaryName,current,excludeCharacterKey=''){
   const cache=sithariEnsureModCache();
   const currentId=String(current?.game_id||current?.id||'');
   const wantedSlot=modSlotLabel(slot);
   const scope=sithariScopeState();
+  const selectedCharacter=rosterCharacters.find(c=>characterKey(c)===excludeCharacterKey);
   const pool=[];
   for(const m of cache.items){
     if(modSlotLabel(m.slot??m.slot_id??m.slotId??m.modSlot)!==wantedSlot)continue;
     if(currentId && String(m.game_id||m.id||'')===currentId)continue;
-    // Every Sith'ari action must preserve or improve the selected character's total mod speed.
-    if(current && num(modTotalSpeed(m),0)<num(modTotalSpeed(current),0))continue;
     if(setName && sithariCanonicalSet(m.set_name??m.set??m.setId??m.set_id)!==sithariCanonicalSet(setName))continue;
     if(primaryName && compactKey(m.primary_stat??m.primaryStat??m.primary_stat_name)!==compactKey(primaryName))continue;
     if(excludeCharacterKey && m._sithariOwner===excludeCharacterKey)continue;
+    if(selectedCharacter&&!sithariReplacementPreservesSpeed(selectedCharacter,current,m))continue;
     const status=sithariSourceStatus(m);
     if(scope!=='ALL' && (!Array.isArray(scope)||!scope.includes(status)))continue;
     pool.push(m);
