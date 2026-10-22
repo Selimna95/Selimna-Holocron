@@ -1698,20 +1698,20 @@ body[data-page="dashboard"] .sidebar-level-portrait {
 .disciple-candidate-delta.is-negative>b{color:#ff817e}
 .disciple-candidate-speed>span,.disciple-candidate-match>span{line-height:1.35}
 @media(max-width:1100px){
- .disciple-candidate{grid-template-columns:36px minmax(120px,1fr) minmax(150px,1fr) minmax(85px,.65fr) minmax(100px,.7fr)!important}
- .disciple-candidate-delta{grid-column:2/-1;display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 12px;padding:8px 10px;border-left:0;border-top:1px solid rgba(255,100,80,.12)}
- .disciple-candidate-delta>b{grid-column:2;grid-row:1/3}
- .disciple-candidate-delta>small{grid-column:1}
+ .disciple-candidate:is(.disciple-candidate){grid-template-columns:36px minmax(120px,1fr) minmax(150px,1fr) minmax(85px,.65fr) minmax(100px,.7fr)!important}
+ .disciple-candidate-delta:is(.disciple-candidate-delta){grid-column:2/-1;display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 12px;padding:8px 10px;border-left:0;border-top:1px solid rgba(255,100,80,.12)}
+ .disciple-candidate-delta:is(.disciple-candidate-delta)>b{grid-column:2;grid-row:1/3}
+ .disciple-candidate-delta:is(.disciple-candidate-delta)>small{grid-column:1}
 }
 @media(max-width:680px){
- .disciple-purpose-strip{grid-template-columns:1fr;gap:9px;padding:12px}
- .disciple-purpose-strip>i{display:none}
- .disciple-purpose-strip>div{padding:2px 0}
- .disciple-candidate{grid-template-columns:34px minmax(0,1fr)!important}
- .disciple-candidate-owner,.disciple-candidate-mod,.disciple-candidate-speed,.disciple-candidate-match,.disciple-candidate-delta{grid-column:2}
+ .disciple-purpose-strip:is(.disciple-purpose-strip){grid-template-columns:1fr;gap:9px;padding:12px}
+ .disciple-purpose-strip:is(.disciple-purpose-strip)>i{display:none}
+ .disciple-purpose-strip:is(.disciple-purpose-strip)>div{padding:2px 0}
+ .disciple-candidate:not(:not(.disciple-candidate)){grid-template-columns:34px minmax(0,1fr)!important}
+ .disciple-candidate-owner,.disciple-candidate-mod,.disciple-candidate-speed,.disciple-candidate-match,.disciple-candidate-delta:not(:not(.disciple-candidate-delta)){grid-column:2}
  .disciple-candidate-mod{grid-row:auto}
  .disciple-candidate-speed,.disciple-candidate-match{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px}
  .disciple-candidate-speed>b,.disciple-candidate-match>b{grid-column:2;grid-row:1/3}
  .disciple-candidate-speed>small,.disciple-candidate-match>small{grid-column:1}
- .disciple-candidate-delta{grid-template-columns:minmax(0,1fr) auto}
+ .disciple-candidate-delta:not(:not(.disciple-candidate-delta)){grid-template-columns:minmax(0,1fr) auto}
 }
