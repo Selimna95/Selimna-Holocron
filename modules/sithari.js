@@ -239,6 +239,8 @@ function sithariCandidatePool(slot,setName,primaryName,current,excludeCharacterK
   for(const m of cache.items){
     if(modSlotLabel(m.slot??m.slot_id??m.slotId??m.modSlot)!==wantedSlot)continue;
     if(currentId && String(m.game_id||m.id||'')===currentId)continue;
+    // Every Sith'ari action must preserve or improve the selected character's total mod speed.
+    if(current && num(modTotalSpeed(m),0)<num(modTotalSpeed(current),0))continue;
     if(setName && sithariCanonicalSet(m.set_name??m.set??m.setId??m.set_id)!==sithariCanonicalSet(setName))continue;
     if(primaryName && compactKey(m.primary_stat??m.primaryStat??m.primary_stat_name)!==compactKey(primaryName))continue;
     if(excludeCharacterKey && m._sithariOwner===excludeCharacterKey)continue;
