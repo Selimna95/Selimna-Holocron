@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE_EXTRA_SELECTOR_BLOCKS = {
-    "app.css": 673,
+    "app.css": 697,  # 24 intentional repeated blocks for the Seigneur result-card layout, including responsive rules
     "holocron-system.css": 251,
     "sithari.css": 311,
 }
