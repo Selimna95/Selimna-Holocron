@@ -102,6 +102,18 @@ try {
   });
   assert.deepEqual(counts, { forge: 6, sithari: 6 });
 
+  // Seigneur regression: never trade away a complete Speed-set bonus, even
+  // when the incoming mod has the same individual speed as the equipped mod.
+  const speedGuard = await page.evaluate(() => {
+    const character = { baseId: "TEST", name: "Test", characterId: "UNIT-SPEED" };
+    const make = (id, set, speed) => ({game_id:id,character:"TEST",slot:"Square",set_name:set,primary_stat:"Offense",primary_value:5,secondary_1_stat:"Speed",secondary_1_value:speed});
+    const equipped = [make("a","Speed",5),make("b","Speed",5),make("c","Speed",5),make("d","Speed",5),make("e","Health",0),make("f","Health",0)];
+    const before = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},equipped);
+    const after = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},[...equipped.slice(1),make("replacement","Health",5)]);
+    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total};
+  });
+  assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus");
+
   await page.waitForTimeout(500);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
   console.log("Browser smoke passed: shell, navigation, six-slot invariant, characterId ownership, and numeric slot aliases.");
