@@ -1,4 +1,4 @@
-const CACHE_NAME = 'holocron-static-v3.5.1-seigneur-total-speed-guard';
+const CACHE_NAME = 'holocron-static-v3.5.2-sithari-total-speed-guard';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,7 @@ const STATIC_ASSETS = [
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
   './modules/disciple.js?v=3.5.0-disciple-clarity',
   './modules/seigneur.js?v=3.5.4-total-speed-guard',
-  './modules/sithari.js?v=4.0.1-owner-cache-sync',
+  './modules/sithari.js?v=4.0.2-total-speed-guard',
   './modules/runtime.js?v=3.7.0-sith-portraits',
   './optimizer-worker.mjs?v=3.4.4-cache-sync',
   './python/optimizer.py?v=3.4.4-cache-sync',
