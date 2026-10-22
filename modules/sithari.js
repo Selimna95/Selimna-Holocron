@@ -195,7 +195,10 @@ function sithariEnsureModCache(){
   const aliases=new Map();
   for(const c of rosterCharacters||[]){
     const key=characterKey(c);
-    for(const v of [key,c?.name,c?.character,c?.baseId,c?.base_id,c?.unitId,c?.unit_id]){
+    // Ally exports can identify the equipped owner by characterId rather than
+    // baseId/name. Register every identity alias so those mods are not silently
+    // treated as unequipped in Sith'ari.
+    for(const v of [key,c?.name,c?.character,c?.baseId,c?.base_id,c?.unitId,c?.unit_id,c?.characterId,c?.character_id,c?.id]){
       const a=compactKey(v); if(a)aliases.set(a,key);
     }
   }
@@ -221,7 +224,20 @@ function sithariCharacterMods(c){
   const owner=characterKey(c); const cache=sithariEnsureModCache();
   const arr=cache.byOwner.get(owner)||[]; const bySlot=new Map();
   const score=x=>Number(Boolean(x?.primary_stat))*4+Number(Boolean(x?.secondary_1_stat))*2+Number(x?.level||0)/100;
-  for(const m of arr){const slot=modSlotLabel(m?.slot);if(!SITHARI_SLOT_ORDER.includes(slot))continue;const prev=bySlot.get(slot);if(!prev||score(m)>score(prev))bySlot.set(slot,m);}
+  for(const m of arr){
+    const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);
+    if(!SITHARI_SLOT_ORDER.includes(slot))continue;
+    const prev=bySlot.get(slot);
+    if(!prev||score(m)>score(prev))bySlot.set(slot,m);
+  }
+  // Keep the display consistent with the main roster inventory matcher if an
+  // export uses an owner alias that Sith'ari's cache cannot resolve yet.
+  if(!bySlot.size && typeof getCharacterMods==='function'){
+    for(const m of getCharacterMods(c)||[]){
+      const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);
+      if(SITHARI_SLOT_ORDER.includes(slot)&&!bySlot.has(slot))bySlot.set(slot,m);
+    }
+  }
   return SITHARI_SLOT_ORDER.map(slot=>bySlot.get(slot)).filter(Boolean);
 }
 function sithariSourceStatus(mod){
@@ -386,7 +402,7 @@ function sithariRenderActionPanel(x){
   </section>`;
 }
 function sithariSlotState(c,slot){
-  const p=sithariProfileForCharacter(c); const cm=sithariCharacterMods(c); const current=cm.find(m=>String(m.slot||'')===slot)||null;
+  const p=sithariProfileForCharacter(c); const cm=sithariCharacterMods(c); const current=cm.find(m=>modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot)===slot)||null;
   if(!p){
     const key=characterKey(c),loading=!!sithariKyberLoading[key];
     return {character:c,slot,current,status:loading?'LOADING':'NOREF',profile:null,reference:{sets:loading?'Récupération de la référence Kyber…':'Référence Kyber indisponible',prim:'—',sec:'—'}};
