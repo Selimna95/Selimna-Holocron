@@ -282,25 +282,46 @@ function renderForgeCharacterPanel(character,profile){
 }
 function forgeModDeltaMarkup(current,candidate){
   if(!current||!candidate)return '<div class="forge-delta-empty">Comparaison indisponible.</div>';
-  const stats=new Map();
-  const add=(name,value,kind)=>{
-    const key=compactKey(name); if(!key||key==='SPEED')return;
-    const prev=stats.get(key)||{name:String(name),from:0,to:0};
-    prev[kind]=Number(value||0); stats.set(key,prev);
-  };
-  for(let i=1;i<=4;i++) add(current[`secondary_${i}_stat`],current[`secondary_${i}_value`],'from');
-  for(let i=1;i<=4;i++) add(candidate[`secondary_${i}_stat`],candidate[`secondary_${i}_value`],'to');
-  const rows=[...stats.values()].map(x=>({...x,delta:x.to-x.from})).filter(x=>Math.abs(x.delta)>0.00001).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
-  const speedDelta=modTotalSpeed(candidate)-modTotalSpeed(current);
-  const primaryChanged=compactKey(current.primary_stat)!==compactKey(candidate.primary_stat);
+  const speedFrom=num(modTotalSpeed(current),0), speedTo=num(modTotalSpeed(candidate),0), speedDelta=speedTo-speedFrom;
+  const signed=(v)=>`${v>0?'+':''}${num(v,1)}`;
+  const primaryValue=(m)=>m.primary_value==null?'':` · ${num(m.primary_value,1)}`;
+  const primaryChanged=compactKey(current.primary_stat)!==compactKey(candidate.primary_stat)||Number(current.primary_value||0)!==Number(candidate.primary_value||0);
   const setChanged=compactKey(current.set_name)!==compactKey(candidate.set_name);
-  const body=rows.slice(0,6).map(x=>`<span class="${x.delta>0?'gain':'loss'}"><b>${x.delta>0?'+':''}${num(x.delta,1)}</b><em>${esc(x.name)}</em></span>`).join('');
-  const tags=[];
-  if(speedDelta)tags.push(`<span class="${speedDelta>0?'gain':'loss'}"><b>${speedDelta>0?'+':''}${num(speedDelta,0)}</b><em>VITESSE</em></span>`);
-  if(primaryChanged)tags.push(`<span class="neutral"><b>↔</b><em>PRIMAIRE ${esc(current.primary_stat||'?')} → ${esc(candidate.primary_stat||'?')}</em></span>`);
-  if(setChanged)tags.push(`<span class="neutral"><b>↔</b><em>SET ${esc(current.set_name||'?')} → ${esc(candidate.set_name||'?')}</em></span>`);
-  return `<div class="forge-delta"><div class="forge-delta-head"><span>GAINS / PERTES</span><small>mod actuel → candidat</small></div><div class="forge-delta-list">${tags.concat(body).join('')||'<span class="neutral"><b>0</b><em>Aucun écart chiffré</em></span>'}</div></div>`;
+  const currentStats=new Map(), candidateStats=new Map();
+  const readStats=(m,map)=>{
+    for(let i=1;i<=4;i++){
+      const name=String(m?.[`secondary_${i}_stat`]||'').trim();
+      if(!name)continue;
+      const key=compactKey(name);
+      map.set(key,{name,value:Number(m?.[`secondary_${i}_value`]||0)});
+    }
+  };
+  readStats(current,currentStats); readStats(candidate,candidateStats);
+  const keys=new Set([...currentStats.keys(),...candidateStats.keys()]);
+  const rows=[...keys].map(key=>{
+    const from=currentStats.get(key),to=candidateStats.get(key);
+    return {name:(to||from).name,from:from?.value??null,to:to?.value??null,delta:(to?.value??0)-(from?.value??0)};
+  }).filter(x=>x.from===null||x.to===null||Math.abs(x.delta)>0.00001)
+   .sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+  const secondaryRows=rows.length?rows.map(x=>{
+    const from=x.from===null?'—':num(x.from,1),to=x.to===null?'—':num(x.to,1);
+    const tone=x.delta>0?'gain':x.delta<0?'loss':'neutral';
+    const delta=x.from===null?'NOUVEAU':x.to===null?'RETIRÉ':signed(x.delta);
+    return `<div class="forge-delta-stat ${tone}"><span>${esc(x.name)}</span><b>${from} → ${to}</b><em>${delta}</em></div>`;
+  }).join(''):'<div class="forge-delta-stat neutral"><span>Secondaires</span><b>Identiques</b><em>0</em></div>';
+  return `<section class="forge-delta">
+    <div class="forge-delta-head"><span>GAIN / PERTE SUR LE MOD CIBLE</span><small>MOD ACTUEL → MOD PROPOSÉ</small></div>
+    <div class="forge-delta-speed"><div><span>VITESSE DU MOD</span><b>${speedFrom} → ${speedTo}</b></div><strong class="${speedDelta>0?'gain':speedDelta<0?'loss':'neutral'}">${signed(speedDelta)} vitesse</strong></div>
+    <div class="forge-delta-changes">
+      <div class="forge-delta-change"><span>SET</span><b>${esc(current.set_name||'—')} → ${esc(candidate.set_name||'—')}</b><em>${setChanged?'modifié':'inchangé'}</em></div>
+      <div class="forge-delta-change"><span>PRIMAIRE</span><b>${esc(current.primary_stat||'—')}${esc(primaryValue(current))} → ${esc(candidate.primary_stat||'—')}${esc(primaryValue(candidate))}</b><em>${primaryChanged?'modifiée':'inchangée'}</em></div>
+    </div>
+    <div class="forge-delta-subtitle">SECONDAIRES · VALEUR ACTUELLE → PROPOSÉE · ÉCART</div>
+    <div class="forge-delta-stats">${secondaryRows}</div>
+    <small class="forge-delta-note">Comparaison du mod seul. Les bonus d’ensemble et les autres mods du personnage ne sont pas additionnés ici.</small>
+  </section>`;
 }
+
 function forgeSourcePortrait(ownerName){
   const owner=rosterCharacters.find(c=>compactKey(c?.name||c?.character||c?.baseId)===compactKey(ownerName||''));
   return owner?essentialPortraitHtml(owner):essentialPortraitHtml({name:ownerName||'?' });
