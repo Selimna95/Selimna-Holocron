@@ -1,8 +1,8 @@
-const CACHE_NAME = 'holocron-static-v3.4.4-cache-sync';
+const CACHE_NAME = 'holocron-static-v3.4.5-target-donor-impact';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './app.css?v=3.6.5-seigneur-target-delta',
+  './app.css?v=3.6.6-target-donor-impact',
   './sithari.css?v=4.0.0-sith-storm-reveal',
   './holocron-system.css?v=4.3.0-disciple-clarity',
   './interface-adapter.js?v=3.2.3-sanctuary-speed-buckets',
@@ -10,7 +10,7 @@ const STATIC_ASSETS = [
   './modules/core.js?v=3.4.4-cache-sync',
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
   './modules/disciple.js?v=3.5.0-disciple-clarity',
-  './modules/seigneur.js?v=3.5.1-target-delta',
+  './modules/seigneur.js?v=3.5.2-target-donor-impact',
   './modules/sithari.js?v=3.9.0-speed-floor',
   './modules/runtime.js?v=3.7.0-sith-portraits',
   './optimizer-worker.mjs?v=3.4.4-cache-sync',
