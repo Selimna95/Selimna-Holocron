@@ -1,8 +1,8 @@
-const CACHE_NAME = 'holocron-static-v3.4.6-no-speed-loss';
+const CACHE_NAME = 'holocron-static-v3.4.7-seigneur-card-layout';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './app.css?v=3.6.6-target-donor-impact',
+  './app.css?v=3.6.7-seigneur-card-layout',
   './sithari.css?v=4.0.0-sith-storm-reveal',
   './holocron-system.css?v=4.3.0-disciple-clarity',
   './interface-adapter.js?v=3.2.3-sanctuary-speed-buckets',
