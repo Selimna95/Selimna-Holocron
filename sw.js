@@ -1,9 +1,9 @@
-const CACHE_NAME = 'holocron-static-v3.4.9-sithari-owner-cache-sync';
+const CACHE_NAME = 'holocron-static-v3.5.0-sithari-adaptive-board';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.6.7-seigneur-card-layout',
-  './sithari.css?v=4.1.0-mod-layout',
+  './sithari.css?v=4.2.0-adaptive-mod-board',
   './holocron-system.css?v=4.3.0-disciple-clarity',
   './interface-adapter.js?v=3.2.3-sanctuary-speed-buckets',
   './gac-usage.js?v=3.2.1',
