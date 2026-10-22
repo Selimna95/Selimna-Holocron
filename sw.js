@@ -1,9 +1,9 @@
-const CACHE_NAME = 'holocron-static-v3.4.7-seigneur-card-layout';
+const CACHE_NAME = 'holocron-static-v3.4.8-sithari-mod-layout';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.6.7-seigneur-card-layout',
-  './sithari.css?v=4.0.0-sith-storm-reveal',
+  './sithari.css?v=4.1.0-mod-layout',
   './holocron-system.css?v=4.3.0-disciple-clarity',
   './interface-adapter.js?v=3.2.3-sanctuary-speed-buckets',
   './gac-usage.js?v=3.2.1',
@@ -11,7 +11,7 @@ const STATIC_ASSETS = [
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
   './modules/disciple.js?v=3.5.0-disciple-clarity',
   './modules/seigneur.js?v=3.5.3-no-speed-loss',
-  './modules/sithari.js?v=3.9.0-speed-floor',
+  './modules/sithari.js?v=4.0.0-owner-slot-fix',
   './modules/runtime.js?v=3.7.0-sith-portraits',
   './optimizer-worker.mjs?v=3.4.4-cache-sync',
   './python/optimizer.py?v=3.4.4-cache-sync',
