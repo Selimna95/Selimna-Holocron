@@ -906,21 +906,21 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
 .sithari-page .sithari-current-speed{display:flex!important;flex-direction:column!important;gap:5px!important;padding-left:12px!important;border-left:1px solid rgba(255,255,255,.1)!important}
 .sithari-page .sithari-current-speed strong{color:#f1eee6!important;font:750 25px/1 var(--font-ui)!important}
 .sithari-page .sithari-proposal-list{display:flex!important;flex-direction:column!important;gap:0!important}
-.sithari-page .sithari-proposal-row{display:grid!important;grid-template-columns:34px 64px minmax(0,1fr) 110px!important;align-items:center!important;gap:12px!important;min-width:0!important;padding:14px!important;border-top:1px solid rgba(255,255,255,.08)!important;background:#0c0c0d!important}
+.sithari-page .sithari-proposal-row{display:grid!important;grid-template-columns:32px 58px minmax(0,1fr) 94px!important;align-items:start!important;gap:12px!important;min-width:0!important;padding:16px!important;border-top:1px solid rgba(255,255,255,.08)!important;background:#0c0c0d!important}
 .sithari-page .sithari-proposal-row:nth-child(even){background:#101012!important}
 .sithari-page .sithari-proposal-rank{display:flex!important;align-items:center!important;justify-content:center!important;width:30px!important;height:30px!important;border:1px solid rgba(218,193,135,.35)!important;border-radius:5px!important;color:#e0cb91!important;font:750 12px/1 var(--font-ui)!important}
 .sithari-page .sithari-proposal-mod{display:flex!important;align-items:center!important;justify-content:center!important}
 .sithari-page .sithari-proposal-mod .mod-visual{width:58px!important;height:58px!important}
-.sithari-page .sithari-proposal-main{display:flex!important;flex-direction:column!important;gap:8px!important;min-width:0!important}
+.sithari-page .sithari-proposal-main{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;min-width:0!important;align-content:start!important}
 .sithari-page .sithari-proposal-title{display:flex!important;align-items:baseline!important;flex-wrap:wrap!important;gap:5px 10px!important}
 .sithari-page .sithari-proposal-title strong{color:#f1eee8!important;font:700 13px/1.4 var(--font-ui)!important}
 .sithari-page .sithari-proposal-title span{color:#aaa79f!important;font:500 11px/1.4 var(--font-ui)!important}
 .sithari-page .sithari-proposal-primary{display:flex!important;align-items:baseline!important;gap:9px!important}
 .sithari-page .sithari-proposal-primary span,.sithari-page .sithari-proposal-secondaries>span{flex:0 0 auto!important;color:#a7a39a!important;font:700 9px/1.4 var(--font-ui)!important;letter-spacing:.07em!important}
 .sithari-page .sithari-proposal-primary strong{color:#e4d3a5!important;font:700 12px/1.4 var(--font-ui)!important}
-.sithari-page .sithari-proposal-secondaries{display:grid!important;grid-template-columns:86px minmax(0,1fr)!important;gap:8px!important;align-items:start!important}
+.sithari-page .sithari-proposal-secondaries{display:grid!important;grid-template-columns:76px minmax(0,1fr)!important;gap:10px!important;align-items:start!important;min-width:0!important;padding-top:8px!important;border-top:1px solid rgba(255,255,255,.07)!important}
 .sithari-page .sithari-proposal-secondaries p{margin:0!important;color:#dedbd3!important;font:500 11px/1.55 var(--font-ui)!important;overflow-wrap:anywhere!important}
-.sithari-page .sithari-proposal-speed{display:flex!important;flex-direction:column!important;align-items:flex-end!important;gap:5px!important;padding-left:10px!important;border-left:1px solid rgba(255,255,255,.1)!important}
+.sithari-page .sithari-proposal-speed{display:flex!important;flex-direction:column!important;align-items:flex-end!important;gap:7px!important;min-width:0!important;padding-left:10px!important;border-left:1px solid rgba(255,255,255,.1)!important}
 .sithari-page .sithari-proposal-speed small{color:#aaa79f!important;font:700 9px/1.4 var(--font-ui)!important;letter-spacing:.08em!important}
 .sithari-page .sithari-proposal-speed strong{color:#f5f1e8!important;font:800 25px/1 var(--font-ui)!important;font-variant-numeric:tabular-nums!important}
 .sithari-page .sithari-proposal-speed em{font:700 10px/1.4 var(--font-ui)!important;font-style:normal!important;white-space:nowrap!important}
@@ -949,6 +949,52 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
  .sithari-page .sithari-proposal-title strong{font-size:12px!important}
 }
 
+
+/* Sith’ari — plateau des six mods : colonnes stables, espace de lecture et repli responsive. */
+.sithari-page .sithari-character-flow-board{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.72fr) minmax(0,1fr);align-items:stretch;gap:clamp(12px,2vw,26px);width:100%;min-width:0;box-sizing:border-box;padding:clamp(10px,1.6vw,22px)}
+.sithari-page .sithari-flow-mod-column{display:grid;grid-template-rows:repeat(3,minmax(0,1fr));gap:12px;min-width:0;z-index:1}
+.sithari-page .sithari-flow-character-core{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:0;padding:18px 10px;text-align:center;z-index:1}
+.sithari-page .sithari-flow-character-core h3{max-width:100%;margin:4px 0;font-size:clamp(14px,1.3vw,20px);line-height:1.3;overflow-wrap:anywhere}
+.sithari-page .sithari-flow-character-core p{max-width:100%;overflow-wrap:anywhere}
+.sithari-page .sithari-slot-card{min-width:0;width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+.sithari-page .sithari-slot-card header{min-width:0;max-width:100%;padding-right:0!important;display:flex;flex-wrap:wrap;gap:5px 8px;align-items:baseline}
+.sithari-page .sithari-slot-compare{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr)!important;min-width:0}
+.sithari-page .sithari-mod-mini{display:grid!important;grid-template-columns:44px minmax(0,1fr)!important;align-items:start!important;gap:9px!important;width:100%;min-width:0;box-sizing:border-box}
+.sithari-page .sithari-mod-trigger-icon,.sithari-page .sithari-mod-copy{min-width:0;max-width:100%}
+.sithari-page .sithari-mod-mini .mod-visual{width:42px!important;height:42px!important}
+.sithari-page .sithari-mod-copy>small{display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.5}
+.sithari-page .sithari-proposal-row>*{min-width:0;max-width:100%;box-sizing:border-box}
+.sithari-page .sithari-proposal-title,.sithari-page .sithari-proposal-primary,.sithari-page .sithari-proposal-secondaries p{min-width:0;overflow-wrap:anywhere}
+.sithari-page .sithari-proposal-speed em{white-space:normal!important;text-align:right;overflow-wrap:anywhere}
+@media(max-width:1050px){
+ .sithari-page .sithari-character-flow-board{grid-template-columns:minmax(0,1fr) minmax(150px,.65fr) minmax(0,1fr);gap:10px;padding:10px}
+ .sithari-page .sithari-flow-mod-column{gap:8px}
+ .sithari-page .sithari-slot-card{padding:9px!important}
+ .sithari-page .sithari-mod-mini{grid-template-columns:36px minmax(0,1fr)!important;gap:6px!important}
+ .sithari-page .sithari-mod-mini .mod-visual{width:34px!important;height:34px!important}
+}
+@media(max-width:760px){
+ .sithari-page .sithari-character-flow-board{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+ .sithari-page .sithari-flow-character-core{grid-column:1/-1;grid-row:1;padding:12px}
+ .sithari-page .sithari-flow-mod-left{grid-column:1;grid-row:2}
+ .sithari-page .sithari-flow-mod-right{grid-column:2;grid-row:2}
+ .sithari-page .sithari-flow-mod-column{grid-template-rows:repeat(3,minmax(0,auto))}
+ .sithari-page .sithari-proposal-row{grid-template-columns:26px 44px minmax(0,1fr)!important;gap:8px!important;padding:12px 9px!important}
+ .sithari-page .sithari-proposal-mod .mod-visual{width:42px!important;height:42px!important}
+ .sithari-page .sithari-proposal-speed{grid-column:3!important;display:grid!important;grid-template-columns:auto auto minmax(0,1fr)!important;align-items:center!important;justify-content:start!important;gap:8px!important;padding:8px 0 0!important;border-left:0!important;border-top:1px solid rgba(255,255,255,.1)!important}
+ .sithari-page .sithari-proposal-speed em{text-align:left!important}
+ .sithari-page .sithari-proposal-secondaries{grid-template-columns:minmax(0,1fr)!important;gap:4px!important}
+}
+@media(max-width:420px){
+ .sithari-page .sithari-character-flow-board{grid-template-columns:minmax(0,1fr);padding:8px}
+ .sithari-page .sithari-flow-character-core,.sithari-page .sithari-flow-mod-left,.sithari-page .sithari-flow-mod-right{grid-column:1}
+ .sithari-page .sithari-flow-character-core{grid-row:1}
+ .sithari-page .sithari-flow-mod-left{grid-row:2}
+ .sithari-page .sithari-flow-mod-right{grid-row:3}
+ .sithari-page .sithari-proposal-row{grid-template-columns:24px 38px minmax(0,1fr)!important;gap:7px!important;padding:10px 7px!important}
+ .sithari-page .sithari-proposal-mod .mod-visual{width:36px!important;height:36px!important}
+ .sithari-page .sithari-proposal-speed{grid-template-columns:auto auto minmax(0,1fr)!important}
+}
 
 /* Sith’ari — décharge d’énergie à l’ouverture d’un mod, puis panneau de décision persistant. */
 .sithari-page .sithari-character-flow-board{position:relative;isolation:isolate}
