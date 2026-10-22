@@ -231,7 +231,7 @@ function forgeSearchCandidates(character,profile,slot,secA,secB){
     if(String(m.game_id||m.id||'')===String(current?.game_id||current?.id||''))return false;
     if(current&&num(modTotalSpeed(m),0)<currentSpeed)return false;
     if(current){
-      const after=equipped.filter(x=>String(x.game_id||x.id||'')!==String(current.game_id||current.id||''));
+      const after=equipped.filter(x=>x!==current);
       after.push(m);
       if(Math.floor(forgeSpeedSetCount(after)/4)<currentSpeedSets)return false;
     }
