@@ -2776,3 +2776,32 @@ textarea:disabled{
     gap:8px;
   }
 }
+
+/* Seigneur Sith — comparaison lisible du mod cible */
+#optimizer .forge-delta{grid-column:1/-1;min-width:0;margin-top:7px;padding:10px 0 0;border-left:0;border-top:1px solid rgba(200,130,124,.22)}
+#optimizer .forge-delta-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+#optimizer .forge-delta-head span{font-size:10px;letter-spacing:.09em;color:#ffd35a;font-weight:900}
+#optimizer .forge-delta-head small{font-size:9px;color:#c69f9c}
+#optimizer .forge-delta-speed{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;margin-bottom:8px;border:1px solid rgba(255,211,90,.24);border-radius:6px;background:rgba(50,27,7,.28)}
+#optimizer .forge-delta-speed div span{display:block;font-size:9px;letter-spacing:.08em;color:#c69f9c}
+#optimizer .forge-delta-speed div b{display:block;font-size:17px;margin-top:2px;color:#fff}
+#optimizer .forge-delta-speed>strong{font-size:12px;white-space:nowrap}
+#optimizer .forge-delta .gain{color:#79e596}
+#optimizer .forge-delta .loss{color:#ff7777}
+#optimizer .forge-delta .neutral{color:#ffd35a}
+#optimizer .forge-delta-changes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:9px}
+#optimizer .forge-delta-change{min-width:0;padding:7px 8px;border:1px solid rgba(200,130,124,.14);border-radius:5px;background:rgba(10,3,3,.25)}
+#optimizer .forge-delta-change span{display:block;font-size:9px;letter-spacing:.08em;color:#c69f9c}
+#optimizer .forge-delta-change b{display:block;margin:4px 0;font-size:11px;overflow-wrap:anywhere;color:#f5eaea}
+#optimizer .forge-delta-change em{font-size:9px;font-style:normal;color:#c69f9c}
+#optimizer .forge-delta-subtitle{margin:8px 0 5px;font-size:9px;letter-spacing:.07em;color:#c69f9c}
+#optimizer .forge-delta-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+#optimizer .forge-delta-stat{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:7px;padding:6px 8px;border:1px solid rgba(200,130,124,.13);border-radius:4px;background:rgba(10,3,3,.25)}
+#optimizer .forge-delta-stat span{font-size:10px;color:#f0dddd;overflow-wrap:anywhere}
+#optimizer .forge-delta-stat b{font-size:10px;color:#fff;white-space:nowrap}
+#optimizer .forge-delta-stat em{font-size:10px;font-style:normal;font-weight:800;white-space:nowrap}
+#optimizer .forge-delta-stat.gain em{color:#79e596}
+#optimizer .forge-delta-stat.loss em{color:#ff7777}
+#optimizer .forge-delta-stat.neutral em{color:#ffd35a}
+#optimizer .forge-delta-note{display:block;margin-top:7px;font-size:9px;line-height:1.45;color:#b08d8a}
+@media(max-width:760px){#optimizer .forge-delta-changes,#optimizer .forge-delta-stats{grid-template-columns:1fr}#optimizer .forge-delta-stat{grid-template-columns:minmax(0,1fr) auto auto}}
