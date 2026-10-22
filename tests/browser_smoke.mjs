@@ -66,11 +66,11 @@ try {
   // Regression guard: duplicate/aliased rows must never inflate equipped mods
   // beyond the six physical slots on either forge or Sith'ari.
   const counts = await page.evaluate(() => {
-    const character = { baseId: "AHSOKATANO", name: "Ahsoka Tano" };
-    const slots = ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"];
+    const character = { baseId: "AHSOKATANO", name: "Ahsoka Tano", characterId: "UNIT-42" };
+    const slots = [2, 3, 4, 5, 6, 7];
     const makeMod = (slot, id) => ({
       game_id: id,
-      character: "Ahsoka Tano",
+      characterId: "UNIT-42",
       slot,
       set_name: "Speed",
       primary_stat: "Speed",
@@ -104,7 +104,7 @@ try {
 
   await page.waitForTimeout(500);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
-  console.log("Browser smoke passed: shell, navigation, and six-slot mod invariant.");
+  console.log("Browser smoke passed: shell, navigation, six-slot invariant, characterId ownership, and numeric slot aliases.");
 } finally {
   await browser.close();
 }
