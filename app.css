@@ -2814,3 +2814,35 @@ textarea:disabled{
 #optimizer .forge-delta-target{border-left:3px solid #79e596}
 #optimizer .forge-delta-donor{border-left:3px solid #ff7777}
 #optimizer .forge-delta-explainer{font-size:10px;line-height:1.5;color:#c7adab;margin:8px 0}
+
+
+/* V2.2.6 — Seigneur Sith : cartes de résultats redimensionnées, comparaison pleine largeur */
+#optimizer .forge-candidate-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+#optimizer .forge-candidate{grid-template-columns:34px 66px minmax(0,1fr) 86px;grid-template-rows:auto auto;align-items:start;gap:12px;padding:14px;min-width:0}
+#optimizer .forge-candidate-rank{grid-column:1;grid-row:1; padding-top:5px}
+#optimizer .forge-candidate-icon{grid-column:2;grid-row:1}
+#optimizer .forge-candidate-main{grid-column:3;grid-row:1;min-width:0}
+#optimizer .forge-candidate-speed{grid-column:4;grid-row:1;text-align:right;padding-left:10px}
+#optimizer .forge-candidate-speed b{font-size:1.2rem}
+#optimizer .forge-delta{grid-column:1/-1;grid-row:2;min-width:0;width:100%;box-sizing:border-box;border-left:0;border-top:1px solid rgba(200,130,124,.2);padding:12px 0 0;margin-top:2px}
+#optimizer .forge-delta-head{flex-wrap:wrap;gap:6px 12px}
+#optimizer .forge-delta-party{grid-template-columns:minmax(150px,.8fr) minmax(0,1.4fr) minmax(130px,.7fr);align-items:center;gap:10px;padding:10px 12px}
+#optimizer .forge-delta-party>span,#optimizer .forge-delta-party>b,#optimizer .forge-delta-party>strong{min-width:0;overflow-wrap:anywhere}
+#optimizer .forge-delta-explainer{padding:0 2px}
+#optimizer .forge-delta-changes{grid-template-columns:repeat(2,minmax(0,1fr))}
+#optimizer .forge-delta-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:900px){
+  #optimizer .forge-candidate{grid-template-columns:30px 58px minmax(0,1fr) 72px;gap:9px;padding:11px}
+  #optimizer .forge-delta-party{grid-template-columns:minmax(0,1fr);gap:4px}
+  #optimizer .forge-delta-changes,#optimizer .forge-delta-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+  #optimizer .forge-candidate{grid-template-columns:26px 50px minmax(0,1fr);gap:8px}
+  #optimizer .forge-candidate-rank{grid-column:1;grid-row:1}
+  #optimizer .forge-candidate-icon{grid-column:2;grid-row:1}
+  #optimizer .forge-candidate-main{grid-column:3;grid-row:1}
+  #optimizer .forge-candidate-speed{grid-column:3;grid-row:2;text-align:left;border-left:0;border-top:1px solid rgba(200,130,124,.12);padding:7px 0 0}
+  #optimizer .forge-delta{grid-column:1/-1;grid-row:3}
+  #optimizer .forge-delta-changes,#optimizer .forge-delta-stats{grid-template-columns:minmax(0,1fr)}
+  #optimizer .forge-delta-stat{grid-template-columns:minmax(0,1fr) auto auto;gap:5px;padding:6px}
+}
