@@ -51,7 +51,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertNotIn("/SWGOH-Optimizer-Web/", self.seigneur)
 
     def test_service_worker_has_new_cache_and_network_first_navigation(self):
-        self.assertIn("holocron-static-v3.4.6-no-speed-loss", self.sw)
+        self.assertIn("holocron-static-v3.4.7-seigneur-card-layout", self.sw)
         self.assertNotIn("holocron-static-v3.4.3-weak-donor-pool", self.sw)
         self.assertIn("request.mode === 'navigate'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
