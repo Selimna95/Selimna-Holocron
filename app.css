@@ -2805,3 +2805,12 @@ textarea:disabled{
 #optimizer .forge-delta-stat.neutral em{color:#ffd35a}
 #optimizer .forge-delta-note{display:block;margin-top:7px;font-size:9px;line-height:1.45;color:#b08d8a}
 @media(max-width:760px){#optimizer .forge-delta-changes,#optimizer .forge-delta-stats{grid-template-columns:1fr}#optimizer :is(.forge-delta-stat){grid-template-columns:minmax(0,1fr) auto auto}}
+
+/* Seigneur Sith — distinguer explicitement personnage ciblé et donneur */
+#optimizer .forge-delta-party{display:grid;gap:4px;margin:7px 0;padding:9px 11px;border:1px solid rgba(200,130,124,.2);border-radius:5px;background:rgba(10,3,3,.3)}
+#optimizer .forge-delta-party>span{font-size:10px;letter-spacing:.045em;font-weight:900;color:#ffd35a;overflow-wrap:anywhere}
+#optimizer .forge-delta-party>b{font-size:11px;line-height:1.4;color:#f5eaea}
+#optimizer .forge-delta-party>strong{font-size:11px;line-height:1.4}
+#optimizer .forge-delta-target{border-left:3px solid #79e596}
+#optimizer .forge-delta-donor{border-left:3px solid #ff7777}
+#optimizer .forge-delta-explainer{font-size:10px;line-height:1.5;color:#c7adab;margin:8px 0}
