@@ -280,7 +280,7 @@ function renderForgeCharacterPanel(character,profile){
     if(results)results.innerHTML='<div class="forge-audit-empty">Slot '+esc(slot)+' sélectionné. La recherche ne démarre qu’après validation du bouton.</div>';
   }));
 }
-function forgeModDeltaMarkup(current,candidate){
+function forgeModDeltaMarkup(current,candidate,targetCharacterName){
   if(!current||!candidate)return '<div class="forge-delta-empty">Comparaison indisponible.</div>';
   const speedFrom=num(modTotalSpeed(current),0), speedTo=num(modTotalSpeed(candidate),0), speedDelta=speedTo-speedFrom;
   const signed=(v)=>`${v>0?'+':''}${num(v,1)}`;
@@ -309,9 +309,15 @@ function forgeModDeltaMarkup(current,candidate){
     const delta=x.from===null?'NOUVEAU':x.to===null?'RETIRÉ':signed(x.delta);
     return `<div class="forge-delta-stat ${tone}"><span>${esc(x.name)}</span><b>${from} → ${to}</b><em>${delta}</em></div>`;
   }).join(''):'<div class="forge-delta-stat neutral"><span>Secondaires</span><b>Identiques</b><em>0</em></div>';
+  const targetName=String(targetCharacterName||'personnage ciblé');
+  const donorName=String(candidate._sourceOwner||candidate.character||'Inventaire libre');
+  const donorSpeed=num(modTotalSpeed(candidate),0);
   return `<section class="forge-delta">
-    <div class="forge-delta-head"><span>GAIN / PERTE SUR LE MOD CIBLE</span><small>MOD ACTUEL → MOD PROPOSÉ</small></div>
-    <div class="forge-delta-speed"><div><span>VITESSE DU MOD</span><b>${speedFrom} → ${speedTo}</b></div><strong class="${speedDelta>0?'gain':speedDelta<0?'loss':'neutral'}">${signed(speedDelta)} vitesse</strong></div>
+    <div class="forge-delta-head"><span>IMPACT DU TRANSFERT</span><small>MOD ACTUEL → MOD PROPOSÉ</small></div>
+    <div class="forge-delta-party forge-delta-target"><span>PERSONNAGE CIBLÉ · ${esc(targetName)}</span><b>Son mod actuel : ${speedFrom} vitesse → mod reçu : ${speedTo} vitesse</b><strong class="${speedDelta>0?'gain':speedDelta<0?'loss':'neutral'}">${signed(speedDelta)} vitesse portée par le mod</strong></div>
+    <div class="forge-delta-party forge-delta-donor"><span>PERSONNAGE DONNEUR · ${esc(donorName)}</span><b>Il cède le mod proposé</b><strong class="loss">−${donorSpeed} vitesse portée par ce mod</strong></div>
+    <div class="forge-delta-explainer">Les écarts de primaires et secondaires ci-dessous décrivent le mod reçu par le personnage ciblé. Le donneur perd le mod proposé ; son bilan total dépend aussi des bonus de set et d’un éventuel mod de remplacement.</div>
+    <div class="forge-delta-speed"><div><span>VITESSE DU MOD DU PERSONNAGE CIBLÉ</span><b>${speedFrom} → ${speedTo}</b></div><strong class="${speedDelta>0?'gain':speedDelta<0?'loss':'neutral'}">${signed(speedDelta)} vitesse</strong></div>
     <div class="forge-delta-changes">
       <div class="forge-delta-change"><span>SET</span><b>${esc(current.set_name||'—')} → ${esc(candidate.set_name||'—')}</b><em>${setChanged?'modifié':'inchangé'}</em></div>
       <div class="forge-delta-change"><span>PRIMAIRE</span><b>${esc(current.primary_stat||'—')}${esc(primaryValue(current))} → ${esc(candidate.primary_stat||'—')}${esc(primaryValue(candidate))}</b><em>${primaryChanged?'modifiée':'inchangée'}</em></div>
@@ -333,7 +339,7 @@ function renderForgeSearchResults(character,profile){
   const result=forgeSearchCandidates(character,profile,slot,a,b);
   const rows=result.candidates;
   if(!rows.length){box.innerHTML=`<div class="forge-no-result"><b>AUCUN CANDIDAT SANS PERTE DE VITESSE</b><span>Aucun mod du périmètre <strong>${esc(forgeSearchSourceSummary())}</strong> ne respecte les secondaires recherchées tout en conservant la vitesse du personnage et ses bonus de set Speed. Active MOYENS ou TOUT LE ROSTER pour élargir le choix, sans assouplir cette règle.</span></div>`;return;}
-  box.innerHTML=`<div class="forge-search-header"><div><span>ARSENAL DISPONIBLE</span><b>${result.sourceCount} mods · ${rows.length} choix affichés</b></div><strong>${result.usedBoth?'✓ DEUX SECONDAIRES':'→ UNE SECONDAIRE · MEILLEUR APPORT'}</strong></div><div class="forge-candidate-grid">${rows.map((m,i)=>{const r=m._rank;const secs=forgeSecondaryStats(m);const hit=secs.filter(x=>compactKey(x.stat)===compactKey(a)||compactKey(x.stat)===compactKey(b));return `<article class="forge-candidate ${r.both?'both':''}"><div class="forge-candidate-rank"><span>${String(i+1).padStart(2,'0')}</span><b>${r.both?'✓✓':'✓'}</b></div><div class="forge-candidate-icon">${modIconHtml(m,'58')}</div><div class="forge-candidate-main"><div class="forge-candidate-owner">${forgeSourcePortrait(m._sourceOwner)}<span>${esc(m._sourceOwner||'Libre')}</span></div><strong>${esc(m.slot)} · ${esc(m.set_name||'—')}</strong><small>${esc(m._sourceStatus||'—')}</small><div class="forge-candidate-primary"><span>PRIMAIRE</span><b>${esc(m.primary_stat||'—')}</b>${r.primary?'✓ KYBER':''}</div><div class="forge-candidate-seconds">${secs.map(x=>`<span class="${hit.some(h=>compactKey(h.stat)===compactKey(x.stat))?'hit':''}">${esc(x.stat)} <b>${num(x.value,1)}</b></span>`).join('')}</div></div>${forgeModDeltaMarkup(result.current,m)}<div class="forge-candidate-speed"><span>VITESSE</span><b>${num(modTotalSpeed(m),0)}</b><small>${r.set?'SET KYBER':'SET différent'}</small></div></article>`;}).join('')}</div>`;
+  box.innerHTML=`<div class="forge-search-header"><div><span>ARSENAL DISPONIBLE</span><b>${result.sourceCount} mods · ${rows.length} choix affichés</b></div><strong>${result.usedBoth?'✓ DEUX SECONDAIRES':'→ UNE SECONDAIRE · MEILLEUR APPORT'}</strong></div><div class="forge-candidate-grid">${rows.map((m,i)=>{const r=m._rank;const secs=forgeSecondaryStats(m);const hit=secs.filter(x=>compactKey(x.stat)===compactKey(a)||compactKey(x.stat)===compactKey(b));return `<article class="forge-candidate ${r.both?'both':''}"><div class="forge-candidate-rank"><span>${String(i+1).padStart(2,'0')}</span><b>${r.both?'✓✓':'✓'}</b></div><div class="forge-candidate-icon">${modIconHtml(m,'58')}</div><div class="forge-candidate-main"><div class="forge-candidate-owner">${forgeSourcePortrait(m._sourceOwner)}<span>${esc(m._sourceOwner||'Libre')}</span></div><strong>${esc(m.slot)} · ${esc(m.set_name||'—')}</strong><small>${esc(m._sourceStatus||'—')}</small><div class="forge-candidate-primary"><span>PRIMAIRE</span><b>${esc(m.primary_stat||'—')}</b>${r.primary?'✓ KYBER':''}</div><div class="forge-candidate-seconds">${secs.map(x=>`<span class="${hit.some(h=>compactKey(h.stat)===compactKey(x.stat))?'hit':''}">${esc(x.stat)} <b>${num(x.value,1)}</b></span>`).join('')}</div></div>${forgeModDeltaMarkup(result.current,m,character?.name)}<div class="forge-candidate-speed"><span>VITESSE</span><b>${num(modTotalSpeed(m),0)}</b><small>${r.set?'SET KYBER':'SET différent'}</small></div></article>`;}).join('')}</div>`;
 }
 
 $('runOptimizer').addEventListener('click',async()=>{
