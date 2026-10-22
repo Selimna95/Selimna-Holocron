@@ -1087,3 +1087,61 @@ body[data-page="sithari"] .nav-sithari.active:before{background:var(--sa-red)!im
  .sithari-page .sithari-bolt{animation:none!important}
  .sithari-page .sithari-reveal-stage.sithari-energy-active .sithari-energy-cloud{display:none}
 }
+
+/* Sith’ari responsive board v4.2: adapt to the actual workspace width, not the viewport.
+   Slot cards flow naturally; no equal-height rows and no narrow vertical text columns. */
+.sithari-page .sithari-character-analysis{container-type:inline-size;container-name:sithari-workspace}
+.sithari-page .sithari-character-flow-board{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-auto-rows:auto!important;align-items:start!important;gap:12px!important;
+  width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;
+  box-sizing:border-box!important;padding:clamp(8px,1.5cqw,18px)!important;
+}
+.sithari-page .sithari-flow-mod-column{display:contents!important}
+.sithari-page .sithari-flow-character-core{
+  grid-column:1/-1!important;grid-row:1!important;min-height:0!important;height:auto!important;padding:14px!important;
+}
+.sithari-page .sithari-slot-card{
+  align-self:start!important;height:auto!important;min-height:0!important;max-height:none!important;
+  overflow:visible!important;padding:clamp(10px,1.3cqw,16px)!important;
+  overflow-wrap:normal!important;word-break:normal!important;
+}
+.sithari-page .sithari-slot-card header{align-items:center!important;gap:6px 10px!important}
+.sithari-page .sithari-slot-card header em{margin-left:auto!important;max-width:100%!important;white-space:normal!important}
+.sithari-page .sithari-slot-compare{
+  grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr)!important;align-items:start!important;gap:8px!important;
+}
+.sithari-page .sithari-current-mod,.sithari-page .sithari-kyber-ref{
+  min-width:0!important;width:100%!important;box-sizing:border-box!important;
+  overflow-wrap:normal!important;word-break:normal!important;
+}
+.sithari-page .sithari-mod-mini{grid-template-columns:42px minmax(0,1fr)!important;align-items:start!important;gap:8px!important}
+.sithari-page .sithari-mod-copy,.sithari-page .sithari-mod-copy>*{
+  min-width:0!important;max-width:100%!important;writing-mode:horizontal-tb!important;
+  word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important;
+}
+.sithari-page .sithari-mod-copy>b,.sithari-page .sithari-mod-copy>strong,
+.sithari-page .sithari-mod-copy>small,.sithari-page .sithari-mod-copy>em{display:block!important;line-height:1.45!important}
+.sithari-page .sithari-kyber-ref p{
+  display:block!important;line-height:1.45!important;overflow-wrap:break-word!important;word-break:normal!important;
+}
+.sithari-page .sithari-kyber-ref p b{display:inline!important;margin-right:4px!important}
+.sithari-page .sithari-rule-check{display:flex!important;flex-wrap:wrap!important;gap:6px 12px!important}
+.sithari-page .sithari-rule-check>span{min-width:0!important;white-space:normal!important;overflow-wrap:normal!important}
+@container sithari-workspace (min-width: 1250px){
+  .sithari-page .sithari-character-flow-board{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .sithari-page .sithari-flow-character-core{grid-column:1/-1!important;grid-row:1!important}
+}
+@container sithari-workspace (max-width: 760px){
+  .sithari-page .sithari-character-flow-board{grid-template-columns:minmax(0,1fr)!important;gap:9px!important}
+  .sithari-page .sithari-flow-character-core{grid-column:1!important;grid-row:1!important}
+  .sithari-page .sithari-slot-card{grid-column:1!important}
+  .sithari-page .sithari-slot-compare{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr)!important}
+}
+@container sithari-workspace (max-width: 480px){
+  .sithari-page .sithari-slot-compare{grid-template-columns:minmax(0,1fr)!important;gap:8px!important}
+  .sithari-page .sithari-slot-arrow{display:none!important}
+  .sithari-page .sithari-current-mod,.sithari-page .sithari-kyber-ref{padding:10px!important}
+  .sithari-page .sithari-mod-mini{grid-template-columns:44px minmax(0,1fr)!important}
+  .sithari-page .sithari-mod-mini .mod-visual{width:40px!important;height:40px!important}
+}
