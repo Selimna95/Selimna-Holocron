@@ -218,7 +218,12 @@ function forgeCandidateScore(m,profile,secA,secB){
 function forgeSearchCandidates(character,profile,slot,secA,secB){
   const current=getCharacterMods(character).find(m=>forgeSlotCompatible(m,slot));
   const source=forgeAllSourceMods().filter(m=>forgeSourceAllowedForSearch(m)&&forgeSlotCompatible(m,slot));
-  const candidates=source.filter(m=>String(m.game_id||m.id||'')!==String(current?.game_id||current?.id||''));
+  const currentSpeed=current?num(modTotalSpeed(current),0):0;
+  // Never improve another stat by sacrificing speed on the selected character.
+  const candidates=source.filter(m=>
+    String(m.game_id||m.id||'')!==String(current?.game_id||current?.id||'') &&
+    (!current||num(modTotalSpeed(m),0)>=currentSpeed)
+  );
   const ranked=candidates.map(m=>({...m,_rank:forgeCandidateScore(m,profile,secA,secB)})).sort((x,y)=>{
     if(Number(y._rank.both)-Number(x._rank.both))return Number(y._rank.both)-Number(x._rank.both);
     if(Number(y._rank.one)-Number(x._rank.one))return Number(y._rank.one)-Number(x._rank.one);
