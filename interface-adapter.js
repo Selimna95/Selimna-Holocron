@@ -223,7 +223,7 @@
     const back=el('returnToHolocrons');if(back)back.addEventListener('click',showChambers);
     window.addEventListener('holocron:data-updated',renderDecision);
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
-    try{const introPlayed=sessionStorage.getItem('holocronIntroPlayed')==='1';if(introPlayed&&el('holocronGate'))el('holocronGate').classList.add('intro-seen');if(!introPlayed)window.setTimeout(()=>{try{sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}},10000);}catch(_){}
+    try{const introPlayed=sessionStorage.getItem('holocronIntroPlayed')==='1';if(introPlayed&&el('holocronGate'))el('holocronGate').classList.add('intro-seen');if(!introPlayed)sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}
     try{
       const savedAlly=sessionStorage.getItem('holocronLastAllyCode')||'';
       if(sessionStorage.getItem('holocronSessionEstablished')==='1' && /^\\d{9}$/.test(savedAlly)){
