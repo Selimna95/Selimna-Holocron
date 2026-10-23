@@ -219,7 +219,7 @@
     const code=el('gateAllyCode');if(code)code.addEventListener('keydown',e=>{if(e.key==='Enter')startLegacyLoad();});
     const relayInput=el('gateRelayUrl');if(relayInput)relayInput.value=safeStorageGet('swgohRelayUrl')||DEFAULT_RELAY;
     const red=el('redHolocron');if(red)red.addEventListener('click',showApp);
-    const green=el('greenHolocron');if(green)green.addEventListener('click',()=>{const m=el('greenPathMessage');if(m){m.hidden=false;m.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest');}});
+    const green=el('greenHolocron');if(green)green.addEventListener('click',()=>{const m=el('greenPathMessage');if(m){m.hidden=false;m.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});}});
     const back=el('returnToHolocrons');if(back)back.addEventListener('click',showChambers);
     window.addEventListener('holocron:data-updated',renderDecision);
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
