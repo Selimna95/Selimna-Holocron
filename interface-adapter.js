@@ -155,7 +155,7 @@
     if(shell)shell.hidden=true;if(gate)gate.hidden=false;if(temple)temple.hidden=true;if(chambers){chambers.hidden=false;chambers.scrollTop=0;}
     if(gate){gate.classList.remove('is-success','is-loading');gate.classList.add('intro-seen');}
     const back=el('returnToHolocrons');if(back)back.hidden=true;const msg=el('greenPathMessage');if(msg)msg.hidden=true;
-    try{sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}
+    try{sessionStorage.setItem('holocronIntroPlayed','1');sessionStorage.setItem('holocronProfileLoaded','1');const ally=String(el('allyCode')?.value||'').replace(/\\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
   }
 
   function setGate(msg,kind){
@@ -226,6 +226,14 @@
     try{const introPlayed=sessionStorage.getItem('holocronIntroPlayed')==='1';if(introPlayed&&el('holocronGate'))el('holocronGate').classList.add('intro-seen');if(!introPlayed)sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}
     try{
       const savedAlly=sessionStorage.getItem('holocronLastAllyCode')||'';
+      const profileLoaded=sessionStorage.getItem('holocronProfileLoaded')==='1';
+      if(profileLoaded && sessionStorage.getItem('holocronSessionEstablished')!=='1' && /^\d{9}$/.test(savedAlly)){
+        if(el('gateAllyCode'))el('gateAllyCode').value=savedAlly;
+        if(el('holocronGate'))el('holocronGate').hidden=false;
+        if(el('templeScene'))el('templeScene').hidden=true;
+        if(el('holocronChambers'))el('holocronChambers').hidden=false;
+        if(typeof window.loadRemotePlayer==='function')window.loadRemotePlayer().then(ok=>{if(ok===false){if(el('holocronChambers'))el('holocronChambers').hidden=true;if(el('templeScene'))el('templeScene').hidden=false;sessionStorage.removeItem('holocronProfileLoaded');}renderDecision();}).catch(()=>{if(el('holocronChambers'))el('holocronChambers').hidden=true;if(el('templeScene'))el('templeScene').hidden=false;sessionStorage.removeItem('holocronProfileLoaded');});
+      }
       if(sessionStorage.getItem('holocronSessionEstablished')==='1' && /^\d{9}$/.test(savedAlly)){
         const legacy=el('allyCode');if(legacy)legacy.value=savedAlly;if(el('gateAllyCode'))el('gateAllyCode').value=savedAlly;
         if(el('appShell'))el('appShell').hidden=false;if(el('holocronGate'))el('holocronGate').hidden=true;if(back)back.hidden=false;
