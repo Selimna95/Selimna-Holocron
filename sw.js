@@ -1,3 +1,4 @@
+// Retired cache identifier: holocron-static-v3.5.2-sithari-total-speed-guard
 const CACHE_NAME = 'holocron-static-v3.6.0-temple-two-holocrons';
 const STATIC_ASSETS = [
   './',
@@ -19,7 +20,8 @@ const STATIC_ASSETS = [
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
-  './assets/backgrounds/holocron-gate.jpg',\n  './assets/backgrounds/yavin-temple-entrance.svg',
+  './assets/backgrounds/holocron-gate.jpg',
+  './assets/backgrounds/yavin-temple-entrance.svg',
   './assets/sith-sprite.webp',
   './assets/icons/holocron-192.png',
   './assets/icons/holocron-512.png'
