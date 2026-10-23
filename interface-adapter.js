@@ -155,7 +155,7 @@
     if(shell)shell.hidden=true;if(gate)gate.hidden=false;if(temple)temple.hidden=true;if(chambers){chambers.hidden=false;chambers.scrollTop=0;}
     if(gate){gate.classList.remove('is-success','is-loading');gate.classList.add('intro-seen');}
     const back=el('returnToHolocrons');if(back)back.hidden=true;const msg=el('greenPathMessage');if(msg)msg.hidden=true;
-    try{sessionStorage.setItem('holocronIntroPlayed','1');sessionStorage.setItem('holocronProfileLoaded','1');const ally=String(el('allyCode')?.value||'').replace(/\\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
+    try{sessionStorage.setItem('holocronIntroPlayed','1');sessionStorage.setItem('holocronProfileLoaded','1');const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
   }
 
   function setGate(msg,kind){
