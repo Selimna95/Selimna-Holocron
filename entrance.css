@@ -49,3 +49,19 @@
 @media(max-width:700px){.temple-gate .gate-login{top:60%;width:min(430px,calc(100vw - 28px));padding:15px}.temple-gate .gate-login-intro{margin-bottom:10px}.temple-gate .gate-footer{font-size:8px}.temple-gate .gate-step{display:none}.temple-crawl-copy{width:84vw;font-size:clamp(15px,4vw,20px)}.holocron-chambers{justify-content:flex-start;padding:28px 14px 24px}.chambers-heading{margin-bottom:18px}.chambers-heading h1{font-size:clamp(20px,5vw,30px)}.holocron-duo{gap:6px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);width:100%}.holocron-choice{min-height:315px;padding:0 4px 12px}.holocron-object{width:clamp(86px,22vw,120px);height:clamp(98px,25vw,140px);margin:22px auto 16px}.holocron-platform{top:150px;width:clamp(120px,34vw,165px);height:34px}.holocron-name{font-size:10px;letter-spacing:.07em;overflow-wrap:anywhere}.holocron-subtitle,.holocron-action{font-size:8px;letter-spacing:.04em}.holocron-conflict{top:34%;width:70px}}
 @media(max-width:380px){.temple-gate .gate-login{top:57%}.temple-gate .gate-login-intro p{font-size:11px}.holocron-choice{min-height:285px}.holocron-object{width:80px;height:92px;margin-top:17px}.holocron-platform{top:130px;width:110px}}
 @media(prefers-reduced-motion:reduce){.temple-crawl-copy,.holocron-chambers,.holocron-aura,.holocron-object,.holocron-object i,.holocron-conflict i,.holocron-conflict b,.holocron-conflict em,.chambers-mist{animation:none!important}.temple-gate .gate-login{opacity:1;animation:none}*{scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+/* V4.0.1 — monumental temple and dedicated holocron artwork */
+.temple-gate .temple-scene{background-image:url("assets/backgrounds/yavin-temple-entrance-v2.svg");background-position:center 54%;background-size:cover}
+.temple-gate .temple-scene:before{background:linear-gradient(90deg,rgba(0,0,0,.32),transparent 28%,transparent 72%,rgba(0,0,0,.38)),linear-gradient(180deg,rgba(0,0,0,.05),transparent 42%,rgba(0,0,0,.66))}
+.temple-gate .temple-vignette{background:radial-gradient(ellipse at 50% 42%,transparent 12%,rgba(0,0,0,.2) 50%,#000 100%)}
+.holocron-choice{min-height:390px}
+.holocron-object.holocron-object-image{width:clamp(145px,17vw,205px);height:clamp(170px,19vw,225px);margin:18px auto 12px;background-position:center;background-repeat:no-repeat;background-size:contain;filter:drop-shadow(0 0 18px color-mix(in srgb,var(--energy) 55%,transparent));animation:holocronFloat 4.2s ease-in-out infinite}
+.holocron-object.holocron-object-image:before{display:none}.holocron-object.holocron-object-image i{display:none}
+.holocron-object-sith{background-image:url("assets/holocrons/sith-holocron.svg")}
+.holocron-object-jedi{background-image:url("assets/holocrons/jedi-blue-holocron.svg")}
+.holocron-choice-red{--energy:#ff2638}.holocron-choice-green{--energy:#168bff}
+.holocron-choice-green .holocron-name:after{content:" · VOIE BLEUE";color:#74bdff}
+.holocron-choice-green .holocron-subtitle{color:#9acfff}.holocron-choice-green .holocron-action{color:#75baff}
+.holocron-choice-green .holocron-aura{background:radial-gradient(circle,#168bff,transparent 68%)}
+.holocron-choice-green:hover,.holocron-choice-green:focus-visible{border-color:rgba(50,145,255,.45);background:linear-gradient(180deg,rgba(30,100,255,.08),transparent 75%)}
+@media(max-width:700px){.holocron-object.holocron-object-image{width:clamp(108px,28vw,150px);height:clamp(130px,34vw,175px);margin-top:16px}.holocron-choice{min-height:300px}}
