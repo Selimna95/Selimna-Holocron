@@ -3,9 +3,9 @@ const CACHE_NAME = 'holocron-static-v4.0.0-temple-two-holocrons';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './app.css?v=3.6.7-seigneur-card-layout',
+  './app.css?v=4.0.0-seigneur-card-layout',
   './sithari.css?v=4.2.0-adaptive-mod-board',
-  './holocron-system.css?v=4.3.0-disciple-clarity',
+  './holocron-system.css?v=4.0.0-disciple-clarity',
   './entrance.css?v=4.0.0-temple-duo',
   './interface-adapter.js?v=4.0.0-temple-holocron-flow',
   './gac-usage.js?v=3.2.1',
