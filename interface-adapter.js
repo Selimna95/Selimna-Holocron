@@ -144,19 +144,18 @@
   }
 
   function showApp(){
-    const gate=el('holocronGate'), shell=el('appShell');
-    if(shell) shell.hidden=false;
+    const gate=el('holocronGate'), shell=el('appShell'), chambers=el('holocronChambers');
+    if(shell) shell.hidden=false; if(chambers) chambers.hidden=true; if(gate) gate.hidden=true;
+    const back=el('returnToHolocrons'); if(back) back.hidden=false;
     renderDecision();
-    try {
-      sessionStorage.setItem('holocronSessionEstablished','1');
-      const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);
-      if(ally.length===9) sessionStorage.setItem('holocronLastAllyCode',ally);
-    } catch (_) {}
-    if(gate){
-      gate.classList.remove('gate-complete');
-      gate.classList.add('is-success');
-      window.setTimeout(()=>{gate.hidden=true;gate.classList.remove('is-success');},900);
-    }
+    try{sessionStorage.setItem('holocronSessionEstablished','1');const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
+  }
+  function showChambers(){
+    const gate=el('holocronGate'),temple=el('templeScene'),chambers=el('holocronChambers'),shell=el('appShell');
+    if(shell)shell.hidden=true;if(gate)gate.hidden=false;if(temple)temple.hidden=true;if(chambers){chambers.hidden=false;chambers.scrollTop=0;}
+    if(gate){gate.classList.remove('is-success','is-loading');gate.classList.add('intro-seen');}
+    const back=el('returnToHolocrons');if(back)back.hidden=true;const msg=el('greenPathMessage');if(msg)msg.hidden=true;
+    try{sessionStorage.setItem('holocronIntroPlayed','1');sessionStorage.setItem('holocronProfileLoaded','1');const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
   }
 
   function setGate(msg,kind){
@@ -204,7 +203,7 @@
       const ships=(typeof rosterShips!=='undefined' && Array.isArray(rosterShips))?rosterShips:[];
       const modsNow=(typeof mods!=='undefined' && Array.isArray(mods))?mods:[];
       if(data && (chars.length || ships.length || modsNow.length)){
-        setGate('ROSTER SYNCHRONISÉ','ok'); showApp();
+        setGate('ROSTER SYNCHRONISÉ · CHOISIS TON HOLOCRON','ok'); showChambers();
       }else{
         setGate('SYNCHRONISATION INCOMPLÈTE · Consultez le journal de chargement.','error');
       }
@@ -216,25 +215,31 @@
   }
 
   function init(){
-    const gateBtn=el('gateActivate'); if(gateBtn) gateBtn.addEventListener('click',startLegacyLoad);
-    const code=el('gateAllyCode'); if(code) code.addEventListener('keydown',e=>{if(e.key==='Enter')startLegacyLoad();});
-    const relayInput=el('gateRelayUrl');
-    if(relayInput) relayInput.value=safeStorageGet('swgohRelayUrl')||DEFAULT_RELAY;
+    const gateBtn=el('gateActivate');if(gateBtn)gateBtn.addEventListener('click',startLegacyLoad);
+    const code=el('gateAllyCode');if(code)code.addEventListener('keydown',e=>{if(e.key==='Enter')startLegacyLoad();});
+    const relayInput=el('gateRelayUrl');if(relayInput)relayInput.value=safeStorageGet('swgohRelayUrl')||DEFAULT_RELAY;
+    const red=el('redHolocron');if(red)red.addEventListener('click',showApp);
+    const green=el('greenHolocron');if(green)green.addEventListener('click',()=>{const m=el('greenPathMessage');if(m){m.hidden=false;m.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});}});
+    const back=el('returnToHolocrons');if(back)back.addEventListener('click',showChambers);
     window.addEventListener('holocron:data-updated',renderDecision);
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
-    // A previously authenticated tab can reconnect without replaying the full gate.
-    try {
+    try{const introPlayed=sessionStorage.getItem('holocronIntroPlayed')==='1';if(introPlayed&&el('holocronGate'))el('holocronGate').classList.add('intro-seen');if(!introPlayed)sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}
+    try{
       const savedAlly=sessionStorage.getItem('holocronLastAllyCode')||'';
-      if(sessionStorage.getItem('holocronSessionEstablished')==='1' && /^\d{9}$/.test(savedAlly)){
-        const legacy=el('allyCode'); if(legacy) legacy.value=savedAlly;
+      const profileLoaded=sessionStorage.getItem('holocronProfileLoaded')==='1';
+      if(profileLoaded && sessionStorage.getItem('holocronSessionEstablished')!=='1' && /^\d{9}$/.test(savedAlly)){
         if(el('gateAllyCode'))el('gateAllyCode').value=savedAlly;
-        if(el('appShell'))el('appShell').hidden=false;
-        if(el('holocronGate'))el('holocronGate').hidden=true;
-        if(typeof window.loadRemotePlayer==='function'){
-          window.loadRemotePlayer().then(ok=>{if(ok===false){if(el('holocronGate'))el('holocronGate').hidden=false;}renderDecision();}).catch(()=>{if(el('holocronGate'))el('holocronGate').hidden=false;});
-        }
+        if(el('holocronGate'))el('holocronGate').hidden=false;
+        if(el('templeScene'))el('templeScene').hidden=true;
+        if(el('holocronChambers'))el('holocronChambers').hidden=false;
+        if(typeof window.loadRemotePlayer==='function')window.loadRemotePlayer().then(ok=>{if(ok===false){if(el('holocronChambers'))el('holocronChambers').hidden=true;if(el('templeScene'))el('templeScene').hidden=false;sessionStorage.removeItem('holocronProfileLoaded');}renderDecision();}).catch(()=>{if(el('holocronChambers'))el('holocronChambers').hidden=true;if(el('templeScene'))el('templeScene').hidden=false;sessionStorage.removeItem('holocronProfileLoaded');});
       }
-    } catch (_) {}
+      if(sessionStorage.getItem('holocronSessionEstablished')==='1' && /^\d{9}$/.test(savedAlly)){
+        const legacy=el('allyCode');if(legacy)legacy.value=savedAlly;if(el('gateAllyCode'))el('gateAllyCode').value=savedAlly;
+        if(el('appShell'))el('appShell').hidden=false;if(el('holocronGate'))el('holocronGate').hidden=true;if(back)back.hidden=false;
+        if(typeof window.loadRemotePlayer==='function')window.loadRemotePlayer().then(ok=>{if(ok===false){if(el('holocronGate'))el('holocronGate').hidden=false;if(el('templeScene'))el('templeScene').hidden=true;if(el('holocronChambers'))el('holocronChambers').hidden=false;if(el('appShell'))el('appShell').hidden=true;if(back)back.hidden=true;}renderDecision();}).catch(()=>{if(el('holocronGate'))el('holocronGate').hidden=false;if(el('templeScene'))el('templeScene').hidden=true;if(el('holocronChambers'))el('holocronChambers').hidden=false;if(el('appShell'))el('appShell').hidden=true;if(back)back.hidden=true;});
+      }
+    }catch(_){}
     renderDecision();
   }
 
