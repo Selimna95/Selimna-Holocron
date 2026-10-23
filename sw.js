@@ -1,11 +1,11 @@
-const CACHE_NAME = 'holocron-static-v3.5.2-sithari-total-speed-guard';
+const CACHE_NAME = 'holocron-static-v3.6.0-temple-two-holocrons';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=3.6.7-seigneur-card-layout',
   './sithari.css?v=4.2.0-adaptive-mod-board',
-  './holocron-system.css?v=4.3.0-disciple-clarity',
-  './interface-adapter.js?v=3.2.3-sanctuary-speed-buckets',
+  './holocron-system.css?v=4.3.0-disciple-clarity',\n  './entrance.css?v=1.0.0-temple-duo',
+  './interface-adapter.js?v=3.3.0-temple-holocron-flow',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.4.4-cache-sync',
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
@@ -18,7 +18,7 @@ const STATIC_ASSETS = [
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
-  './assets/backgrounds/holocron-gate.jpg',
+  './assets/backgrounds/holocron-gate.jpg',\n  './assets/backgrounds/yavin-temple-entrance.svg',
   './assets/sith-sprite.webp',
   './assets/icons/holocron-192.png',
   './assets/icons/holocron-512.png'
