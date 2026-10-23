@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/icons/holocron-192.png" type="image/png">
 <link rel="stylesheet" href="app.css?v=3.6.7-seigneur-card-layout">
 <link rel="stylesheet" href="sithari.css?v=4.2.0-adaptive-mod-board">
-<link rel="stylesheet" href="holocron-system.css?v=4.3.0-disciple-clarity">
+<link rel="stylesheet" href="holocron-system.css?v=4.3.0-disciple-clarity">\n<link rel="stylesheet" href="entrance.css?v=1.0.0-temple-duo">
 
 
 
@@ -23,31 +23,33 @@
 </head>
 <body>
 
-<div id="holocronGate" class="holocron-gate" role="region" aria-label="Connexion à l’Holocron">
-  <div class="gate-visual" aria-hidden="true">
-    <img src="assets/backgrounds/holocron-gate.jpg" alt="" class="gate-holocron-image">
-    <div class="gate-energy-lines"></div>
-    <div class="gate-energy-core"></div>
-  </div>
+<div id="holocronGate" class="holocron-gate temple-gate" role="region" aria-label="Entrée du temple et sélection des holocrons">
+ <div id="templeScene" class="temple-scene">
+  <div class="temple-crawl" aria-hidden="true"><div class="temple-crawl-copy"><p>Depuis les temps anciens, le savoir attend celles et ceux qui osent franchir le seuil.</p><p>Ici, vous accéderez au pouvoir des holocrons.</p><p>Synchronisez votre roster, puis choisissez la voie qui vous appelle.</p></div></div>
+  <div class="temple-vignette" aria-hidden="true"></div>
+  <div class="gate-brand"><span>LES ARCHIVES ANCIENNES</span><strong>LE TEMPLE DES HOLOCRONS</strong></div>
   <div class="gate-login">
-    <label for="gateAllyCode">CODE ALLIÉ SWGOH.GG</label>
-    <div class="gate-input-wrap"><span aria-hidden="true">♙</span><input id="gateAllyCode" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="123456789" autocomplete="off" aria-label="Code allié SWGOH.GG à 9 chiffres" aria-describedby="gateInstructions gateMessage"><i aria-hidden="true">✓</i></div>
-    <p id="gateInstructions" class="gate-instructions">Saisis ton code allié public à 9 chiffres pour récupérer ton roster. Aucun mot de passe EA ou Google n’est demandé.</p>
-    <button id="gateActivate" type="button"><span class="button-spinner"></span>ACTIVER L’HOLOCRON</button>
-    <details class="gate-relay-settings">
-      <summary>Paramètres de synchronisation</summary>
-      <label for="gateRelayUrl">URL du relais (facultatif)</label>
-      <input id="gateRelayUrl" type="url" inputmode="url" placeholder="https://votre-relais.workers.dev" autocomplete="url">
-      <p>Le relais reçoit votre code allié pour récupérer les données de profil. Utilisez uniquement un relais de confiance. L’URL enregistrée reste dans ce navigateur.</p>
-    </details>
-    <div id="gateMessage" class="gate-message" aria-live="polite">Le Gardien attend ton code allié pour ouvrir le Sanctuaire.</div>
+   <div class="gate-login-intro"><span class="temple-kicker">LE SEUIL DU SAVOIR</span><h1>IDENTIFICATION</h1><p>Le Gardien attend ton code allié pour ouvrir le Sanctuaire.</p></div>
+   <label for="gateAllyCode">CODE ALLIÉ SWGOH.GG</label>
+   <div class="gate-input-wrap"><span aria-hidden="true">◈</span><input id="gateAllyCode" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="123456789" autocomplete="off" aria-label="Code allié SWGOH.GG à 9 chiffres" aria-describedby="gateInstructions gateMessage"><i aria-hidden="true">✧</i></div>
+   <p id="gateInstructions" class="gate-instructions">Saisis ton code allié public à 9 chiffres. Aucun mot de passe EA ou Google n’est demandé.</p>
+   <button id="gateActivate" type="button"><span class="button-spinner"></span>OUVRIR LE PASSAGE</button>
+   <details class="gate-relay-settings"><summary>Paramètres de synchronisation</summary><label for="gateRelayUrl">URL du relais (facultatif)</label><input id="gateRelayUrl" type="url" inputmode="url" placeholder="https://votre-relais.workers.dev" autocomplete="url"><p>Le relais reçoit votre code allié pour récupérer les données de profil. Utilisez uniquement un relais de confiance. L’URL enregistrée reste dans ce navigateur.</p></details>
+   <div id="gateMessage" class="gate-message" aria-live="polite">Le Gardien attend ton code allié.</div>
   </div>
-  <div class="gate-brand"><span>SELIMNA’S</span><strong>HOLOCRON</strong></div>
-  <div class="gate-footer"><span>HOLOCRON V3.4.4</span><span>LE SAVOIR EST UNE ARME</span></div>
-  <div id="gateStep" class="gate-step" aria-live="polite">IDENTIFICATION DU ROSTER</div>
+  <div class="gate-footer"><span>SELIMNA’S HOLOCRON</span><span>LE SAVOIR EST UNE ARME</span></div><div id="gateStep" class="gate-step" aria-live="polite">LE SEUIL ENTRE LES MONDES</div>
+ </div>
+ <section id="holocronChambers" class="holocron-chambers" hidden aria-label="Choisis ton holocron">
+  <div class="chambers-starfield" aria-hidden="true"></div><div class="chambers-mist" aria-hidden="true"></div>
+  <header class="chambers-heading"><span class="temple-kicker">LE TEMPLE A RECONNU TON ROSTER</span><h1>DEUX VOIES. UN SEUL CHOIX.</h1><p>Les holocrons sont liés par une énergie ancienne, mais leurs volontés s’opposent.</p></header>
+  <div class="holocron-duo">
+   <button id="redHolocron" class="holocron-choice holocron-choice-red" type="button" aria-label="Ouvrir Selimna’s Holocron, voie rouge"><span class="holocron-aura" aria-hidden="true"></span><span class="holocron-platform" aria-hidden="true"></span><span class="holocron-object" aria-hidden="true"><i></i><b>✦</b></span><span class="holocron-name">SELIMNA’S HOLOCRON</span><span class="holocron-subtitle">LA VOIE DE LA MAÎTRISE</span><span class="holocron-action">ENTRER DANS LE SANCTUAIRE ↗</span></button>
+   <div class="holocron-conflict" aria-hidden="true"><i></i><b></b><em></em></div>
+   <button id="greenHolocron" class="holocron-choice holocron-choice-green" type="button" aria-label="Explorer la voie verte, encore inconnue"><span class="holocron-aura" aria-hidden="true"></span><span class="holocron-platform" aria-hidden="true"></span><span class="holocron-object" aria-hidden="true"><i></i><b>◇</b></span><span class="holocron-name">L’HOLOCRON INCONNU</span><span class="holocron-subtitle">LA VOIE ENCORE CACHÉE</span><span class="holocron-action">DÉCOUVRIR CETTE VOIE ↗</span></button>
+  </div>
+  <p id="greenPathMessage" class="green-path-message" role="status" aria-live="polite" hidden>Cette voie reste à découvrir. Le holocron n’ouvre encore aucun autre projet.</p><p class="chambers-footer">Choisis un holocron pour poursuivre ton voyage.</p>
+ </section>
 </div>
-
-
 <!-- V100 : compatibilité du moteur technique V90. Ces éléments sont invisibles et
      ne changent pas l'interface. Ils permettent au moteur historique de conserver
      exactement ses points d'entrée et ses contrôles. -->
@@ -68,7 +70,7 @@
 
 <div id="appShell" class="app-shell" hidden>
 <header class="topbar">
-  <div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V3.4.4</span></div>
+  <button id="returnToHolocrons" class="return-to-holocrons" type="button" hidden aria-label="Retour au choix des holocrons">↶ <span>HOLOCRONS</span></button><div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V3.4.4</span></div>
   <div class="guardian-context" id="guardianContext" data-state="idle" aria-live="polite" aria-label="Conseil du Gardien">
     <span class="guardian-context-seal" aria-hidden="true">✦</span><span class="guardian-context-copy"><small>LE GARDIEN</small><strong id="guardianContextText">Commence par synchroniser ton roster.</strong></span>
   </div>
@@ -529,7 +531,7 @@
 <!-- V100: interface nouvelle / moteur technique V90 conservé intégralement. -->
 <script src="gac-usage.js?v=3.2.1"></script>
 
-<script src="interface-adapter.js?v=3.2.3-sanctuary-speed-buckets"></script>
+<script src="interface-adapter.js?v=3.3.0-temple-holocron-flow"></script>
 <script src="modules/core.js?v=3.4.4-cache-sync"></script>
 <script src="modules/acolyte.js?v=3.4.3-weak-donor-pool"></script>
 <script src="modules/disciple.js?v=3.5.0-disciple-clarity"></script>
