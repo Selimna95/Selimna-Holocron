@@ -1,12 +1,12 @@
 // Retired cache identifier: holocron-static-v3.5.2-sithari-total-speed-guard
-const CACHE_NAME = 'holocron-static-v4.0.0-temple-two-holocrons';
+const CACHE_NAME = 'holocron-static-v4.0.1-temple-visual-reference';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=4.0.0-seigneur-card-layout',
   './sithari.css?v=4.2.0-adaptive-mod-board',
   './holocron-system.css?v=4.0.0-disciple-clarity',
-  './entrance.css?v=4.0.0-temple-duo',
+  './entrance.css?v=4.0.1-temple-reference',
   './interface-adapter.js?v=4.0.0-temple-holocron-flow',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.4.4-cache-sync',
@@ -21,7 +21,9 @@ const STATIC_ASSETS = [
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
   './assets/backgrounds/holocron-gate.jpg',
-  './assets/backgrounds/yavin-temple-entrance.svg',
+  './assets/backgrounds/yavin-temple-entrance-v2.svg',
+  './assets/holocrons/sith-holocron.svg',
+  './assets/holocrons/jedi-blue-holocron.svg',
   './assets/sith-sprite.webp',
   './assets/icons/holocron-192.png',
   './assets/icons/holocron-512.png'
