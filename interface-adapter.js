@@ -148,7 +148,7 @@
     if(shell) shell.hidden=false; if(chambers) chambers.hidden=true; if(gate) gate.hidden=true;
     const back=el('returnToHolocrons'); if(back) back.hidden=false;
     renderDecision();
-    try{sessionStorage.setItem('holocronSessionEstablished','1');const ally=String(el('allyCode')?.value||'').replace(/\\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
+    try{sessionStorage.setItem('holocronSessionEstablished','1');const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
   }
   function showChambers(){
     const gate=el('holocronGate'),temple=el('templeScene'),chambers=el('holocronChambers'),shell=el('appShell');
@@ -226,7 +226,7 @@
     try{const introPlayed=sessionStorage.getItem('holocronIntroPlayed')==='1';if(introPlayed&&el('holocronGate'))el('holocronGate').classList.add('intro-seen');if(!introPlayed)sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}
     try{
       const savedAlly=sessionStorage.getItem('holocronLastAllyCode')||'';
-      if(sessionStorage.getItem('holocronSessionEstablished')==='1' && /^\\d{9}$/.test(savedAlly)){
+      if(sessionStorage.getItem('holocronSessionEstablished')==='1' && /^\d{9}$/.test(savedAlly)){
         const legacy=el('allyCode');if(legacy)legacy.value=savedAlly;if(el('gateAllyCode'))el('gateAllyCode').value=savedAlly;
         if(el('appShell'))el('appShell').hidden=false;if(el('holocronGate'))el('holocronGate').hidden=true;if(back)back.hidden=false;
         if(typeof window.loadRemotePlayer==='function')window.loadRemotePlayer().then(ok=>{if(ok===false){if(el('holocronGate'))el('holocronGate').hidden=false;if(el('templeScene'))el('templeScene').hidden=true;if(el('holocronChambers'))el('holocronChambers').hidden=false;if(el('appShell'))el('appShell').hidden=true;if(back)back.hidden=true;}renderDecision();}).catch(()=>{if(el('holocronGate'))el('holocronGate').hidden=false;if(el('templeScene'))el('templeScene').hidden=true;if(el('holocronChambers'))el('holocronChambers').hidden=false;if(el('appShell'))el('appShell').hidden=true;if(back)back.hidden=true;});
