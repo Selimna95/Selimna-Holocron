@@ -1,13 +1,14 @@
 // Retired cache identifier: holocron-static-v3.5.2-sithari-total-speed-guard
-const CACHE_NAME = 'holocron-static-v4.0.6-cinematic-holocrons';
+const CACHE_NAME = 'holocron-static-v4.0.7-blue-gac-entry';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './blue-gac/index.html',
   './app.css?v=4.0.0-seigneur-card-layout',
   './sithari.css?v=4.2.0-adaptive-mod-board',
   './holocron-system.css?v=4.0.0-disciple-clarity',
-  './entrance.css?v=4.0.6-cinematic-holocrons',
-  './interface-adapter.js?v=4.0.0-temple-holocron-flow',
+  './entrance.css?v=4.0.7-blue-gac-entry',
+  './interface-adapter.js?v=4.0.7-blue-gac-entry',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.4.4-cache-sync',
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
