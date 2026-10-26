@@ -69,7 +69,7 @@ class AssetIntegrityTests(unittest.TestCase):
                       'data-tier="Chromium"', 'data-tier="Bronzium"',
                       'data-tier="Carbonite"'):
             self.assertIn(value, blue)
-        self.assertIn("V4.0.22", blue)
+        self.assertIn("V4.0.23", blue)
         self.assertIn("function addUnavailableTeamCard(number)", blue)
         self.assertIn("Aucune proposition ne répond aux critères pour cette équipe.", blue)
         self.assertIn('id="tierView"', blue)
@@ -82,6 +82,11 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertNotIn("Mode Attaque", blue)
         self.assertIn("Défense uniquement", blue)
         self.assertIn("function show(step)", blue)
+        self.assertNotIn("getElementById('attackDefenderLeader').addEventListener", blue)
+        self.assertNotIn("getElementById('chosenTier').textContent", blue)
+        self.assertNotIn("getElementById('backToTier').addEventListener", blue)
+        self.assertIn("state.mode=b.dataset.mode;state.tier='';", blue)
+        self.assertIn("show('tier')", blue)
 
 
 if __name__ == "__main__":
