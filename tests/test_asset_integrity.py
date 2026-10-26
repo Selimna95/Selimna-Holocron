@@ -52,13 +52,13 @@ class AssetIntegrityTests(unittest.TestCase):
 
     def test_service_worker_has_new_cache_and_network_first_navigation(self):
         self.assertIn("holocron-static-v3.5.2-sithari-total-speed-guard", self.sw)
-        self.assertIn("holocron-static-v4.0.2-user-artwork", self.sw)
+        self.assertIn("holocron-static-v4.0.3-real-blue-holocron", self.sw)
         self.assertNotIn("holocron-static-v3.4.3-weak-donor-pool", self.sw)
         self.assertIn("request.mode === 'navigate'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
 
     def test_displayed_release_version_is_consistent(self):
-        self.assertIn("Selimna’s Holocron — V4.0.2", self.html)
+        self.assertIn("Selimna’s Holocron — V4.0.3", self.html)
         self.assertNotIn("Selimna’s Holocron — V3.4.4", self.html)
 
 
