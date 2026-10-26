@@ -61,7 +61,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("Selimna’s Holocron — V4.0.7", self.html)
         self.assertNotIn("Selimna’s Holocron — V3.4.4", self.html)
 
-    def test_blue_gac_padawan_is_defense_only_and_uses_two_seasons(self):
+    def test_blue_gac_padawan_supports_attack_counters_and_two_seasons(self):
         blue = (ROOT / "blue-gac" / "index.html").read_text(encoding="utf-8")
         for value in ('data-mode="3v3"', 'data-mode="5v5"',
                       'data-access="Padawan"', 'data-access="Maître Jedi"',
@@ -69,13 +69,18 @@ class AssetIntegrityTests(unittest.TestCase):
                       'data-tier="Chromium"', 'data-tier="Bronzium"',
                       'data-tier="Carbonite"'):
             self.assertIn(value, blue)
-        self.assertIn("V4.0.19", blue)
+        self.assertIn("V4.0.20", blue)
         self.assertIn('id="tierView"', blue)
         self.assertIn('id="strategyView"', blue)
-        self.assertIn("var order=['mode','tier','access']", blue)
+        self.assertIn("var order=['mode','tier','strategy','access']", blue)
         self.assertIn("var seasons=fmt==='5v5'?[84,82]:[83,81]", blue)
         self.assertIn("Saisons analysées", blue)
-        self.assertNotIn("ÉTAPE 04 / 04", blue)
+        self.assertIn("ÉTAPE 04 / 04", blue)
+        self.assertIn('id="attackPanel"', blue)
+        self.assertIn('id="attackDefenderLeader"', blue)
+        self.assertIn("function updateAttackCounterLink()", blue)
+        self.assertIn("swgoh.gg/gac/counters/", blue)
+        self.assertIn("data-strategy", blue)
         self.assertIn("function show(step)", blue)
 
 
