@@ -69,7 +69,9 @@ class AssetIntegrityTests(unittest.TestCase):
                       'data-tier="Chromium"', 'data-tier="Bronzium"',
                       'data-tier="Carbonite"'):
             self.assertIn(value, blue)
-        self.assertIn("V4.0.20", blue)
+        self.assertIn("V4.0.21", blue)
+        self.assertIn("function addUnavailableTeamCard(number)", blue)
+        self.assertIn("Aucune proposition ne répond aux critères pour cette équipe.", blue)
         self.assertIn('id="tierView"', blue)
         self.assertIn('id="strategyView"', blue)
         self.assertIn("var order=['mode','tier','strategy','access']", blue)
