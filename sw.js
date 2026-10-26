@@ -1,5 +1,5 @@
 // Retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.0.10-gac-step-order';
+const CACHE_NAME = 'holocron-static-v4.0.11-padawan-public-defense';
 const STATIC_ASSETS = [
   './',
   './index.html',
