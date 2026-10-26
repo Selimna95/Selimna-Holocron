@@ -105,3 +105,55 @@
 @media(max-width:700px){.holocron-object.holocron-object-image{width:clamp(122px,31vw,166px)!important;height:clamp(145px,36vw,194px)!important;margin:12px auto 10px!important}.holocron-choice{overflow:hidden}}
 @media(max-width:380px){.holocron-object.holocron-object-image{width:112px!important;height:132px!important}}
 @media(prefers-reduced-motion:reduce){.holocron-object.holocron-object-image{animation:none!important}}
+
+/* V4.0.6 — chambre des holocrons : scène complète, deux voies et collision énergétique. */
+.holocron-chambers{
+  background:
+    linear-gradient(180deg,rgba(2,4,8,.28),rgba(2,3,7,.78) 68%,rgba(1,2,5,.96)),
+    radial-gradient(ellipse at 24% 54%,rgba(185,8,31,.22),transparent 33%),
+    radial-gradient(ellipse at 76% 54%,rgba(0,93,224,.24),transparent 34%),
+    url("assets/backgrounds/perso.jpg") center 48%/cover no-repeat,
+    #030508!important;
+  isolation:isolate;
+}
+.holocron-chambers:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.5),transparent 28%,transparent 72%,rgba(0,0,0,.5)),radial-gradient(ellipse at 50% 44%,transparent 20%,rgba(0,0,0,.58) 100%);box-shadow:inset 0 0 100px rgba(0,0,0,.8)}
+.chambers-heading{margin-bottom:clamp(10px,2vh,24px)!important}
+.chambers-heading:before{content:"DEUX VOIES · UN MÊME DESTIN";display:block;margin:0 auto 12px;color:#9caac0;font-size:10px;letter-spacing:.34em;text-shadow:0 0 12px #4b6e9e}
+.chambers-heading h1{font-size:clamp(25px,3.5vw,43px)!important;letter-spacing:.075em!important;text-shadow:0 4px 22px #000,0 0 18px rgba(176,196,255,.18)}
+.chambers-heading p{color:#c0c5d0!important;text-shadow:0 2px 9px #000}
+.holocron-duo{width:min(1100px,100%)!important;gap:clamp(16px,5vw,76px)!important;align-items:stretch!important}
+.holocron-choice{min-height:clamp(390px,56vh,510px)!important;padding:8px 18px 22px!important;border:1px solid rgba(205,213,231,.14)!important;border-radius:4px;background:linear-gradient(180deg,rgba(5,7,12,.22),rgba(2,3,7,.62) 72%,rgba(0,0,0,.82))!important;box-shadow:0 24px 50px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.08);transition:transform .35s,border-color .35s,box-shadow .35s!important}
+.holocron-choice-red{--energy:#ff243f!important;border-color:rgba(255,45,64,.22)!important}
+.holocron-choice-green{--energy:#198bff!important;border-color:rgba(43,139,255,.24)!important}
+.holocron-choice-red:hover,.holocron-choice-red:focus-visible{border-color:rgba(255,45,64,.75)!important;box-shadow:0 0 40px rgba(255,24,49,.13),inset 0 0 32px rgba(255,24,49,.08)!important}
+.holocron-choice-green:hover,.holocron-choice-green:focus-visible{border-color:rgba(43,139,255,.8)!important;box-shadow:0 0 40px rgba(20,112,255,.15),inset 0 0 32px rgba(20,112,255,.08)!important}
+.holocron-object.holocron-object-image{width:clamp(190px,22vw,270px)!important;height:clamp(205px,25vw,300px)!important;margin:0 auto 0!important;position:relative;z-index:2;background-size:contain!important}
+.holocron-object-sith{background-image:url("assets/holocrons/sith-holocron.svg")!important}
+.holocron-object-jedi{background-image:url("assets/holocrons/jedi-blue-reference.jpg")!important}
+.holocron-platform{top:clamp(208px,25vw,290px)!important;width:clamp(190px,23vw,270px)!important;height:42px!important;background:radial-gradient(ellipse at 50% 30%,rgba(95,105,126,.9),rgba(16,19,27,.98) 55%,#020307 78%)!important;border-color:color-mix(in srgb,var(--energy) 55%,#343a47)!important;box-shadow:0 13px 20px #000,0 0 25px color-mix(in srgb,var(--energy) 28%,transparent),inset 0 2px 8px rgba(255,255,255,.2)!important}
+.holocron-name{margin-top:clamp(22px,3vh,34px)!important;font-size:clamp(13px,1.3vw,16px)!important;letter-spacing:.19em!important;text-shadow:0 2px 12px #000}
+.holocron-subtitle{color:#d0d2da!important;font-size:10px!important;letter-spacing:.22em!important}
+.holocron-action{margin-top:16px!important;padding:10px 15px;border-top:1px solid color-mix(in srgb,var(--energy) 42%,transparent);border-bottom:1px solid color-mix(in srgb,var(--energy) 22%,transparent);font-size:10px!important;letter-spacing:.14em!important;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--energy) 8%,transparent),transparent)}
+.holocron-aura{top:50px!important;width:clamp(210px,28vw,340px)!important;height:clamp(210px,28vw,340px)!important;opacity:.5!important;filter:blur(24px)!important}
+.chambers-mist{background:radial-gradient(ellipse at 25% 48%,rgba(245,22,46,.23),transparent 35%),radial-gradient(ellipse at 75% 48%,rgba(20,110,255,.24),transparent 35%)!important;filter:blur(22px)!important}
+.holocron-conflict{top:40%!important;width:clamp(140px,18vw,240px)!important;height:130px!important;z-index:4!important}
+.holocron-conflict i{background:linear-gradient(90deg,transparent,#ff1e3b 23%,#ff697b 38%,white 50%,#74caff 62%,#168bff 79%,transparent)!important;height:3px!important;box-shadow:0 0 12px #ff304c,0 0 25px #168bff!important}
+.holocron-conflict b{background:linear-gradient(90deg,transparent,#ff4057 25%,white 50%,#54aaff 75%,transparent)!important;height:2px!important}
+.holocron-conflict em{width:20px!important;height:20px!important;box-shadow:0 0 10px 5px #fff,0 0 30px 14px #ff304c,0 0 40px 18px #168bff!important}
+.green-path-message{border-color:rgba(42,145,255,.55)!important;background:rgba(2,12,30,.92)!important;color:#b6dfff!important;box-shadow:0 0 32px rgba(0,105,255,.14)}
+.chambers-footer{color:#a5adbf!important;letter-spacing:.24em!important}
+@media(max-width:700px){
+ .holocron-chambers{background-position:center,center,center,55% center!important;padding:24px 10px 22px!important}
+ .chambers-heading:before{font-size:8px;letter-spacing:.2em}
+ .holocron-duo{gap:8px!important}
+ .holocron-choice{min-height:330px!important;padding:4px 4px 15px!important}
+ .holocron-object.holocron-object-image{width:clamp(112px,29vw,155px)!important;height:clamp(145px,37vw,190px)!important;margin-top:8px!important}
+ .holocron-platform{top:clamp(150px,39vw,190px)!important;width:clamp(110px,30vw,160px)!important;height:28px!important}
+ .holocron-name{font-size:9px!important;letter-spacing:.07em!important;margin-top:20px!important}
+ .holocron-subtitle{font-size:8px!important;letter-spacing:.04em!important}
+ .holocron-action{font-size:8px!important;letter-spacing:.04em!important;padding:8px 3px}
+ .holocron-conflict{top:31%!important;width:58px!important}
+ .chambers-footer{font-size:8px!important;letter-spacing:.1em!important}
+}
+@media(max-width:380px){.holocron-choice{min-height:300px!important}.holocron-object.holocron-object-image{width:100px!important;height:128px!important}.holocron-platform{top:135px!important;width:100px!important}.holocron-action{font-size:7px!important}}
+@media(prefers-reduced-motion:reduce){.holocron-object.holocron-object-image{animation:none!important}}
