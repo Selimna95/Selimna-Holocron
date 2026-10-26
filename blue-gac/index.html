@@ -56,7 +56,7 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <header><div class="brand">SELIMNA’S HOLOCRON<strong>LE SANCTUAIRE BLEU</strong></div><a class="back" href="../index.html">← RETOUR AU TEMPLE</a></header>
 <main>
 <section class="intro"><span class="kicker">GRAND ARÈNE DE COMBAT · VOIE BLEUE</span><h1 id="pageTitle">CHOISIS TON FORMAT</h1><p class="subtitle" id="pageSubtitle">Commence par choisir le format de ta prochaine GAC, puis ta ligue. Padawan prépare exclusivement ta défense.</p></section>
-<div class="progress" aria-label="Progression"><b id="stepLabel">ÉTAPE 01 / 04</b><span id="progress1" class="active"></span><span id="progress2"></span><span id="progress3"></span><span id="progress4"></span></div>
+<div class="progress" aria-label="Progression"><b id="stepLabel">ÉTAPE 01 / 03</b><span id="progress1" class="active"></span><span id="progress2"></span><span id="progress3"></span><span id="progress4"></span></div>
 <section class="view" id="modeView" aria-label="Choisir le format">
 <h2 class="view-title">QUEL MODE DE COMBAT ?</h2>
 <div class="mode-grid">
@@ -86,7 +86,7 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <div class="roster-help" id="rosterConnectionStatus" aria-live="polite">Recherche du roster déjà synchronisé dans cette session…</div>
 <div class="roster-help" id="padawanStatus" aria-live="polite">Le roster connecté sera utilisé automatiquement ; aucune équipe ne sera affichée sans vérification du roster.</div>
 <div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
-<section id="attackPanel" hidden class="panel" style="border:1px solid #315b79;background:#071522;padding:18px;margin:16px 0"><h3 style="font:500 22px Georgia,serif;margin:0 0 8px;color:#dff6ff">PADAWAN · TROUVER UN CONTRE</h3><p class="roster-help">Pars de la défense adverse et consulte les compositions d’attaque réellement observées, avec leur taux de victoire, leur nombre de combats et les bannières disponibles sur SWGOH.GG.</p><label class="roster-help">LEADER DE LA DÉFENSE<select id="attackDefenderLeader" style="display:block;width:100%;margin-top:6px;padding:12px;background:#06101b;color:#edf7ff;border:1px solid #315b79"><option value="GLREY">Rey (Galactic Legend)</option><option value="LORDVADER">Lord Vader</option><option value="GLJABBATHEHUTT">Jabba the Hutt</option><option value="SUPREMELEADERKYLOREN">Supreme Leader Kylo Ren</option><option value="GLKENOBI">Jedi Master Kenobi</option><option value="GLJEDILUKE">Jedi Master Luke Skywalker</option><option value="SITHPALPATINE">Sith Eternal Emperor</option><option value="DARTHMALGUS">Darth Malgus</option><option value="GENERALSKYWALKER">General Skywalker</option><option value="GLAHSOKATANO">Ahsoka Tano</option><option value="THESTRANGER">The Stranger</option></select></label><a id="openAttackCounters" href="https://swgoh.gg/gac/counters/GLREY/?season_id=CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;border:1px solid #80d7ff;background:#102e43;color:#effaff;padding:13px 16px;cursor:pointer;font:inherit;font-size:10px;letter-spacing:.1em;text-decoration:none">VOIR LES CONTRES OBSERVÉS ↗</a><div id="attackCounterInfo" class="note" style="margin:12px 0 0">Les statistiques détaillées s’ouvrent sur la source SWGOH.GG.</div><p class="roster-help">Cette première version ouvre la donnée exacte de contre sur SWGOH.GG ; le filtrage automatique de chaque contre par ton roster reste à intégrer.</p></section><div id="teamResults" class="team-list"></div>
+<div id="teamResults" class="team-list"></div>
 <div class="note">V4.0.22 : Padawan sépare la recherche de contres du classement défensif, ignore les équipes incompatibles et évite les doublons de personnages. Aucune équipe ne sera recommandée tant que le roster ne sera pas reconnu et que les compositions publiques ne seront pas filtrées par format, ligue et présence de chaque personnage. Les flottes sont exclues.</div>
 </div>
 </section>
@@ -101,7 +101,7 @@ var order=['mode','tier','access'];
 
 function show(step){
  order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';
- var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 04'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 04'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03']};
+ var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 04'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03']};
  document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
  ['progress1','progress2','progress3'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
  window.scrollTo({top:0,behavior:'smooth'});
@@ -197,7 +197,7 @@ return [];
 function renderTeams(){
 var results=document.getElementById('teamResults');results.innerHTML='';
 var roster=parseRoster();var status=document.getElementById('padawanStatus');var fmt=state.mode||'5v5';
-document.getElementById('attackPanel').hidden=true;
+
  if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
 var rosterSet=new Set(roster);
 var requiredCounts={'5v5':{Kyber:11,Aurodium:9,Chromium:7,Bronzium:5,Carbonite:3},'3v3':{Kyber:15,Aurodium:13,Chromium:10,Bronzium:7,Carbonite:3}};
