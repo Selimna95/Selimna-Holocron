@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.21</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.22</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -55,13 +55,13 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <body><div class="shell">
 <header><div class="brand">SELIMNA’S HOLOCRON<strong>LE SANCTUAIRE BLEU</strong></div><a class="back" href="../index.html">← RETOUR AU TEMPLE</a></header>
 <main>
-<section class="intro"><span class="kicker">GRAND ARÈNE DE COMBAT · VOIE BLEUE</span><h1 id="pageTitle">CHOISIS TON FORMAT</h1><p class="subtitle" id="pageSubtitle">Deux voies de combat. Une stratégie à construire. Commence par choisir le format de ta prochaine GAC.</p></section>
+<section class="intro"><span class="kicker">GRAND ARÈNE DE COMBAT · VOIE BLEUE</span><h1 id="pageTitle">CHOISIS TON FORMAT</h1><p class="subtitle" id="pageSubtitle">Commence par choisir le format de ta prochaine GAC, puis ta ligue. Padawan prépare exclusivement ta défense.</p></section>
 <div class="progress" aria-label="Progression"><b id="stepLabel">ÉTAPE 01 / 04</b><span id="progress1" class="active"></span><span id="progress2"></span><span id="progress3"></span><span id="progress4"></span></div>
 <section class="view" id="modeView" aria-label="Choisir le format">
 <h2 class="view-title">QUEL MODE DE COMBAT ?</h2>
 <div class="mode-grid">
 <button class="mode" type="button" data-mode="3v3"><span class="eyebrow">FORMAT · ÉQUIPES DE TROIS</span><h2>3v3</h2><p>Des compositions resserrées où chaque personnage et chaque synergie compte.</p><span class="cta">CHOISIR CETTE VOIE <b>↗</b></span><span class="number">01</span></button>
-<button class="mode" type="button" data-mode="5v5"><span class="eyebrow">FORMAT · ÉQUIPES DE CINQ</span><h2>5v5</h2><p>Des escouades complètes pour bâtir des stratégies d’attaque et de défense.</p><span class="cta">CHOISIR CETTE VOIE <b>↗</b></span><span class="number">02</span></button>
+<button class="mode" type="button" data-mode="5v5"><span class="eyebrow">FORMAT · ÉQUIPES DE CINQ</span><h2>5v5</h2><p>Des escouades complètes pour préparer exclusivement ta défense GAC.</p><span class="cta">CHOISIR CETTE VOIE <b>↗</b></span><span class="number">02</span></button>
 </div>
 </section>
 <section class="view" id="tierView" aria-label="Choisir sa ligue" hidden>
@@ -72,17 +72,11 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <button class="access" type="button" data-tier="Bronzium"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Bronzium</h2><p>Préparation pour les ligues Bronzium.</p><span class="cta">SÉLECTIONNER ↗</span></button>
 <button class="access" type="button" data-tier="Carbonite"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Carbonite</h2><p>Préparation pour les ligues Carbonite.</p><span class="cta">SÉLECTIONNER ↗</span></button></div>
 <div class="step-tools"><button class="ghost" id="backToMode" type="button">← CHANGER DE FORMAT</button><span class="selection" id="chosenMode">Format : —</span></div></section>
-<section class="view" id="strategyView" aria-label="Choisir sa stratégie" hidden>
-<h2 class="view-title">QUELLE EST TA STRATÉGIE ?</h2><div class="mode-grid">
-<button class="mode" type="button" data-strategy="Défensive"><span class="eyebrow">ORIENTATION · DÉFENSE</span><h2>DÉFENSIVE</h2><p>Privilégier des équipes difficiles à battre en défense sans sacrifier toute l’attaque.</p><span class="cta">CHOISIR ↗</span></button>
-<button class="mode" type="button" data-strategy="Attaque"><span class="eyebrow">ORIENTATION · OFFENSIVE</span><h2>ATTAQUE</h2><p>Privilégier les équipes capables de remporter les combats et d’optimiser les percées offensives.</p><span class="cta">CHOISIR ↗</span></button>
-<button class="mode" type="button" data-strategy="Équilibrée"><span class="eyebrow">ORIENTATION · ÉQUILIBRE</span><h2>ÉQUILIBRÉE</h2><p>Répartir les ressources entre une défense solide et une attaque efficace.</p><span class="cta">CHOISIR ↗</span></button></div>
-<div class="step-tools"><button class="ghost" id="backToTier" type="button">← CHANGER DE LIGUE</button><span class="selection" id="chosenTier">Ligue : —</span></div></section>
 <section class="view" id="accessView" aria-label="Choisir son niveau d'accès" hidden>
 <h2 class="view-title">CHOISIS TON NIVEAU D’ACCÈS</h2><div class="access-grid">
 <button class="access" type="button" data-access="Padawan"><span class="sig" aria-hidden="true"></span><span class="eyebrow">APPRENDRE · ÊTRE GUIDÉ</span><h2>Padawan</h2><p>Un parcours accompagné, des choix expliqués et une préparation GAC accessible.</p><span class="cta">ENTRER DANS LA VOIE ↗</span></button>
 <button class="access master" type="button" data-access="Maître Jedi"><span class="sig" aria-hidden="true"></span><span class="eyebrow">ANALYSER · MAÎTRISER</span><h2>Maître Jedi</h2><p>Un parcours expert pour piloter les arbitrages, la construction des équipes et la stratégie.</p><span class="cta">ACCÉDER À L’ANALYSE ↗</span></button></div>
-<div class="step-tools"><button class="ghost" id="backToStrategy" type="button">← CHANGER DE STRATÉGIE</button><span class="selection" id="chosenSummary">Configuration : —</span></div>
+<div class="step-tools"><button class="ghost" id="backToTierFromAccess" type="button">← CHANGER DE LIGUE</button><span class="selection" id="chosenSummary">Configuration : —</span></div>
 <div class="note" id="settingsSummary" aria-live="polite">Le moteur n’affiche que des équipes complètes observées dans les données publiques et présentes dans le roster.</div></section>
 <section class="view" id="padawanView" aria-label="Propositions Padawan" hidden>
 <div class="padawan-panel">
@@ -93,36 +87,35 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <div class="roster-help" id="padawanStatus" aria-live="polite">Le roster connecté sera utilisé automatiquement ; aucune équipe ne sera affichée sans vérification du roster.</div>
 <div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
 <section id="attackPanel" hidden class="panel" style="border:1px solid #315b79;background:#071522;padding:18px;margin:16px 0"><h3 style="font:500 22px Georgia,serif;margin:0 0 8px;color:#dff6ff">PADAWAN · TROUVER UN CONTRE</h3><p class="roster-help">Pars de la défense adverse et consulte les compositions d’attaque réellement observées, avec leur taux de victoire, leur nombre de combats et les bannières disponibles sur SWGOH.GG.</p><label class="roster-help">LEADER DE LA DÉFENSE<select id="attackDefenderLeader" style="display:block;width:100%;margin-top:6px;padding:12px;background:#06101b;color:#edf7ff;border:1px solid #315b79"><option value="GLREY">Rey (Galactic Legend)</option><option value="LORDVADER">Lord Vader</option><option value="GLJABBATHEHUTT">Jabba the Hutt</option><option value="SUPREMELEADERKYLOREN">Supreme Leader Kylo Ren</option><option value="GLKENOBI">Jedi Master Kenobi</option><option value="GLJEDILUKE">Jedi Master Luke Skywalker</option><option value="SITHPALPATINE">Sith Eternal Emperor</option><option value="DARTHMALGUS">Darth Malgus</option><option value="GENERALSKYWALKER">General Skywalker</option><option value="GLAHSOKATANO">Ahsoka Tano</option><option value="THESTRANGER">The Stranger</option></select></label><a id="openAttackCounters" href="https://swgoh.gg/gac/counters/GLREY/?season_id=CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;border:1px solid #80d7ff;background:#102e43;color:#effaff;padding:13px 16px;cursor:pointer;font:inherit;font-size:10px;letter-spacing:.1em;text-decoration:none">VOIR LES CONTRES OBSERVÉS ↗</a><div id="attackCounterInfo" class="note" style="margin:12px 0 0">Les statistiques détaillées s’ouvrent sur la source SWGOH.GG.</div><p class="roster-help">Cette première version ouvre la donnée exacte de contre sur SWGOH.GG ; le filtrage automatique de chaque contre par ton roster reste à intégrer.</p></section><div id="teamResults" class="team-list"></div>
-<div class="note">V4.0.21 : Padawan sépare la recherche de contres du classement défensif, ignore les équipes incompatibles et évite les doublons de personnages. Aucune équipe ne sera recommandée tant que le roster ne sera pas reconnu et que les compositions publiques ne seront pas filtrées par format, ligue et présence de chaque personnage. Les flottes sont exclues.</div>
+<div class="note">V4.0.22 : Padawan sépare la recherche de contres du classement défensif, ignore les équipes incompatibles et évite les doublons de personnages. Aucune équipe ne sera recommandée tant que le roster ne sera pas reconnu et que les compositions publiques ne seront pas filtrées par format, ligue et présence de chaque personnage. Les flottes sont exclues.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.21</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.22</footer>
 </div>
 <script>
 (function(){
 'use strict';
-var state={mode:'',tier:'',strategy:'',access:''};
-var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),strategy:document.getElementById('strategyView'),access:document.getElementById('accessView'),padawan:document.getElementById('padawanView')};
-var order=['mode','tier','strategy','access'];
-var lastStep='access';
+var state={mode:'',tier:'',strategy:'Défensive',access:''};
+var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),access:document.getElementById('accessView'),padawan:document.getElementById('padawanView')};
+var order=['mode','tier','access'];
+
 function show(step){
  order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';
- var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 04'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 04'],strategy:['CHOISIS TA STRATÉGIE','Pars des défenses à construire ou des défenses adverses à battre.','ÉTAPE 03 / 04'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan te guide dans la préparation de ta défense ou de tes contres.','ÉTAPE 04 / 04']};
+ var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 04'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 04'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03']};
  document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
- ['progress1','progress2','progress3','progress4'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
+ ['progress1','progress2','progress3'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
  window.scrollTo({top:0,behavior:'smooth'});
 }
 function save(){try{Object.keys(state).forEach(function(k){sessionStorage.setItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1),state[k]);});}catch(_){}}
 function sync(){
- [['mode','data-mode'],['tier','data-tier'],['strategy','data-strategy'],['access','data-access']].forEach(function(p){document.querySelectorAll('['+p[1]+']').forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute(p[1])===state[p[0]]));});});
+ [['mode','data-mode'],['tier','data-tier'],['access','data-access']].forEach(function(p){document.querySelectorAll('['+p[1]+']').forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute(p[1])===state[p[0]]));});});
  document.getElementById('chosenMode').textContent='Format : '+(state.mode||'—');document.getElementById('chosenTier').textContent='Ligue : '+(state.tier||'—');document.getElementById('chosenSummary').textContent=(state.mode||'—')+' · '+(state.tier||'—')+' · Défense';
- document.getElementById('settingsSummary').textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Stratégie : '+(state.strategy||'à choisir')+' · Accès : '+(state.access||'à choisir')+'. La voie Défense utilise le classement défensif ; la voie Attaque part du leader adverse et de ses contres observés. Les flottes sont exclues.';var cfg=document.getElementById('padawanConfig');if(cfg)cfg.textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · '+(state.strategy||'Stratégie à choisir')+' · Accès : '+(state.access||'—');save();updateSourceLinks();
+ document.getElementById('settingsSummary').textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Orientation : Défense uniquement · Accès : '+(state.access||'à choisir')+'. Les compositions sont issues du classement défensif public. Les flottes sont exclues.';var cfg=document.getElementById('padawanConfig');if(cfg)cfg.textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Défense uniquement · Accès : '+(state.access||'—');save();updateSourceLinks();
 }
 try{order.forEach(function(k){state[k]=sessionStorage.getItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1))||'';});}catch(_){}
-document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){state.mode=b.dataset.mode;state.tier='';state.strategy='';state.access='';sync();show('tier');});});
-document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='';state.access='';sync();show('strategy');});});
-document.querySelectorAll('[data-strategy]').forEach(function(b){b.addEventListener('click',function(){state.strategy=b.dataset.strategy;state.access='';sync();show('access');});});
-state.strategy='Défensive';
+document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){state.mode=b.dataset.mode;state.tier='';state.strategy='Défensive';state.access='';sync();show('tier');});});
+document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='Défensive';state.access='';sync();show('access');});});
+
 document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();if(state.access==='Padawan'){show('padawan');initRosterStatus();}else{document.getElementById('settingsSummary').textContent='Le parcours Maître Jedi sera développé séparément.';}});});
 // V4.0.16 — compositions relevées sur les classements publics SWGOH.GG (saison indiquée par la source).
 // Ces compositions sont des observations réelles, pas des équipes inventées. Chaque équipe est filtrée
@@ -204,16 +197,8 @@ return [];
 function renderTeams(){
 var results=document.getElementById('teamResults');results.innerHTML='';
 var roster=parseRoster();var status=document.getElementById('padawanStatus');var fmt=state.mode||'5v5';
-if(state.strategy==='Attaque'){
-document.getElementById('attackPanel').hidden=false;
-status.textContent='Mode Attaque : pars du leader adverse pour consulter les contres observés en '+fmt+'.';
-document.getElementById('attackCounterInfo').textContent='Format : '+fmt+' · Saison de référence : '+(fmt==='5v5'?'84':'83')+'. La page source présente les compositions, les taux de victoire, le volume de combats et les bannières moyennes.';
-updateAttackCounterLink();
-results.innerHTML='';
-return;
-}
 document.getElementById('attackPanel').hidden=true;
-if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
+ if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
 var rosterSet=new Set(roster);
 var requiredCounts={'5v5':{Kyber:11,Aurodium:9,Chromium:7,Bronzium:5,Carbonite:3},'3v3':{Kyber:15,Aurodium:13,Chromium:10,Bronzium:7,Carbonite:3}};
 var required=(requiredCounts[fmt]&&requiredCounts[fmt][state.tier])||requiredCounts[fmt].Kyber;
@@ -262,7 +247,7 @@ function initRosterStatus(){var names=parseRoster();var status=document.getEleme
 document.getElementById('showAllTeams').addEventListener('click',renderTeams);
 document.getElementById('backToAccess').addEventListener('click',function(){show('access');});
 
-document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTier').addEventListener('click',function(){show('tier');});document.getElementById('backToStrategy').addEventListener('click',function(){show('strategy');});
-sync();show(state.access==='Padawan'?'padawan':state.access?'access':state.tier?(state.strategy?'access':'strategy'):state.mode?'tier':'mode');if(state.access==='Padawan')initRosterStatus();
+document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTier').addEventListener('click',function(){show('tier');});document.getElementById('backToTierFromAccess').addEventListener('click',function(){show('tier');});
+sync();show(state.access==='Padawan'?'padawan':state.access?'access':state.tier?'access':state.mode?'tier':'mode');if(state.access==='Padawan')initRosterStatus();
 })();
 </script></body></html>
