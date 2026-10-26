@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.9</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.10</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -55,7 +55,7 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <header><div class="brand">SELIMNA’S HOLOCRON<strong>LE SANCTUAIRE BLEU</strong></div><a class="back" href="../index.html">← RETOUR AU TEMPLE</a></header>
 <main>
 <section class="intro"><span class="kicker">GRAND ARÈNE DE COMBAT · VOIE BLEUE</span><h1 id="pageTitle">CHOISIS TON FORMAT</h1><p class="subtitle" id="pageSubtitle">Deux voies de combat. Une stratégie à construire. Commence par choisir le format de ta prochaine GAC.</p></section>
-<div class="progress" aria-label="Progression"><b id="stepLabel">ÉTAPE 01 / 02</b><span id="progress1" class="active"></span><span id="progress2"></span><span id="progress3"></span></div>
+<div class="progress" aria-label="Progression"><b id="stepLabel">ÉTAPE 01 / 04</b><span id="progress1" class="active"></span><span id="progress2"></span><span id="progress3"></span><span id="progress4"></span></div>
 <section class="view" id="modeView" aria-label="Choisir le format">
 <h2 class="view-title">QUEL MODE DE COMBAT ?</h2>
 <div class="mode-grid">
@@ -63,65 +63,53 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <button class="mode" type="button" data-mode="5v5"><span class="eyebrow">FORMAT · ÉQUIPES DE CINQ</span><h2>5v5</h2><p>Des escouades complètes pour bâtir des stratégies d’attaque et de défense.</p><span class="cta">CHOISIR CETTE VOIE <b>↗</b></span><span class="number">02</span></button>
 </div>
 </section>
-<section class="view" id="accessView" aria-label="Choisir son niveau d'accès" hidden>
-<h2 class="view-title">CHOISIS TON NIVEAU D’ACCÈS</h2>
-<div class="access-grid">
-<button class="access" type="button" data-access="Padawan"><span class="sig" aria-hidden="true"></span><span class="eyebrow">APPRENDRE · ÊTRE GUIDÉ</span><h2>Padawan</h2><p>Un parcours accompagné, des choix expliqués et une préparation GAC accessible.</p><span class="cta">ENTRER DANS LA VOIE ↗</span></button>
-<button class="access master" type="button" data-access="Maître Jedi"><span class="sig" aria-hidden="true"></span><span class="eyebrow">ANALYSER · MAÎTRISER</span><h2>Maître Jedi</h2><p>Un parcours expert pour piloter les arbitrages, la construction des équipes et la stratégie.</p><span class="cta">ACCÉDER À L’ANALYSE ↗</span></button>
-</div>
-<div class="step-tools"><button class="ghost" id="backToMode" type="button">← CHANGER DE FORMAT</button><span class="selection" id="chosenMode">Format sélectionné : —</span></div>
-</section>
-<section class="view" id="settingsView" aria-label="Paramètres stratégiques" hidden>
-<h2 class="view-title">POSE LES BASES DE TA STRATÉGIE</h2>
-<div class="access-grid">
+<section class="view" id="tierView" aria-label="Choisir sa ligue" hidden>
+<h2 class="view-title">CHOISIS TA LIGUE</h2><div class="access-grid">
 <button class="access" type="button" data-tier="Kyber"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Kyber</h2><p>Référence compétitive supérieure.</p><span class="cta">SÉLECTIONNER ↗</span></button>
 <button class="access" type="button" data-tier="Aurodium"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Aurodium</h2><p>Préparation pour les ligues Aurodium.</p><span class="cta">SÉLECTIONNER ↗</span></button>
 <button class="access" type="button" data-tier="Chromium"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Chromium</h2><p>Préparation pour les ligues Chromium.</p><span class="cta">SÉLECTIONNER ↗</span></button>
 <button class="access" type="button" data-tier="Bronzium"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Bronzium</h2><p>Préparation pour les ligues Bronzium.</p><span class="cta">SÉLECTIONNER ↗</span></button>
-<button class="access" type="button" data-tier="Carbonite"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Carbonite</h2><p>Préparation pour les ligues Carbonite.</p><span class="cta">SÉLECTIONNER ↗</span></button>
-</div>
-<h2 class="view-title" style="margin-top:28px">QUELLE EST TA PRIORITÉ ?</h2>
-<div class="mode-grid">
-<button class="mode" type="button" data-strategy="Agressive"><span class="eyebrow">ORIENTATION · OFFENSIVE</span><h2>AGRESSIVE</h2><p>Privilégier les équipes capables de remporter les combats en attaque, avec une défense viable.</p><span class="cta">CHOISIR ↗</span></button>
-<button class="mode" type="button" data-strategy="Neutre"><span class="eyebrow">ORIENTATION · ÉQUILIBRÉE</span><h2>NEUTRE</h2><p>Équilibrer la solidité défensive et les ressources conservées pour l’attaque.</p><span class="cta">CHOISIR ↗</span></button>
+<button class="access" type="button" data-tier="Carbonite"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Carbonite</h2><p>Préparation pour les ligues Carbonite.</p><span class="cta">SÉLECTIONNER ↗</span></button></div>
+<div class="step-tools"><button class="ghost" id="backToMode" type="button">← CHANGER DE FORMAT</button><span class="selection" id="chosenMode">Format : —</span></div></section>
+<section class="view" id="strategyView" aria-label="Choisir sa stratégie" hidden>
+<h2 class="view-title">QUELLE EST TA STRATÉGIE ?</h2><div class="mode-grid">
 <button class="mode" type="button" data-strategy="Défensive"><span class="eyebrow">ORIENTATION · DÉFENSE</span><h2>DÉFENSIVE</h2><p>Privilégier des équipes difficiles à battre en défense sans sacrifier toute l’attaque.</p><span class="cta">CHOISIR ↗</span></button>
-</div>
-<div class="step-tools"><button class="ghost" id="backToAccess" type="button">← CHANGER D’ACCÈS</button><span class="selection" id="chosenAccess">Accès : —</span></div>
-<div class="note" id="settingsSummary" aria-live="polite">Choisis une ligue et une orientation. Le moteur de recommandations sera construit dans une étape ultérieure ; aucune équipe fictive ne sera affichée.</div>
-</section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.9</footer>
+<button class="mode" type="button" data-strategy="Attaque"><span class="eyebrow">ORIENTATION · OFFENSIVE</span><h2>ATTAQUE</h2><p>Privilégier les équipes capables de remporter les combats et d’optimiser les percées offensives.</p><span class="cta">CHOISIR ↗</span></button>
+<button class="mode" type="button" data-strategy="Équilibrée"><span class="eyebrow">ORIENTATION · ÉQUILIBRE</span><h2>ÉQUILIBRÉE</h2><p>Répartir les ressources entre une défense solide et une attaque efficace.</p><span class="cta">CHOISIR ↗</span></button></div>
+<div class="step-tools"><button class="ghost" id="backToTier" type="button">← CHANGER DE LIGUE</button><span class="selection" id="chosenTier">Ligue : —</span></div></section>
+<section class="view" id="accessView" aria-label="Choisir son niveau d'accès" hidden>
+<h2 class="view-title">CHOISIS TON NIVEAU D’ACCÈS</h2><div class="access-grid">
+<button class="access" type="button" data-access="Padawan"><span class="sig" aria-hidden="true"></span><span class="eyebrow">APPRENDRE · ÊTRE GUIDÉ</span><h2>Padawan</h2><p>Un parcours accompagné, des choix expliqués et une préparation GAC accessible.</p><span class="cta">ENTRER DANS LA VOIE ↗</span></button>
+<button class="access master" type="button" data-access="Maître Jedi"><span class="sig" aria-hidden="true"></span><span class="eyebrow">ANALYSER · MAÎTRISER</span><h2>Maître Jedi</h2><p>Un parcours expert pour piloter les arbitrages, la construction des équipes et la stratégie.</p><span class="cta">ACCÉDER À L’ANALYSE ↗</span></button></div>
+<div class="step-tools"><button class="ghost" id="backToStrategy" type="button">← CHANGER DE STRATÉGIE</button><span class="selection" id="chosenSummary">Configuration : —</span></div>
+<div class="note" id="settingsSummary" aria-live="polite">Le moteur de recommandations GAC sera construit dans une étape ultérieure ; aucune équipe fictive ne sera affichée.</div></section>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.10</footer>
 </div>
 <script>
 (function(){
 'use strict';
-var state={mode:'',access:'',tier:'',strategy:''};
-var modeView=document.getElementById('modeView'),accessView=document.getElementById('accessView'),settingsView=document.getElementById('settingsView');
+var state={mode:'',tier:'',strategy:'',access:''};
+var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),strategy:document.getElementById('strategyView'),access:document.getElementById('accessView')};
+var order=['mode','tier','strategy','access'];
 function show(step){
- modeView.hidden=step!=='mode';accessView.hidden=step!=='access';settingsView.hidden=step!=='settings';
- var titles={mode:['CHOISIS TON FORMAT','Deux voies de combat. Une stratégie à construire. Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 03'],access:['CHOISIS TA VOIE','Le format est choisi. Maintenant, décide comment tu veux préparer ta GAC.','ÉTAPE 02 / 03'],settings:['DÉFINIS TA STRATÉGIE','Ajuste les références et l’approche stratégique à ton niveau de jeu.','ÉTAPE 03 / 03']};
+ order.forEach(function(k){views[k].hidden=k!==step;});
+ var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 04'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 04'],strategy:['CHOISIS TA STRATÉGIE','Choisis la priorité qui guidera la construction de tes équipes.','ÉTAPE 03 / 04'],access:['CHOISIS TON NIVEAU D’ACCÈS','Tes paramètres sont définis. Choisis maintenant comment tu veux explorer la préparation GAC.','ÉTAPE 04 / 04']};
  document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
- ['progress1','progress2','progress3'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=({mode:0,access:1,settings:2}[step]));});
+ ['progress1','progress2','progress3','progress4'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
  window.scrollTo({top:0,behavior:'smooth'});
 }
 function save(){try{Object.keys(state).forEach(function(k){sessionStorage.setItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1),state[k]);});}catch(_){}}
 function sync(){
- document.querySelectorAll('[data-mode]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.mode===state.mode));});
- document.querySelectorAll('[data-access]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.access===state.access));});
- document.querySelectorAll('[data-tier]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.tier===state.tier));});
- document.querySelectorAll('[data-strategy]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.strategy===state.strategy));});
- document.getElementById('chosenMode').textContent='Format sélectionné : '+(state.mode||'—');
- document.getElementById('chosenAccess').textContent='Accès : '+(state.access||'—');
- var summary='Format : '+(state.mode||'—')+' · Accès : '+(state.access||'—')+' · Ligue : '+(state.tier||'à choisir')+' · Orientation : '+(state.strategy||'à choisir')+'.';
- if(state.tier&&state.strategy)summary+=' Configuration enregistrée pour la prochaine étape de conception. Le moteur GAC n’est pas encore activé.';
- document.getElementById('settingsSummary').textContent=summary;save();
+ [['mode','data-mode'],['tier','data-tier'],['strategy','data-strategy'],['access','data-access']].forEach(function(p){document.querySelectorAll('['+p[1]+']').forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute(p[1])===state[p[0]]));});});
+ document.getElementById('chosenMode').textContent='Format : '+(state.mode||'—');document.getElementById('chosenTier').textContent='Ligue : '+(state.tier||'—');document.getElementById('chosenSummary').textContent=(state.mode||'—')+' · '+(state.tier||'—')+' · '+(state.strategy||'—');
+ document.getElementById('settingsSummary').textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Stratégie : '+(state.strategy||'—')+' · Accès : '+(state.access||'à choisir')+'. Le moteur GAC n’est pas encore activé : aucune équipe fictive ne sera affichée.';save();
 }
-try{['mode','access','tier','strategy'].forEach(function(k){state[k]=sessionStorage.getItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1))||'';});}catch(_){}
-document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){state.mode=b.dataset.mode;state.access='';state.tier='';state.strategy='';sync();show('access');});});
-document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;state.tier='';state.strategy='';sync();show('settings');});});
-document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;sync();});});
-document.querySelectorAll('[data-strategy]').forEach(function(b){b.addEventListener('click',function(){state.strategy=b.dataset.strategy;sync();});});
-document.getElementById('backToMode').addEventListener('click',function(){show('mode');});
-document.getElementById('backToAccess').addEventListener('click',function(){show('access');});
-sync();show(state.access?'settings':state.mode?'access':'mode');
+try{order.forEach(function(k){state[k]=sessionStorage.getItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1))||'';});}catch(_){}
+document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){state.mode=b.dataset.mode;state.tier='';state.strategy='';state.access='';sync();show('tier');});});
+document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='';state.access='';sync();show('strategy');});});
+document.querySelectorAll('[data-strategy]').forEach(function(b){b.addEventListener('click',function(){state.strategy=b.dataset.strategy;state.access='';sync();show('access');});});
+document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();});});
+document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTier').addEventListener('click',function(){show('tier');});document.getElementById('backToStrategy').addEventListener('click',function(){show('strategy');});
+sync();show(state.access?'access':state.strategy?'access':state.tier?'strategy':state.mode?'tier':'mode');
 })();
 </script></body></html>
