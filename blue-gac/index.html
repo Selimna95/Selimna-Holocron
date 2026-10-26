@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.11</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.12</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -87,16 +87,16 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <section class="view" id="padawanView" aria-label="Propositions Padawan" hidden>
 <div class="padawan-panel">
 <div class="padawan-toolbar"><h2 class="view-title" style="margin:0;text-align:left">PADAWAN · COMPOSITIONS DÉFENSIVES OBSERVÉES</h2><span class="source-tag">DONNÉES PUBLIQUES · ÉCHANTILLON</span></div>
-<p class="subtitle" style="margin:0 0 14px;text-align:left;max-width:none">Le moteur ne fabrique aucune équipe : il ne propose que des compositions complètes publiées dans le classement défensif public de SWGOH.GG. Saisis les personnages de ton roster pour filtrer les compositions que tu peux réellement poser.</p>
+<p class="subtitle" style="margin:0 0 14px;text-align:left;max-width:none">Le moteur ne fabrique aucune équipe : il ne propose que des compositions complètes publiées dans le classement défensif public de SWGOH.GG. Le roster synchronisé dans l’Holocron est utilisé automatiquement pour filtrer les compositions complètes que tu peux réellement poser.</p>
 <div class="note" id="padawanConfig">Configuration : —</div>
 <div class="roster-help" id="rosterConnectionStatus" aria-live="polite">Recherche du roster déjà synchronisé dans cette session…</div>
-<div class="roster-help" id="padawanStatus" aria-live="polite">Aucune équipe n'est présélectionnée. L'évaluation se fera uniquement sur les compositions observées ci-dessous et sur les personnages que tu déclares disponibles.</div>
+<div class="roster-help" id="padawanStatus" aria-live="polite">Le roster connecté sera utilisé automatiquement ; aucune saisie manuelle n’est nécessaire.</div>
 <div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
 <div id="teamResults" class="team-list"></div>
-<div class="note">Prototype de test V4.0.11 : les données intégrées sont un échantillon public relevé sur les pages de classement défensif SWGOH.GG, pas un flux live. Les statistiques dépendent des saisons, datacrons et compositions observées. Le filtre de roster ne remplace pas encore l'import automatique d'un profil ni le calcul définitif du nombre d'équipes par ligue.</div>
+<div class="note">Prototype de test V4.0.12 : les données intégrées sont un échantillon public relevé sur les pages de classement défensif SWGOH.GG, pas un flux live. Les statistiques dépendent des saisons, datacrons et compositions observées. Le partage automatique du roster synchronisé est activé ; le calcul définitif du nombre d’équipes par ligue reste à développer.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.11</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.12</footer>
 </div>
 <script>
 (function(){
