@@ -56,7 +56,7 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <header><div class="brand">SELIMNA’S HOLOCRON<strong>LE SANCTUAIRE BLEU</strong></div><a class="back" href="../index.html">← RETOUR AU TEMPLE</a></header>
 <main>
 <section class="intro"><span class="kicker">GRAND ARÈNE DE COMBAT · VOIE BLEUE</span><h1 id="pageTitle">CHOISIS TON FORMAT</h1><p class="subtitle" id="pageSubtitle">Commence par choisir le format de ta prochaine GAC, puis ta ligue. Padawan prépare exclusivement ta défense.</p></section>
-<div class="progress" aria-label="Progression"><b id="stepLabel">ÉTAPE 01 / 03</b><span id="progress1" class="active"></span><span id="progress2"></span><span id="progress3"></span><span id="progress4"></span></div>
+<div class="progress" aria-label="Progression"><b id="stepLabel">ÉTAPE 01 / 03</b><span id="progress1" class="active"></span><span id="progress2"></span><span id="progress3"></span></div>
 <section class="view" id="modeView" aria-label="Choisir le format">
 <h2 class="view-title">QUEL MODE DE COMBAT ?</h2>
 <div class="mode-grid">
@@ -87,7 +87,7 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <div class="roster-help" id="padawanStatus" aria-live="polite">Le roster connecté sera utilisé automatiquement ; aucune équipe ne sera affichée sans vérification du roster.</div>
 <div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
 <div id="teamResults" class="team-list"></div>
-<div class="note">V4.0.22 : Padawan sépare la recherche de contres du classement défensif, ignore les équipes incompatibles et évite les doublons de personnages. Aucune équipe ne sera recommandée tant que le roster ne sera pas reconnu et que les compositions publiques ne seront pas filtrées par format, ligue et présence de chaque personnage. Les flottes sont exclues.</div>
+<div class="note">V4.0.22 : Padawan est exclusivement défensif en 3v3 et 5v5, dans toutes les ligues. Les choix Attaque et Équilibrée ne sont pas disponibles. Les propositions respectent le roster et évitent les doublons de personnages.</div>
 </div>
 </section>
 </main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.22</footer>
@@ -101,7 +101,7 @@ var order=['mode','tier','access'];
 
 function show(step){
  order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';
- var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 04'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03']};
+ var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 03'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03']};
  document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
  ['progress1','progress2','progress3'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
  window.scrollTo({top:0,behavior:'smooth'});
