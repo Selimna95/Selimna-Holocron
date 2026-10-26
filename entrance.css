@@ -82,3 +82,26 @@
 .holocron-conflict b{background:linear-gradient(90deg,transparent,#168bff 35%,#fff 50%,#168bff 64%,transparent)!important;color:#168bff!important;}
 .holocron-conflict em{box-shadow:0 0 9px 4px #fff,0 0 22px 10px #ff4a5a,0 0 32px 12px #168bff!important;}
 .chambers-mist{background:radial-gradient(ellipse at 25% 55%,rgba(245,40,48,.15),transparent 30%),radial-gradient(ellipse at 75% 55%,rgba(35,120,255,.15),transparent 30%)!important;}
+
+
+/* V4.0.5 — artefacts plus détaillés, lumière maîtrisée et collision rouge/bleu. */
+.holocron-object.holocron-object-image{
+  width:clamp(178px,20vw,250px)!important;height:clamp(195px,23vw,270px)!important;
+  margin:10px auto 8px!important;background-size:contain!important;
+  filter:drop-shadow(0 0 7px color-mix(in srgb,var(--energy) 88%,transparent))
+         drop-shadow(0 0 24px color-mix(in srgb,var(--energy) 55%,transparent))
+         drop-shadow(0 12px 17px rgba(0,0,0,.8))!important;
+  transform-origin:50% 54%;animation:holocronFloat 4.2s ease-in-out infinite,holocronGlow 3.6s ease-in-out infinite!important;
+}
+.holocron-object-sith{background-image:url("assets/holocrons/sith-holocron.svg")!important;}
+.holocron-object-jedi{background-image:url("assets/holocrons/jedi-blue-reference.jpg")!important;}
+.holocron-choice-red .holocron-aura{background:radial-gradient(ellipse,rgba(255,20,48,.8),rgba(255,20,48,.18) 38%,transparent 72%)!important;opacity:.48!important;filter:blur(10px)}
+.holocron-choice-green .holocron-aura{background:radial-gradient(ellipse,rgba(24,123,255,.82),rgba(24,123,255,.18) 40%,transparent 72%)!important;opacity:.48!important;filter:blur(10px)}
+.holocron-conflict{filter:drop-shadow(0 0 8px rgba(255,255,255,.55))}
+.holocron-conflict i{background:linear-gradient(90deg,transparent,rgba(255,45,63,.2),#ff394f,white,#45a9ff,rgba(35,120,255,.2),transparent)!important;box-shadow:0 0 12px #ff304c,0 0 24px #168bff!important}
+.holocron-conflict b{height:2px!important;box-shadow:0 0 12px #fff,0 0 24px #168bff!important}
+.holocron-conflict em{box-shadow:0 0 8px 3px #fff,0 0 20px 8px #ff334c,0 0 30px 12px #168bff!important}
+@keyframes holocronGlow{0%,100%{filter:drop-shadow(0 0 7px color-mix(in srgb,var(--energy) 75%,transparent)) drop-shadow(0 0 20px color-mix(in srgb,var(--energy) 42%,transparent)) drop-shadow(0 12px 17px rgba(0,0,0,.8))}50%{filter:drop-shadow(0 0 12px color-mix(in srgb,var(--energy) 100%,transparent)) drop-shadow(0 0 34px color-mix(in srgb,var(--energy) 68%,transparent)) drop-shadow(0 12px 17px rgba(0,0,0,.8))}}
+@media(max-width:700px){.holocron-object.holocron-object-image{width:clamp(122px,31vw,166px)!important;height:clamp(145px,36vw,194px)!important;margin:12px auto 10px!important}.holocron-choice{overflow:hidden}}
+@media(max-width:380px){.holocron-object.holocron-object-image{width:112px!important;height:132px!important}}
+@media(prefers-reduced-motion:reduce){.holocron-object.holocron-object-image{animation:none!important}}
