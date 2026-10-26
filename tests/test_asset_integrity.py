@@ -52,7 +52,7 @@ class AssetIntegrityTests(unittest.TestCase):
 
     def test_service_worker_has_new_cache_and_network_first_navigation(self):
         self.assertIn("holocron-static-v4.0.8-gac-parameters", self.sw)
-        self.assertIn("holocron-static-v4.0.10-gac-step-order", self.sw)
+        self.assertIn("holocron-static-v4.0.11-padawan-public-defense", self.sw)
         self.assertNotIn("holocron-static-v3.4.3-weak-donor-pool", self.sw)
         self.assertIn("request.mode === 'navigate'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
@@ -70,7 +70,7 @@ class AssetIntegrityTests(unittest.TestCase):
                       'data-tier="Carbonite"', 'data-strategy="Attaque"',
                       'data-strategy="Équilibrée"', 'data-strategy="Défensive"'):
             self.assertIn(value, blue)
-        self.assertIn("V4.0.10", blue)
+        self.assertIn("V4.0.11", blue)
         self.assertIn('id="tierView"', blue)
         self.assertIn('id="strategyView"', blue)
         self.assertIn("ÉTAPE 04 / 04", blue)
