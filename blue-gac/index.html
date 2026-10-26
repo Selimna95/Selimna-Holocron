@@ -120,7 +120,8 @@ function sync(){
 }
 try{order.forEach(function(k){state[k]=sessionStorage.getItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1))||'';});}catch(_){}
 document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){state.mode=b.dataset.mode;state.tier='';state.strategy='';state.access='';sync();show('tier');});});
-document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='Défensive';state.access='';sync();show('access');});});
+document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='';state.access='';sync();show('strategy');});});
+document.querySelectorAll('[data-strategy]').forEach(function(b){b.addEventListener('click',function(){state.strategy=b.dataset.strategy;state.access='';sync();show('access');});});
 state.strategy='Défensive';
 document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();if(state.access==='Padawan'){show('padawan');initRosterStatus();}else{document.getElementById('settingsSummary').textContent='Le parcours Maître Jedi sera développé séparément.';}});});
 // V4.0.16 — compositions relevées sur les classements publics SWGOH.GG (saison indiquée par la source).
