@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071525">
+<meta name="description" content="Sanctuaire bleu — optimisateur de Grand Arène de Combat 3v3 et 5v5.">
+<title>Sanctuaire bleu — GAC | Selimna’s Holocron V4.0.7</title>
+<style>
+:root{color-scheme:dark;--bg:#050b14;--panel:#0b1828;--line:#25496a;--blue:#6bc8ff;--cyan:#9ce8ff;--muted:#a0b5c8;--gold:#d9c28c}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:#edf7ff}
+body{min-height:100vh;background:radial-gradient(ellipse at 50% 25%,rgba(24,91,143,.28),transparent 48%),linear-gradient(160deg,#071321,#03070d 72%);overflow-x:hidden}
+.sanctuary{position:relative;min-height:100vh;padding:clamp(22px,5vw,64px);display:flex;flex-direction:column;align-items:center;isolation:isolate}
+.sanctuary:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.35;background-image:radial-gradient(circle at 12% 18%,#b6eaff 0 1px,transparent 2px),radial-gradient(circle at 81% 14%,#b6eaff 0 1px,transparent 2px),radial-gradient(circle at 74% 72%,#6bc8ff 0 1px,transparent 2px),radial-gradient(circle at 22% 81%,#d9c28c 0 1px,transparent 2px)}
+.topbar{width:min(1120px,100%);display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid #24425c;padding-bottom:18px}
+.brand{font-size:10px;letter-spacing:.26em;color:#91b6d4}.brand strong{display:block;margin-top:7px;font:500 clamp(17px,2.2vw,23px) Georgia,serif;letter-spacing:.12em;color:#e8f5ff}
+.back{border:1px solid #345d7e;background:#0a1a2b;color:#cbeaff;padding:10px 14px;font-size:11px;letter-spacing:.1em;text-decoration:none;white-space:nowrap}
+.intro{text-align:center;max-width:760px;margin:clamp(45px,9vh,90px) auto 38px}.kicker{font-size:10px;letter-spacing:.3em;color:var(--blue);font-weight:700}.intro h1{font:500 clamp(32px,5.3vw,58px)/1.08 Georgia,serif;letter-spacing:.06em;margin:14px 0;color:#f0f8ff}.intro p{color:var(--muted);font-size:14px;line-height:1.7;margin:0 auto;max-width:620px}
+.mode-grid{width:min(960px,100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,3vw,30px)}
+.mode{position:relative;min-height:300px;padding:clamp(24px,4vw,42px);text-align:left;border:1px solid #28577a;background:linear-gradient(145deg,rgba(18,47,73,.94),rgba(5,14,25,.96) 72%);color:#eef8ff;cursor:pointer;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
+.mode:before{content:"";position:absolute;width:240px;height:240px;right:-100px;top:-100px;border-radius:50%;background:radial-gradient(circle,rgba(73,177,255,.22),transparent 70%);pointer-events:none}
+.mode:hover,.mode:focus-visible{transform:translateY(-5px);border-color:#8bd9ff;box-shadow:0 18px 55px rgba(15,108,172,.18);outline:2px solid #8bd9ff;outline-offset:3px}
+.emblem{display:grid;place-items:center;width:68px;height:68px;border:1px solid #5187aa;transform:rotate(45deg);margin:5px 0 30px 10px;box-shadow:0 0 30px #2678a522,inset 0 0 22px #2678a522}
+.emblem span{transform:rotate(-45deg);font:500 22px Georgia,serif;color:#c6efff}
+.mode .tag{font-size:9px;letter-spacing:.22em;color:#83cfff}.mode h2{font:500 clamp(28px,4vw,42px) Georgia,serif;letter-spacing:.08em;margin:10px 0}.mode p{color:#a9c0d3;font-size:13px;line-height:1.65;max-width:330px;margin:0}.choose{display:inline-block;margin-top:28px;color:#d7efff;font-size:10px;letter-spacing:.2em;border-bottom:1px solid #6bb9e7;padding-bottom:7px}
+.notice{width:min(960px,100%);margin:28px 0 0;padding:16px 18px;border-left:2px solid #d9c28c;background:#0a1420;color:#8fa8bd;font-size:11px;line-height:1.6}.notice strong{color:#d9c28c;font-weight:600}
+.footer{margin-top:auto;padding-top:40px;color:#526c80;font-size:9px;letter-spacing:.2em;text-align:center}
+@media(max-width:650px){.sanctuary{padding:20px 16px}.topbar{align-items:flex-start}.back{padding:9px;font-size:9px}.intro{margin-top:48px}.mode-grid{grid-template-columns:1fr}.mode{min-height:250px;padding:25px}.emblem{width:54px;height:54px;margin-bottom:24px}.footer{padding-top:28px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<main class="sanctuary">
+<header class="topbar"><div class="brand">SELIMNA’S HOLOCRON<strong>LE SANCTUAIRE BLEU</strong></div><a class="back" href="./index.html" aria-label="Retour au temple des holocrons">← RETOUR AU TEMPLE</a></header>
+<section class="intro"><span class="kicker">VOIE DE LA STRATÉGIE · GRAND ARÈNE DE COMBAT</span><h1>CHOISIS TON ARÈNE</h1><p>Le Sanctuaire bleu est dédié à l’optimisation de tes stratégies de GAC. Sélectionne le format de combat pour ouvrir l’espace de travail correspondant.</p></section>
+<section class="mode-grid" aria-label="Format de Grand Arène de Combat">
+<button class="mode" type="button" data-mode="3v3" aria-label="Sélectionner le mode GAC 3v3"><div class="emblem" aria-hidden="true"><span>3×3</span></div><span class="tag">FORMAT D’ÉQUIPE</span><h2>3v3</h2><p>Préparer les escouades de trois, réfléchir aux placements offensifs et défensifs, et structurer l’optimisation autour du format 3 contre 3.</p><span class="choose">ENTRER DANS LE MODE 3v3 ↗</span></button>
+<button class="mode" type="button" data-mode="5v5" aria-label="Sélectionner le mode GAC 5v5"><div class="emblem" aria-hidden="true"><span>5×5</span></div><span class="tag">FORMAT D’ÉQUIPE</span><h2>5v5</h2><p>Préparer les escouades de cinq, organiser les choix de défense et d’attaque, et structurer l’optimisation autour du format 5 contre 5.</p><span class="choose">ENTRER DANS LE MODE 5v5 ↗</span></button>
+</section>
+<div class="notice"><strong>Architecture initiale :</strong> les deux entrées sont en place. Les moteurs d’optimisation 3v3 et 5v5 seront développés dans leurs espaces respectifs ; aucun calcul de combat ni aucune recommandation fictive n’est affiché à ce stade.</div>
+<footer class="footer">VOIE BLEUE · GAC OPTIMIZER · V4.0.7</footer>
+</main>
+<script>
+(function(){
+  document.querySelectorAll('[data-mode]').forEach(function(button){
+    button.addEventListener('click',function(){
+      var mode=button.getAttribute('data-mode');
+      try{sessionStorage.setItem('blueGacMode',mode);}catch(_){}
+      document.querySelectorAll('[data-mode]').forEach(function(b){b.setAttribute('aria-pressed',String(b===button));});
+      var old=document.getElementById('modeNotice');if(old)old.remove();
+      var notice=document.createElement('p');notice.id='modeNotice';notice.setAttribute('role','status');
+      notice.style.cssText='width:min(960px,100%);margin:18px 0 0;padding:16px;border:1px solid #3b7194;background:#0a1a2b;color:#d9efff;font-size:13px;line-height:1.6';
+      notice.textContent='Mode '+mode+' sélectionné. L’espace de travail '+mode+' sera construit dans cette branche dédiée ; le moteur de recommandations n’est pas encore activé.';
+      document.querySelector('.mode-grid').after(notice);
+    });
+  });
+})();
+</script>
+</body>
+</html>
