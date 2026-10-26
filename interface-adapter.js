@@ -56,6 +56,7 @@
 
   function renderDecision(){
     const chars=(typeof rosterCharacters!=='undefined' && Array.isArray(rosterCharacters))?rosterCharacters:[];
+       try{const names=chars.map(c=>({name:c?.name||c?.character_name||c?.characterName||c?.base_id||c?.baseId||c?.defId||c?.id||''})).filter(c=>c.name);sessionStorage.setItem('holocronRosterNames',JSON.stringify(names));localStorage.setItem('holocronRosterNames',JSON.stringify(names));}catch(_){}
     const ships=(typeof rosterShips!=='undefined' && Array.isArray(rosterShips))?rosterShips:[];
     const allMods=(typeof mods!=='undefined' && Array.isArray(mods))?mods:[];
     const gp=(typeof accountGalacticPower!=='undefined' && accountGalacticPower)||{total:0,characters:0,ships:0};
