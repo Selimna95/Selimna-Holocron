@@ -1,5 +1,5 @@
 // Retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.0.12-connected-roster-padawan';
+const CACHE_NAME = 'holocron-static-v4.0.13-expanded-gac-catalogue';
 const STATIC_ASSETS = [
   './',
   './index.html',
