@@ -71,3 +71,14 @@
 .holocron-object-jedi:before,.holocron-object-jedi i{display:none!important}
 .holocron-object.holocron-object-image{width:clamp(160px,18vw,220px);height:clamp(180px,21vw,245px);}
 @media(max-width:700px){.holocron-object.holocron-object-image{width:clamp(120px,30vw,165px);height:clamp(140px,36vw,190px)}}
+
+
+/* V4.0.4 — rétablir la vraie photo du temple et rendre les deux holocrons visibles. */
+.temple-gate .temple-scene{background-image:url("assets/backgrounds/perso.jpg")!important;background-position:center center!important;background-size:cover!important;background-repeat:no-repeat!important;}
+.holocron-object-sith{background-image:url("assets/holocrons/sith-holocron.svg")!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;opacity:1!important;visibility:visible!important;}
+.holocron-object-jedi{background-image:url("assets/holocrons/jedi-blue-reference.jpg")!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;opacity:1!important;visibility:visible!important;}
+.holocron-choice-red .holocron-object{filter:drop-shadow(0 0 22px rgba(255,35,55,.9)) drop-shadow(0 0 42px rgba(255,20,45,.35))!important;}
+.holocron-choice-red .holocron-aura{background:radial-gradient(circle,rgba(255,25,48,.95),transparent 68%)!important;opacity:.34;}
+.holocron-conflict b{background:linear-gradient(90deg,transparent,#168bff 35%,#fff 50%,#168bff 64%,transparent)!important;color:#168bff!important;}
+.holocron-conflict em{box-shadow:0 0 9px 4px #fff,0 0 22px 10px #ff4a5a,0 0 32px 12px #168bff!important;}
+.chambers-mist{background:radial-gradient(ellipse at 25% 55%,rgba(245,40,48,.15),transparent 30%),radial-gradient(ellipse at 75% 55%,rgba(35,120,255,.15),transparent 30%)!important;}
