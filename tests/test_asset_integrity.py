@@ -52,7 +52,7 @@ class AssetIntegrityTests(unittest.TestCase):
 
     def test_service_worker_has_new_cache_and_network_first_navigation(self):
         self.assertIn("holocron-static-v4.0.8-gac-parameters", self.sw)
-        self.assertIn("holocron-static-v4.0.16-roster-normalization-fix", self.sw)
+        self.assertIn("holocron-static-v4.0.19-padawan-seasonal-defense", self.sw)
         self.assertNotIn("holocron-static-v3.4.3-weak-donor-pool", self.sw)
         self.assertIn("request.mode === 'navigate'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
@@ -61,19 +61,21 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("Selimna’s Holocron — V4.0.7", self.html)
         self.assertNotIn("Selimna’s Holocron — V3.4.4", self.html)
 
-    def test_blue_gac_has_mode_tier_strategy_then_access_flow(self):
+    def test_blue_gac_padawan_is_defense_only_and_uses_two_seasons(self):
         blue = (ROOT / "blue-gac" / "index.html").read_text(encoding="utf-8")
         for value in ('data-mode="3v3"', 'data-mode="5v5"',
                       'data-access="Padawan"', 'data-access="Maître Jedi"',
                       'data-tier="Kyber"', 'data-tier="Aurodium"',
                       'data-tier="Chromium"', 'data-tier="Bronzium"',
-                      'data-tier="Carbonite"', 'data-strategy="Attaque"',
-                      'data-strategy="Équilibrée"', 'data-strategy="Défensive"'):
+                      'data-tier="Carbonite"'):
             self.assertIn(value, blue)
-        self.assertIn("V4.0.16", blue)
+        self.assertIn("V4.0.19", blue)
         self.assertIn('id="tierView"', blue)
         self.assertIn('id="strategyView"', blue)
-        self.assertIn("ÉTAPE 04 / 04", blue)
+        self.assertIn("var order=['mode','tier','access']", blue)
+        self.assertIn("var seasons=fmt==='5v5'?[84,82]:[83,81]", blue)
+        self.assertIn("Saisons analysées", blue)
+        self.assertNotIn("ÉTAPE 04 / 04", blue)
         self.assertIn("function show(step)", blue)
 
 
