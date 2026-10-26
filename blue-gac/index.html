@@ -103,7 +103,7 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 'use strict';
 var state={mode:'',tier:'',strategy:'',access:''};
 var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),strategy:document.getElementById('strategyView'),access:document.getElementById('accessView'),padawan:document.getElementById('padawanView')};
-var order=['mode','tier','access'];
+var order=['mode','tier','strategy','access'];
 var lastStep='access';
 function show(step){
  order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';
