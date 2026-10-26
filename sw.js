@@ -1,5 +1,5 @@
-// Retired cache identifier: holocron-static-v4.0.7-blue-gac-entry
-const CACHE_NAME = 'holocron-static-v4.0.8-gac-parameters';
+// Retired cache identifier: holocron-static-v4.0.8-gac-parameters
+const CACHE_NAME = 'holocron-static-v4.0.9-gac-journey';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -33,69 +33,36 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));
 });
-
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(key => key.startsWith('holocron-static-') && key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('holocron-static-') && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
-
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
-
-  // Les données de profil/relais ne sont jamais mises en cache.
   if (url.searchParams.has('ally')) return;
-
-  // Les navigations sont réseau d'abord pour éviter de servir un ancien index.
-  // La copie réseau est conservée pour le mode hors ligne.
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          const indexUrl = new URL('./index.html', self.registration.scope).href;
-          caches.open(CACHE_NAME).then(cache => cache.put(indexUrl, copy));
-        }
-        return response;
-      }).catch(async () => {
-        const cached = await caches.match(request);
-        if (cached) return cached;
-        const indexUrl = new URL('./index.html', self.registration.scope).href;
-        return caches.match(indexUrl);
-      })
-    );
-    return;
-  }
-
-  // Cache-first uniquement pour les ressources statiques, dont les URLs
-  // versionnées sont alignées avec index.html.
-  event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
-      if (response.ok && (
-        request.destination === 'script' ||
-        request.destination === 'style' ||
-        request.destination === 'image' ||
-        url.pathname.endsWith('.json') ||
-        url.pathname.endsWith('.mjs') ||
-        url.pathname.endsWith('.py')
-      )) {
+    event.respondWith(fetch(request).then(response => {
+      if (response.ok) {
         const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        const indexUrl = new URL('./index.html', self.registration.scope).href;
+        caches.open(CACHE_NAME).then(cache => cache.put(indexUrl, copy));
       }
       return response;
-    }))
-  );
+    }).catch(async () => {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      return caches.match(new URL('./index.html', self.registration.scope).href);
+    }));
+    return;
+  }
+  event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
+    if (response.ok && (request.destination === 'script' || request.destination === 'style' || request.destination === 'image' || url.pathname.endsWith('.json') || url.pathname.endsWith('.mjs') || url.pathname.endsWith('.py'))) {
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+    }
+    return response;
+  })));
 });
