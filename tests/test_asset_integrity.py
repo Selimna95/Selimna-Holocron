@@ -67,8 +67,8 @@ class AssetIntegrityTests(unittest.TestCase):
                       'data-access="Padawan"', 'data-access="Maître Jedi"',
                       'data-tier="Kyber"', 'data-tier="Aurodium"',
                       'data-tier="Chromium"', 'data-tier="Bronzium"',
-                      'data-tier="Carbonite"', 'data-strategy="Agressive"',
-                      'data-strategy="Neutre"', 'data-strategy="Défensive"'):
+                      'data-tier="Carbonite"', 'data-strategy="Attaque"',
+                      'data-strategy="Équilibrée"', 'data-strategy="Défensive"'):
             self.assertIn(value, blue)
         self.assertIn("V4.0.10", blue)
         self.assertIn('id="tierView"', blue)
