@@ -1,5 +1,5 @@
-// Retired cache identifier: holocron-static-v3.5.2-sithari-total-speed-guard
-const CACHE_NAME = 'holocron-static-v4.0.7-blue-gac-entry';
+// Retired cache identifier: holocron-static-v4.0.7-blue-gac-entry
+const CACHE_NAME = 'holocron-static-v4.0.8-gac-parameters';
 const STATIC_ASSETS = [
   './',
   './index.html',
