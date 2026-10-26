@@ -203,9 +203,7 @@ return [];
 }
 function renderTeams(){
 var results=document.getElementById('teamResults');results.innerHTML='';
-var roster=parseRoster();var status=document.getElementById('padawanStatus');
-if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
-var rosterSet=new Set(roster);var fmt=state.mode||'5v5';
+var roster=parseRoster();var status=document.getElementById('padawanStatus');var fmt=state.mode||'5v5';
 if(state.strategy==='Attaque'){
 document.getElementById('attackPanel').hidden=false;
 status.textContent='Mode Attaque : pars du leader adverse pour consulter les contres observés en '+fmt+'.';
@@ -215,6 +213,8 @@ results.innerHTML='';
 return;
 }
 document.getElementById('attackPanel').hidden=true;
+if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
+var rosterSet=new Set(roster);
 var requiredCounts={'5v5':{Kyber:11,Aurodium:9,Chromium:7,Bronzium:5,Carbonite:3},'3v3':{Kyber:15,Aurodium:13,Chromium:10,Bronzium:7,Carbonite:3}};
 var required=(requiredCounts[fmt]&&requiredCounts[fmt][state.tier])||requiredCounts[fmt].Kyber;
 var seasons=fmt==='5v5'?[84,82]:[83,81];var ranked=publicTeams.filter(function(t){return t.format===fmt&&seasons.indexOf(t.season)>=0&&Number.isFinite(t.rank);}).slice().sort(function(a,b){return b.season-a.season||a.rank-b.rank;});
