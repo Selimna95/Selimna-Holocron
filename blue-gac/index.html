@@ -252,6 +252,6 @@ document.getElementById('showAllTeams').addEventListener('click',renderTeams);
 document.getElementById('backToAccess').addEventListener('click',function(){show('access');});
 
 document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTier').addEventListener('click',function(){show('tier');});document.getElementById('backToStrategy').addEventListener('click',function(){show('strategy');});
-sync();show(state.access==='Padawan'?'padawan':state.access?'access':state.tier?'access':state.mode?'tier':'mode');if(state.access==='Padawan')initRosterStatus();
+sync();show(state.access==='Padawan'?'padawan':state.access?'access':state.tier?(state.strategy?'access':'strategy'):state.mode?'tier':'mode');if(state.access==='Padawan')initRosterStatus();
 })();
 </script></body></html>
