@@ -58,10 +58,16 @@
 .holocron-object.holocron-object-image{width:clamp(145px,17vw,205px);height:clamp(170px,19vw,225px);margin:18px auto 12px;background-position:center;background-repeat:no-repeat;background-size:contain;filter:drop-shadow(0 0 18px color-mix(in srgb,var(--energy) 55%,transparent));animation:holocronFloat 4.2s ease-in-out infinite}
 .holocron-object.holocron-object-image:before{display:none}.holocron-object.holocron-object-image i{display:none}
 .holocron-object-sith{background-image:url("assets/holocrons/sith-holocron.svg")}
-.holocron-object-jedi{background-image:url("assets/holocrons/jedi-blue-holocron.svg")}
+.holocron-object-jedi{background-image:url("assets/holocrons/jedi-blue-reference.jpg")}
 .holocron-choice-red{--energy:#ff2638}.holocron-choice-green{--energy:#168bff}
 .holocron-choice-green .holocron-name:after{content:" · VOIE BLEUE";color:#74bdff}
 .holocron-choice-green .holocron-subtitle{color:#9acfff}.holocron-choice-green .holocron-action{color:#75baff}
 .holocron-choice-green .holocron-aura{background:radial-gradient(circle,#168bff,transparent 68%)}
 .holocron-choice-green:hover,.holocron-choice-green:focus-visible{border-color:rgba(50,145,255,.45);background:linear-gradient(180deg,rgba(30,100,255,.08),transparent 75%)}
 @media(max-width:700px){.holocron-object.holocron-object-image{width:clamp(108px,28vw,150px);height:clamp(130px,34vw,175px);margin-top:16px}.holocron-choice{min-height:300px}}
+
+/* V4.0.3 — image de référence réelle pour le holocron bleu, sans cube CSS provisoire. */
+.holocron-object-jedi{background-image:url("assets/holocrons/jedi-blue-reference.jpg")!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;}
+.holocron-object-jedi:before,.holocron-object-jedi i{display:none!important}
+.holocron-object.holocron-object-image{width:clamp(160px,18vw,220px);height:clamp(180px,21vw,245px);}
+@media(max-width:700px){.holocron-object.holocron-object-image{width:clamp(120px,30vw,165px);height:clamp(140px,36vw,190px)}}
