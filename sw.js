@@ -1,12 +1,12 @@
 // Retired cache identifier: holocron-static-v3.5.2-sithari-total-speed-guard
-const CACHE_NAME = 'holocron-static-v4.0.2-user-artwork';
+const CACHE_NAME = 'holocron-static-v4.0.3-real-blue-holocron';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.css?v=4.0.0-seigneur-card-layout',
   './sithari.css?v=4.2.0-adaptive-mod-board',
   './holocron-system.css?v=4.0.0-disciple-clarity',
-  './entrance.css?v=4.0.2-user-artwork',
+  './entrance.css?v=4.0.3-real-blue-holocron',
   './interface-adapter.js?v=4.0.0-temple-holocron-flow',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.4.4-cache-sync',
@@ -25,6 +25,7 @@ const STATIC_ASSETS = [
   './assets/backgrounds/yavin-temple-entrance-v2.svg',
   './assets/holocrons/sith-holocron.svg',
   './assets/holocrons/jedi-blue-holocron.svg',
+  './assets/holocrons/jedi-blue-reference.jpg',
   './assets/sith-sprite.webp',
   './assets/icons/holocron-192.png',
   './assets/icons/holocron-512.png'
