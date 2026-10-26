@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.20</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.21</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -93,10 +93,10 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <div class="roster-help" id="padawanStatus" aria-live="polite">Le roster connecté sera utilisé automatiquement ; aucune équipe ne sera affichée sans vérification du roster.</div>
 <div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
 <section id="attackPanel" hidden class="panel" style="border:1px solid #315b79;background:#071522;padding:18px;margin:16px 0"><h3 style="font:500 22px Georgia,serif;margin:0 0 8px;color:#dff6ff">PADAWAN · TROUVER UN CONTRE</h3><p class="roster-help">Pars de la défense adverse et consulte les compositions d’attaque réellement observées, avec leur taux de victoire, leur nombre de combats et les bannières disponibles sur SWGOH.GG.</p><label class="roster-help">LEADER DE LA DÉFENSE<select id="attackDefenderLeader" style="display:block;width:100%;margin-top:6px;padding:12px;background:#06101b;color:#edf7ff;border:1px solid #315b79"><option value="GLREY">Rey (Galactic Legend)</option><option value="LORDVADER">Lord Vader</option><option value="GLJABBATHEHUTT">Jabba the Hutt</option><option value="SUPREMELEADERKYLOREN">Supreme Leader Kylo Ren</option><option value="GLKENOBI">Jedi Master Kenobi</option><option value="GLJEDILUKE">Jedi Master Luke Skywalker</option><option value="SITHPALPATINE">Sith Eternal Emperor</option><option value="DARTHMALGUS">Darth Malgus</option><option value="GENERALSKYWALKER">General Skywalker</option><option value="GLAHSOKATANO">Ahsoka Tano</option><option value="THESTRANGER">The Stranger</option></select></label><a id="openAttackCounters" href="https://swgoh.gg/gac/counters/GLREY/?season_id=CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;border:1px solid #80d7ff;background:#102e43;color:#effaff;padding:13px 16px;cursor:pointer;font:inherit;font-size:10px;letter-spacing:.1em;text-decoration:none">VOIR LES CONTRES OBSERVÉS ↗</a><div id="attackCounterInfo" class="note" style="margin:12px 0 0">Les statistiques détaillées s’ouvrent sur la source SWGOH.GG.</div><p class="roster-help">Cette première version ouvre la donnée exacte de contre sur SWGOH.GG ; le filtrage automatique de chaque contre par ton roster reste à intégrer.</p></section><div id="teamResults" class="team-list"></div>
-<div class="note">V4.0.20 : Padawan sépare la recherche de contres du classement défensif, ignore les équipes incompatibles et évite les doublons de personnages. Aucune équipe ne sera recommandée tant que le roster ne sera pas reconnu et que les compositions publiques ne seront pas filtrées par format, ligue et présence de chaque personnage. Les flottes sont exclues.</div>
+<div class="note">V4.0.21 : Padawan sépare la recherche de contres du classement défensif, ignore les équipes incompatibles et évite les doublons de personnages. Aucune équipe ne sera recommandée tant que le roster ne sera pas reconnu et que les compositions publiques ne seront pas filtrées par format, ligue et présence de chaque personnage. Les flottes sont exclues.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.20</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.21</footer>
 </div>
 <script>
 (function(){
@@ -226,7 +226,17 @@ ranked.forEach(function(t){
  if(members.some(function(m){return used.has(m);})){skippedUsed++;return;}
  candidates.push(t);members.forEach(function(m){used.add(m);});
 });
-if(!candidates.length){status.textContent='Roster détecté ('+roster.length+' personnages), mais aucune équipe complète du classement actuel ne peut être posée sans doublon.';results.innerHTML='<div class="empty-state">Le moteur a parcouru les compositions de défense disponibles. Il passe les équipes dont il te manque un personnage et celles qui réutiliseraient un personnage déjà retenu. Le catalogue local doit encore être enrichi si aucune équipe ne passe ces règles.</div>';return;}
+function addUnavailableTeamCard(number){
+ var card=document.createElement('article');card.className='team-card unavailable';
+ var h=document.createElement('h3');h.textContent='Équipe '+number;card.appendChild(h);
+ var message=document.createElement('div');message.className='empty-state';message.textContent='Aucune proposition ne répond aux critères pour cette équipe. Les compositions disponibles ne permettent pas de compléter la sélection sans personnage manquant ou doublon.';card.appendChild(message);
+ results.appendChild(card);
+}
+if(!candidates.length){
+ status.textContent='Roster détecté ('+roster.length+' personnages), mais aucune équipe complète du classement actuel ne peut être posée sans doublon.';
+ for(var emptyIndex=1;emptyIndex<=required;emptyIndex++)addUnavailableTeamCard(emptyIndex);
+ return;
+}
 status.textContent=candidates.length+' / '+required+' équipes défensives retenues pour '+fmt+' '+state.tier+'. Saisons analysées : '+seasons.map(function(s){return 'S'+s;}).join(' et ')+'. '+skippedMissing+' équipe(s) ignorée(s) faute de personnages ; '+skippedUsed+' ignorée(s) pour éviter les doublons. Catalogue relevé : '+ranked.length+' entrées saisonnières.';
 
 candidates.forEach(function(t,i){
@@ -237,6 +247,7 @@ var stats=document.createElement('div');stats.className='team-stats';stats.textC
 var reason=document.createElement('div');reason.className='team-reason';reason.textContent=t.note+' Équipe complète vérifiée contre le roster.';card.appendChild(reason);
 var link=document.createElement('a');link.href=t.source;link.target='_blank';link.rel='noopener';link.className='back';link.textContent='VÉRIFIER LA SOURCE ↗';link.style.display='inline-block';link.style.marginTop='12px';card.appendChild(link);results.appendChild(card);
 });
+for(var missingIndex=candidates.length+1;missingIndex<=required;missingIndex++)addUnavailableTeamCard(missingIndex);
 }
 
 function updateAttackCounterLink(){
