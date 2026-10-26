@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.10</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.11</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -46,6 +46,7 @@ h1{font:500 clamp(34px,5.5vw,62px)/1.04 Georgia,serif;letter-spacing:.07em;margi
 .continue{border-color:#70c9f4;background:linear-gradient(110deg,#123c59,#0a2135);color:#effaff}.ghost:hover,.continue:hover{border-color:#b4ebff}
 .selection{color:#7997ad;font-size:10px;letter-spacing:.08em;text-align:right}
 .note{width:min(900px,100%);margin:22px auto 0;padding:13px 16px;border-left:2px solid #d0b974;background:#111923;color:#91a7b8;font-size:10px;line-height:1.6}
+.padawan-panel{width:min(1000px,100%);margin:0 auto}.padawan-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}.source-tag{font-size:9px;letter-spacing:.12em;color:#8fdcff;border:1px solid #315b79;padding:8px 10px}.roster-box{display:grid;grid-template-columns:1fr auto;gap:12px;margin:14px 0}.roster-box textarea{width:100%;min-height:100px;resize:vertical;background:#071321;border:1px solid #31536b;color:#edf7ff;padding:13px;font:12px/1.6 system-ui}.team-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.team-card{border:1px solid #31536b;background:linear-gradient(145deg,#0c2438,#050d18);padding:17px;min-width:0}.team-card h3{font:500 20px Georgia,serif;margin:0 0 10px;color:#e9f8ff}.team-members{font-size:12px;line-height:1.8;color:#c5dbea}.team-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:13px;color:#8fcce9;font-size:10px}.team-reason{font-size:11px;line-height:1.6;color:#9db6ca;margin-top:10px}.team-card.unavailable{opacity:.5}.empty-state{padding:22px;border:1px dashed #31536b;color:#9db6ca;font-size:12px;line-height:1.7}.roster-help{font-size:11px;color:#8ea9bd;line-height:1.7}.padawan-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.padawan-actions button{border:1px solid #31536b;background:#091827;color:#c5e4f7;padding:11px 14px;font:inherit;font-size:9px;letter-spacing:.12em;cursor:pointer}@media(max-width:640px){.team-list{grid-template-columns:1fr}.roster-box{grid-template-columns:1fr}}
 footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-align:center}
 @media(max-width:640px){.shell{padding:16px 13px 20px}header{align-items:flex-start}.brand strong{font-size:16px}.back{font-size:8px;padding:9px}.intro{margin:30px 0 20px}.mode-grid,.access-grid{grid-template-columns:1fr;gap:12px}.mode{min-height:230px}.mode h2{margin:15px 0 8px}.mode .cta{margin-top:18px}.mode:before{right:-90px}.access{min-height:230px;padding:22px}.sig{width:58px;height:58px;margin-bottom:13px}.sig:before{inset:7px}.sig:after{inset:14px}.step-tools{align-items:flex-start}.selection{max-width:48%;line-height:1.6}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
@@ -83,16 +84,30 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <button class="access master" type="button" data-access="Maître Jedi"><span class="sig" aria-hidden="true"></span><span class="eyebrow">ANALYSER · MAÎTRISER</span><h2>Maître Jedi</h2><p>Un parcours expert pour piloter les arbitrages, la construction des équipes et la stratégie.</p><span class="cta">ACCÉDER À L’ANALYSE ↗</span></button></div>
 <div class="step-tools"><button class="ghost" id="backToStrategy" type="button">← CHANGER DE STRATÉGIE</button><span class="selection" id="chosenSummary">Configuration : —</span></div>
 <div class="note" id="settingsSummary" aria-live="polite">Le moteur de recommandations GAC sera construit dans une étape ultérieure ; aucune équipe fictive ne sera affichée.</div></section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.10</footer>
+<section class="view" id="padawanView" aria-label="Propositions Padawan" hidden>
+<div class="padawan-panel">
+<div class="padawan-toolbar"><h2 class="view-title" style="margin:0;text-align:left">PADAWAN · COMPOSITIONS DÉFENSIVES OBSERVÉES</h2><span class="source-tag">DONNÉES PUBLIQUES · ÉCHANTILLON</span></div>
+<p class="subtitle" style="margin:0 0 14px;text-align:left;max-width:none">Le moteur ne fabrique aucune équipe : il ne propose que des compositions complètes publiées dans le classement défensif public de SWGOH.GG. Saisis les personnages de ton roster pour filtrer les compositions que tu peux réellement poser.</p>
+<div class="note" id="padawanConfig">Configuration : —</div>
+<label for="rosterInput" class="roster-help">PERSONNAGES DISPONIBLES · sépare les noms par des virgules ou des retours à la ligne. Les noms doivent correspondre aux noms affichés par SWGOH.GG.</label>
+<div class="roster-box"><textarea id="rosterInput" placeholder="Ex. : Rey, Ben Solo, Cal Kestis, Supreme Leader Kylo Ren, Kylo Ren (Unmasked)…"></textarea><button class="continue" id="evaluateRoster" type="button">ÉVALUER MON ROSTER</button></div>
+<div class="roster-help" id="padawanStatus" aria-live="polite">Aucune équipe n'est présélectionnée. L'évaluation se fera uniquement sur les compositions observées ci-dessous et sur les personnages que tu déclares disponibles.</div>
+<div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS DE L'ÉCHANTILLON</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
+<div id="teamResults" class="team-list"></div>
+<div class="note">Prototype de test V4.0.11 : les données intégrées sont un échantillon public relevé sur les pages de classement défensif SWGOH.GG, pas un flux live. Les statistiques dépendent des saisons, datacrons et compositions observées. Le filtre de roster ne remplace pas encore l'import automatique d'un profil ni le calcul définitif du nombre d'équipes par ligue.</div>
+</div>
+</section>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.11</footer>
 </div>
 <script>
 (function(){
 'use strict';
 var state={mode:'',tier:'',strategy:'',access:''};
-var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),strategy:document.getElementById('strategyView'),access:document.getElementById('accessView')};
+var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),strategy:document.getElementById('strategyView'),access:document.getElementById('accessView'),padawan:document.getElementById('padawanView')};
 var order=['mode','tier','strategy','access'];
+var lastStep='access';
 function show(step){
- order.forEach(function(k){views[k].hidden=k!==step;});
+ order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';
  var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 04'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 04'],strategy:['CHOISIS TA STRATÉGIE','Choisis la priorité qui guidera la construction de tes équipes.','ÉTAPE 03 / 04'],access:['CHOISIS TON NIVEAU D’ACCÈS','Tes paramètres sont définis. Choisis maintenant comment tu veux explorer la préparation GAC.','ÉTAPE 04 / 04']};
  document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
  ['progress1','progress2','progress3','progress4'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
@@ -102,14 +117,44 @@ function save(){try{Object.keys(state).forEach(function(k){sessionStorage.setIte
 function sync(){
  [['mode','data-mode'],['tier','data-tier'],['strategy','data-strategy'],['access','data-access']].forEach(function(p){document.querySelectorAll('['+p[1]+']').forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute(p[1])===state[p[0]]));});});
  document.getElementById('chosenMode').textContent='Format : '+(state.mode||'—');document.getElementById('chosenTier').textContent='Ligue : '+(state.tier||'—');document.getElementById('chosenSummary').textContent=(state.mode||'—')+' · '+(state.tier||'—')+' · '+(state.strategy||'—');
- document.getElementById('settingsSummary').textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Stratégie : '+(state.strategy||'—')+' · Accès : '+(state.access||'à choisir')+'. Le moteur GAC n’est pas encore activé : aucune équipe fictive ne sera affichée.';save();
+ document.getElementById('settingsSummary').textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Stratégie : '+(state.strategy||'—')+' · Accès : '+(state.access||'à choisir')+'. Le Padawan utilise un échantillon de compositions défensives publiques observées, sans substitutions inventées.';var cfg=document.getElementById('padawanConfig');if(cfg)cfg.textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Stratégie : '+(state.strategy||'—')+' · Accès : '+(state.access||'—');save();
 }
 try{order.forEach(function(k){state[k]=sessionStorage.getItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1))||'';});}catch(_){}
 document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){state.mode=b.dataset.mode;state.tier='';state.strategy='';state.access='';sync();show('tier');});});
 document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='';state.access='';sync();show('strategy');});});
 document.querySelectorAll('[data-strategy]').forEach(function(b){b.addEventListener('click',function(){state.strategy=b.dataset.strategy;state.access='';sync();show('access');});});
-document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();});});
+document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();if(state.access==='Padawan'){show('padawan');renderTeams(false);}else{document.getElementById('settingsSummary').textContent='Le parcours Maître Jedi sera développé séparément.';}});});
+var publicTeams=[
+{format:'3v3',name:'Rey · Ben Solo · Cal Kestis',members:['Rey','Ben Solo','Cal Kestis'],hold:28.4,battles:93300,source:'SWGOH.GG · classement défense 3v3 · saison 83',strategy:'defense'},
+{format:'3v3',name:'The Stranger · Maul (Hate-Fueled) · Starkiller',members:['The Stranger','Maul (Hate-Fueled)','Starkiller'],hold:32.8,battles:83000,source:'SWGOH.GG · classement défense 3v3 · saison 83',strategy:'defense'},
+{format:'3v3',name:'Lord Vader · CC-1119 “Appo” · CX-2',members:['Lord Vader','CC-1119 "Appo"','CX-2'],hold:31.6,battles:140000,source:'SWGOH.GG · classement défense 3v3 · saison 83',strategy:'defense'},
+{format:'3v3',name:'Supreme Leader Kylo Ren · Rey (Dark Side Vision) · Kylo Ren (Unmasked)',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Kylo Ren (Unmasked)'],hold:37.2,battles:12400,source:'SWGOH.GG · classement défense 3v3 · saison 83',strategy:'defense'},
+{format:'3v3',name:'Ahsoka Tano · Ezra Bridger (Exile) · Huyang',members:['Ahsoka Tano','Ezra Bridger (Exile)','Huyang'],hold:28.0,battles:79100,source:'SWGOH.GG · classement défense 3v3 · saison 83',strategy:'defense'},
+{format:'3v3',name:'Leia Organa · Captain Drogan · R2-D2',members:['Leia Organa','Captain Drogan','R2-D2'],hold:24.5,battles:33000,source:'SWGOH.GG · classement défense 3v3 · saison 83',strategy:'defense'},
+{format:'3v3',name:'General Syndulla · Ezra Bridger (Exile) · Ahsoka Tano',members:['General Syndulla','Ezra Bridger (Exile)','Ahsoka Tano'],hold:19.9,battles:23400,source:'SWGOH.GG · classement défense 3v3 · saison 83',strategy:'defense'},
+{format:'3v3',name:'Darth Traya · Darth Nihilus · Savage Opress',members:['Darth Traya','Darth Nihilus','Savage Opress'],hold:18.3,battles:13600,source:'SWGOH.GG · classement défense 3v3 · saison 83',strategy:'defense'},
+{format:'5v5',name:'Ahsoka Tano · Ezra Bridger (Exile) · General Syndulla · Huyang · Padawan Sabine Wren',members:['Ahsoka Tano','Ezra Bridger (Exile)','General Syndulla','Huyang','Padawan Sabine Wren'],hold:19.0,battles:114000,source:'SWGOH.GG · classement défense 5v5 · saison 84',strategy:'defense'},
+{format:'5v5',name:'Doctor Aphra · B2 Super Battle Droid · BT-1 · IG-90 · 0-0-0',members:['Doctor Aphra','B2 Super Battle Droid','BT-1','IG-90','0-0-0'],hold:26.2,battles:4999,source:'SWGOH.GG · classement défense 5v5 · saison 84',strategy:'defense'},
+{format:'5v5',name:'Darth Nihilus · Darth Sion · Darth Talon · Darth Traya · Savage Opress',members:['Darth Nihilus','Darth Sion','Darth Talon','Darth Traya','Savage Opress'],hold:11.6,battles:108,source:'SWGOH.GG · classement défense 5v5 · saison 84',strategy:'defense'}
+];
+function normalizeName(s){return s.toLocaleLowerCase('fr').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]/g,'');}
+function parseRoster(){return document.getElementById('rosterInput').value.split(/[,;\\n]/).map(function(s){return normalizeName(s.trim());}).filter(Boolean);}
+function renderTeams(requireRoster){
+var results=document.getElementById('teamResults');results.innerHTML='';
+var roster=parseRoster();var candidates=publicTeams.filter(function(t){return t.format===state.mode;});
+if(requireRoster&&roster.length)candidates=candidates.filter(function(t){return t.members.every(function(m){return roster.indexOf(normalizeName(m))!==-1;});});
+if(state.strategy==='Défensive')candidates.sort(function(a,b){return b.hold-a.hold;});
+else if(state.strategy==='Attaque')candidates.sort(function(a,b){return a.members.length-b.members.length||b.hold-a.hold;});
+else candidates.sort(function(a,b){return (b.hold*Math.log10(b.battles+1))-(a.hold*Math.log10(a.battles+1));});
+if(!candidates.length){results.innerHTML='<div class="empty-state">Aucune composition complète de cet échantillon ne correspond à '+(roster.length?'ton roster déclaré':'la sélection actuelle')+'. Cela ne signifie pas qu’aucune défense n’est possible : l’échantillon est volontairement limité. Aucun personnage de remplacement ne sera inventé. Ajoute les noms exacts ou consulte la source publique.</div>';return;}
+candidates.forEach(function(t,i){var card=document.createElement('article');card.className='team-card';var title=document.createElement('h3');title.textContent=(i+1)+'. '+t.name;card.appendChild(title);var members=document.createElement('div');members.className='team-members';members.textContent=t.members.join(' · ');card.appendChild(members);var stats=document.createElement('div');stats.className='team-stats';stats.textContent='Hold observé : '+t.hold.toLocaleString('fr-FR')+' % · Combats : '+t.battles.toLocaleString('fr-FR');card.appendChild(stats);var reason=document.createElement('div');reason.className='team-reason';reason.textContent=t.source+'. '+(state.strategy==='Défensive'?'Classement priorisé par taux de hold observé.':state.strategy==='Attaque'?'Composition affichée comme option défensive observée ; la préservation offensive réelle n’est pas encore mesurée faute de données publiques complètes de roster.':'Compromis exploratoire entre hold observé et volume de combats.');card.appendChild(reason);results.appendChild(card);});
+document.getElementById('padawanStatus').textContent=(roster.length?'Compositions complètes possédées selon les noms saisis : ':'Compositions observées dans l’échantillon pour le format : ')+candidates.length+'. Les résultats sont triés selon la stratégie choisie ; les statistiques restent celles de la composition observée.';
+}
+document.getElementById('evaluateRoster').addEventListener('click',function(){renderTeams(true);});
+document.getElementById('showAllTeams').addEventListener('click',function(){renderTeams(false);});
+document.getElementById('backToAccess').addEventListener('click',function(){show('access');});
+
 document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTier').addEventListener('click',function(){show('tier');});document.getElementById('backToStrategy').addEventListener('click',function(){show('strategy');});
-sync();show(state.access?'access':state.strategy?'access':state.tier?'strategy':state.mode?'tier':'mode');
+sync();show(state.access==='Padawan'?'padawan':state.access?'access':state.strategy?'access':state.tier?'strategy':state.mode?'tier':'mode');
 })();
 </script></body></html>
