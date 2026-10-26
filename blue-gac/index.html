@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.14</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.15</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -83,7 +83,7 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <button class="access" type="button" data-access="Padawan"><span class="sig" aria-hidden="true"></span><span class="eyebrow">APPRENDRE · ÊTRE GUIDÉ</span><h2>Padawan</h2><p>Un parcours accompagné, des choix expliqués et une préparation GAC accessible.</p><span class="cta">ENTRER DANS LA VOIE ↗</span></button>
 <button class="access master" type="button" data-access="Maître Jedi"><span class="sig" aria-hidden="true"></span><span class="eyebrow">ANALYSER · MAÎTRISER</span><h2>Maître Jedi</h2><p>Un parcours expert pour piloter les arbitrages, la construction des équipes et la stratégie.</p><span class="cta">ACCÉDER À L’ANALYSE ↗</span></button></div>
 <div class="step-tools"><button class="ghost" id="backToStrategy" type="button">← CHANGER DE STRATÉGIE</button><span class="selection" id="chosenSummary">Configuration : —</span></div>
-<div class="note" id="settingsSummary" aria-live="polite">Le moteur de recommandations GAC sera construit dans une étape ultérieure ; aucune équipe fictive ne sera affichée.</div></section>
+<div class="note" id="settingsSummary" aria-live="polite">Le moteur n’affiche que des équipes complètes observées dans les données publiques et présentes dans le roster.</div></section>
 <section class="view" id="padawanView" aria-label="Propositions Padawan" hidden>
 <div class="padawan-panel">
 <div class="padawan-toolbar"><h2 class="view-title" style="margin:0;text-align:left">PADAWAN · SÉLECTION DÉFENSIVE</h2><span class="source-tag">ROSTER OBLIGATOIRE</span></div>
@@ -93,10 +93,10 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <div class="roster-help" id="padawanStatus" aria-live="polite">Le roster connecté sera utilisé automatiquement ; aucune équipe ne sera affichée sans vérification du roster.</div>
 <div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
 <div id="teamResults" class="team-list"></div>
-<div class="note">V4.0.14 : les compositions d’exemple non vérifiées ont été retirées. Aucune équipe ne sera recommandée tant que le roster ne sera pas reconnu et que les compositions publiques ne seront pas filtrées par format, ligue et présence de chaque personnage. Les flottes sont exclues.</div>
+<div class="note">V4.0.15 : les compositions d’exemple non vérifiées ont été retirées. Aucune équipe ne sera recommandée tant que le roster ne sera pas reconnu et que les compositions publiques ne seront pas filtrées par format, ligue et présence de chaque personnage. Les flottes sont exclues.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.12</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.15</footer>
 </div>
 <script>
 (function(){
@@ -123,27 +123,52 @@ document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener(
 document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='';state.access='';sync();show('strategy');});});
 document.querySelectorAll('[data-strategy]').forEach(function(b){b.addEventListener('click',function(){state.strategy=b.dataset.strategy;state.access='';sync();show('access');});});
 document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();if(state.access==='Padawan'){show('padawan');initRosterStatus();}else{document.getElementById('settingsSummary').textContent='Le parcours Maître Jedi sera développé séparément.';}});});
-// V4.0.14 — aucune composition statique non vérifiée n'est présentée comme recommandation.
-var publicTeams=[];
-function normalizeName(s){return s.toLocaleLowerCase('fr').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]/g,'');}
+// V4.0.15 — compositions relevées sur les classements publics SWGOH.GG (saison indiquée par la source).
+// Ces compositions sont des observations réelles, pas des équipes inventées. Chaque équipe est filtrée
+// intégralement sur le roster. Les statistiques sont celles du classement Kyber consulté le 26/10/2026;
+// elles ne doivent pas être interprétées comme des statistiques propres aux autres ligues.
+var publicTeams=[
+{format:'5v5',name:'The Stranger · Barriss · Maul · Starkiller · Visas',members:['The Stranger','Inquisitor Barriss','Maul (Hate-Fueled)','Starkiller','Visas Marr'],hold:53.0,battles:33900,source:'https://swgoh.gg/tier-list/gac/?side=defense',note:'Très forte tenue observée dans un grand volume de combats.'},
+{format:'5v5',name:'SLKR · Rey (Dark Side Vision) · Sith Trooper · Hux · KRU',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Sith Trooper','General Hux','Kylo Ren (Unmasked)'],hold:46.4,battles:7533,source:'https://swgoh.gg/tier-list/gac/?side=defense',note:'Composition First Order observée avec une tenue élevée.'},
+{format:'5v5',name:'Leia · Raddus · Drogan · Jyn · R2-D2',members:['Leia Organa','Admiral Raddus','Captain Drogan','Jyn Erso','R2-D2'],hold:26.2,battles:5155,source:'https://swgoh.gg/tier-list/gac/?side=defense',note:'Composition observée ; tenue plus modérée que les équipes prioritaires.'},
+{format:'5v5',name:'Baylan · Dengar · Hondo · Marrok · Shin Hati',members:['Baylan Skoll','Dengar','Hondo Ohnaka','Marrok','Shin Hati'],hold:29.0,battles:17200,source:'https://swgoh.gg/tier-list/gac/?side=defense',note:'Équipe observée ; elle ne sera affichée que si les cinq personnages sont possédés.'},
+{format:'3v3',name:'SLKR · Rey (Dark Side Vision) · Kylo Ren (Unmasked)',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Kylo Ren (Unmasked)'],hold:37.2,battles:12400,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Une des compositions défensives les plus solides du classement consulté.'},
+{format:'3v3',name:'Lord Vader · Appo · CX-2',members:['Lord Vader','CC-1119 "Appo"','CX-2'],hold:31.6,battles:140000,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Volume d’observation important ; bonne tenue défensive mesurée.'},
+{format:'3v3',name:'Rey · Ben Solo · Cal Kestis',members:['Rey','Ben Solo','Cal Kestis'],hold:28.4,battles:93300,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Composition fréquemment observée, avec tenue défensive intermédiaire.'},
+{format:'3v3',name:'Ahsoka Tano · Ezra Bridger (Exile) · Huyang',members:['Ahsoka Tano','Ezra Bridger (Exile)','Huyang'],hold:28.0,battles:79100,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Composition fréquemment observée, avec tenue défensive intermédiaire.'},
+{format:'3v3',name:'The Stranger · Maul · Starkiller',members:['The Stranger','Maul (Hate-Fueled)','Starkiller'],hold:32.8,battles:83000,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Tenue défensive élevée sur un volume d’observations important.'},
+{format:'3v3',name:'Leia · Captain Drogan · R2-D2',members:['Leia Organa','Captain Drogan','R2-D2'],hold:24.5,battles:33000,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Composition observée ; priorité inférieure aux équipes ayant une meilleure tenue.'}
+];
+function normalizeName(s){return String(s||'').toLocaleLowerCase('fr').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]/g,'');}
+var rosterAliases={'supreme leader kylo ren':'supreme leader kylo ren','slkr':'supreme leader kylo ren','kru':'kylo ren unmasked','kylo ren unmasked':'kylo ren unmasked','rey dark side vision':'rey dark side vision','cc 1119 appo':'cc1119 appo','appo':'cc1119 appo','the stranger':'the stranger','inquisitor barriss':'inquisitor barriss','barriss':'inquisitor barriss'};
+function canonicalName(s){var n=normalizeName(s);var aliases={slkr:'supremeleaderkyloren',kru:'kylorenunmasked',appo:'cc1119appo',barriss:'inquisitorbarriss'};return aliases[n]||n;}
 function parseRoster(){
 var raw='';
 try{raw=sessionStorage.getItem('holocronRosterNames')||localStorage.getItem('holocronRosterNames')||'';}catch(_){}
-try{var data=JSON.parse(raw);if(Array.isArray(data))return data.map(function(x){return normalizeName(typeof x==='string'?x:(x.name||x.base_id||x.defId||x.characterName||''));}).filter(Boolean);}catch(_){}
+try{var data=JSON.parse(raw);if(Array.isArray(data))return data.map(function(x){return canonicalName(typeof x==='string'?x:(x.name||x.character_name||x.characterName||x.base_id||x.baseId||x.defId||x.id||''));}).filter(Boolean);}catch(_){}
 return [];
 }
 function renderTeams(){
-var results=document.getElementById('teamResults');
-results.innerHTML='';
-var roster=parseRoster();
-var status=document.getElementById('padawanStatus');
-if(!roster.length){
-status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu. Il serait trompeur de proposer des équipes sans vérifier que tu possèdes chaque personnage.';
-results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Retourne dans l’Holocron principal, charge ton profil, puis rouvre le Sanctuaire bleu. Aucune équipe non vérifiée ne sera proposée.</div>';
-return;
+var results=document.getElementById('teamResults');results.innerHTML='';
+var roster=parseRoster();var status=document.getElementById('padawanStatus');
+if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
+var rosterSet=new Set(roster);var fmt=state.mode||'5v5';
+if(state.strategy!=='Défensive'){
+status.textContent='Le catalogue actuellement intégré mesure la tenue défensive. Pour éviter de déguiser ces données en recommandations d’attaque, aucune équipe n’est classée pour cette stratégie pour le moment.';
+results.innerHTML='<div class="empty-state">Les données publiques d’attaque ne sont pas encore intégrées au moteur. Choisis « Défensive » pour obtenir des recommandations fondées sur la tenue réellement observée, ou consulte les classements officiels via les liens ci-dessus.</div>';return;
 }
-status.textContent='Roster détecté ('+roster.length+' identifiants). Le catalogue de compositions défensives vérifiées n’est pas encore connecté : aucune équipe ne sera inventée ni présentée comme recommandation.';
-results.innerHTML='<div class="empty-state">Le roster est détecté, mais le catalogue GAC en direct n’est pas encore branché. Les anciennes équipes d’exemple ont été retirées : elles pouvaient recommander des personnages absents de ton compte ou présenter des statistiques insuffisamment vérifiées. Utilise les sources publiques ci-dessous en attendant la connexion du catalogue filtré par format et ligue.</div>';
+var candidates=publicTeams.filter(function(t){return t.format===fmt&&t.members.every(function(m){return rosterSet.has(canonicalName(m));});});
+candidates.sort(function(a,b){return (b.hold-b.hold)+(0)-(a.hold-b.hold)||b.battles-a.battles;});
+if(!candidates.length){status.textContent='Roster détecté ('+roster.length+' personnages), mais aucune composition complète du catalogue actuel ne correspond à ce roster et à ce format.';results.innerHTML='<div class="empty-state">Aucune équipe complète vérifiée trouvée pour '+fmt+'. Aucune substitution individuelle n’est faite : chaque proposition doit conserver le leader et tous les membres de la composition observée. Consulte les données publiques pour élargir la sélection.</div>';return;}
+status.textContent=candidates.length+' composition(s) complète(s) trouvée(s) dans le catalogue observé pour '+fmt+'. Toutes les équipes affichées sont entièrement présentes dans ton roster. Données de référence Kyber : elles ne constituent pas une mesure propre à '+state.tier+'.';
+candidates.forEach(function(t){
+var card=document.createElement('article');card.className='team-card';
+var h=document.createElement('h3');h.textContent=t.name;card.appendChild(h);
+var members=document.createElement('div');members.className='team-members';members.textContent=t.members.join(' · ');card.appendChild(members);
+var stats=document.createElement('div');stats.className='team-stats';stats.textContent='Tenue observée : '+t.hold.toFixed(1)+' % · Combats : '+t.battles.toLocaleString('fr-FR');card.appendChild(stats);
+var reason=document.createElement('div');reason.className='team-reason';reason.textContent=t.note+' Équipe complète vérifiée contre le roster.';card.appendChild(reason);
+var link=document.createElement('a');link.href=t.source;link.target='_blank';link.rel='noopener';link.className='back';link.textContent='VÉRIFIER LA SOURCE ↗';link.style.display='inline-block';link.style.marginTop='12px';card.appendChild(link);results.appendChild(card);
+});
 }
 
 function updateSourceLinks(){var league={Kyber:'kyber',Aurodium:'aurodium',Chromium:'chromium',Bronzium:'bronzium',Carbonite:'carbonite'}[state.tier]||'kyber';var mode=state.mode==='3v3'?'3v3':'gac';document.querySelectorAll('.padawan-actions a[href*="swgoh.gg/tier-list/"]').forEach(function(a){a.href='https://swgoh.gg/tier-list/'+mode+'/?league='+league+'&side=defense';});}
