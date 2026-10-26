@@ -52,7 +52,7 @@ class AssetIntegrityTests(unittest.TestCase):
 
     def test_service_worker_has_new_cache_and_network_first_navigation(self):
         self.assertIn("holocron-static-v4.0.8-gac-parameters", self.sw)
-        self.assertIn("holocron-static-v4.0.9-gac-journey", self.sw)
+        self.assertIn("holocron-static-v4.0.10-gac-step-order", self.sw)
         self.assertNotIn("holocron-static-v3.4.3-weak-donor-pool", self.sw)
         self.assertIn("request.mode === 'navigate'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
@@ -61,7 +61,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("Selimna’s Holocron — V4.0.7", self.html)
         self.assertNotIn("Selimna’s Holocron — V3.4.4", self.html)
 
-    def test_blue_gac_has_dynamic_mode_then_access_flow(self):
+    def test_blue_gac_has_mode_tier_strategy_then_access_flow(self):
         blue = (ROOT / "blue-gac" / "index.html").read_text(encoding="utf-8")
         for value in ('data-mode="3v3"', 'data-mode="5v5"',
                       'data-access="Padawan"', 'data-access="Maître Jedi"',
@@ -70,7 +70,10 @@ class AssetIntegrityTests(unittest.TestCase):
                       'data-tier="Carbonite"', 'data-strategy="Agressive"',
                       'data-strategy="Neutre"', 'data-strategy="Défensive"'):
             self.assertIn(value, blue)
-        self.assertIn("V4.0.9", blue)
+        self.assertIn("V4.0.10", blue)
+        self.assertIn('id="tierView"', blue)
+        self.assertIn('id="strategyView"', blue)
+        self.assertIn("ÉTAPE 04 / 04", blue)
         self.assertIn("function show(step)", blue)
 
 
