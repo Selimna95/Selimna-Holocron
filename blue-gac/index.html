@@ -107,7 +107,7 @@ var order=['mode','tier','strategy','access'];
 var lastStep='access';
 function show(step){
  order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';
- var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 03'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Le Padawan est exclusivement défensif : ses équipes seront sélectionnées automatiquement depuis le classement SWGOH.GG.','ÉTAPE 03 / 03']};
+ var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 04'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 04'],strategy:['CHOISIS TA STRATÉGIE','Pars des défenses à construire ou des défenses adverses à battre.','ÉTAPE 03 / 04'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan te guide dans la préparation de ta défense ou de tes contres.','ÉTAPE 04 / 04']};
  document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
  ['progress1','progress2','progress3','progress4'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
  window.scrollTo({top:0,behavior:'smooth'});
