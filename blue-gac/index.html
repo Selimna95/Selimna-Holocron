@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.22</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.23</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -87,10 +87,10 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <div class="roster-help" id="padawanStatus" aria-live="polite">Le roster connecté sera utilisé automatiquement ; aucune équipe ne sera affichée sans vérification du roster.</div>
 <div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
 <div id="teamResults" class="team-list"></div>
-<div class="note">V4.0.22 : Padawan est exclusivement défensif en 3v3 et 5v5, dans toutes les ligues. Les choix Attaque et Équilibrée ne sont pas disponibles. Les propositions respectent le roster et évitent les doublons de personnages.</div>
+<div class="note">V4.0.23 : Padawan est exclusivement défensif en 3v3 et 5v5, dans toutes les ligues. Les choix Attaque et Équilibrée ne sont pas disponibles. Les propositions respectent le roster et évitent les doublons de personnages.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.22</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.23</footer>
 </div>
 <script>
 (function(){
@@ -109,7 +109,7 @@ function show(step){
 function save(){try{Object.keys(state).forEach(function(k){sessionStorage.setItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1),state[k]);});}catch(_){}}
 function sync(){
  [['mode','data-mode'],['tier','data-tier'],['access','data-access']].forEach(function(p){document.querySelectorAll('['+p[1]+']').forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute(p[1])===state[p[0]]));});});
- document.getElementById('chosenMode').textContent='Format : '+(state.mode||'—');document.getElementById('chosenTier').textContent='Ligue : '+(state.tier||'—');document.getElementById('chosenSummary').textContent=(state.mode||'—')+' · '+(state.tier||'—')+' · Défense';
+ document.getElementById('chosenMode').textContent='Format : '+(state.mode||'—');document.getElementById('chosenSummary').textContent=(state.mode||'—')+' · '+(state.tier||'—')+' · Défense';
  document.getElementById('settingsSummary').textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Orientation : Défense uniquement · Accès : '+(state.access||'à choisir')+'. Les compositions sont issues du classement défensif public. Les flottes sont exclues.';var cfg=document.getElementById('padawanConfig');if(cfg)cfg.textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Défense uniquement · Accès : '+(state.access||'—');save();updateSourceLinks();
 }
 try{order.forEach(function(k){state[k]=sessionStorage.getItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1))||'';});}catch(_){}
@@ -235,19 +235,13 @@ var link=document.createElement('a');link.href=t.source;link.target='_blank';lin
 for(var missingIndex=candidates.length+1;missingIndex<=required;missingIndex++)addUnavailableTeamCard(missingIndex);
 }
 
-function updateAttackCounterLink(){
-var sel=document.getElementById('attackDefenderLeader');var link=document.getElementById('openAttackCounters');if(!sel||!link)return;
-var season=state.mode==='3v3'?'CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_83':'CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84';
-link.href='https://swgoh.gg/gac/counters/'+sel.value+'/?season_id='+season;
-}
-document.getElementById('attackDefenderLeader').addEventListener('change',updateAttackCounterLink);
 function updateSourceLinks(){var league={Kyber:'kyber',Aurodium:'aurodium',Chromium:'chromium',Bronzium:'bronzium',Carbonite:'carbonite'}[state.tier]||'kyber';var mode=state.mode==='3v3'?'3v3':'gac';document.querySelectorAll('.padawan-actions a[href*="swgoh.gg/tier-list/"]').forEach(function(a){a.href='https://swgoh.gg/tier-list/'+mode+'/?league='+league+'&side=defense';});}
 
 function initRosterStatus(){var names=parseRoster();var status=document.getElementById('rosterConnectionStatus');if(names.length){status.textContent='Roster connecté détecté · '+names.length+' personnages disponibles. Les compositions seront filtrées automatiquement.';renderTeams();}else{status.textContent='Aucun roster synchronisé détecté dans le navigateur. Aucune composition ne sera affichée tant que le roster n’est pas reconnu.';renderTeams();}}
 document.getElementById('showAllTeams').addEventListener('click',renderTeams);
 document.getElementById('backToAccess').addEventListener('click',function(){show('access');});
 
-document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTier').addEventListener('click',function(){show('tier');});document.getElementById('backToTierFromAccess').addEventListener('click',function(){show('tier');});
+document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTierFromAccess').addEventListener('click',function(){show('tier');});
 sync();show(state.access==='Padawan'?'padawan':state.access?'access':state.tier?'access':state.mode?'tier':'mode');if(state.access==='Padawan')initRosterStatus();
 })();
 </script></body></html>
