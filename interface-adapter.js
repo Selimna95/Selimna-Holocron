@@ -7,13 +7,27 @@
   const DEFAULT_RELAY='https://swgoh-optimizer-relay.lorg75017.workers.dev';
   function el(id){ return document.getElementById(id); }
   function text(id,v){ const n=el(id); if(n) n.textContent=String(v ?? ''); }
+  let transitionInProgress=false;
+  function launchEnergyStorm(color, destination){
+    if(transitionInProgress) return;
+    transitionInProgress=true;
+    const gate=el('holocronGate');
+    if(gate) gate.classList.add('is-transitioning');
+    const storm=document.createElement('div');
+    storm.className='holocron-transition-storm '+(color==='blue'?'blue':'red');
+    storm.setAttribute('aria-hidden','true');
+    storm.innerHTML='<div class="storm-core"></div><div class="storm-bolt"></div>';
+    document.body.appendChild(storm);
+    const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(destination,reduced?180:1550);
+  }
   function handleBlueHolocronClick(event){
     const blue=event.target && event.target.closest ? event.target.closest('#greenHolocron') : null;
     if(!blue) return;
     event.preventDefault();
     event.stopPropagation();
-    // La voie bleue ouvre l'interface GAC dédiée, sans repasser par la saisie d'Ally Code.
-    window.location.assign('./blue-gac/index.html');
+    // La tempête bleue recouvre la scène avant l'ouverture directe de l'interface GAC.
+    launchEnergyStorm('blue',()=>window.location.assign('./blue-gac/index.html'));
   }
   document.addEventListener('click',handleBlueHolocronClick,true);
 
@@ -229,7 +243,7 @@
     const gateBtn=el('gateActivate');if(gateBtn)gateBtn.addEventListener('click',startLegacyLoad);
     const code=el('gateAllyCode');if(code)code.addEventListener('keydown',e=>{if(e.key==='Enter')startLegacyLoad();});
     const relayInput=el('gateRelayUrl');if(relayInput)relayInput.value=safeStorageGet('swgohRelayUrl')||DEFAULT_RELAY;
-    const red=el('redHolocron');if(red)red.addEventListener('click',showApp);
+    const red=el('redHolocron');if(red)red.addEventListener('click',event=>{event.preventDefault();launchEnergyStorm('red',showApp);});
     const back=el('returnToHolocrons');if(back)back.addEventListener('click',showChambers);
     window.addEventListener('holocron:data-updated',renderDecision);
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
