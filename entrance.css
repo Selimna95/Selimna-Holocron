@@ -128,8 +128,8 @@
 .holocron-choice-red:hover,.holocron-choice-red:focus-visible{border-color:rgba(255,45,64,.75)!important;box-shadow:0 0 40px rgba(255,24,49,.13),inset 0 0 32px rgba(255,24,49,.08)!important}
 .holocron-choice-green:hover,.holocron-choice-green:focus-visible{border-color:rgba(43,139,255,.8)!important;box-shadow:0 0 40px rgba(20,112,255,.15),inset 0 0 32px rgba(20,112,255,.08)!important}
 .holocron-object.holocron-object-image{width:clamp(190px,22vw,270px)!important;height:clamp(205px,25vw,300px)!important;margin:0 auto 0!important;position:relative;z-index:2;background-size:contain!important}
-.holocron-object-sith{background-image:url("assets/holocrons/sith-holocron.svg")!important}
-.holocron-object-jedi{background-image:url("assets/holocrons/jedi-blue-reference.jpg")!important}
+.holocron-object-sith{background-image:url("asset/image/perso2.jpg")!important;background-position:left center!important}
+.holocron-object-jedi{background-image:url("asset/image/perso2.jpg")!important;background-position:right center!important}
 .holocron-platform{top:clamp(208px,25vw,290px)!important;width:clamp(190px,23vw,270px)!important;height:42px!important;background:radial-gradient(ellipse at 50% 30%,rgba(95,105,126,.9),rgba(16,19,27,.98) 55%,#020307 78%)!important;border-color:color-mix(in srgb,var(--energy) 55%,#343a47)!important;box-shadow:0 13px 20px #000,0 0 25px color-mix(in srgb,var(--energy) 28%,transparent),inset 0 2px 8px rgba(255,255,255,.2)!important}
 .holocron-name{margin-top:clamp(22px,3vh,34px)!important;font-size:clamp(13px,1.3vw,16px)!important;letter-spacing:.19em!important;text-shadow:0 2px 12px #000}
 .holocron-subtitle{color:#d0d2da!important;font-size:10px!important;letter-spacing:.22em!important}
@@ -157,3 +157,56 @@
 }
 @media(max-width:380px){.holocron-choice{min-height:300px!important}.holocron-object.holocron-object-image{width:100px!important;height:128px!important}.holocron-platform{top:135px!important;width:100px!important}.holocron-action{font-size:7px!important}}
 @media(prefers-reduced-motion:reduce){.holocron-object.holocron-object-image{animation:none!important}}
+
+
+/* V4.0.24 — vrais holocrons depuis l’image de référence et décharges entre les deux voies. */
+.holocron-object.holocron-object-image{
+  background-repeat:no-repeat!important;
+  background-size:200% 100%!important;
+  background-color:transparent!important;
+}
+.holocron-object.holocron-object-image:before,
+.holocron-object.holocron-object-image i{display:none!important}
+.holocron-object.holocron-object-image{filter:drop-shadow(0 0 15px color-mix(in srgb,var(--energy) 48%,transparent)) drop-shadow(0 0 34px color-mix(in srgb,var(--energy) 28%,transparent))!important}
+.holocron-conflict{overflow:visible!important}
+.holocron-conflict:before,
+.holocron-conflict:after{
+  content:"";position:absolute;left:50%;top:50%;width:160%;height:100%;
+  transform:translate(-50%,-50%);pointer-events:none;opacity:0;
+  background-repeat:no-repeat;background-position:center;background-size:100% 100%;
+  clip-path:polygon(0 49%,15% 44%,23% 53%,34% 26%,43% 56%,52% 36%,61% 62%,71% 43%,83% 55%,100% 48%,100% 53%,83% 60%,71% 49%,61% 70%,52% 43%,43% 63%,34% 34%,23% 60%,15% 50%,0 54%);
+}
+.holocron-conflict:before{
+  background:linear-gradient(90deg,transparent 0%,#ff203e 18%,#fff 48%,#72caff 67%,#168bff 86%,transparent 100%);
+  filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 12px #ff2846) drop-shadow(0 0 15px #168bff);
+  animation:holocronDischarge 1.35s steps(2,end) infinite;
+}
+.holocron-conflict:after{
+  width:135%;height:145%;
+  background:linear-gradient(90deg,transparent,#ff2846 28%,#fff 50%,#168bff 72%,transparent);
+  filter:blur(1px) drop-shadow(0 0 10px #fff);
+  animation:holocronDischarge 1.9s steps(2,end) infinite reverse;
+  animation-delay:-.65s;
+}
+.holocron-conflict i{animation:holocronArcFlash 1.35s ease-in-out infinite!important}
+.holocron-conflict b{animation:holocronArcFlash .95s ease-in-out infinite reverse!important}
+.holocron-conflict em{animation:holocronCoreSurge 1.35s ease-in-out infinite!important}
+@keyframes holocronDischarge{
+  0%,7%,12%,19%,100%{opacity:0;transform:translate(-50%,-50%) scaleX(.65) skewY(0deg)}
+  8%,10%,14%,17%{opacity:1;transform:translate(-50%,-50%) scaleX(1) skewY(-4deg)}
+  9%,16%{transform:translate(-50%,-50%) scaleX(.9) skewY(5deg)}
+}
+@keyframes holocronArcFlash{
+  0%,100%{opacity:.25;filter:brightness(.85)}
+  12%,18%{opacity:1;filter:brightness(1.8)}
+  22%,78%{opacity:.55;filter:brightness(1.1)}
+}
+@keyframes holocronCoreSurge{
+  0%,100%{transform:translate(-50%,-50%) scale(.75);opacity:.65}
+  12%,20%{transform:translate(-50%,-50%) scale(1.35);opacity:1}
+  55%{transform:translate(-50%,-50%) scale(.9);opacity:.8}
+}
+@media(prefers-reduced-motion:reduce){
+ .holocron-conflict:before,.holocron-conflict:after,.holocron-conflict i,.holocron-conflict b,.holocron-conflict em{animation:none!important}
+ .holocron-conflict:before{opacity:.75}
+}
