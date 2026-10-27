@@ -7,6 +7,18 @@
   const DEFAULT_RELAY='https://swgoh-optimizer-relay.lorg75017.workers.dev';
   function el(id){ return document.getElementById(id); }
   function text(id,v){ const n=el(id); if(n) n.textContent=String(v ?? ''); }
+  function handleBlueHolocronClick(event){
+    const green=event.target && event.target.closest ? event.target.closest('#greenHolocron') : null;
+    if(!green) return;
+    event.preventDefault();
+    const msg=el('greenPathMessage');
+    if(msg){ msg.hidden=false; msg.setAttribute('data-open','true'); }
+    green.classList.add('is-awakened');
+    const red=el('redHolocron');
+    if(red) red.classList.remove('is-awakened');
+  }
+  document.addEventListener('click',handleBlueHolocronClick,true);
+
   function nfmt(v){ return Number(v||0).toLocaleString('fr-FR'); }
 
   function isSpeedStat(stat){
@@ -220,7 +232,6 @@
     const code=el('gateAllyCode');if(code)code.addEventListener('keydown',e=>{if(e.key==='Enter')startLegacyLoad();});
     const relayInput=el('gateRelayUrl');if(relayInput)relayInput.value=safeStorageGet('swgohRelayUrl')||DEFAULT_RELAY;
     const red=el('redHolocron');if(red)red.addEventListener('click',showApp);
-    document.addEventListener('click',event=>{const green=event.target&&event.target.closest?event.target.closest('#greenHolocron'):null;if(!green)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();const msg=el('greenPathMessage');if(msg){msg.hidden=false;msg.classList.remove('message-arrival');void msg.offsetWidth;msg.classList.add('message-arrival');msg.setAttribute('data-open','true');}green.classList.add('is-awakened');const red=el('redHolocron');if(red)red.classList.remove('is-awakened');},true);
     const back=el('returnToHolocrons');if(back)back.addEventListener('click',showChambers);
     window.addEventListener('holocron:data-updated',renderDecision);
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
