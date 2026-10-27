@@ -45,7 +45,24 @@
   <header class="chambers-heading"><span class="temple-kicker">LE TEMPLE A RECONNU TON ROSTER</span><h1>DEUX VOIES. UN SEUL CHOIX.</h1><p>Les holocrons sont liés par une énergie ancienne, mais leurs volontés s’opposent.</p></header>
   <div class="holocron-duo">
    <button id="redHolocron" class="holocron-choice holocron-choice-red" type="button" aria-label="Ouvrir Selimna’s Holocron, voie rouge"><span class="holocron-aura" aria-hidden="true"></span><span class="holocron-platform" aria-hidden="true"></span><span class="holocron-object holocron-object-image holocron-object-sith" aria-hidden="true"><i></i></span><span class="holocron-name">SELIMNA’S HOLOCRON</span><span class="holocron-subtitle">LA VOIE DE LA MAÎTRISE</span><span class="holocron-action">ENTRER DANS LE SANCTUAIRE ↗</span></button>
-   <div class="holocron-conflict" aria-hidden="true"><i></i><b></b><em></em></div>
+   <div class="holocron-conflict" aria-hidden="true">
+    <svg class="holocron-energy-web" viewBox="0 0 600 250" preserveAspectRatio="none">
+     <defs>
+      <filter id="energyBloom" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.6" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <linearGradient id="energyRedBlue"><stop offset="0" stop-color="#ff183b" stop-opacity="0"/><stop offset=".24" stop-color="#ff2547"/><stop offset=".49" stop-color="#fff"/><stop offset=".68" stop-color="#51baff"/><stop offset="1" stop-color="#168bff" stop-opacity="0"/></linearGradient>
+      <linearGradient id="energyBlueRed"><stop offset="0" stop-color="#168bff" stop-opacity="0"/><stop offset=".27" stop-color="#168bff"/><stop offset=".51" stop-color="#fff"/><stop offset=".76" stop-color="#ff2547"/><stop offset="1" stop-color="#ff183b" stop-opacity="0"/></linearGradient>
+     </defs>
+     <g class="energy-stream energy-stream-main" filter="url(#energyBloom)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path class="stream-red" d="M0 119 L52 116 79 96 104 135 139 104 167 124 196 91 225 133 255 116 284 127 310 102 341 135 369 107 402 127 431 94 459 126 493 107 521 132 552 115 600 119"/>
+      <path class="stream-blue" d="M0 134 L45 138 76 155 103 123 132 151 166 127 195 155 223 119 254 142 280 119 310 148 339 119 367 151 397 123 426 150 457 121 485 145 519 121 551 141 600 132"/>
+      <path class="stream-white" d="M0 126 L66 126 91 119 120 133 151 121 181 130 213 118 241 132 272 123 300 128 329 119 358 133 389 121 419 130 449 119 480 132 512 122 541 129 600 126"/>
+     </g>
+     <g class="energy-branches" filter="url(#energyBloom)" fill="none" stroke-linecap="round">
+      <path d="M68 119 L91 77 123 62 137 30 M91 77 L77 52 M138 122 L164 170 195 182 209 215 M194 122 L212 79 241 68 251 43 M238 129 L261 168 289 180 305 211 M310 125 L334 75 361 61 373 28 M365 130 L390 175 418 190 430 220 M430 123 L453 82 482 71 499 43 M503 125 L524 163 550 176 565 205"/>
+      <path d="M81 132 L108 177 137 188 M157 119 L174 85 194 75 M273 124 L290 90 312 80 M344 132 L357 169 381 182 M410 122 L431 94 453 87 M472 129 L489 165 515 177"/>
+     </g>
+     <g class="energy-pulses"><circle cx="180" cy="129" r="4"/><circle cx="300" cy="126" r="7"/><circle cx="421" cy="127" r="3.5"/></g>
+    </svg><i></i><b></b><em></em></div>
    <button id="greenHolocron" class="holocron-choice holocron-choice-green" type="button" aria-label="Explorer la voie bleue, encore inconnue"><span class="holocron-aura" aria-hidden="true"></span><span class="holocron-platform" aria-hidden="true"></span><span class="holocron-object holocron-object-image holocron-object-jedi" aria-hidden="true"><i></i></span><span class="holocron-name">L’HOLOCRON INCONNU</span><span class="holocron-subtitle">LA VOIE ENCORE CACHÉE</span><span class="holocron-action">DÉCOUVRIR CETTE VOIE ↗</span></button>
   </div>
   <p id="greenPathMessage" class="green-path-message" role="status" aria-live="polite" hidden>Cette voie reste à découvrir. Le holocron n’ouvre encore aucun autre projet.</p><p class="chambers-footer">Choisis un holocron pour poursuivre ton voyage.</p>
@@ -532,7 +549,7 @@
 <!-- V100: interface nouvelle / moteur technique V90 conservé intégralement. -->
 <script src="gac-usage.js?v=3.2.1"></script>
 
-<script src="interface-adapter.js?v=4.0.7-blue-gac-entry"></script>
+<script src="interface-adapter.js?v=4.0.26-blue-path-fix"></script>
 <script src="modules/core.js?v=3.4.4-cache-sync"></script>
 <script src="modules/acolyte.js?v=3.4.3-weak-donor-pool"></script>
 <script src="modules/disciple.js?v=3.5.0-disciple-clarity"></script>
