@@ -363,3 +363,59 @@
 @media(prefers-reduced-motion:reduce){
  .energy-stream,.energy-branches,.energy-pulses,.holocron-conflict:before,.holocron-conflict:after,.green-path-message.message-arrival{animation:none!important}
 }
+
+
+/* V4.0.27 — Holocrons intégrés au temple, sans cartes ni socles flottants. */
+.holocron-chambers{isolation:isolate!important}
+.holocron-chambers .chambers-starfield{opacity:.68;mix-blend-mode:screen}
+.holocron-chambers .holocron-duo{width:min(1280px,100%)!important;min-height:clamp(400px,58vh,620px)!important;align-items:center!important}
+.holocron-chambers .holocron-choice{
+  flex:1 1 50%!important;min-height:0!important;height:auto!important;
+  padding:0 1vw 20px!important;justify-content:center!important;gap:0!important;
+  cursor:pointer!important;appearance:none;-webkit-appearance:none;
+  transform:none!important;filter:none!important;
+}
+.holocron-chambers .holocron-choice:before{inset:3% 5% 0!important;background:radial-gradient(ellipse at 50% 46%,color-mix(in srgb,var(--energy) 17%,transparent),transparent 57%)!important;opacity:.56!important;filter:blur(32px)!important}
+.holocron-chambers .holocron-choice:hover .holocron-object,
+.holocron-chambers .holocron-choice:focus-visible .holocron-object,
+.holocron-chambers .holocron-choice.is-awakened .holocron-object{
+  transform:translateY(-7px) scale(1.035)!important;
+}
+.holocron-chambers .holocron-object.holocron-object-image{
+  width:clamp(200px,25vw,320px)!important;height:clamp(230px,31vw,370px)!important;
+  margin:0 auto -8px!important;position:relative;z-index:3;
+  background-size:200% 100%!important;
+  filter:drop-shadow(0 0 5px rgba(0,0,0,.9)) drop-shadow(0 10px 24px rgba(0,0,0,.9)) drop-shadow(0 0 20px color-mix(in srgb,var(--energy) 65%,transparent))!important;
+  animation:templeRelicBreath 4.8s ease-in-out infinite!important;
+  transition:transform .45s ease,filter .45s ease;
+}
+@keyframes templeRelicBreath{0%,100%{filter:drop-shadow(0 0 5px rgba(0,0,0,.9)) drop-shadow(0 10px 24px rgba(0,0,0,.9)) drop-shadow(0 0 14px color-mix(in srgb,var(--energy) 42%,transparent))}50%{filter:drop-shadow(0 0 8px rgba(0,0,0,.9)) drop-shadow(0 12px 30px rgba(0,0,0,.95)) drop-shadow(0 0 30px color-mix(in srgb,var(--energy) 72%,transparent))}}
+/* Retrait du faux piédestal : la lumière rebondit sur le sol du décor. */
+.holocron-chambers .holocron-platform{display:none!important}
+.holocron-chambers .holocron-name{margin-top:0!important;text-shadow:0 3px 16px #000,0 0 18px color-mix(in srgb,var(--energy) 28%,transparent)!important}
+.holocron-chambers .holocron-subtitle{margin-top:7px!important;text-shadow:0 3px 12px #000!important}
+.holocron-chambers .holocron-action{margin-top:15px!important;opacity:.92}
+.holocron-chambers .holocron-conflict{left:50%!important;top:47%!important;width:clamp(340px,49vw,700px)!important;height:clamp(190px,27vw,330px)!important;z-index:4!important;pointer-events:none!important;mix-blend-mode:screen}
+.holocron-energy-web{overflow:visible!important;filter:drop-shadow(0 0 4px rgba(255,255,255,.7)) drop-shadow(0 0 12px rgba(255,40,75,.42)) drop-shadow(0 0 15px rgba(22,139,255,.42))}
+.energy-stream-main path{stroke-dasharray:3 11!important;stroke-width:2.8!important}
+.energy-stream-main .stream-red{stroke-width:3.8!important;animation:arcFlickerRed .29s steps(2,end) infinite!important}
+.energy-stream-main .stream-blue{stroke-width:3.4!important;animation:arcFlickerBlue .37s steps(2,end) infinite!important}
+.energy-stream-main .stream-white{stroke-width:2.2!important;stroke-dasharray:2 16!important;animation:energyCurrent .31s linear infinite!important}
+.energy-branches{stroke-width:2.1!important;stroke-dasharray:2 9!important;animation:arcBranchSnap .42s steps(2,end) infinite!important}
+.energy-branches path{stroke-linejoin:miter!important}
+.energy-pulses{animation:impactFlash .8s steps(2,end) infinite!important}
+.holocron-conflict:before,.holocron-conflict:after{mix-blend-mode:screen!important;filter:blur(20px)!important}
+@keyframes arcFlickerRed{0%,100%{opacity:.25;stroke-width:1.2}18%{opacity:1;stroke-width:4.5}25%{opacity:.12}38%{opacity:.92;stroke-width:3.5}51%{opacity:.35}67%{opacity:1;stroke-width:5}82%{opacity:.2}}
+@keyframes arcFlickerBlue{0%,100%{opacity:.18;stroke-width:1.4}12%{opacity:.85;stroke-width:3.4}24%{opacity:.25}46%{opacity:1;stroke-width:4.8}55%{opacity:.1}73%{opacity:.9;stroke-width:3.1}}
+@keyframes arcBranchSnap{0%,100%{opacity:.14;stroke-dashoffset:0}17%{opacity:1;stroke-dashoffset:-18}31%{opacity:.22;stroke-dashoffset:-34}53%{opacity:.95;stroke-dashoffset:-62}67%{opacity:.12;stroke-dashoffset:-83}84%{opacity:.8;stroke-dashoffset:-108}}
+@keyframes impactFlash{0%,100%{opacity:.3;filter:drop-shadow(0 0 4px #fff)}11%{opacity:1;filter:drop-shadow(0 0 12px #fff) drop-shadow(0 0 25px #ff263f)}15%{opacity:.12}23%{opacity:.95;filter:drop-shadow(0 0 12px #fff) drop-shadow(0 0 27px #168bff)}48%{opacity:.35}61%{opacity:1}68%{opacity:.2}}
+/* Aucune couche décorative ne doit intercepter les clics de sélection. */
+.holocron-chambers:before,.holocron-chambers:after,.chambers-starfield,.chambers-mist{pointer-events:none!important}
+.holocron-chambers .holocron-choice{z-index:6!important;pointer-events:auto!important}
+.holocron-chambers .green-path-message[hidden]{display:none!important}
+@media(max-width:700px){
+ .holocron-chambers .holocron-duo{min-height:370px!important}
+ .holocron-chambers .holocron-object.holocron-object-image{width:clamp(130px,34vw,190px)!important;height:clamp(165px,43vw,235px)!important;margin-bottom:-2px!important}
+ .holocron-chambers .holocron-conflict{width:clamp(230px,66vw,380px)!important;height:170px!important;top:44%!important}
+}
+@media(prefers-reduced-motion:reduce){.holocron-chambers .holocron-object.holocron-object-image{animation:none!important}.energy-stream,.energy-branches,.energy-pulses{animation:none!important}}
