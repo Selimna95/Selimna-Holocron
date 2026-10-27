@@ -8,23 +8,12 @@
   function el(id){ return document.getElementById(id); }
   function text(id,v){ const n=el(id); if(n) n.textContent=String(v ?? ''); }
   function handleBlueHolocronClick(event){
-    const green=event.target && event.target.closest ? event.target.closest('#greenHolocron') : null;
-    if(!green) return;
+    const blue=event.target && event.target.closest ? event.target.closest('#greenHolocron') : null;
+    if(!blue) return;
     event.preventDefault();
     event.stopPropagation();
-    const gate=el('holocronGate'), temple=el('templeScene'), chambers=el('holocronChambers'), shell=el('appShell');
-    if(shell) shell.hidden=true;
-    if(gate) gate.hidden=false;
-    if(chambers) chambers.hidden=true;
-    if(temple) temple.hidden=false;
-    const back=el('returnToHolocrons');
-    if(back) back.hidden=true;
-    const msg=el('greenPathMessage');
-    if(msg) msg.hidden=true;
-    green.classList.add('is-awakened');
-    const red=el('redHolocron');
-    if(red) red.classList.remove('is-awakened');
-    try{sessionStorage.removeItem('holocronSessionEstablished');}catch(_){}
+    // La voie bleue ouvre l'interface GAC dédiée, sans repasser par la saisie d'Ally Code.
+    window.location.assign('./blue-gac/index.html');
   }
   document.addEventListener('click',handleBlueHolocronClick,true);
 
