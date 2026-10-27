@@ -321,3 +321,45 @@
 @media(prefers-reduced-motion:reduce){
  .holocron-chambers:after,.holocron-aura,.holocron-object.holocron-object-image,.holocron-conflict:before,.holocron-conflict:after{animation:none!important}
 }
+
+
+/* V4.0.26 correction : énergie ramifiée et scène sans cadres. */
+.holocron-choice,.holocron-choice:hover,.holocron-choice:focus-visible,.holocron-choice.is-awakened{
+ border:0!important;border-color:transparent!important;border-radius:0!important;
+ background:transparent!important;box-shadow:none!important;outline-color:rgba(150,190,255,.5)!important;
+}
+.holocron-choice:before{border:0!important;box-shadow:none!important}
+.holocron-duo{gap:0!important}
+.holocron-choice{flex-basis:50%!important}
+.holocron-conflict{
+ left:50%!important;top:46%!important;width:clamp(260px,39vw,520px)!important;height:clamp(150px,22vw,250px)!important;
+ z-index:5!important;pointer-events:none!important;overflow:visible!important;
+}
+.holocron-energy-web{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.energy-stream{stroke-dasharray:14 9;animation:energyCurrent 1.1s linear infinite}
+.energy-stream-main path{stroke-width:2.5}
+.energy-stream-main .stream-red{stroke:#ff2347;stroke-width:3.2;animation:energyCurrent .72s linear infinite}
+.energy-stream-main .stream-blue{stroke:#168bff;stroke-width:2.7;animation:energyCurrent .94s linear infinite reverse}
+.energy-stream-main .stream-white{stroke:url(#energyRedBlue);stroke-width:1.7;stroke-dasharray:5 13;animation:energyCurrent .48s linear infinite}
+.energy-branches{stroke:url(#energyRedBlue);stroke-width:1.5;stroke-dasharray:8 10;animation:energyCurrent .85s linear infinite}
+.energy-pulses{fill:#fff;filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 14px #168bff);animation:energyPulse .7s steps(2,end) infinite}
+@keyframes energyCurrent{to{stroke-dashoffset:-92}}
+@keyframes energyPulse{0%,100%{opacity:.3}45%{opacity:1}}
+.holocron-conflict:before,.holocron-conflict:after{width:100%!important;height:100%!important;filter:blur(14px)!important;opacity:.24!important;animation:energyField 2.4s ease-in-out infinite alternate!important}
+.holocron-conflict:before{background:radial-gradient(ellipse at 34% 50%,rgba(255,24,59,.45),transparent 45%)!important}
+.holocron-conflict:after{background:radial-gradient(ellipse at 68% 50%,rgba(22,139,255,.48),transparent 45%)!important;transform:translate(-50%,-50%)!important}
+@keyframes energyField{from{opacity:.18;filter:blur(18px)}to{opacity:.62;filter:blur(26px)}}
+.holocron-conflict i,.holocron-conflict b{display:none!important}
+.holocron-conflict em{z-index:3;width:5px!important;height:5px!important;background:#fff!important;box-shadow:0 0 8px 4px #fff,0 0 22px 10px #ff2347,0 0 35px 15px #168bff!important}
+.green-path-message{display:block!important;position:relative;z-index:8}
+.green-path-message[hidden]{display:none!important}
+.green-path-message.message-arrival{animation:blueMessageArrival .5s ease-out both}
+@keyframes blueMessageArrival{from{opacity:0;transform:translateY(9px);filter:blur(5px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+.holocron-choice.is-awakened .holocron-object{filter:drop-shadow(0 0 25px rgba(22,139,255,.95)) drop-shadow(0 0 48px rgba(22,139,255,.45))!important}
+@media(max-width:700px){
+ .holocron-conflict{width:clamp(190px,56vw,280px)!important;height:145px!important;top:43%!important}
+ .energy-branches{stroke-width:1.8}
+}
+@media(prefers-reduced-motion:reduce){
+ .energy-stream,.energy-branches,.energy-pulses,.holocron-conflict:before,.holocron-conflict:after,.green-path-message.message-arrival{animation:none!important}
+}
