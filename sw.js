@@ -1,4 +1,5 @@
-// Retired cache identifier: holocron-static-v4.0.8-gac-parameters
+// Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
+// Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 const CACHE_NAME = 'holocron-static-v4.0.26-unified-holocrons';
 const STATIC_ASSETS = [
   './',
