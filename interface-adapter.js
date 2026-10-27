@@ -19,7 +19,7 @@
     storm.innerHTML='<div class="storm-core"></div><div class="storm-bolt"></div>';
     document.body.appendChild(storm);
     const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(destination,reduced?180:1550);
+    window.setTimeout(()=>{if(color==='red'){storm.parentNode&&storm.parentNode.removeChild(storm);if(gate)gate.classList.remove('is-transitioning');}destination();},reduced?180:1550);
   }
   function handleBlueHolocronClick(event){
     const blue=event.target && event.target.closest ? event.target.closest('#greenHolocron') : null;
