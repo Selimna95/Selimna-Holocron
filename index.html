@@ -63,7 +63,7 @@
      </g>
      <g class="energy-pulses"><circle cx="180" cy="129" r="4"/><circle cx="300" cy="126" r="7"/><circle cx="421" cy="127" r="3.5"/></g>
     </svg><i></i><b></b><em></em></div>
-   <button id="greenHolocron" onclick="event.preventDefault();const m=document.getElementById('greenPathMessage');if(m){m.hidden=false;m.setAttribute('data-open','true')}this.classList.add('is-awakened');const r=document.getElementById('redHolocron');if(r)r.classList.remove('is-awakened');" class="holocron-choice holocron-choice-green" type="button" aria-label="Explorer la voie bleue, encore inconnue"><span class="holocron-aura" aria-hidden="true"></span><span class="holocron-platform" aria-hidden="true"></span><span class="holocron-object holocron-object-image holocron-object-jedi" aria-hidden="true"><i></i></span><span class="holocron-name">L’HOLOCRON INCONNU</span><span class="holocron-subtitle">LA VOIE ENCORE CACHÉE</span><span class="holocron-action">DÉCOUVRIR CETTE VOIE ↗</span></button>
+   <button id="greenHolocron" class="holocron-choice holocron-choice-green" type="button" aria-label="Explorer la voie bleue, encore inconnue"><span class="holocron-aura" aria-hidden="true"></span><span class="holocron-platform" aria-hidden="true"></span><span class="holocron-object holocron-object-image holocron-object-jedi" aria-hidden="true"><i></i></span><span class="holocron-name">L’HOLOCRON INCONNU</span><span class="holocron-subtitle">LA VOIE ENCORE CACHÉE</span><span class="holocron-action">DÉCOUVRIR CETTE VOIE ↗</span></button>
   </div>
   <p id="greenPathMessage" class="green-path-message" role="status" aria-live="polite" hidden>Cette voie reste à découvrir. Le holocron n’ouvre encore aucun autre projet.</p><p class="chambers-footer">Choisis un holocron pour poursuivre ton voyage.</p>
  </section>
@@ -549,7 +549,7 @@
 <!-- V100: interface nouvelle / moteur technique V90 conservé intégralement. -->
 <script src="gac-usage.js?v=3.2.1"></script>
 
-<script src="interface-adapter.js?v=4.0.29-blue-click-fallback"></script>
+<script src="interface-adapter.js?v=4.0.30-blue-temple-navigation"></script>
 <script src="modules/core.js?v=3.4.4-cache-sync"></script>
 <script src="modules/acolyte.js?v=3.4.3-weak-donor-pool"></script>
 <script src="modules/disciple.js?v=3.5.0-disciple-clarity"></script>
