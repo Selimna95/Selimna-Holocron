@@ -210,3 +210,16 @@
  .holocron-conflict:before,.holocron-conflict:after,.holocron-conflict i,.holocron-conflict b,.holocron-conflict em{animation:none!important}
  .holocron-conflict:before{opacity:.75}
 }
+
+
+/* V4.0.25 — référence visuelle confirmée : assets/image/perso 2.jpg. */
+.holocron-object.holocron-object-image{
+  background-repeat:no-repeat!important;
+  background-size:200% 100%!important;
+  background-color:transparent!important;
+}
+.holocron-object-sith{background-image:url("assets/image/perso%202.jpg")!important;background-position:left center!important}
+.holocron-object-jedi{background-image:url("assets/image/perso%202.jpg")!important;background-position:right center!important}
+.holocron-object.holocron-object-image:before,
+.holocron-object.holocron-object-image i{display:none!important}
+.holocron-object.holocron-object-image{filter:drop-shadow(0 0 15px color-mix(in srgb,var(--energy) 48%,transparent)) drop-shadow(0 0 34px color-mix(in srgb,var(--energy) 28%,transparent))!important}
