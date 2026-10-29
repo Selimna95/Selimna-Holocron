@@ -29,28 +29,36 @@
     const svg=document.createElementNS(svgNS,'svg');
     svg.setAttribute('class','spreading-arcs');svg.setAttribute('viewBox','0 0 1000 700');svg.setAttribute('preserveAspectRatio','none');
     const paths=[];
-    function jaggedPath(tx,ty,steps,seed){
-      let d='M '+sx.toFixed(1)+' '+sy.toFixed(1);
-      for(let i=1;i<=steps;i++){
-        const t=i/steps, spread=(Math.sin(i*12.9898+seed*78.233)*.5)*Math.min(95,30+t*45);
-        const x=sx+(tx-sx)*t+spread*(Math.abs(ty-sy)>Math.abs(tx-sx)?1:0.32);
-        const y=sy+(ty-sy)*t+spread*(Math.abs(tx-sx)>=Math.abs(ty-sy)?1:0.32);
-        d+=' L '+x.toFixed(1)+' '+y.toFixed(1);
+    // Des éclairs indépendants traversent des zones aléatoires de l'écran,
+    // plutôt qu'une roue de rayons partant tous du holocron.
+    function lightningPath(x1,y1,x2,y2,steps,seed){
+      let d='M '+x1.toFixed(1)+' '+y1.toFixed(1);
+      for(let i=1;i<steps;i++){
+        const t=i/steps;
+        const jitter=(Math.random()-.5)*100;
+        const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+        const px=-dy/len,py=dx/len;
+        d+=' L '+(x1+dx*t+px*jitter).toFixed(1)+' '+(y1+dy*t+py*jitter).toFixed(1);
       }
-      return d;
+      return d+' L '+x2.toFixed(1)+' '+y2.toFixed(1);
     }
-    const targets=[[0,0],[500,0],[1000,0],[1000,350],[1000,700],[500,700],[0,700],[0,350],[250,0],[750,0],[1000,175],[1000,525],[750,700],[250,700],[0,525],[0,175]];
-    targets.forEach((target,index)=>{
-      const path=document.createElementNS(svgNS,'path');path.setAttribute('class','arc arc-'+(index+1));
-      path.setAttribute('d',jaggedPath(target[0],target[1],9,index+1));
-      path.style.setProperty('--arc-delay',(index*65)+'ms');svg.appendChild(path);paths.push(path);
-      if(index<8){
-        const branch=document.createElementNS(svgNS,'path');branch.setAttribute('class','arc arc-branch');
-        const midX=(sx+target[0])*.5,midY=(sy+target[1])*.5;
-        branch.setAttribute('d',jaggedPath(Math.max(0,Math.min(1000,midX+(target[0]-sx)*.22+(index%2?90:-90))),Math.max(0,Math.min(700,midY+(target[1]-sy)*.22+(index%2?-65:65))),6,index+29));
-        branch.style.setProperty('--arc-delay',(180+index*75)+'ms');svg.appendChild(branch);paths.push(branch);
-      }
-    });
+    for(let i=0;i<18;i++){
+      // Certains éclairs partent d'un bord, d'autres surgissent au milieu.
+      const edge=Math.floor(Math.random()*4);
+      let x1,y1;
+      if(edge===0){x1=Math.random()*1000;y1=0}
+      else if(edge===1){x1=1000;y1=Math.random()*700}
+      else if(edge===2){x1=Math.random()*1000;y1=700}
+      else{x1=0;y1=Math.random()*700}
+      if(Math.random()<.55){x1=Math.random()*1000;y1=Math.random()*700}
+      const x2=Math.random()*1000,y2=Math.random()*700;
+      const path=document.createElementNS(svgNS,'path');
+      path.setAttribute('class','arc random-arc');
+      path.setAttribute('d',lightningPath(x1,y1,x2,y2,7+Math.floor(Math.random()*6),i));
+      path.style.setProperty('--bolt-delay',(Math.random()*.95).toFixed(2)+'s');
+      path.style.setProperty('--bolt-duration',(.12+Math.random()*.22).toFixed(2)+'s');
+      svg.appendChild(path);paths.push(path);
+    }
     storm.appendChild(Object.assign(document.createElement('div'),{className:'arc-origin'}));
     storm.appendChild(svg);
     document.body.appendChild(storm);
