@@ -884,3 +884,25 @@
 @keyframes storm41-burst{0%{transform:scale(.2) rotate(0deg);opacity:.15}35%{transform:scale(1) rotate(24deg);opacity:1}75%{transform:scale(1.8) rotate(-17deg);opacity:.9}100%{transform:scale(2.3) rotate(33deg);opacity:.2}}
 @keyframes storm41-bolt{0%,100%{opacity:.2;transform:scale(1) skewX(-8deg)}50%{opacity:1;transform:scale(1.08) skewX(9deg)}}
 @keyframes storm41-core{0%{transform:translate(-50%,-50%) scale(.15);opacity:1}45%{transform:translate(-50%,-50%) scale(2.3);opacity:1}100%{transform:translate(-50%,-50%) scale(5.5);opacity:0}}
+
+
+/* V4.0.42 — éclairs erratiques : trajectoires indépendantes et flashs brefs. */
+.holocron-transition-storm .spreading-arcs .random-arc{
+ stroke:var(--storm41-hot)!important;stroke-width:2.8!important;
+ stroke-dasharray:none!important;stroke-dashoffset:0!important;opacity:0!important;
+ filter:drop-shadow(0 0 3px #fff) drop-shadow(0 0 9px var(--storm41))!important;
+ animation:storm42-random-bolt var(--bolt-duration,.18s) steps(2,end) var(--bolt-delay,0s) 2 both!important;
+}
+.holocron-transition-storm .spreading-arcs .random-arc:nth-child(3n){
+ stroke:var(--storm41)!important;stroke-width:4!important;
+ filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 15px var(--storm41))!important;
+}
+@keyframes storm42-random-bolt{
+ 0%{opacity:0;stroke-width:1}
+ 14%{opacity:1;stroke-width:4}
+ 28%{opacity:.08}
+ 43%{opacity:1;stroke-width:2}
+ 61%{opacity:.15}
+ 78%{opacity:1;stroke-width:3.5}
+ 100%{opacity:0}
+}
