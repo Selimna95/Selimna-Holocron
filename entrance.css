@@ -782,3 +782,53 @@
 @media(prefers-reduced-motion:reduce){
  .holocron-transition-storm .spreading-arcs .arc{transition:none!important}
 }
+
+
+/* V4.0.39 — tempête déclenchée au clic, avec décharge visible puis effacement. */
+.holocron-transition-storm{
+  background:radial-gradient(ellipse at var(--arc-x) var(--arc-y),rgba(255,255,255,.9),var(--storm-color) 9%,transparent 62%)!important;
+  opacity:0!important;
+  animation:holocronStormFlash 1.5s ease-out forwards!important;
+}
+.holocron-transition-storm::before,
+.holocron-transition-storm::after{
+  display:block!important;content:"";position:absolute;inset:-22%;pointer-events:none;
+  background:repeating-conic-gradient(from 11deg at var(--arc-x) var(--arc-y),transparent 0deg,transparent 3deg,var(--storm-color) 3.2deg,transparent 3.8deg,transparent 8deg)!important;
+  filter:blur(1.5px) contrast(1.6)!important;opacity:0;
+  clip-path:polygon(0 4%,18% 0,34% 7%,52% 0,71% 8%,100% 0,94% 25%,100% 44%,92% 64%,100% 84%,77% 100%,58% 92%,38% 100%,17% 91%,0 100%,7% 73%,0 51%,8% 28%);
+  animation:holocronStormRupture 1.15s steps(7,end) .03s forwards!important;
+}
+.holocron-transition-storm::after{
+  background:repeating-linear-gradient(117deg,transparent 0 3.5%,var(--storm-hot) 3.55% 3.68%,transparent 3.9% 8%,var(--storm-color) 8.1% 8.25%,transparent 8.5% 14%)!important;
+  filter:blur(.4px)!important;animation:holocronStormRupture 1.05s steps(6,end) .08s forwards!important;
+}
+.holocron-transition-storm .storm-core{
+  display:block!important;left:var(--arc-x)!important;top:var(--arc-y)!important;
+  width:9vmax!important;height:9vmax!important;opacity:0;
+  background:var(--storm-hot)!important;
+  box-shadow:0 0 5vmax 3vmax var(--storm-color),0 0 18vmax 8vmax var(--storm-color)!important;
+  animation:holocronStormCore .75s ease-out .02s forwards!important;
+}
+.holocron-transition-storm .storm-bolt{
+  display:block!important;inset:-15%!important;opacity:0;
+  background:repeating-linear-gradient(112deg,transparent 0 4%,var(--storm-hot) 4.05% 4.14%,transparent 4.3% 11%,var(--storm-color) 11.1% 11.25%,transparent 11.5% 18%)!important;
+  clip-path:polygon(0 0,17% 4%,25% 0,44% 7%,58% 0,77% 6%,100% 0,95% 22%,100% 39%,93% 55%,100% 75%,84% 100%,62% 94%,43% 100%,25% 93%,0 100%,6% 76%,0 57%,8% 39%);
+  animation:holocronStormBolt .12s steps(2,end) .03s 9!important;
+}
+.holocron-transition-storm .spreading-arcs .arc{
+  animation:none!important;stroke-dasharray:var(--arc-length,1px);stroke-dashoffset:var(--arc-length,1px);
+  transition:stroke-dashoffset .48s cubic-bezier(.16,.72,.22,1) var(--arc-delay,0ms),opacity .18s linear!important;
+  opacity:.98!important;
+}
+.holocron-transition-storm.storm-active .spreading-arcs .arc{stroke-dashoffset:0!important}
+.holocron-transition-storm.red{--storm-color:rgba(255,18,48,.92);--storm-hot:#ffccd2;--arc-color:#ff283c;--arc-glow:rgba(255,24,40,.24)}
+.holocron-transition-storm.blue{--storm-color:rgba(0,111,255,.96);--storm-hot:#d9f3ff;--arc-color:#409bff;--arc-glow:rgba(36,112,255,.24)}
+.holocron-transition-storm.storm-collapse{opacity:0!important;transition:opacity .2s ease!important}
+@keyframes holocronStormFlash{0%{opacity:0}8%{opacity:.92}30%{opacity:.28}55%{opacity:.68}100%{opacity:0}}
+@keyframes holocronStormRupture{0%{opacity:0;transform:rotate(0) scale(.2)}12%{opacity:.95}42%{opacity:.45;transform:rotate(22deg) scale(1.08)}72%{opacity:.9;transform:rotate(-13deg) scale(1.18)}100%{opacity:0;transform:rotate(28deg) scale(1.3)}}
+@keyframes holocronStormCore{0%{opacity:0;transform:translate(-50%,-50%) scale(.1)}20%{opacity:1}55%{opacity:.75;transform:translate(-50%,-50%) scale(1.8)}100%{opacity:0;transform:translate(-50%,-50%) scale(3.4)}}
+@keyframes holocronStormBolt{0%,100%{opacity:.05;filter:brightness(1)}50%{opacity:.95;filter:brightness(2.8)}}
+@media(prefers-reduced-motion:reduce){
+ .holocron-transition-storm,.holocron-transition-storm::before,.holocron-transition-storm::after,.holocron-transition-storm .storm-core,.holocron-transition-storm .storm-bolt{animation-duration:.25s!important}
+ .holocron-transition-storm .spreading-arcs .arc{transition-duration:.1s!important}
+}
