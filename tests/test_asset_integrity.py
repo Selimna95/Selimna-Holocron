@@ -58,7 +58,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("fetch(request).then(response =>", self.sw)
 
     def test_displayed_release_version_is_consistent(self):
-        self.assertIn("Selimna’s Holocron — V4.0.40", self.html)
+        self.assertIn("Selimna’s Holocron — V4.0.41", self.html)
         self.assertNotIn("Selimna’s Holocron — V3.4.4", self.html)
 
     def test_blue_gac_padawan_is_defense_only_for_all_formats_and_leagues(self):
