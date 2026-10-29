@@ -767,3 +767,18 @@
  .holocron-chambers .holocron-action{bottom:3%!important;font-size:7px!important}
 }
 @media(prefers-reduced-motion:reduce){.holocron-transition-storm .arc{transition:none!important}}
+
+
+/* V4.0.38 — corrige le tracé progressif : les animations CSS précédentes ne doivent pas écraser les longueurs SVG. */
+.holocron-transition-storm .spreading-arcs .arc{
+  animation:none!important;
+  stroke-dasharray:var(--arc-length,1);
+  stroke-dashoffset:var(--arc-length,1);
+  transition:stroke-dashoffset .48s cubic-bezier(.16,.72,.22,1) var(--arc-delay,0ms),opacity .18s linear;
+  opacity:.98;
+}
+.holocron-transition-storm .spreading-arcs .arc:nth-child(3n){stroke:#fff;stroke-width:1.1}
+.holocron-transition-storm .spreading-arcs .arc-branch{stroke-width:1.45;opacity:.92}
+@media(prefers-reduced-motion:reduce){
+ .holocron-transition-storm .spreading-arcs .arc{transition:none!important}
+}
