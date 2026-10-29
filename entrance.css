@@ -832,3 +832,55 @@
  .holocron-transition-storm,.holocron-transition-storm::before,.holocron-transition-storm::after,.holocron-transition-storm .storm-core,.holocron-transition-storm .storm-bolt{animation-duration:.25s!important}
  .holocron-transition-storm .spreading-arcs .arc{transition-duration:.1s!important}
 }
+
+
+/* V4.0.41 — tempête visible : priorité finale, sans dépendre des anciennes animations. */
+.holocron-transition-storm{
+ position:fixed!important;inset:0!important;z-index:2147483647!important;
+ display:block!important;visibility:visible!important;pointer-events:none!important;
+ overflow:hidden!important;mix-blend-mode:normal!important;
+ opacity:1!important;background:transparent!important;
+ animation:storm41-screen 1.35s ease-out forwards!important;
+}
+.holocron-transition-storm.red{--storm41:#ff1838;--storm41-hot:#fff4f5}
+.holocron-transition-storm.blue{--storm41:#087cff;--storm41-hot:#eaf8ff}
+.holocron-transition-storm::before,.holocron-transition-storm::after{
+ content:""!important;display:block!important;position:absolute!important;inset:-35%!important;
+ opacity:1!important;clip-path:none!important;filter:none!important;
+ background:repeating-conic-gradient(from 0deg at var(--arc-x) var(--arc-y),
+ transparent 0deg,transparent 2.8deg,var(--storm41) 3deg,transparent 3.8deg,
+ transparent 7deg,var(--storm41-hot) 7.15deg,transparent 7.5deg,transparent 11deg)!important;
+ animation:storm41-burst .72s steps(2,end) both!important;
+}
+.holocron-transition-storm::after{
+ background:repeating-conic-gradient(from 13deg at var(--arc-x) var(--arc-y),
+ transparent 0deg,transparent 5deg,var(--storm41-hot) 5.2deg,transparent 5.8deg,
+ transparent 9deg,var(--storm41) 9.2deg,transparent 9.8deg)!important;
+ animation:storm41-burst .9s steps(2,end) .08s both!important;
+}
+.holocron-transition-storm .storm-bolt{
+ position:absolute!important;inset:-15%!important;display:block!important;visibility:visible!important;
+ opacity:1!important;clip-path:none!important;filter:drop-shadow(0 0 8px var(--storm41-hot))!important;
+ background:repeating-linear-gradient(117deg,transparent 0 3.5%,var(--storm41-hot) 3.6% 3.85%,transparent 4.1% 9%,var(--storm41) 9.1% 9.35%,transparent 9.6% 15%)!important;
+ animation:storm41-bolt .11s steps(2,end) 10!important;
+}
+.holocron-transition-storm .storm-core{
+ position:absolute!important;left:var(--arc-x)!important;top:var(--arc-y)!important;
+ display:block!important;visibility:visible!important;width:8vmax!important;height:8vmax!important;
+ border-radius:50%!important;background:var(--storm41-hot)!important;opacity:1!important;
+ box-shadow:0 0 5vmax 3vmax var(--storm41),0 0 18vmax 9vmax var(--storm41)!important;
+ animation:storm41-core .9s ease-out both!important;
+}
+.holocron-transition-storm .spreading-arcs .arc{
+ fill:none!important;stroke:var(--storm41)!important;stroke-width:4!important;
+ stroke-linecap:round!important;stroke-linejoin:round!important;opacity:1!important;
+ filter:drop-shadow(0 0 5px var(--storm41-hot)) drop-shadow(0 0 12px var(--storm41))!important;
+ stroke-dasharray:var(--arc-length,1px)!important;
+ transition:stroke-dashoffset .38s ease-out!important;
+}
+.holocron-transition-storm .spreading-arcs .arc:nth-child(3n){stroke:var(--storm41-hot)!important;stroke-width:2.5!important}
+.holocron-transition-storm.storm-active .spreading-arcs .arc{stroke-dashoffset:0!important}
+@keyframes storm41-screen{0%{background:transparent;opacity:1}18%{background:radial-gradient(circle at var(--arc-x) var(--arc-y),#fff 0, var(--storm41) 9%,transparent 68%)}45%{background:radial-gradient(circle at var(--arc-x) var(--arc-y),var(--storm41-hot) 0,var(--storm41) 28%,rgba(0,0,0,.45) 100%)}100%{background:radial-gradient(circle at var(--arc-x) var(--arc-y),transparent 0,rgba(0,0,0,.9) 100%);opacity:1}}
+@keyframes storm41-burst{0%{transform:scale(.2) rotate(0deg);opacity:.15}35%{transform:scale(1) rotate(24deg);opacity:1}75%{transform:scale(1.8) rotate(-17deg);opacity:.9}100%{transform:scale(2.3) rotate(33deg);opacity:.2}}
+@keyframes storm41-bolt{0%,100%{opacity:.2;transform:scale(1) skewX(-8deg)}50%{opacity:1;transform:scale(1.08) skewX(9deg)}}
+@keyframes storm41-core{0%{transform:translate(-50%,-50%) scale(.15);opacity:1}45%{transform:translate(-50%,-50%) scale(2.3);opacity:1}100%{transform:translate(-50%,-50%) scale(5.5);opacity:0}}
