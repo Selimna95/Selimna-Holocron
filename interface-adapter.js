@@ -15,6 +15,9 @@
     if(gate) gate.classList.add('is-transitioning');
     const storm=document.createElement('div');
     storm.className='holocron-transition-storm '+(color==='blue'?'blue':'red');
+    const bolt=document.createElement('div');bolt.className='storm-bolt';bolt.setAttribute('aria-hidden','true');
+    const core=document.createElement('div');core.className='storm-core';core.setAttribute('aria-hidden','true');
+    storm.appendChild(bolt);storm.appendChild(core);
     storm.setAttribute('aria-hidden','true');
     const source=(color==='blue'?el('greenHolocron'):el('redHolocron'))||gate;
     const rect=source.getBoundingClientRect();
@@ -50,16 +53,32 @@
     });
     storm.appendChild(Object.assign(document.createElement('div'),{className:'arc-origin'}));
     storm.appendChild(svg);
-    paths.forEach(path=>{
-      const length=path.getTotalLength();path.style.setProperty('--arc-length',String(length));path.style.strokeDasharray=String(length);path.style.strokeDashoffset=String(length);
-      path.style.transitionDelay=path.style.getPropertyValue('--arc-delay');
-    });
     document.body.appendChild(storm);
-    // Force le navigateur à peindre l'état masqué avant de lancer le tracé.
-    paths.forEach(path=>path.getBoundingClientRect());
-    requestAnimationFrame(()=>paths.forEach(path=>{path.style.strokeDashoffset='0';}));
+    // Mesure après insertion : le navigateur connaît alors la géométrie réelle du SVG.
+    paths.forEach(path=>{
+      const length=path.getTotalLength();
+      path.style.setProperty('--arc-length',String(length));
+      path.style.strokeDasharray=length+'px';
+      path.style.strokeDashoffset=length+'px';
+      path.style.transition='none';
+    });
+    // Deux frames garantissent une peinture de l'état fermé avant le départ des éclairs.
+    void storm.offsetWidth;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      paths.forEach(path=>{
+        path.style.transition='';
+        path.style.strokeDashoffset='0px';
+      });
+      storm.classList.add('storm-active');
+    }));
     const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(()=>{if(color==='red'){storm.parentNode&&storm.parentNode.removeChild(storm);if(gate)gate.classList.remove('is-transitioning');}destination();},reduced?180:1550);
+    window.setTimeout(()=>{
+      if(color==='red'){
+        storm.classList.add('storm-collapse');
+        window.setTimeout(()=>{storm.remove();if(gate)gate.classList.remove('is-transitioning');},reduced?0:220);
+      }
+      destination();
+    },reduced?180:1550);
   }
   function handleBlueHolocronClick(event){
     const blue=event.target && event.target.closest ? event.target.closest('#greenHolocron') : null;
