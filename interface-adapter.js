@@ -18,11 +18,43 @@
     storm.setAttribute('aria-hidden','true');
     const source=(color==='blue'?el('greenHolocron'):el('redHolocron'))||gate;
     const rect=source.getBoundingClientRect();
-    const sx=((rect.left+rect.width/2)/window.innerWidth*100).toFixed(2);
-    const sy=((rect.top+rect.height/2)/window.innerHeight*100).toFixed(2);
-    storm.style.setProperty('--arc-x',sx+'%');
-    storm.style.setProperty('--arc-y',sy+'%');
-    storm.innerHTML='<div class="arc-origin"></div><svg class="spreading-arcs" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" class="arc arc-1" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l -28 -36 44 -25 -8 -42 70 -34 -15 -45 92 -40 22 -58 105 -15"/><path pathLength="1" class="arc arc-2" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l 35 -30 42 18 26 -53 61 15 24 -62 77 22 41 -46 105 4"/><path pathLength="1" class="arc arc-3" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l -40 28 -20 48 -62 -8 -35 58 -75 5 -42 66 -95 10"/><path pathLength="1" class="arc arc-4" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l 40 28 18 52 65 -14 38 55 75 9 44 62 95 16"/><path pathLength="1" class="arc arc-5" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l -12 -48 25 -31 -4 -55 48 -28 8 -49 70 -28 4 -50"/><path pathLength="1" class="arc arc-6" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l 12 48 -25 31 4 55 -48 28 -8 49 -70 28 -4 50"/></svg>';
+    const sx=(rect.left+rect.width/2)/window.innerWidth*1000;
+    const sy=(rect.top+rect.height/2)/window.innerHeight*700;
+    storm.style.setProperty('--arc-x',(sx/10)+'%');
+    storm.style.setProperty('--arc-y',(sy/7)+'%');
+    const svgNS='http://www.w3.org/2000/svg';
+    const svg=document.createElementNS(svgNS,'svg');
+    svg.setAttribute('class','spreading-arcs');svg.setAttribute('viewBox','0 0 1000 700');svg.setAttribute('preserveAspectRatio','none');
+    const paths=[];
+    function jaggedPath(tx,ty,steps,seed){
+      let d='M '+sx.toFixed(1)+' '+sy.toFixed(1);
+      for(let i=1;i<=steps;i++){
+        const t=i/steps, spread=(Math.sin(i*12.9898+seed*78.233)*.5)*Math.min(95,30+t*45);
+        const x=sx+(tx-sx)*t+spread*(Math.abs(ty-sy)>Math.abs(tx-sx)?1:0.32);
+        const y=sy+(ty-sy)*t+spread*(Math.abs(tx-sx)>=Math.abs(ty-sy)?1:0.32);
+        d+=' L '+x.toFixed(1)+' '+y.toFixed(1);
+      }
+      return d;
+    }
+    const targets=[[0,0],[500,0],[1000,0],[1000,350],[1000,700],[500,700],[0,700],[0,350],[250,0],[750,0],[1000,175],[1000,525],[750,700],[250,700],[0,525],[0,175]];
+    targets.forEach((target,index)=>{
+      const path=document.createElementNS(svgNS,'path');path.setAttribute('class','arc arc-'+(index+1));
+      path.setAttribute('d',jaggedPath(target[0],target[1],9,index+1));
+      path.style.setProperty('--arc-delay',(index*65)+'ms');svg.appendChild(path);paths.push(path);
+      if(index<8){
+        const branch=document.createElementNS(svgNS,'path');branch.setAttribute('class','arc arc-branch');
+        const midX=(sx+target[0])*.5,midY=(sy+target[1])*.5;
+        branch.setAttribute('d',jaggedPath(Math.max(0,Math.min(1000,midX+(target[0]-sx)*.22+(index%2?90:-90))),Math.max(0,Math.min(700,midY+(target[1]-sy)*.22+(index%2?-65:65))),6,index+29));
+        branch.style.setProperty('--arc-delay',(180+index*75)+'ms');svg.appendChild(branch);paths.push(branch);
+      }
+    });
+    storm.appendChild(Object.assign(document.createElement('div'),{className:'arc-origin'}));
+    storm.appendChild(svg);
+    paths.forEach(path=>{
+      const length=path.getTotalLength();path.style.strokeDasharray=String(length);path.style.strokeDashoffset=String(length);
+      path.style.animationDelay=path.style.getPropertyValue('--arc-delay');
+      requestAnimationFrame(()=>{path.style.strokeDashoffset='0';});
+    });
     document.body.appendChild(storm);
     const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.setTimeout(()=>{if(color==='red'){storm.parentNode&&storm.parentNode.removeChild(storm);if(gate)gate.classList.remove('is-transitioning');}destination();},reduced?180:1550);
