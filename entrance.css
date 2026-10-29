@@ -687,7 +687,7 @@
  overflow:hidden!important;background:transparent!important;animation:none!important;
 }
 .holocron-transition-storm::before,.holocron-transition-storm::after{display:none!important}
-.holocron-transition-storm .storm-core,.holocron-transition-storm .storm-bolt{display:none!important}
+.holocron-transition-storm .storm-core,.holocron-transition-storm .storm-bolt{display:block!important}
 .holocron-transition-storm .arc-origin{
  position:absolute;left:var(--arc-x);top:var(--arc-y);width:12px;height:12px;border-radius:50%;
  transform:translate(-50%,-50%);background:#fff;
