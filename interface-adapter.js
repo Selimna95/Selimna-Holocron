@@ -16,7 +16,13 @@
     const storm=document.createElement('div');
     storm.className='holocron-transition-storm '+(color==='blue'?'blue':'red');
     storm.setAttribute('aria-hidden','true');
-    storm.innerHTML='<div class="storm-core"></div><div class="storm-bolt"></div>';
+    const source=(color==='blue'?el('greenHolocron'):el('redHolocron'))||gate;
+    const rect=source.getBoundingClientRect();
+    const sx=((rect.left+rect.width/2)/window.innerWidth*100).toFixed(2);
+    const sy=((rect.top+rect.height/2)/window.innerHeight*100).toFixed(2);
+    storm.style.setProperty('--arc-x',sx+'%');
+    storm.style.setProperty('--arc-y',sy+'%');
+    storm.innerHTML='<div class="arc-origin"></div><svg class="spreading-arcs" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"><path class="arc arc-1" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l -28 -36 44 -25 -8 -42 70 -34 -15 -45 92 -40 22 -58 105 -15"/><path class="arc arc-2" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l 35 -30 42 18 26 -53 61 15 24 -62 77 22 41 -46 105 4"/><path class="arc arc-3" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l -40 28 -20 48 -62 -8 -35 58 -75 5 -42 66 -95 10"/><path class="arc arc-4" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l 40 28 18 52 65 -14 38 55 75 9 44 62 95 16"/><path class="arc arc-5" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l -12 -48 25 -31 -4 -55 48 -28 8 -49 70 -28 4 -50"/><path class="arc arc-6" d="M '+(Number(sx)*10)+' '+(Number(sy)*7)+' l 12 48 -25 31 4 55 -48 28 -8 49 -70 28 -4 50"/></svg>';
     document.body.appendChild(storm);
     const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.setTimeout(()=>{if(color==='red'){storm.parentNode&&storm.parentNode.removeChild(storm);if(gate)gate.classList.remove('is-transitioning');}destination();},reduced?180:1550);
