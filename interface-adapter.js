@@ -51,11 +51,13 @@
     storm.appendChild(Object.assign(document.createElement('div'),{className:'arc-origin'}));
     storm.appendChild(svg);
     paths.forEach(path=>{
-      const length=path.getTotalLength();path.style.strokeDasharray=String(length);path.style.strokeDashoffset=String(length);
-      path.style.animationDelay=path.style.getPropertyValue('--arc-delay');
-      requestAnimationFrame(()=>{path.style.strokeDashoffset='0';});
+      const length=path.getTotalLength();path.style.setProperty('--arc-length',String(length));path.style.strokeDasharray=String(length);path.style.strokeDashoffset=String(length);
+      path.style.transitionDelay=path.style.getPropertyValue('--arc-delay');
     });
     document.body.appendChild(storm);
+    // Force le navigateur à peindre l'état masqué avant de lancer le tracé.
+    paths.forEach(path=>path.getBoundingClientRect());
+    requestAnimationFrame(()=>paths.forEach(path=>{path.style.strokeDashoffset='0';}));
     const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.setTimeout(()=>{if(color==='red'){storm.parentNode&&storm.parentNode.removeChild(storm);if(gate)gate.classList.remove('is-transitioning');}destination();},reduced?180:1550);
   }
