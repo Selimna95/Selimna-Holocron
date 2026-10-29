@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.0.49-blue-gac-hidden-door-copy';
+const CACHE_NAME = 'holocron-static-v4.0.50-blue-gac-refined-crawl';
 const STATIC_ASSETS = [
   './',
   './index.html',
