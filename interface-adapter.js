@@ -8,85 +8,11 @@
   function el(id){ return document.getElementById(id); }
   function text(id,v){ const n=el(id); if(n) n.textContent=String(v ?? ''); }
   let transitionInProgress=false;
+  // V4.0.43 : accès direct, sans tempête ni animation de transition.
   function launchEnergyStorm(color, destination){
     if(transitionInProgress) return;
     transitionInProgress=true;
-    const gate=el('holocronGate');
-    if(gate) gate.classList.add('is-transitioning');
-    const storm=document.createElement('div');
-    storm.className='holocron-transition-storm '+(color==='blue'?'blue':'red');
-    const bolt=document.createElement('div');bolt.className='storm-bolt';bolt.setAttribute('aria-hidden','true');
-    const core=document.createElement('div');core.className='storm-core';core.setAttribute('aria-hidden','true');
-    storm.appendChild(bolt);storm.appendChild(core);
-    storm.setAttribute('aria-hidden','true');
-    const source=(color==='blue'?el('greenHolocron'):el('redHolocron'))||gate;
-    const rect=source.getBoundingClientRect();
-    const sx=(rect.left+rect.width/2)/window.innerWidth*1000;
-    const sy=(rect.top+rect.height/2)/window.innerHeight*700;
-    storm.style.setProperty('--arc-x',(sx/10)+'%');
-    storm.style.setProperty('--arc-y',(sy/7)+'%');
-    const svgNS='http://www.w3.org/2000/svg';
-    const svg=document.createElementNS(svgNS,'svg');
-    svg.setAttribute('class','spreading-arcs');svg.setAttribute('viewBox','0 0 1000 700');svg.setAttribute('preserveAspectRatio','none');
-    const paths=[];
-    // Des éclairs indépendants traversent des zones aléatoires de l'écran,
-    // plutôt qu'une roue de rayons partant tous du holocron.
-    function lightningPath(x1,y1,x2,y2,steps,seed){
-      let d='M '+x1.toFixed(1)+' '+y1.toFixed(1);
-      for(let i=1;i<steps;i++){
-        const t=i/steps;
-        const jitter=(Math.random()-.5)*100;
-        const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
-        const px=-dy/len,py=dx/len;
-        d+=' L '+(x1+dx*t+px*jitter).toFixed(1)+' '+(y1+dy*t+py*jitter).toFixed(1);
-      }
-      return d+' L '+x2.toFixed(1)+' '+y2.toFixed(1);
-    }
-    for(let i=0;i<18;i++){
-      // Certains éclairs partent d'un bord, d'autres surgissent au milieu.
-      const edge=Math.floor(Math.random()*4);
-      let x1,y1;
-      if(edge===0){x1=Math.random()*1000;y1=0}
-      else if(edge===1){x1=1000;y1=Math.random()*700}
-      else if(edge===2){x1=Math.random()*1000;y1=700}
-      else{x1=0;y1=Math.random()*700}
-      if(Math.random()<.55){x1=Math.random()*1000;y1=Math.random()*700}
-      const x2=Math.random()*1000,y2=Math.random()*700;
-      const path=document.createElementNS(svgNS,'path');
-      path.setAttribute('class','arc random-arc');
-      path.setAttribute('d',lightningPath(x1,y1,x2,y2,7+Math.floor(Math.random()*6),i));
-      path.style.setProperty('--bolt-delay',(Math.random()*.95).toFixed(2)+'s');
-      path.style.setProperty('--bolt-duration',(.12+Math.random()*.22).toFixed(2)+'s');
-      svg.appendChild(path);paths.push(path);
-    }
-    storm.appendChild(Object.assign(document.createElement('div'),{className:'arc-origin'}));
-    storm.appendChild(svg);
-    document.body.appendChild(storm);
-    // Mesure après insertion : le navigateur connaît alors la géométrie réelle du SVG.
-    paths.forEach(path=>{
-      const length=path.getTotalLength();
-      path.style.setProperty('--arc-length',String(length));
-      path.style.strokeDasharray=length+'px';
-      path.style.strokeDashoffset=length+'px';
-      path.style.transition='none';
-    });
-    // Deux frames garantissent une peinture de l'état fermé avant le départ des éclairs.
-    void storm.offsetWidth;
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      paths.forEach(path=>{
-        path.style.transition='';
-        path.style.strokeDashoffset='0px';
-      });
-      storm.classList.add('storm-active');
-    }));
-    const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(()=>{
-      if(color==='red'){
-        storm.classList.add('storm-collapse');
-        window.setTimeout(()=>{storm.remove();if(gate)gate.classList.remove('is-transitioning');},reduced?0:220);
-      }
-      destination();
-    },reduced?180:1550);
+    destination();
   }
   function handleBlueHolocronClick(event){
     const blue=event.target && event.target.closest ? event.target.closest('#greenHolocron') : null;
