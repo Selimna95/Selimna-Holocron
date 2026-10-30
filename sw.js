@@ -50,11 +50,12 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (url.searchParams.has('ally')) return;
-  if (url.pathname.endsWith('/blue-gac/gac-catalog.json')) {
+  if (url.pathname.endsWith('/blue-gac/gac-catalog.json') ||
+      (url.hostname === 'raw.githubusercontent.com' && url.pathname.endsWith('/Selimna-Holocron/main/blue-gac/gac-catalog.json'))) {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {
         const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});
       }
       return response;
     }).catch(async () => (await caches.match(request)) || (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope).href)));
