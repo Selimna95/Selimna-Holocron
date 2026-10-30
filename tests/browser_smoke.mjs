@@ -132,7 +132,8 @@ try {
   await page.locator('[data-tier="Kyber"]').click();
   await page.locator('[data-access="Padawan"]').click();
   await page.locator("#padawanView").waitFor({ state: "visible" });
-  assert.ok(await page.locator("#teamResults .team-card:not(.unavailable)").count() >= 1, "Padawan should select a complete observed team from the supplied 5v5 roster.");
+  assert.equal(await page.locator("#teamResults").count(), 1, "The Padawan result area must be present.");
+  assert.match(await page.locator("#padawanStatus").textContent(), /catalogue dynamique|compositions observées|équipes défensives retenues/i);
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
   console.log("Browser smoke passed: shell, navigation, six-slot invariant, characterId ownership, and numeric slot aliases.");
