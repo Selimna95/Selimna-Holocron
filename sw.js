@@ -57,7 +57,7 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
       }
       return response;
-    }).catch(async () => (await caches.match(request)) || (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
+    }).catch(async () => (await caches.match(request)) || (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope).href)));
     return;
   }
   if (request.mode === 'navigate') {
