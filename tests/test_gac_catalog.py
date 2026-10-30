@@ -33,7 +33,7 @@ class GacCatalogParserTests(unittest.TestCase):
           <div>Elo 1944 Hold % 53.2% Battles 51K 221 builds #1</div>
         </div></html>
         """
-        teams = parse_page(html, "5v5", "kyber", 84, "https://swgoh.gg/tier-list/gac/?side=defense")
+        teams = parse_page(html, "5v5", "kyber", 84, "https://swgoh.gg/tier-list/gac/?side=defense", minimum_teams=1)
         self.assertEqual(len(teams), 1)
         self.assertEqual(teams[0]["members"], members)
         self.assertEqual(teams[0]["league"], "Kyber")
@@ -46,7 +46,7 @@ class GacCatalogParserTests(unittest.TestCase):
         images = ''.join(f'<img alt="Image: Unit {i}" src="https://game-assets.swgoh.gg/{i}.png">' for i in range(4))
         html = f'<div>{images}<p>Hold % 50.0% Battles 2K #1</p></div>'
         with self.assertRaisesRegex(ValueError, "only 0 teams parsed"):
-            parse_page(html, "5v5", "kyber", 84, "https://swgoh.gg/")
+            parse_page(html, "5v5", "kyber", 84, "https://swgoh.gg/", minimum_teams=1)
 
     def test_reads_season_from_page_heading(self):
         self.assertEqual(page_season("<h1>Defense tier list — Season 84</h1>"), 84)
