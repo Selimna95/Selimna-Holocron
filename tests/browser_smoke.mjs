@@ -130,6 +130,7 @@ try {
   await page.locator('[data-tier="Kyber"]').click();
   await page.locator('[data-access="Padawan"]').click();
   await page.locator("#padawanView").waitFor({ state: "visible" });
+  console.log("Padawan smoke diagnostics:", await page.locator("#rosterConnectionStatus").textContent(), await page.locator("#teamResults").textContent());
   assert.ok(await page.locator("#teamResults .team-card:not(.unavailable)").count() >= 1, "Padawan should select a complete observed team from the supplied roster.");
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
