@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.29</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.30</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -63,6 +63,14 @@ h1{font:500 clamp(34px,5.5vw,62px)/1.04 Georgia,serif;letter-spacing:.07em;margi
 footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-align:center}
 @media(max-width:640px){.shell{padding:16px 13px 20px}header{align-items:flex-start}.brand strong{font-size:16px}.back{font-size:8px;padding:9px}.intro{margin:30px 0 20px}.mode-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:0}.access-grid{grid-template-columns:1fr;gap:12px}.mode{min-height:clamp(430px,68vh,650px)}.mode h2{margin:9px 0}.mode .cta{margin-top:18px}.mode:before{right:-90px}.access{min-height:230px;padding:22px}.sig{width:58px;height:58px;margin-bottom:13px}.sig:before{inset:7px}.sig:after{inset:14px}.step-tools{align-items:flex-start}.selection{max-width:48%;line-height:1.6}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.mode.is-entering{opacity:0!important}}
+
+/* V4.0.30 — les cinq personnages de jedi.jpg sont les contrôles de ligue. */
+.tier-scene{position:relative;width:min(1120px,100%);aspect-ratio:3/2;margin:0 auto;overflow:hidden;background:#071321 url("../assets/image/jedi.jpg") center/100% 100% no-repeat;isolation:isolate}
+.tier-hotspot{position:absolute;top:29%;height:51%;width:19%;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;transition:background .25s ease,box-shadow .25s ease,border-color .25s ease}
+.tier-hotspot:hover,.tier-hotspot:focus-visible{background:rgba(111,195,255,.10);border-color:rgba(173,226,255,.58);box-shadow:0 0 28px rgba(80,177,255,.22),inset 0 0 24px rgba(80,177,255,.12);outline:none}
+.tier-kyber{left:1%}.tier-aurodium{left:20.5%}.tier-carbonite{left:40.5%}.tier-chromium{left:60.5%}.tier-bronzium{left:80%}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:640px){.tier-scene{width:100%;aspect-ratio:3/2;background-size:100% 100%}.tier-hotspot{top:30%;height:49%;width:19.5%}}
 </style>
 </head>
 <body><div class="shell">
@@ -78,12 +86,14 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 </div>
 </section>
 <section class="view" id="tierView" aria-label="Choisir sa ligue" hidden>
-<h2 class="view-title">CHOISIS TA LIGUE</h2><div class="access-grid">
-<button class="access" type="button" data-tier="Kyber"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Kyber</h2><p>Référence compétitive supérieure.</p><span class="cta">SÉLECTIONNER ↗</span></button>
-<button class="access" type="button" data-tier="Aurodium"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Aurodium</h2><p>Préparation pour les ligues Aurodium.</p><span class="cta">SÉLECTIONNER ↗</span></button>
-<button class="access" type="button" data-tier="Chromium"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Chromium</h2><p>Préparation pour les ligues Chromium.</p><span class="cta">SÉLECTIONNER ↗</span></button>
-<button class="access" type="button" data-tier="Bronzium"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Bronzium</h2><p>Préparation pour les ligues Bronzium.</p><span class="cta">SÉLECTIONNER ↗</span></button>
-<button class="access" type="button" data-tier="Carbonite"><span class="sig" aria-hidden="true"></span><span class="eyebrow">NIVEAU DE LIGUE</span><h2>Carbonite</h2><p>Préparation pour les ligues Carbonite.</p><span class="cta">SÉLECTIONNER ↗</span></button></div>
+<h2 class="view-title">CHOISIS TA LIGUE</h2>
+<div class="tier-scene" role="group" aria-label="Sélectionner une ligue parmi les cinq personnages">
+<button class="tier-hotspot tier-kyber" type="button" data-tier="Kyber" aria-label="Choisir la ligue Kyber"><span class="sr-only">Kyber</span></button>
+<button class="tier-hotspot tier-aurodium" type="button" data-tier="Aurodium" aria-label="Choisir la ligue Aurodium"><span class="sr-only">Aurodium</span></button>
+<button class="tier-hotspot tier-carbonite" type="button" data-tier="Carbonite" aria-label="Choisir la ligue Carbonite"><span class="sr-only">Carbonite</span></button>
+<button class="tier-hotspot tier-chromium" type="button" data-tier="Chromium" aria-label="Choisir la ligue Chromium"><span class="sr-only">Chromium</span></button>
+<button class="tier-hotspot tier-bronzium" type="button" data-tier="Bronzium" aria-label="Choisir la ligue Bronzium"><span class="sr-only">Bronzium</span></button>
+</div>
 <div class="step-tools"><button class="ghost" id="backToMode" type="button">← CHANGER DE FORMAT</button><span class="selection" id="chosenMode">Format : —</span></div></section>
 <section class="view" id="accessView" aria-label="Choisir son niveau d'accès" hidden>
 <h2 class="view-title">CHOISIS TON NIVEAU D’ACCÈS</h2><div class="access-grid">
@@ -103,7 +113,7 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <div class="note">V4.0.23 : Padawan est exclusivement défensif en 3v3 et 5v5, dans toutes les ligues. Les choix Attaque et Équilibrée ne sont pas disponibles. Les propositions respectent le roster et évitent les doublons de personnages.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.29</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.30</footer>
 </div>
 <script>
 (function(){
