@@ -124,19 +124,21 @@ def parse_markdown_page(text: str, fmt: str, league: str, expected_season: int, 
     teams = []
     pending = []
     pending_stats = None
-    lines = [re.sub(r"\\s+", " ", line).strip() for line in text.splitlines()]
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
     for line in lines:
-        image = re.search(r"(?:Image:\\s*|!\\[(?:Image:\\s*)?)([^]\\n]+)", line)
+        image = re.search(r"Image:\s*(.+)$", line)
+        if not image:
+            image = re.search(r"!\[(?:Image:\s*)?([^\]]+)\]", line)
         if image:
-            name = image.group(1).strip().rstrip("]")
+            name = image.group(1).strip()
             if name and name not in pending:
                 pending.append(name)
             continue
-        stats = re.search(r"Hold\\s*%\\s*([\\d.,]+)\\s*%\\s*Battles\\s+([\\d,.]+\\s*[KMB]?)", line, re.I)
+        stats = re.search(r"Hold\s*%\s*([\d.,]+)\s*%\s*Battles\s+([\d,.]+\s*[KMB]?)", line, re.I)
         if stats:
             pending_stats = (float(stats.group(1).replace(",", ".")), number_value(stats.group(2)))
             continue
-        rank = re.search(r"#\\s*(\\d+)", line)
+        rank = re.search(r"#\s*(\d+)", line)
         if pending_stats and rank and len(pending) == size:
             hold, battles = pending_stats
             rank_value = int(rank.group(1))
