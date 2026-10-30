@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 3.4.4** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 4.0.55** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
@@ -66,3 +66,13 @@ Le projet est distribué sous licence MIT ; voir `LICENSE`.
 ### Couche visuelle partagée
 
 `holocron-system.css` regroupe les tokens d’interface et les ajustements transversaux (focus clavier, états, composants partagés et adaptations responsives). Elle ne contient aucune logique de calcul. Le Codex du roster reste accessible comme destination de consultation.
+
+
+## Consolidation V4.0.55
+- Le Sanctuaire bleu charge ses styles et son code depuis des fichiers dédiés au lieu d'un document HTML monolithique.
+- Les instantanés GAC sont attribués à leur ligue source : Kyber (S84/S83) ou Chromium (S82/S81). Les autres ligues ne réutilisent plus silencieusement des compositions d'une ligue différente.
+- Les équipes éligibles sont classées par volume de combats observés, puis par taux de tenue.
+- Le moteur Python relance une recherche sans contrainte de composition Kyber si le plan exact n'est pas réalisable.
+
+### Limite connue des données GAC
+Le catalogue embarqué n'est pas un flux live. Il ne contient actuellement que Kyber S84/S83 et Chromium S82/S81. Aurodium, Bronzium et Carbonite sont signalées comme non couvertes plutôt que de recevoir des équipes présentées à tort comme spécifiques à leur ligue. L'actualisation automatique des sources reste à implémenter.
