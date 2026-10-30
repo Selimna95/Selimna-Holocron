@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 4.0.55** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 4.1.0** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
@@ -76,3 +76,4 @@ Le projet est distribué sous licence MIT ; voir `LICENSE`.
 
 ### Limite connue des données GAC
 Le catalogue embarqué n'est pas un flux live. Il ne contient actuellement que Kyber S84/S83 et Chromium S82/S81. Aurodium, Bronzium et Carbonite sont signalées comme non couvertes plutôt que de recevoir des équipes présentées à tort comme spécifiques à leur ligue. L'actualisation automatique des sources reste à implémenter.
+\n\n## Catalogue GAC dynamique — V4.1.0\n- Le Sanctuaire bleu ne contient plus de compositions défensives codées en dur. Il charge `blue-gac/gac-catalog.json`.\n- Le relevé automatique lit les classements SWGOH.GG en défense pour Kyber, Aurodium, Chromium, Bronzium et Carbonite, en 3v3 et 5v5.\n- Pour chaque format, les deux saisons publiées les plus récentes sont récupérées automatiquement depuis les liens de saison SWGOH.GG. Les données sont triées par nombre de combats observés, puis par taux de tenue.\n- GitHub Actions actualise le snapshot toutes les six heures et sur demande. La publication est atomique : si une page source manque ou si le parseur ne retrouve pas assez d'équipes, le dernier catalogue valide est conservé.\n- Le service worker utilise une stratégie réseau d'abord pour ce fichier, avec copie en cache comme secours hors ligne.\n- Les compositions sont toujours filtrées sur la possession complète des personnages et l'absence de doublons. Les flottes sont exclues.\n- Source : [SWGOH.GG — classements GAC défensifs](https://swgoh.gg/tier-list/). Les statistiques sont celles des premières tentatives enregistrées par SWGOH.GG, pas une garantie de résultat en combat.\n
