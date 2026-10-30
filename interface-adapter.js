@@ -1,4 +1,4 @@
-/* Selimna's Holocron V100.4
+/* Selimna's Holocron V100.5
    VISUAL ADAPTER ONLY.
    The V90 technical/data engine is intentionally untouched. */
 (function(){
@@ -240,7 +240,22 @@
     const back=el('returnToHolocrons');if(back)back.addEventListener('click',showChambers);
     window.addEventListener('holocron:data-updated',renderDecision);
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
-    try{const introPlayed=sessionStorage.getItem('holocronIntroPlayed')==='1';if(introPlayed&&el('holocronGate'))el('holocronGate').classList.add('intro-seen');if(!introPlayed)sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}
+    try{
+      const introPlayed=sessionStorage.getItem('holocronIntroPlayed')==='1';
+      const gate=el('holocronGate');
+      const crawl=gate?.querySelector('.temple-crawl-copy');
+      if(introPlayed){
+        if(gate)gate.classList.add('intro-seen');
+      }else if(crawl){
+        if(gate)gate.classList.remove('intro-seen');
+        crawl.addEventListener('animationend',event=>{
+          if(event.animationName==='templeCrawlDepth'){
+            try{sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}
+            if(gate)gate.classList.add('intro-seen');
+          }
+        },{once:true});
+      }
+    }catch(_){}
     try{
       const savedAlly=sessionStorage.getItem('holocronLastAllyCode')||'';
       const profileLoaded=sessionStorage.getItem('holocronProfileLoaded')==='1';
