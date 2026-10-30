@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.0.51-blue-gac-slow-crawl';
+const CACHE_NAME = 'holocron-static-v4.0.52-jedi-tier-selector';
 const STATIC_ASSETS = [
   './',
   './index.html',
