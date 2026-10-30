@@ -118,6 +118,52 @@ def is_character_image(node: Node) -> bool:
     return bool(alt) and (alt.startswith("Image:") or "game-assets.swgoh.gg" in src)
 
 
+def parse_markdown_page(text: str, fmt: str, league: str, expected_season: int, source_url: str, minimum_teams: int) -> list[dict]:
+    """Parse Jina Reader's text projection when SWGOH.GG blocks direct server fetches."""
+    size = 5 if fmt == "5v5" else 3
+    teams = []
+    pending = []
+    pending_stats = None
+    lines = [re.sub(r"\\s+", " ", line).strip() for line in text.splitlines()]
+    for line in lines:
+        image = re.search(r"(?:Image:\\s*|!\\[(?:Image:\\s*)?)([^]\\n]+)", line)
+        if image:
+            name = image.group(1).strip().rstrip("]")
+            if name and name not in pending:
+                pending.append(name)
+            continue
+        stats = re.search(r"Hold\\s*%\\s*([\\d.,]+)\\s*%\\s*Battles\\s+([\\d,.]+\\s*[KMB]?)", line, re.I)
+        if stats:
+            pending_stats = (float(stats.group(1).replace(",", ".")), number_value(stats.group(2)))
+            continue
+        rank = re.search(r"#\\s*(\\d+)", line)
+        if pending_stats and rank and len(pending) == size:
+            hold, battles = pending_stats
+            rank_value = int(rank.group(1))
+            teams.append({
+                "format": fmt, "league": LEAGUE_LABELS[league], "season": expected_season,
+                "rank": rank_value, "name": " · ".join(pending), "members": pending[:],
+                "hold": hold, "battles": battles, "source": source_url,
+                "note": f"S{expected_season} · {LEAGUE_LABELS[league]} · rang #{rank_value} · {battles:,} combats observés".replace(",", " "),
+            })
+            pending = []
+            pending_stats = None
+        elif pending_stats and rank:
+            pending = []
+            pending_stats = None
+    unique = []
+    seen = set()
+    for team in teams:
+        key = tuple(team["members"])
+        if key not in seen and 0 <= team["hold"] <= 100 and team["battles"] > 0:
+            seen.add(key)
+            unique.append(team)
+    unique.sort(key=lambda t: (-t["battles"], -t["hold"], t["rank"]))
+    if len(unique) < minimum_teams:
+        raise ValueError(f"{fmt} {league} S{expected_season}: only {len(unique)} teams parsed (minimum {minimum_teams}); refusing to publish a partial scrape")
+    return unique
+
+
 def parse_page(html: str, fmt: str, league: str, expected_season: int, source_url: str, minimum_teams: int = MIN_TEAMS_PER_VIEW) -> list[dict]:
     size = 5 if fmt == "5v5" else 3
     parser = TreeParser()
@@ -193,7 +239,10 @@ def parse_page(html: str, fmt: str, league: str, expected_season: int, source_ur
 
 
 def fetch(url: str) -> str:
-    request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html"})
+    # SWGOH.GG currently returns HTTP 403 to ordinary cloud/server requests.
+    # Jina Reader fetches the public page and returns a structured text projection.
+    reader_url = "https://r.jina.ai/" + url
+    request = Request(reader_url, headers={"User-Agent": USER_AGENT, "Accept": "text/plain", "X-Return-Format": "markdown"})
     last_error = None
     for attempt in range(4):
         try:
@@ -205,7 +254,7 @@ def fetch(url: str) -> str:
             last_error = exc
             if attempt < 3:
                 time.sleep(2 ** attempt)
-    raise RuntimeError(f"Unable to fetch {url}: {last_error}")
+    raise RuntimeError(f"Unable to fetch public SWGOH.GG page through Reader: {url}: {last_error}")
 
 
 def build_url(base: str, league: str, season: int | None = None) -> str:
