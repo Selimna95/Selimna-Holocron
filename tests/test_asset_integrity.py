@@ -49,7 +49,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("t.members.map(canonicalName)", self.blue_js)
         self.assertIn("members.some(function(m){return used.has(m);})", self.blue_js)
         self.assertIn("Number(b.battles||0)-Number(a.battles||0)", self.blue_js)
-        self.assertNotIn("var publicTeams=[", self.blue_js)
+        self.assertIn("var publicTeams=[];", self.blue_js)
         self.assertNotIn("sourceLeague:(Number(t.season)", self.blue_js)
         self.assertIn("font-size:max(13px", self.blue_css)
         self.assertIn("V4.1.0", self.blue_html)
