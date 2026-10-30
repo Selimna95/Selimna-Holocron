@@ -906,3 +906,14 @@
  78%{opacity:1;stroke-width:3.5}
  100%{opacity:0}
 }
+
+
+/* V4.0.46 — crawl relancé et défilement régulier ; mémorisation après la fin réelle. */
+.temple-gate:not(.intro-seen) .temple-crawl{display:grid!important;visibility:visible!important;}
+.temple-gate:not(.intro-seen) .temple-crawl-copy{
+  display:block!important;visibility:visible!important;opacity:1;
+  animation:templeCrawlDepth 18s linear both!important;
+  animation-play-state:running!important;
+}
+.temple-gate.intro-seen .temple-crawl{display:none!important;}
+@media(max-width:700px){.temple-gate:not(.intro-seen) .temple-crawl-copy{animation-duration:18s!important;}}
