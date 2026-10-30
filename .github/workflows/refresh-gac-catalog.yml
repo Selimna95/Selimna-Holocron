@@ -1,0 +1,43 @@
+name: Refresh GAC catalogue
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/update_gac_catalog.py"
+      - ".github/workflows/refresh-gac-catalog.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-gac-catalog-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch and validate all leagues and formats
+        run: python scripts/update_gac_catalog.py
+      - name: Publish changed snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- blue-gac/gac-catalog.json; then
+            echo "GAC catalogue is already up to date."
+          else
+            git add blue-gac/gac-catalog.json
+            git commit -m "chore(gac): refresh live defensive catalogue"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

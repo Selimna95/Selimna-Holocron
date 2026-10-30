@@ -1,12 +1,13 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.0.55-consolidation';
+const CACHE_NAME = 'holocron-static-v4.1.0-live-gac';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './blue-gac/index.html',
-  './blue-gac/blue-gac.css?v=4.0.55',
-  './blue-gac/blue-gac.js?v=4.0.55',
+  './blue-gac/blue-gac.css?v=4.1.0',
+  './blue-gac/blue-gac.js?v=4.1.0',
+  './blue-gac/gac-catalog.json?v=4.1.0',
   './assets/image/padawan.png',
   './assets/image/jpeg.jpg',
   './app.css?v=4.0.0-seigneur-card-layout',
@@ -49,6 +50,17 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (url.searchParams.has('ally')) return;
+  if (url.pathname.endsWith('/blue-gac/gac-catalog.json') ||
+      (url.hostname === 'raw.githubusercontent.com' && url.pathname.endsWith('/Selimna-Holocron/main/blue-gac/gac-catalog.json'))) {
+    event.respondWith(fetch(request).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});
+      }
+      return response;
+    }).catch(async () => (await caches.match(request)) || (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope).href)));
+    return;
+  }
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {

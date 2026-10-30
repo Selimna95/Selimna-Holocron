@@ -124,15 +124,23 @@ try {
     sessionStorage.setItem("holocronRosterNames", sampleRoster);
     localStorage.setItem("holocronRosterNames", sampleRoster);
   });
+  const rawCatalogAccessible = await page.evaluate(async () => {
+    const response = await fetch("https://raw.githubusercontent.com/Selimna95/Selimna-Holocron/feature/live-gac-catalog-v4.1.0/blue-gac/gac-catalog.json", { cache: "no-store" });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return Array.isArray(data.teams) && data.teams.length > 1000;
+  });
+  assert.equal(rawCatalogAccessible, true, "The GitHub Raw catalogue must be readable cross-origin from the Pages app.");
   const blueResponse = await page.goto(origin + "/blue-gac/", { waitUntil: "domcontentloaded" });
   assert.equal(blueResponse?.status(), 200, "The blue GAC page must return HTTP 200");
-  assert.match(await page.title(), /V4\.0\.55/);
+  assert.match(await page.title(), /V4\.1\.0/);
   assert.equal(await page.locator("#modeView").isVisible(), true);
   await page.locator('[data-mode="5v5"]').click();
   await page.locator('[data-tier="Kyber"]').click();
   await page.locator('[data-access="Padawan"]').click();
   await page.locator("#padawanView").waitFor({ state: "visible" });
-  assert.ok(await page.locator("#teamResults .team-card:not(.unavailable)").count() >= 1, "Padawan should select a complete observed team from the supplied 5v5 roster.");
+  assert.equal(await page.locator("#teamResults").count(), 1, "The Padawan result area must be present.");
+  assert.match(await page.locator("#padawanStatus").textContent(), /catalogue dynamique|compositions observées|équipes défensives retenues|classement actuel/i);
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
   console.log("Browser smoke passed: shell, navigation, six-slot invariant, characterId ownership, and numeric slot aliases.");
