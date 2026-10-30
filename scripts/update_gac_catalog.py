@@ -25,6 +25,7 @@ BASES = {
 }
 LEAGUES = ("kyber", "aurodium", "chromium", "bronzium", "carbonite")
 LEAGUE_LABELS = {x: x.capitalize() for x in LEAGUES}
+MIN_TEAMS_PER_VIEW = 8  # Parser-test/default floor; refresh uses the exact league/format requirement.
 USER_AGENT = "SelimnasHolocron-GAC-Catalog/1.0 (+https://github.com/Selimna95/Selimna-Holocron)"
 # Number of defensive slots Padawan must be able to fill for each GAC league.
 # Keep this matrix aligned with blue-gac.js requiredCounts.
