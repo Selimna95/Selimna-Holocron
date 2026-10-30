@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.34</title>
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.35</title>
 <style>
 :root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
@@ -48,15 +48,19 @@ h1{font:500 clamp(34px,5.5vw,62px)/1.04 Georgia,serif;letter-spacing:.07em;margi
 @keyframes door-crawl-in{0%{opacity:1;transform:perspective(700px) translate3d(0,0,0) rotateX(0) scale(1)}35%{opacity:1;transform:perspective(700px) translate3d(0,-4vh,-20px) rotateX(8deg) scale(.88)}72%{opacity:.9;transform:perspective(700px) translate3d(0,-15vh,-90px) rotateX(18deg) scale(.48)}100%{opacity:0;transform:perspective(700px) translate3d(0,-25vh,-180px) rotateX(26deg) scale(.04)}}
 @media(max-width:640px){.mode-grid{min-height:clamp(430px,68vh,650px);background-size:contain;background-position:center center}.mode{min-height:clamp(430px,68vh,650px)}.mode[data-mode="3v3"] .door-copy{left:33.2%;right:0;bottom:36%}.mode[data-mode="5v5"] .door-copy{left:0;right:33.2%;bottom:36%}.mode .eyebrow{font-size:7px;letter-spacing:.08em}.mode h2{font-size:clamp(30px,8vw,46px);margin:9px 0}.mode p{font-size:10px;line-height:1.45}.mode .cta{font-size:7px;letter-spacing:.05em;gap:4px;margin-top:13px}}
 @media(prefers-reduced-motion:reduce){.mode.is-entering .door-copy{animation:none!important;opacity:0!important}.mode-grid.is-crossing .mode:not(.is-entering){opacity:0!important}}
-.access-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,2.5vw,26px);width:min(900px,100%);margin:auto}
-.access{position:relative;min-height:clamp(250px,35vh,340px);padding:28px;text-align:center;overflow:hidden;border:1px solid #315b79;background:linear-gradient(155deg,#0c263b,#050d19 76%);color:#edf8ff;cursor:pointer;transition:transform .25s,border-color .25s,box-shadow .25s}
-.access.master{border-color:#7a704d;background:linear-gradient(155deg,#292817,#10131a 75%)}
-.access:hover,.access:focus-visible{transform:translateY(-4px);border-color:#a3e5ff;box-shadow:0 12px 40px #0085c633;outline:none}.access.master:hover,.access.master:focus-visible{border-color:#f0d99c;box-shadow:0 12px 40px #b9943a22}
-.sig{display:block;width:84px;height:84px;margin:2px auto 20px;position:relative;transform:rotate(45deg);border:1px solid #7ad6ff;box-shadow:inset 0 0 20px #5ab9ff17,0 0 25px #5ab9ff12}
-.sig:before,.sig:after{content:"";position:absolute;inset:10px;border:1px solid #8edfff88}.sig:after{inset:20px;background:radial-gradient(circle,#a8edff44,transparent 70%)}
-.master .sig{border-color:#e3cd8b;box-shadow:inset 0 0 20px #d8b85d17,0 0 25px #d8b85d12}.master .sig:before,.master .sig:after{border-color:#e3cd8b88}
-.access .eyebrow{font-size:9px;letter-spacing:.23em;color:#83d7ff}.master .eyebrow{color:#e3cd8b}
-.access h2{font:500 clamp(27px,3vw,38px) Georgia,serif;margin:12px 0}.access p{max-width:320px;margin:0 auto;color:#a5bbcc;font-size:12px;line-height:1.7}.access .cta{display:inline-block;margin-top:21px;font-size:9px;letter-spacing:.17em;color:#d7efff;border-bottom:1px solid #65bce9;padding-bottom:7px}.master .cta{color:#f3e4b9;border-color:#c7ad65}
+/* V4.0.35 — l’illustration Padawan devient la surface de sélection des deux parcours. */
+.access-scene{position:relative;width:min(1120px,100%);margin:0 auto;isolation:isolate}
+.access-scene img{display:block;width:100%;height:auto;max-height:68vh;object-fit:contain;object-position:center}
+.access-hotspot{position:absolute;top:0;bottom:0;width:50%;padding:0;border:0;background:transparent;color:#effaff;cursor:pointer;transition:background .25s,box-shadow .25s}
+.access-hotspot[data-access="Padawan"]{left:0}
+.access-hotspot[data-access="Maître Jedi"]{right:0}
+.access-hotspot:hover,.access-hotspot:focus-visible{background:linear-gradient(180deg,transparent 45%,rgba(90,190,255,.10));box-shadow:inset 0 0 35px rgba(105,205,255,.12);outline:1px solid rgba(173,226,255,.35);outline-offset:-3px}
+.access-hotspot.master:hover,.access-hotspot.master:focus-visible{background:linear-gradient(180deg,transparent 45%,rgba(226,197,123,.10));box-shadow:inset 0 0 35px rgba(226,197,123,.12);outline-color:rgba(240,217,156,.4)}
+.access-label{position:absolute;left:10%;right:10%;bottom:7%;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;text-shadow:0 2px 12px #000,0 0 24px #000;pointer-events:none}
+.access-label strong{font:500 clamp(23px,3vw,38px) Georgia,serif;letter-spacing:.06em}
+.access-label small{font-size:9px;letter-spacing:.18em;color:#bfeaff}
+.master .access-label small{color:#f0d99c}
+@media(max-width:640px){.access-scene img{width:100%;max-height:none}.access-label{bottom:5%;gap:4px}.access-label strong{font-size:clamp(18px,5vw,27px)}.access-label small{font-size:7px;letter-spacing:.08em}}
 .step-tools{display:flex;justify-content:space-between;align-items:center;gap:12px;width:min(900px,100%);margin:22px auto 0}
 .ghost,.continue{border:1px solid #31536b;background:#091827;color:#c5e4f7;padding:12px 16px;font:inherit;font-size:9px;letter-spacing:.16em;cursor:pointer}
 .continue{border-color:#70c9f4;background:linear-gradient(110deg,#123c59,#0a2135);color:#effaff}.ghost:hover,.continue:hover{border-color:#b4ebff}
@@ -100,11 +104,21 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 </div>
 <div class="step-tools"><button class="ghost" id="backToMode" type="button">← CHANGER DE FORMAT</button><span class="selection" id="chosenMode">Format : —</span></div></section>
 <section class="view" id="accessView" aria-label="Choisir son niveau d'accès" hidden>
-<h2 class="view-title">CHOISIS TON NIVEAU D’ACCÈS</h2><div class="access-grid">
-<button class="access" type="button" data-access="Padawan"><span class="sig" aria-hidden="true"></span><span class="eyebrow">APPRENDRE · ÊTRE GUIDÉ</span><h2>Padawan</h2><p>Un parcours accompagné, des choix expliqués et une préparation GAC accessible.</p><span class="cta">ENTRER DANS LA VOIE ↗</span></button>
-<button class="access master" type="button" data-access="Maître Jedi"><span class="sig" aria-hidden="true"></span><span class="eyebrow">ANALYSER · MAÎTRISER</span><h2>Maître Jedi</h2><p>Un parcours expert pour piloter les arbitrages, la construction des équipes et la stratégie.</p><span class="cta">ACCÉDER À L’ANALYSE ↗</span></button></div>
+<h2 class="view-title">CHOISIS TON NIVEAU D’ACCÈS</h2>
+<div class="access-scene" role="group" aria-label="Choisir Padawan ou Maître Jedi">
+<img src="../assets/image/padawan.png" alt="Deux personnages représentant les parcours Padawan et Maître Jedi" loading="eager">
+<button class="access-hotspot" type="button" data-access="Padawan" aria-label="Entrer dans le parcours Padawan"><span class="access-label"><strong>PADAWAN</strong><small>APPRENDRE · ÊTRE GUIDÉ</small></span></button>
+<button class="access-hotspot master" type="button" data-access="Maître Jedi" aria-label="Entrer dans le parcours Maître Jedi"><span class="access-label"><strong>MAÎTRE JEDI</strong><small>ANALYSER · MAÎTRISER</small></span></button>
+</div>
 <div class="step-tools"><button class="ghost" id="backToTierFromAccess" type="button">← CHANGER DE LIGUE</button><span class="selection" id="chosenSummary">Configuration : —</span></div>
 <div class="note" id="settingsSummary" aria-live="polite">Le moteur n’affiche que des équipes complètes observées dans les données publiques et présentes dans le roster.</div></section>
+<section class="view" id="masterView" aria-label="Zone Maître Jedi" hidden>
+<div class="padawan-panel">
+<h2 class="view-title">MAÎTRE JEDI · PARCOURS EXPERT</h2>
+<div class="note">Tu as rejoint la zone Maître Jedi pour la configuration sélectionnée. Le parcours expert est encore en préparation ; ses outils ne sont pas activés à ce stade.</div>
+<div class="step-tools"><button class="ghost" id="backFromMaster" type="button">← RETOUR AU CHOIX DES PARCOURS</button><span class="selection" id="masterConfig">Configuration : —</span></div>
+</div>
+</section>
 <section class="view" id="padawanView" aria-label="Propositions Padawan" hidden>
 <div class="padawan-panel">
 <div class="padawan-toolbar"><h2 class="view-title" style="margin:0;text-align:left">PADAWAN · SÉLECTION DÉFENSIVE</h2><span class="source-tag">ROSTER OBLIGATOIRE</span></div>
@@ -117,18 +131,18 @@ footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-ali
 <div class="note">V4.0.23 : Padawan est exclusivement défensif en 3v3 et 5v5, dans toutes les ligues. Les choix Attaque et Équilibrée ne sont pas disponibles. Les propositions respectent le roster et évitent les doublons de personnages.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.32</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.35</footer>
 </div>
 <script>
 (function(){
 'use strict';
 var state={mode:'',tier:'',strategy:'Défensive',access:''};
-var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),access:document.getElementById('accessView'),padawan:document.getElementById('padawanView')};
+var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),access:document.getElementById('accessView'),padawan:document.getElementById('padawanView'),master:document.getElementById('masterView')};
 var order=['mode','tier','access'];
 
 function show(step){
- order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';
- var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 03'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03']};
+ order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';views.master.hidden=step!=='master';
+ var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 03'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03'],master:['MAÎTRE JEDI','Parcours expert · Configuration GAC conservée.','ÉTAPE 03 / 03']};
  document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
  ['progress1','progress2','progress3'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
  window.scrollTo({top:0,behavior:'smooth'});
@@ -143,7 +157,8 @@ try{order.forEach(function(k){state[k]=sessionStorage.getItem('blueGac'+k.charAt
 document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){if(document.getElementById('modeGrid').classList.contains('is-crossing'))return;state.mode=b.dataset.mode;state.tier='';state.strategy='Défensive';state.access='';sync();var grid=document.getElementById('modeGrid');grid.classList.add('is-crossing');b.classList.add('is-entering');window.setTimeout(function(){grid.classList.remove('is-crossing');b.classList.remove('is-entering');show('tier');},window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:6000);});});
 document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='Défensive';state.access='';sync();show('access');});});
 
-document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();if(state.access==='Padawan'){show('padawan');initRosterStatus();}else{document.getElementById('settingsSummary').textContent='Le parcours Maître Jedi sera développé séparément.';}});});
+document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();if(state.access==='Padawan'){show('padawan');initRosterStatus();}else{document.getElementById('masterConfig').textContent='Configuration : '+(state.mode||'—')+' · '+(state.tier||'—');show('master');}});});
+document.getElementById('backFromMaster').addEventListener('click',function(){show('access');});
 // V4.0.16 — compositions relevées sur les classements publics SWGOH.GG (saison indiquée par la source).
 // Ces compositions sont des observations réelles, pas des équipes inventées. Chaque équipe est filtrée
 // intégralement sur le roster. Les statistiques sont celles du classement Kyber consulté le 26/10/2026;
@@ -269,6 +284,6 @@ document.getElementById('showAllTeams').addEventListener('click',renderTeams);
 document.getElementById('backToAccess').addEventListener('click',function(){show('access');});
 
 document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTierFromAccess').addEventListener('click',function(){show('tier');});
-sync();show(state.access==='Padawan'?'padawan':state.access?'access':state.tier?'access':state.mode?'tier':'mode');if(state.access==='Padawan')initRosterStatus();
+sync();show(state.access==='Padawan'?'padawan':state.access==='Maître Jedi'?'master':state.tier?'access':state.mode?'tier':'mode');if(state.access==='Padawan')initRosterStatus();if(state.access==='Maître Jedi')document.getElementById('masterConfig').textContent='Configuration : '+(state.mode||'—')+' · '+(state.tier||'—');
 })();
 </script></body></html>
