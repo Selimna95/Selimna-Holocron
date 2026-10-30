@@ -125,7 +125,6 @@ try {
   await page.locator('[data-tier="Kyber"]').click();
   await page.locator('[data-access="Padawan"]').click();
   await page.locator("#padawanView").waitFor({ state: "visible" });
-  await page.locator("#teamResults").waitFor({ state: "visible" });
   assert.equal(await page.locator("#teamResults").count(), 1, "The Padawan result area must be present.");
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
