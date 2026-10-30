@@ -399,7 +399,15 @@ def _kyber_set_plan(kyber):
         counts = entry.get("counts")
         if not isinstance(counts, dict):
             continue
-        normalized = {normalize_set(k): int(v) for k,v in counts.items() if normalize_set(k) and int(v) > 0}
+        normalized = {}
+        for key, raw_count in counts.items():
+            name = normalize_set(key)
+            try:
+                count = int(raw_count)
+            except (TypeError, ValueError):
+                continue
+            if name and count > 0:
+                normalized[name] = normalized.get(name, 0) + count
         if sum(normalized.values()) != 6:
             continue
         weight = to_float(entry.get("weight"))
@@ -525,48 +533,47 @@ def optimize_kyber(
         candidates[slot] = ranked[:max(1, int(limit_per_slot))]
 
     # Bounded beam search instead of 50^6 / 80^6 brute force.
-    beam = [()]
-    for slot_index, slot in enumerate(SLOTS, 1):
-        expanded = []
-        for partial in beam:
-            used = {mod_id(m) for m in partial}
-            for mod in candidates[slot]:
-                if mod_id(mod) in used:
-                    continue
-                build = partial + (mod,)
-                if set_plan and not _partial_matches_set_plan(build, set_plan):
-                    continue
-                score = build_score(build, kyber, weights, base_stats)
-                expanded.append((score, build))
+    # First try the exact Kyber set composition. If the inventory cannot
+    # satisfy it (or beam pruning removes every exact build), retry without
+    # that hard constraint so a useful best-effort proposal is still returned.
+    def search_builds(plan_constraint):
+        current_beam = [()]
+        for slot_index, slot in enumerate(SLOTS, 1):
+            expanded = []
+            for partial in current_beam:
+                used = {mod_id(m) for m in partial}
+                for mod in candidates[slot]:
+                    if mod_id(mod) in used:
+                        continue
+                    build = partial + (mod,)
+                    if plan_constraint and not _partial_matches_set_plan(build, plan_constraint):
+                        continue
+                    score = build_score(build, kyber, weights, base_stats)
+                    expanded.append((score, build))
+            expanded.sort(key=lambda x: x[0], reverse=True)
+            current_beam = [build for _, build in expanded[:beam_width]]
+            if progress_callback:
+                try:
+                    progress_callback(slot_index, slot, len(current_beam))
+                except Exception:
+                    pass
+            if not current_beam:
+                break
+        return current_beam
 
-        expanded.sort(key=lambda x: x[0], reverse=True)
-        beam = [build for _, build in expanded[:beam_width]]
-        if progress_callback:
-            try:
-                progress_callback(slot_index, slot, len(beam))
-            except Exception:
-                pass
-
-    if set_plan:
-        exact_beam = [build for build in beam if _matches_set_plan(build, set_plan)]
-        if exact_beam:
-            beam = exact_beam
-        else:
-            # Inventory may not contain enough mods for the reference set plan.
-            # In that case do not invent a result: return the best unconstrained
-            # candidates only if the reference composition is impossible.
-            pass
+    beam = search_builds(set_plan)
+    applied_set_plan = set_plan if set_plan and any(_matches_set_plan(build, set_plan) for build in beam) else None
+    if set_plan and applied_set_plan is None:
+        beam = search_builds(None)
 
     results = []
     for build in beam:
-        if set_plan and not _matches_set_plan(build, set_plan):
-            continue
         results.append(
             {
                 "build": list(build),
                 "score": build_score(build, kyber, weights, base_stats),
                 "stats": final_stats(build, base_stats),
-                "set_plan": set_plan or {},
+                "set_plan": applied_set_plan or {},
             }
         )
 
