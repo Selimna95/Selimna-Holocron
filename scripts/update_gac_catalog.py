@@ -167,7 +167,7 @@ def parse_markdown_page(text: str, fmt: str, league: str, expected_season: int, 
 
 
 def parse_page(html: str, fmt: str, league: str, expected_season: int, source_url: str, minimum_teams: int = MIN_TEAMS_PER_VIEW) -> list[dict]:
-    if "<html" not in html.lower() and "Image:" in html:
+    if "<html" not in html.lower() and ("Image:" in html or "![" in html):
         return parse_markdown_page(html, fmt, league, expected_season, source_url, minimum_teams)
     size = 5 if fmt == "5v5" else 3
     parser = TreeParser()
@@ -253,7 +253,7 @@ def fetch(url: str) -> str:
             with urlopen(request, timeout=45) as response:
                 if response.status != 200:
                     raise ValueError(f"HTTP {response.status} for {url}")
-                return response.read().decode("utf-8", errors="replace")
+                body = response.read().decode("utf-8", errors="replace")\n                print(f"Reader preview for {url}: {body[:1800]!r}")\n                return body
         except (HTTPError, URLError, TimeoutError, ValueError) as exc:
             last_error = exc
             if attempt < 3:
