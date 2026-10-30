@@ -308,7 +308,10 @@ def refresh() -> dict:
         for league in LEAGUES:
             discovery_url = build_url(base, league)
             discovery_html = fetch(discovery_url)
-            current = page_season(discovery_html)
+            try:
+                current = page_season(discovery_html)
+            except ValueError:
+                current = page_season(fetch(discovery_url, "markdown"))
             previous = discover_previous_season(discovery_html, current)
             available_seasons = [current]
             for season in (current, previous):
@@ -317,7 +320,12 @@ def refresh() -> dict:
                 try:
                     actual = page_season(html)
                 except ValueError:
-                    actual = season
+                    try:
+                        actual = page_season(fetch(url, "markdown"))
+                    except ValueError:
+                        # The explicit season query remains authoritative when
+                        # both sanitized projections omit their page title.
+                        actual = season
                 if actual != season:
                     message = f"Requested {fmt} {league} S{season}, received S{actual} from {url}"
                     if season == current:
