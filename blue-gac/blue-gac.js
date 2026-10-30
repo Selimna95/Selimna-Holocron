@@ -7,7 +7,7 @@ var order=['mode','tier','access'];
 
 function show(step){
  order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';views.master.hidden=step!=='master';
- var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 03'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03'],master:['MAÎTRE JEDI','Parcours expert · Configuration GAC conservée.','ÉTAPE 03 / 03']};
+ var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 03'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03'],padawan:['PADAWAN · DÉFENSE','Sélection des équipes défensives complètes à partir du roster synchronisé.','ÉTAPE 03 / 03'],master:['MAÎTRE JEDI','Parcours expert · Configuration GAC conservée.','ÉTAPE 03 / 03']};
  document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
  ['progress1','progress2','progress3'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
  window.scrollTo({top:0,behavior:'smooth'});
