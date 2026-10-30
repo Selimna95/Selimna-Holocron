@@ -26,7 +26,19 @@ BASES = {
 LEAGUES = ("kyber", "aurodium", "chromium", "bronzium", "carbonite")
 LEAGUE_LABELS = {x: x.capitalize() for x in LEAGUES}
 USER_AGENT = "SelimnasHolocron-GAC-Catalog/1.0 (+https://github.com/Selimna95/Selimna-Holocron)"
-MIN_TEAMS_PER_VIEW = 8
+# Number of defensive slots Padawan must be able to fill for each GAC league.
+# Keep this matrix aligned with blue-gac.js requiredCounts.
+REQUIRED_DEFENSE_TEAMS = {
+    "5v5": {"kyber": 11, "aurodium": 9, "chromium": 7, "bronzium": 5, "carbonite": 3},
+    "3v3": {"kyber": 15, "aurodium": 13, "chromium": 10, "bronzium": 7, "carbonite": 3},
+}
+
+
+def required_team_count(fmt: str, league: str) -> int:
+    try:
+        return REQUIRED_DEFENSE_TEAMS[fmt][league.lower()]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported GAC format/league: {fmt}/{league}") from exc
 
 
 class Node:
@@ -299,6 +311,7 @@ def build_url(base: str, league: str, season: int | None = None) -> str:
 def refresh() -> dict:
     all_teams = []
     seasons_by_format = {}
+    current_season_by_view = {}
 
     for fmt, base in BASES.items():
         seasons_by_format[fmt] = {}
@@ -311,6 +324,7 @@ def refresh() -> dict:
                 current = page_season(fetch(discovery_url, "markdown"))
             previous = discover_previous_season(discovery_html, current)
             available_seasons = []
+            current_season_by_view[(fmt, league)] = current
             candidates = []
             for candidate in (current, previous, previous - 2):
                 if candidate not in candidates and candidate > 0:
@@ -329,11 +343,11 @@ def refresh() -> dict:
                     print(f"Skipping {fmt} {league} S{season}: source returned S{actual}")
                     continue
                 try:
-                    parsed = parse_page(html, fmt, league, season, url)
+                    parsed = parse_page(html, fmt, league, season, url, minimum_teams=required_team_count(fmt, league))
                 except ValueError as html_error:
                     try:
                         markdown = fetch(url, "markdown")
-                        parsed = parse_page(markdown, fmt, league, season, url)
+                        parsed = parse_page(markdown, fmt, league, season, url, minimum_teams=required_team_count(fmt, league))
                     except ValueError as markdown_error:
                         print(f"Skipping {fmt} {league} S{season}: HTML={html_error}; Reader text={markdown_error}")
                         continue
@@ -351,23 +365,33 @@ def refresh() -> dict:
             keys.add(key)
             unique.append(team)
 
-    coverage = {
-        fmt: {
-            league: sum(1 for t in unique if t["format"] == fmt and t["league"] == LEAGUE_LABELS[league])
-            for league in LEAGUES
-        }
-        for fmt in BASES
-    }
+    # Validate the current season independently for every format/league view.
+    # Totals across seasons are deliberately not accepted as proof of coverage.
+    coverage = {}
     for fmt in BASES:
+        coverage[fmt] = {}
         for league in LEAGUES:
-            if coverage[fmt][league] < MIN_TEAMS_PER_VIEW:
-                raise ValueError(f"Missing current-season coverage for {fmt} {league}: {coverage[fmt][league]} teams")
+            season = current_season_by_view[(fmt, league)]
+            count = sum(
+                1 for team in unique
+                if team["format"] == fmt
+                and team["league"] == LEAGUE_LABELS[league]
+                and team["season"] == season
+            )
+            expected = required_team_count(fmt, league)
+            coverage[fmt][league] = count
+            if count < expected:
+                raise ValueError(
+                    f"Insufficient current-season defense catalog for {fmt} {league} "
+                    f"S{season}: {count}/{expected} teams"
+                )
     return {
         "schemaVersion": 1,
         "source": "SWGOH.GG GAC tier lists · defense · most played",
         "updatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "seasons": seasons_by_format,
         "coverage": coverage,
+        "requiredDefenseTeams": {fmt: dict(REQUIRED_DEFENSE_TEAMS[fmt]) for fmt in BASES},
         "teams": unique,
     }
 
@@ -380,7 +404,8 @@ def main():
     temp.replace(OUTPUT)
     print(
         f"Published {len(catalog['teams'])} defensive teams; "
-        f"5 leagues × 2 formats × 2 seasons; updated {catalog['updatedAt']}"
+        f"validated current-season counts by format/league: {catalog['coverage']}; "
+        f"updated {catalog['updatedAt']}"
     )
 
 
