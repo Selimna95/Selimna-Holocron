@@ -126,7 +126,7 @@ try {
   });
   const blueResponse = await page.goto(origin + "/blue-gac/", { waitUntil: "domcontentloaded" });
   assert.equal(blueResponse?.status(), 200, "The blue GAC page must return HTTP 200");
-  assert.match(await page.title(), /V4\.0\.55/);
+  assert.match(await page.title(), /V4\.1\.0/);
   assert.equal(await page.locator("#modeView").isVisible(), true);
   await page.locator('[data-mode="5v5"]').click();
   await page.locator('[data-tier="Kyber"]').click();
