@@ -89,10 +89,35 @@ def number_value(value: str) -> int:
 
 
 def page_season(html: str) -> int:
+    title = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
+    if title:
+        match = re.search(r"Season\s+(\d+)", title.group(1), re.I)
+        if match:
+            return int(match.group(1))
+    reader_title = re.search(r"^Title:\s*.*?Season\s+(\d+)", html, re.I | re.M)
+    if reader_title:
+        return int(reader_title.group(1))
     match = re.search(r"Season\s+(\d+)", html, re.I)
     if not match:
         raise ValueError("SWGOH.GG page does not expose a season number")
     return int(match.group(1))
+
+
+def discover_previous_season(html: str, current: int) -> int:
+    parser = TreeParser()
+    parser.feed(html)
+    found = set()
+    for node in parser.root.walk():
+        href = node.attrs.get("href", "")
+        query = parse_qs(urlparse(href).query)
+        for value in query.get("season", []):
+            if value.isdigit() and int(value) < current and int(value) % 2 == current % 2:
+                found.add(int(value))
+    found.update(
+        int(value) for value in re.findall(r"[?&]season=(\d+)", html)
+        if int(value) < current and int(value) % 2 == current % 2
+    )
+    return max(found) if found else current - 2
 
 
 def discover_previous_season(html: str, current: int) -> int:
@@ -276,21 +301,19 @@ def refresh() -> dict:
     seasons_by_format = {}
 
     for fmt, base in BASES.items():
-        discovery_url = build_url(base, "kyber")
-        discovery_html = fetch(discovery_url)
-        current = page_season(discovery_html)
-        previous = discover_previous_season(discovery_html, current)
-        seasons_by_format[fmt] = [current, previous]
-
+        seasons_by_format[fmt] = {}
         for league in LEAGUES:
+            discovery_url = build_url(base, league)
+            discovery_html = fetch(discovery_url)
+            current = page_season(discovery_html)
+            previous = discover_previous_season(discovery_html, current)
+            available_seasons = [current]
             for season in (current, previous):
                 url = build_url(base, league, season if season != current else None)
-                html = discovery_html if league == "kyber" and season == current else fetch(url)
+                html = discovery_html if season == current else fetch(url)
                 try:
                     actual = page_season(html)
                 except ValueError:
-                    # Some historical pages omit the season in sanitized HTML;
-                    # the explicit season query remains authoritative.
                     actual = season
                 if actual != season:
                     message = f"Requested {fmt} {league} S{season}, received S{actual} from {url}"
@@ -306,6 +329,9 @@ def refresh() -> dict:
                     print(f"Skipping historical snapshot without enough public squad detail: {exc}")
                     continue
                 all_teams.extend(parsed)
+                if season != current:
+                    available_seasons.append(season)
+            seasons_by_format[fmt][league] = available_seasons
 
     keys = set()
     unique = []
