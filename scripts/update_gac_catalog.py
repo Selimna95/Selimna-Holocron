@@ -271,11 +271,11 @@ def parse_page(html: str, fmt: str, league: str, expected_season: int, source_ur
     return teams
 
 
-def fetch(url: str) -> str:
+def fetch(url: str, response_format: str = "html") -> str:
     # SWGOH.GG currently returns HTTP 403 to ordinary cloud/server requests.
     # Jina Reader fetches the public page and returns sanitized HTML for image alt-text parsing.
     reader_url = "https://r.jina.ai/" + url
-    request = Request(reader_url, headers={"User-Agent": USER_AGENT, "Accept": "text/html", "X-Return-Format": "html"})
+    request = Request(reader_url, headers={"User-Agent": USER_AGENT, "Accept": "text/html" if response_format == "html" else "text/plain", "X-Return-Format": response_format})
     last_error = None
     for attempt in range(4):
         try:
