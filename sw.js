@@ -50,7 +50,17 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (url.searchParams.has('ally')) return;
-  if (url.pathname.endsWith('/blue-gac/gac-catalog.json')) {\n    event.respondWith(fetch(request).then(response => {\n      if (response.ok) { const copy = response.clone(); caches.open(CACHE_NAME).then(cache => cache.put(request, copy)); }\n      return response;\n    }).catch(async () => (await caches.match(request)) || (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));\n    return;\n  }\n  if (request.mode === 'navigate') {
+  if (url.pathname.endsWith('/blue-gac/gac-catalog.json')) {
+    event.respondWith(fetch(request).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      }
+      return response;
+    }).catch(async () => (await caches.match(request)) || (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
+    return;
+  }
+  if (request.mode === 'navigate') {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {
         const copy = response.clone();
