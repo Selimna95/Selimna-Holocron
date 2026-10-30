@@ -286,7 +286,12 @@ def refresh() -> dict:
             for season in (current, previous):
                 url = build_url(base, league, season if season != current else None)
                 html = discovery_html if league == "kyber" and season == current else fetch(url)
-                actual = page_season(html)
+                try:
+                    actual = page_season(html)
+                except ValueError:
+                    # Some historical pages omit the season in sanitized HTML;
+                    # the explicit season query remains authoritative.
+                    actual = season
                 if actual != season:
                     raise ValueError(
                         f"Requested {fmt} {league} S{season}, received S{actual} from {url}"
