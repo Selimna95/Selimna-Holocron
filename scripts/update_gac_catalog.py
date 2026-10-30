@@ -105,9 +105,9 @@ def discover_previous_season(html: str, current: int) -> int:
         for value in query.get("season", []):
             if value.isdigit() and int(value) < current:
                 found.add(int(value))
-    if not found:
-        raise ValueError(f"No previous season link found below S{current}")
-    return max(found)
+    found.update(int(value) for value in re.findall(r"[?&]season=(\d+)", html) if int(value) < current)
+    # The game alternates 5v5 and 3v3 seasons; Reader can omit selector links.
+    return max(found) if found else current - 2
 
 
 def is_character_image(node: Node) -> bool:
@@ -167,6 +167,8 @@ def parse_markdown_page(text: str, fmt: str, league: str, expected_season: int, 
 
 
 def parse_page(html: str, fmt: str, league: str, expected_season: int, source_url: str, minimum_teams: int = MIN_TEAMS_PER_VIEW) -> list[dict]:
+    if "<html" not in html.lower() and "Image:" in html:
+        return parse_markdown_page(html, fmt, league, expected_season, source_url, minimum_teams)
     size = 5 if fmt == "5v5" else 3
     parser = TreeParser()
     parser.feed(html)
