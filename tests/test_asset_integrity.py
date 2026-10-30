@@ -60,5 +60,21 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("gac-catalog.json", self.blue_js)
 
 
+    def test_live_catalogue_covers_every_league_and_format(self):
+        import json
+        data = json.loads(self.catalog)
+        self.assertTrue(data["updatedAt"])
+        self.assertGreater(len(data["teams"]), 1000)
+        leagues = {"Kyber", "Aurodium", "Chromium", "Bronzium", "Carbonite"}
+        for fmt, size in (("5v5", 5), ("3v3", 3)):
+            self.assertEqual(set(data["seasons"][fmt]), {x.lower() for x in leagues})
+            for league in leagues:
+                entries = [t for t in data["teams"] if t["format"] == fmt and t["league"] == league]
+                self.assertGreaterEqual(len(entries), 8, f"Missing {fmt} {league} data")
+                self.assertGreaterEqual(len(data["seasons"][fmt][league.lower()]), 2)
+                for team in entries:
+                    self.assertEqual(len(team["members"]), size)
+                    self.assertIn("swgoh.gg", team["source"])
+
 if __name__ == "__main__":
     unittest.main()
