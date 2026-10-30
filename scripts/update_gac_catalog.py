@@ -253,7 +253,9 @@ def fetch(url: str) -> str:
             with urlopen(request, timeout=45) as response:
                 if response.status != 200:
                     raise ValueError(f"HTTP {response.status} for {url}")
-                body = response.read().decode("utf-8", errors="replace")\n                print(f"Reader preview for {url}: {body[:1800]!r}")\n                return body
+                body = response.read().decode("utf-8", errors="replace")
+                print(f"Reader preview for {url}: {body[:1800]!r}")
+                return body
         except (HTTPError, URLError, TimeoutError, ValueError) as exc:
             last_error = exc
             if attempt < 3:
