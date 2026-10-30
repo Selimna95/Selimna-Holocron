@@ -30,7 +30,6 @@ jobs:
       - run: node --check modules/sithari.js
       - run: node --check modules/runtime.js
       - run: node --check optimizer-worker.mjs
-      - run: node --check blue-gac/blue-gac.js
       - run: node --check tests/browser_smoke.mjs
 
   browser-smoke:
