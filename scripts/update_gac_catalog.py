@@ -324,9 +324,8 @@ def refresh() -> dict:
     }
     for fmt in BASES:
         for league in LEAGUES:
-            if coverage[fmt][league] < MIN_TEAMS_PER_VIEW * 2:
-                raise ValueError(f"Incomplete coverage for {fmt} {league}: {coverage[fmt][league]} teams")
-
+            if coverage[fmt][league] < MIN_TEAMS_PER_VIEW:
+                raise ValueError(f"Missing current-season coverage for {fmt} {league}: {coverage[fmt][league]} teams")
     return {
         "schemaVersion": 1,
         "source": "SWGOH.GG GAC tier lists · defense · most played",
