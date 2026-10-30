@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m unittest discover -s tests -v
-      - run: python -m py_compile python/optimizer.py python/kyber_data.py
+      - run: python -m py_compile python/optimizer.py python/kyber_data.py scripts/update_gac_catalog.py
 
   javascript-syntax:
     runs-on: ubuntu-latest
