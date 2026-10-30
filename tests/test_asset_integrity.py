@@ -34,6 +34,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("holocron-static-v4.1.0-live-gac", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.0", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
+        self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
         self.assertIn('"schemaVersion": 1', self.catalog)
 
@@ -44,7 +45,7 @@ class AssetIntegrityTests(unittest.TestCase):
                       'data-tier="Chromium"', 'data-tier="Bronzium"',
                       'data-tier="Carbonite"'):
             self.assertIn(value, self.blue_html)
-        self.assertIn("fetch('gac-catalog.json?v=4.1.0'", self.blue_js)
+        self.assertIn("raw.githubusercontent.com/Selimna95/Selimna-Holocron/main/blue-gac/gac-catalog.json", self.blue_js)
         self.assertIn("t.league===state.tier", self.blue_js)
         self.assertIn("t.members.map(canonicalName)", self.blue_js)
         self.assertIn("members.some(function(m){return used.has(m);})", self.blue_js)
