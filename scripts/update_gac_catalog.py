@@ -118,7 +118,7 @@ def is_character_image(node: Node) -> bool:
     return bool(alt) and (alt.startswith("Image:") or "game-assets.swgoh.gg" in src)
 
 
-def parse_page(html: str, fmt: str, league: str, expected_season: int, source_url: str) -> list[dict]:
+def parse_page(html: str, fmt: str, league: str, expected_season: int, source_url: str, minimum_teams: int = MIN_TEAMS_PER_VIEW) -> list[dict]:
     size = 5 if fmt == "5v5" else 3
     parser = TreeParser()
     parser.feed(html)
@@ -184,10 +184,10 @@ def parse_page(html: str, fmt: str, league: str, expected_season: int, source_ur
         })
 
     teams.sort(key=lambda t: (-t["battles"], -t["hold"], t["rank"]))
-    if len(teams) < MIN_TEAMS_PER_VIEW:
+    if len(teams) < minimum_teams:
         raise ValueError(
             f"{fmt} {league} S{expected_season}: only {len(teams)} teams parsed "
-            f"(minimum {MIN_TEAMS_PER_VIEW}); refusing to publish a partial scrape"
+            f"(minimum {minimum_teams}); refusing to publish a partial scrape"
         )
     return teams
 
