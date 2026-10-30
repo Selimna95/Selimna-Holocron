@@ -313,8 +313,12 @@ def refresh() -> dict:
             except ValueError:
                 current = page_season(fetch(discovery_url, "markdown"))
             previous = discover_previous_season(discovery_html, current)
-            available_seasons = [current]
-            for season in (current, previous):
+            available_seasons = []
+            candidates = []
+            for candidate in (current, previous, previous - 2):
+                if candidate not in candidates and candidate > 0:
+                    candidates.append(candidate)
+            for season in candidates:
                 url = build_url(base, league, season if season != current else None)
                 html = discovery_html if season == current else fetch(url)
                 try:
@@ -323,25 +327,19 @@ def refresh() -> dict:
                     try:
                         actual = page_season(fetch(url, "markdown"))
                     except ValueError:
-                        # The explicit season query remains authoritative when
-                        # both sanitized projections omit their page title.
                         actual = season
                 if actual != season:
-                    message = f"Requested {fmt} {league} S{season}, received S{actual} from {url}"
-                    if season == current:
-                        raise ValueError(message)
-                    print(f"Skipping unavailable historical snapshot: {message}")
+                    print(f"Skipping {fmt} {league} S{season}: source returned S{actual}")
                     continue
                 try:
                     parsed = parse_page(html, fmt, league, season, url)
                 except ValueError as exc:
-                    if season == current:
-                        raise
-                    print(f"Skipping historical snapshot without enough public squad detail: {exc}")
+                    print(f"Skipping {fmt} {league} S{season}: {exc}")
                     continue
                 all_teams.extend(parsed)
-                if season != current:
-                    available_seasons.append(season)
+                available_seasons.append(season)
+                if len(available_seasons) >= 2:
+                    break
             seasons_by_format[fmt][league] = available_seasons
 
     keys = set()
