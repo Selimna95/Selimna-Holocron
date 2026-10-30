@@ -26,8 +26,8 @@ class AssetIntegrityTests(unittest.TestCase):
     def test_local_stylesheets_and_scripts_are_pre_cached_at_exact_versions(self):
         refs = re.findall(r'<link\b[^>]*\brel=["\']stylesheet["\'][^>]*\bhref=["\']([^"\']+)', self.html, re.I)
         refs += re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']+)', self.html, re.I)
-        refs += re.findall(r'<link\b[^>]*\brel=["\']stylesheet["\'][^>]*\bhref=["\']([^"\']+)', self.blue_html, re.I)
-        refs += re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']+)', self.blue_html, re.I)
+        refs += ["blue-gac/" + ref for ref in re.findall(r'<link\b[^>]*\brel=["\']stylesheet["\'][^>]*\bhref=["\']([^"\']+)', self.blue_html, re.I)]
+        refs += ["blue-gac/" + ref for ref in re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']+)', self.blue_html, re.I)]
         local_refs = [ref.removeprefix("./") for ref in refs if "://" not in ref]
         missing = sorted(set(local_refs) - self.cached_assets)
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
