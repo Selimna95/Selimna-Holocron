@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "source": "SWGOH.GG GAC tier lists · defense · most played",
-  "updatedAt": "2026-10-30T12:13:05+00:00",
+  "updatedAt": "2026-10-30T12:47:05+00:00",
   "seasons": {
     "5v5": {
       "kyber": [
@@ -50,18 +50,34 @@
   },
   "coverage": {
     "5v5": {
-      "kyber": 219,
-      "aurodium": 242,
-      "chromium": 248,
-      "bronzium": 267,
-      "carbonite": 308
+      "kyber": 111,
+      "aurodium": 121,
+      "chromium": 123,
+      "bronzium": 135,
+      "carbonite": 154
     },
     "3v3": {
-      "kyber": 299,
-      "aurodium": 318,
-      "chromium": 314,
-      "bronzium": 315,
-      "carbonite": 341
+      "kyber": 148,
+      "aurodium": 158,
+      "chromium": 156,
+      "bronzium": 157,
+      "carbonite": 169
+    }
+  },
+  "requiredDefenseTeams": {
+    "5v5": {
+      "kyber": 11,
+      "aurodium": 9,
+      "chromium": 7,
+      "bronzium": 5,
+      "carbonite": 3
+    },
+    "3v3": {
+      "kyber": 15,
+      "aurodium": 13,
+      "chromium": 10,
+      "bronzium": 7,
+      "carbonite": 3
     }
   },
   "teams": [
