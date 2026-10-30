@@ -78,7 +78,7 @@ function addUnavailableTeamCard(number){
  results.appendChild(card);
 }
 if(!ranked.length){
- status.textContent='Aucune donnée défensive vérifiée n’est disponible dans le catalogue local pour '+state.tier+' en '+fmt+'. Les instantanés actuels couvrent Kyber (S84/S83) et Chromium (S82/S81) uniquement ; aucune équipe d’une autre ligue ne sera présentée comme adaptée.';
+ status.textContent='Aucune composition défensive vérifiée n’est disponible pour '+state.tier+' en '+fmt+' dans les deux saisons relevées. Le catalogue est actualisé automatiquement depuis SWGOH.GG ; aucune équipe d’une autre ligue ne sera substituée.';
  for(var noSourceIndex=1;noSourceIndex<=required;noSourceIndex++)addUnavailableTeamCard(noSourceIndex);
  return;
 }
