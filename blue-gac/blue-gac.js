@@ -62,7 +62,7 @@ var roster=parseRoster();var status=document.getElementById('padawanStatus');var
 var rosterSet=new Set(roster);
 var requiredCounts={'5v5':{Kyber:11,Aurodium:9,Chromium:7,Bronzium:5,Carbonite:3},'3v3':{Kyber:15,Aurodium:13,Chromium:10,Bronzium:7,Carbonite:3}};
 var required=(requiredCounts[fmt]&&requiredCounts[fmt][state.tier])||requiredCounts[fmt].Kyber;
-var seasons=(catalogMeta.seasons&&catalogMeta.seasons[fmt])||[];var ranked=publicTeams.filter(function(t){return t.format===fmt&&t.league===state.tier&&seasons.indexOf(Number(t.season))>=0&&Number.isFinite(t.rank);}).slice().sort(function(a,b){return Number(b.battles||0)-Number(a.battles||0)||Number(b.hold||0)-Number(a.hold||0)||b.season-a.season||a.rank-b.rank;});
+var seasons=(catalogMeta.seasons&&catalogMeta.seasons[fmt]&&catalogMeta.seasons[fmt][String(state.tier||'Kyber').toLowerCase()])||[];var ranked=publicTeams.filter(function(t){return t.format===fmt&&t.league===state.tier&&seasons.indexOf(Number(t.season))>=0&&Number.isFinite(t.rank);}).slice().sort(function(a,b){return Number(b.battles||0)-Number(a.battles||0)||Number(b.hold||0)-Number(a.hold||0)||b.season-a.season||a.rank-b.rank;});
 var used=new Set(),candidates=[],skippedMissing=0,skippedUsed=0;
 ranked.forEach(function(t){
  if(candidates.length>=required)return;
