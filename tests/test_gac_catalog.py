@@ -6,10 +6,21 @@ from scripts.update_gac_catalog import (
     number_value,
     page_season,
     parse_page,
+    required_team_count,
 )
 
 
 class GacCatalogParserTests(unittest.TestCase):
+    def test_required_defense_team_counts_match_each_format_and_league(self):
+        expected = {
+            "5v5": {"kyber": 11, "aurodium": 9, "chromium": 7, "bronzium": 5, "carbonite": 3},
+            "3v3": {"kyber": 15, "aurodium": 13, "chromium": 10, "bronzium": 7, "carbonite": 3},
+        }
+        for fmt, leagues in expected.items():
+            for league, count in leagues.items():
+                with self.subTest(format=fmt, league=league):
+                    self.assertEqual(required_team_count(fmt, league), count)
+
     def test_number_value_handles_thousands_and_suffixes(self):
         self.assertEqual(number_value("6,225"), 6225)
         self.assertEqual(number_value("51K"), 51000)
