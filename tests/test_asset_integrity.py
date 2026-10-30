@@ -14,6 +14,9 @@ class AssetIntegrityTests(unittest.TestCase):
         cls.core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
         cls.seigneur = (ROOT / "modules" / "seigneur.js").read_text(encoding="utf-8")
         cls.worker = (ROOT / "optimizer-worker.mjs").read_text(encoding="utf-8")
+        cls.blue_html = (ROOT / "blue-gac" / "index.html").read_text(encoding="utf-8")
+        cls.blue_js = (ROOT / "blue-gac" / "blue-gac.js").read_text(encoding="utf-8")
+        cls.blue_css = (ROOT / "blue-gac" / "blue-gac.css").read_text(encoding="utf-8")
         section = cls.sw.split("const STATIC_ASSETS = [", 1)[1].split("];", 1)[0]
         cls.cached_assets = {
             value.removeprefix("./")
@@ -23,6 +26,8 @@ class AssetIntegrityTests(unittest.TestCase):
     def test_local_stylesheets_and_scripts_are_pre_cached_at_exact_versions(self):
         refs = re.findall(r'<link\b[^>]*\brel=["\']stylesheet["\'][^>]*\bhref=["\']([^"\']+)', self.html, re.I)
         refs += re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']+)', self.html, re.I)
+        refs += re.findall(r'<link\b[^>]*\brel=["\']stylesheet["\'][^>]*\bhref=["\']([^"\']+)', self.blue_html, re.I)
+        refs += re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']+)', self.blue_html, re.I)
         local_refs = [ref.removeprefix("./") for ref in refs if "://" not in ref]
         missing = sorted(set(local_refs) - self.cached_assets)
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
@@ -51,42 +56,37 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertNotIn("/SWGOH-Optimizer-Web/", self.seigneur)
 
     def test_service_worker_has_new_cache_and_network_first_navigation(self):
-        self.assertIn("holocron-static-v4.0.8-gac-parameters", self.sw)
-        self.assertIn("holocron-static-v4.0.19-padawan-seasonal-defense", self.sw)
-        self.assertNotIn("holocron-static-v3.4.3-weak-donor-pool", self.sw)
+        self.assertIn("holocron-static-v4.0.55-consolidation", self.sw)
         self.assertIn("request.mode === 'navigate'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
 
     def test_displayed_release_version_is_consistent(self):
-        self.assertIn("Selimna’s Holocron — V4.0.46", self.html)
+        self.assertIn("Selimna’s Holocron — V4.0.55", self.html)
+        self.assertIn("V4.0.55", self.blue_html)
         self.assertNotIn("Selimna’s Holocron — V3.4.4", self.html)
 
-    def test_blue_gac_padawan_is_defense_only_for_all_formats_and_leagues(self):
-        blue = (ROOT / "blue-gac" / "index.html").read_text(encoding="utf-8")
+    def test_blue_gac_padawan_is_defense_only_and_assets_are_external(self):
+        blue = self.blue_html
         for value in ('data-mode="3v3"', 'data-mode="5v5"',
                       'data-access="Padawan"', 'data-access="Maître Jedi"',
                       'data-tier="Kyber"', 'data-tier="Aurodium"',
                       'data-tier="Chromium"', 'data-tier="Bronzium"',
                       'data-tier="Carbonite"'):
             self.assertIn(value, blue)
-        self.assertIn("V4.0.23", blue)
-        self.assertIn("function addUnavailableTeamCard(number)", blue)
-        self.assertIn("Aucune proposition ne répond aux critères pour cette équipe.", blue)
-        self.assertIn('id="tierView"', blue)
+        self.assertNotIn("<style>", blue)
+        self.assertNotIn("<script>", blue)
+        self.assertIn("function addUnavailableTeamCard(number)", self.blue_js)
+        self.assertIn("function show(step)", self.blue_js)
+        self.assertIn("var order=['mode','tier','access']", self.blue_js)
         self.assertNotIn('id="strategyView"', blue)
-        self.assertIn("var order=['mode','tier','access']", blue)
-        self.assertIn("ÉTAPE 03 / 03", blue)
         self.assertNotIn('id="attackPanel"', blue)
         self.assertNotIn("data-strategy", blue)
-        self.assertNotIn("ÉQUILIBRÉE", blue)
-        self.assertNotIn("Mode Attaque", blue)
-        self.assertIn("Défense uniquement", blue)
-        self.assertIn("function show(step)", blue)
-        self.assertNotIn("getElementById('attackDefenderLeader').addEventListener", blue)
-        self.assertNotIn("getElementById('chosenTier').textContent", blue)
-        self.assertNotIn("getElementById('backToTier').addEventListener", blue)
-        self.assertIn("state.mode=b.dataset.mode;state.tier='';", blue)
-        self.assertIn("show('tier')", blue)
+        self.assertIn("sourceLeague", self.blue_js)
+        self.assertIn("Number(b.battles||0)-Number(a.battles||0)", self.blue_js)
+        self.assertIn("Aucune donnée défensive vérifiée", self.blue_js)
+        self.assertIn("font-size:max(13px", self.blue_css)
+        self.assertIn("blue-gac/blue-gac.css?v=4.0.55", self.sw)
+        self.assertIn("blue-gac/blue-gac.js?v=4.0.55", self.sw)
 
 
 if __name__ == "__main__":
