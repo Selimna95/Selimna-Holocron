@@ -124,6 +124,13 @@ try {
     sessionStorage.setItem("holocronRosterNames", sampleRoster);
     localStorage.setItem("holocronRosterNames", sampleRoster);
   });
+  const rawCatalogAccessible = await page.evaluate(async () => {
+    const response = await fetch("https://raw.githubusercontent.com/Selimna95/Selimna-Holocron/feature/live-gac-catalog-v4.1.0/blue-gac/gac-catalog.json", { cache: "no-store" });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return Array.isArray(data.teams) && data.teams.length > 1000;
+  });
+  assert.equal(rawCatalogAccessible, true, "The GitHub Raw catalogue must be readable cross-origin from the Pages app.");
   const blueResponse = await page.goto(origin + "/blue-gac/", { waitUntil: "domcontentloaded" });
   assert.equal(blueResponse?.status(), 200, "The blue GAC page must return HTTP 200");
   assert.match(await page.title(), /V4\.1\.0/);
