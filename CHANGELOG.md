@@ -1,4 +1,4 @@
-## [4.0.55] — 2026-10-30
+## [4.1.0] — 2026-10-30\n\n### Catalogue GAC dynamique\n- Suppression des compositions défensives codées en dur dans le Sanctuaire bleu.\n- Ajout d'un collecteur SWGOH.GG actualisable pour les cinq ligues, en 3v3 et 5v5.\n- Détection des deux saisons les plus récentes disponibles par format, classement par volume de combats puis taux de tenue.\n- Publication protégée : une collecte incomplète ne remplace pas le dernier catalogue valide.\n- Actualisation GitHub Actions toutes les six heures et à la demande ; stratégie réseau d'abord dans le service worker.\n- Conservation des règles Padawan : roster complet, aucune équipe inventée, aucun personnage réutilisé, flottes exclues.\n\n## [4.0.55] — 2026-10-30
 
 ### Moteur de mods
 - Correction du repli Kyber : si le plan exact de sets n'est pas réalisable, le moteur relance une recherche sans cette contrainte au lieu de renvoyer une liste vide.
