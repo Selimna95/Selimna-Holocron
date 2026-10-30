@@ -1,13 +1,10 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.0.55-consolidation';
+const CACHE_NAME = 'holocron-static-v4.0.54-crawl-restart-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './blue-gac/index.html',
-  './blue-gac/blue-gac.css?v=4.0.55',
-  './blue-gac/blue-gac.js?v=4.0.55',
-  './assets/image/padawan.png',
   './assets/image/jpeg.jpg',
   './app.css?v=4.0.0-seigneur-card-layout',
   './sithari.css?v=4.2.0-adaptive-mod-board',

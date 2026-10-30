@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 4.0.55** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 3.4.4** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
@@ -66,14 +66,3 @@ Le projet est distribué sous licence MIT ; voir `LICENSE`.
 ### Couche visuelle partagée
 
 `holocron-system.css` regroupe les tokens d’interface et les ajustements transversaux (focus clavier, états, composants partagés et adaptations responsives). Elle ne contient aucune logique de calcul. Le Codex du roster reste accessible comme destination de consultation.
-
-
-## Consolidation V4.0.55
-- Le Sanctuaire bleu charge désormais ses styles et son code depuis des fichiers dédiés (`blue-gac/blue-gac.css` et `blue-gac/blue-gac.js`) au lieu d'un document HTML monolithique.
-- Le catalogue GAC est un instantané local attribué explicitement à sa ligue source : Kyber (S84/S83) ou Chromium (S82/S81). Les autres ligues ne réutilisent plus silencieusement des compositions d'une ligue différente.
-- Les équipes éligibles sont classées par volume de combats observés, puis par taux de tenue, avant les critères secondaires de saison et de rang.
-- Le moteur Python retente une recherche sans contrainte de composition Kyber lorsque l'inventaire ne peut pas satisfaire le plan de sets ou que la recherche bornée ne trouve aucun build exact.
-- La CI reste un contrôle statique et un smoke test avec Pyodide simulé ; une validation de bout en bout avec un vrai roster et une collecte automatique SWGOH.GG restent à effectuer.
-
-### Limite connue des données GAC
-Le catalogue embarqué n'est pas un flux live. Il ne contient actuellement que les instantanés Kyber S84/S83 et Chromium S82/S81. Les ligues Aurodium, Bronzium et Carbonite sont explicitement signalées comme non couvertes plutôt que de recevoir des équipes présentées à tort comme spécifiques à leur ligue. Les sources doivent être actualisées et contrôlées avant d'étendre cette couverture.

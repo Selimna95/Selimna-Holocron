@@ -3,8 +3,83 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.0.55</title>
-<link rel="stylesheet" href="blue-gac.css?v=4.0.55">
+<title>Sanctuaire bleu | Selimna’s Holocron V4.0.35</title>
+<style>
+:root{color-scheme:dark;--blue:#80d7ff;--ice:#dff6ff;--muted:#9db6ca;--gold:#d9c28c;--line:#315b79}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#edf7ff;background:#030812}
+body{min-height:100vh;background:radial-gradient(ellipse at 50% 38%,#123d5c88,transparent 44%),radial-gradient(ellipse at 50% 100%,#071a2d,transparent 60%),#030812;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.35;background-image:radial-gradient(circle at 13% 19%,#c7efff 0 1px,transparent 1.5px),radial-gradient(circle at 83% 12%,#c7efff 0 1px,transparent 1.5px),radial-gradient(circle at 76% 78%,#66caff 0 1px,transparent 1.5px),radial-gradient(circle at 27% 68%,#66caff 0 1px,transparent 1.5px)}
+.shell{position:relative;min-height:100vh;padding:22px clamp(16px,4vw,54px) 24px;display:flex;flex-direction:column;align-items:center}
+header{width:min(1160px,100%);display:flex;justify-content:space-between;align-items:center;gap:15px;border-bottom:1px solid #24425a;padding:0 0 16px}
+.brand{font-size:9px;letter-spacing:.28em;color:#8fb8d6}.brand strong{display:block;font:500 19px Georgia,serif;letter-spacing:.13em;color:#edf8ff;margin-top:6px}
+.back{font-size:10px;letter-spacing:.12em;text-decoration:none;color:#c7eaff;border:1px solid #31546e;padding:10px 13px;white-space:nowrap}
+main{width:min(1080px,100%);flex:1;display:flex;flex-direction:column;align-items:center}
+.intro{text-align:center;margin:clamp(24px,5vh,52px) 0 24px;max-width:760px}
+.kicker{font-size:9px;letter-spacing:.32em;color:var(--blue);font-weight:700}
+h1{font:500 clamp(34px,5.5vw,62px)/1.04 Georgia,serif;letter-spacing:.07em;margin:12px 0 12px;text-shadow:0 0 30px #66caff33}
+.subtitle{color:var(--muted);font-size:13px;line-height:1.7;max-width:620px;margin:auto}
+.progress{display:flex;align-items:center;gap:9px;margin:0 0 24px;color:#6e8ba2;font-size:9px;letter-spacing:.14em}
+.progress span{display:block;width:30px;height:2px;background:#23415a;transition:background .3s,box-shadow .3s}
+.progress span.active{background:var(--blue);box-shadow:0 0 12px #80d7ff88}
+.view{width:100%;animation:arrive .45s ease both}
+.view[hidden]{display:none}
+@keyframes arrive{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+.view-title{text-align:center;font-size:10px;letter-spacing:.26em;color:#a9cce4;margin:0 0 18px}
+.mode-grid{position:relative;isolation:isolate;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;width:min(1100px,100%);min-height:clamp(430px,66vh,700px);margin:auto;overflow:hidden;background:#030812 url("../assets/image/jpeg.jpg") center center/contain no-repeat}
+.mode-grid:before{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(3,8,18,.04),rgba(3,8,18,.02) 48%,rgba(3,8,18,.46));pointer-events:none}
+.mode{position:relative;z-index:1;display:block;min-width:0;min-height:clamp(430px,66vh,700px);padding:0;border:0;background:transparent;color:#effaff;text-align:left;cursor:pointer;overflow:hidden;transition:opacity .35s ease,filter .35s ease}
+.mode:focus-visible{outline:2px solid #b8eaff;outline-offset:-5px}
+.mode:before,.mode:after{content:none}
+.door-copy{position:absolute;left:10%;right:10%;bottom:36%;display:flex;flex-direction:column;align-items:center;text-align:center;pointer-events:none;text-shadow:0 2px 16px #000,0 0 28px #000;opacity:0;visibility:hidden}
+/* V4.0.34 — le texte est centré sur l’axe réel des deux portes de l’illustration (et non sur la moitié des zones cliquables). */
+.mode[data-mode="3v3"] .door-copy{left:45.2%;right:0}
+.mode[data-mode="5v5"] .door-copy{left:0;right:45.2%}
+.mode[data-mode="5v5"] .door-copy{align-items:center;text-align:center}
+.mode .eyebrow{font-size:9px;letter-spacing:.18em;color:#b8eaff}
+.mode h2{display:none}
+.mode p{position:relative;max-width:290px;color:#f0f7fc;font-size:12px;line-height:1.7;margin:0}
+.mode .cta{display:inline-flex;align-items:center;gap:10px;margin-top:22px;color:#e0f5ff;font-size:9px;letter-spacing:.18em;border-bottom:1px solid #72caff;padding-bottom:8px}
+.mode .number{display:none}
+.mode-grid.is-crossing .mode:not(.is-entering){opacity:0;filter:blur(5px);pointer-events:none}
+.mode.is-entering{z-index:3;pointer-events:none}
+.mode.is-entering .door-copy{visibility:visible;animation:door-crawl-in 6s cubic-bezier(.38,0,.68,.25) both;transform-origin:50% 100%}
+.mode[data-mode="3v3"].is-entering .door-copy{--door-x:0vw}
+.mode[data-mode="5v5"].is-entering .door-copy{--door-x:0vw}
+@keyframes door-crawl-in{0%{opacity:1;transform:perspective(700px) translate3d(0,0,0) rotateX(0) scale(1)}35%{opacity:1;transform:perspective(700px) translate3d(0,-4vh,-20px) rotateX(8deg) scale(.88)}72%{opacity:.9;transform:perspective(700px) translate3d(0,-15vh,-90px) rotateX(18deg) scale(.48)}100%{opacity:0;transform:perspective(700px) translate3d(0,-25vh,-180px) rotateX(26deg) scale(.04)}}
+@media(max-width:640px){.mode-grid{min-height:clamp(430px,68vh,650px);background-size:contain;background-position:center center}.mode{min-height:clamp(430px,68vh,650px)}.mode[data-mode="3v3"] .door-copy{left:33.2%;right:0;bottom:36%}.mode[data-mode="5v5"] .door-copy{left:0;right:33.2%;bottom:36%}.mode .eyebrow{font-size:7px;letter-spacing:.08em}.mode h2{font-size:clamp(30px,8vw,46px);margin:9px 0}.mode p{font-size:10px;line-height:1.45}.mode .cta{font-size:7px;letter-spacing:.05em;gap:4px;margin-top:13px}}
+@media(prefers-reduced-motion:reduce){.mode.is-entering .door-copy{animation:none!important;opacity:0!important}.mode-grid.is-crossing .mode:not(.is-entering){opacity:0!important}}
+/* V4.0.35 — l’illustration Padawan devient la surface de sélection des deux parcours. */
+.access-scene{position:relative;width:min(1120px,100%);margin:0 auto;isolation:isolate}
+.access-scene img{display:block;width:100%;height:auto;max-height:68vh;object-fit:contain;object-position:center}
+.access-hotspot{position:absolute;top:0;bottom:0;width:50%;padding:0;border:0;background:transparent;color:#effaff;cursor:pointer;transition:background .25s,box-shadow .25s}
+.access-hotspot[data-access="Padawan"]{left:0}
+.access-hotspot[data-access="Maître Jedi"]{right:0}
+.access-hotspot:hover,.access-hotspot:focus-visible{background:linear-gradient(180deg,transparent 45%,rgba(90,190,255,.10));box-shadow:inset 0 0 35px rgba(105,205,255,.12);outline:1px solid rgba(173,226,255,.35);outline-offset:-3px}
+.access-hotspot.master:hover,.access-hotspot.master:focus-visible{background:linear-gradient(180deg,transparent 45%,rgba(226,197,123,.10));box-shadow:inset 0 0 35px rgba(226,197,123,.12);outline-color:rgba(240,217,156,.4)}
+.access-label{position:absolute;left:10%;right:10%;bottom:7%;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;text-shadow:0 2px 12px #000,0 0 24px #000;pointer-events:none}
+.access-label strong{font:500 clamp(23px,3vw,38px) Georgia,serif;letter-spacing:.06em}
+.access-label small{font-size:9px;letter-spacing:.18em;color:#bfeaff}
+.master .access-label small{color:#f0d99c}
+@media(max-width:640px){.access-scene img{width:100%;max-height:none}.access-label{bottom:5%;gap:4px}.access-label strong{font-size:clamp(18px,5vw,27px)}.access-label small{font-size:7px;letter-spacing:.08em}}
+.step-tools{display:flex;justify-content:space-between;align-items:center;gap:12px;width:min(900px,100%);margin:22px auto 0}
+.ghost,.continue{border:1px solid #31536b;background:#091827;color:#c5e4f7;padding:12px 16px;font:inherit;font-size:9px;letter-spacing:.16em;cursor:pointer}
+.continue{border-color:#70c9f4;background:linear-gradient(110deg,#123c59,#0a2135);color:#effaff}.ghost:hover,.continue:hover{border-color:#b4ebff}
+.selection{color:#7997ad;font-size:10px;letter-spacing:.08em;text-align:right}
+.note{width:min(900px,100%);margin:22px auto 0;padding:13px 16px;border-left:2px solid #d0b974;background:#111923;color:#91a7b8;font-size:10px;line-height:1.6}
+.padawan-panel{width:min(1000px,100%);margin:0 auto}.padawan-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}.source-tag{font-size:9px;letter-spacing:.12em;color:#8fdcff;border:1px solid #315b79;padding:8px 10px}.roster-box{display:grid;grid-template-columns:1fr auto;gap:12px;margin:14px 0}.roster-box textarea{width:100%;min-height:100px;resize:vertical;background:#071321;border:1px solid #31536b;color:#edf7ff;padding:13px;font:12px/1.6 system-ui}.team-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.team-card{border:1px solid #31536b;background:linear-gradient(145deg,#0c2438,#050d18);padding:17px;min-width:0}.team-card h3{font:500 20px Georgia,serif;margin:0 0 10px;color:#e9f8ff}.team-members{font-size:12px;line-height:1.8;color:#c5dbea}.team-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:13px;color:#8fcce9;font-size:10px}.team-reason{font-size:11px;line-height:1.6;color:#9db6ca;margin-top:10px}.team-card.unavailable{opacity:.5}.empty-state{padding:22px;border:1px dashed #31536b;color:#9db6ca;font-size:12px;line-height:1.7}.roster-help{font-size:11px;color:#8ea9bd;line-height:1.7}.padawan-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.padawan-actions button{border:1px solid #31536b;background:#091827;color:#c5e4f7;padding:11px 14px;font:inherit;font-size:9px;letter-spacing:.12em;cursor:pointer}@media(max-width:640px){.team-list{grid-template-columns:1fr}.roster-box{grid-template-columns:1fr}.mode-grid{min-height:clamp(500px,72vh,760px);background-size:auto 100%;background-position:center center}.mode{min-height:clamp(500px,72vh,760px);padding:16px 10px 30px;justify-content:flex-end}.mode h2{font-size:clamp(30px,9vw,48px)}.mode p{font-size:10px;line-height:1.5}.mode .eyebrow{font-size:7px;letter-spacing:.1em}.mode .cta{font-size:7px;letter-spacing:.08em;gap:4px}.mode .number{right:8px;bottom:8px;font-size:22px}}
+footer{margin-top:28px;color:#4d6c82;font-size:8px;letter-spacing:.23em;text-align:center}
+@media(max-width:640px){.shell{padding:16px 13px 20px}header{align-items:flex-start}.brand strong{font-size:16px}.back{font-size:8px;padding:9px}.intro{margin:30px 0 20px}.mode-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:0}.access-grid{grid-template-columns:1fr;gap:12px}.mode{min-height:clamp(430px,68vh,650px)}.mode h2{margin:9px 0}.mode .cta{margin-top:18px}.mode:before{right:-90px}.access{min-height:230px;padding:22px}.sig{width:58px;height:58px;margin-bottom:13px}.sig:before{inset:7px}.sig:after{inset:14px}.step-tools{align-items:flex-start}.selection{max-width:48%;line-height:1.6}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.mode.is-entering{opacity:0!important}}
+
+/* V4.0.31 — survol discret des personnages de ligue, sans grands aplats lumineux. */
+.tier-scene{position:relative;width:min(1120px,100%);aspect-ratio:3/2;margin:0 auto;overflow:hidden;background:#071321 url("../assets/image/jedi.jpg") center/100% 100% no-repeat;isolation:isolate}
+.tier-hotspot{position:absolute;top:29%;height:51%;width:19%;padding:0;border:1px solid transparent;border-radius:12px;background:transparent;cursor:pointer;transition:background .28s ease,box-shadow .28s ease,border-color .28s ease;outline:none}
+.tier-hotspot:hover,.tier-hotspot:focus-visible{background:rgba(111,195,255,.025);border-color:rgba(173,226,255,.22);box-shadow:0 0 12px rgba(80,177,255,.09),inset 0 0 12px rgba(80,177,255,.035);outline:none}
+.tier-hotspot:active{background:rgba(111,195,255,.045);border-color:rgba(173,226,255,.32);box-shadow:0 0 16px rgba(80,177,255,.13),inset 0 0 14px rgba(80,177,255,.05)}
+.tier-kyber{left:1%}.tier-aurodium{left:20.5%}.tier-carbonite{left:40.5%}.tier-chromium{left:60.5%}.tier-bronzium{left:80%}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:640px){.tier-scene{width:100%;aspect-ratio:3/2;background-size:100% 100%}.tier-hotspot{top:30%;height:49%;width:19.5%}}
+</style>
 </head>
 <body><div class="shell">
 <header><div class="brand">SELIMNA’S HOLOCRON<strong>LE SANCTUAIRE BLEU</strong></div><a class="back" href="../index.html">← RETOUR AU TEMPLE</a></header>
@@ -56,6 +131,159 @@
 <div class="note">V4.0.23 : Padawan est exclusivement défensif en 3v3 et 5v5, dans toutes les ligues. Les choix Attaque et Équilibrée ne sont pas disponibles. Les propositions respectent le roster et évitent les doublons de personnages.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.55</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.0.35</footer>
 </div>
-<script src="blue-gac.js?v=4.0.55"></script></body></html>
+<script>
+(function(){
+'use strict';
+var state={mode:'',tier:'',strategy:'Défensive',access:''};
+var views={mode:document.getElementById('modeView'),tier:document.getElementById('tierView'),access:document.getElementById('accessView'),padawan:document.getElementById('padawanView'),master:document.getElementById('masterView')};
+var order=['mode','tier','access'];
+
+function show(step){
+ order.forEach(function(k){views[k].hidden=k!==step;});views.padawan.hidden=step!=='padawan';views.master.hidden=step!=='master';
+ var titles={mode:['CHOISIS TON FORMAT','Commence par choisir le format de ta prochaine GAC.','ÉTAPE 01 / 03'],tier:['CHOISIS TA LIGUE','Définis le niveau de compétition auquel tu prépares tes équipes.','ÉTAPE 02 / 03'],access:['CHOISIS TON NIVEAU D’ACCÈS','Padawan prépare exclusivement les équipes défensives pour le format et la ligue choisis.','ÉTAPE 03 / 03'],master:['MAÎTRE JEDI','Parcours expert · Configuration GAC conservée.','ÉTAPE 03 / 03']};
+ document.getElementById('pageTitle').textContent=titles[step][0];document.getElementById('pageSubtitle').textContent=titles[step][1];document.getElementById('stepLabel').textContent=titles[step][2];
+ ['progress1','progress2','progress3'].forEach(function(id,i){document.getElementById(id).classList.toggle('active',i<=order.indexOf(step));});
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+function save(){try{Object.keys(state).forEach(function(k){sessionStorage.setItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1),state[k]);});}catch(_){}}
+function sync(){
+ [['mode','data-mode'],['tier','data-tier'],['access','data-access']].forEach(function(p){document.querySelectorAll('['+p[1]+']').forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute(p[1])===state[p[0]]));});});
+ document.getElementById('chosenMode').textContent='Format : '+(state.mode||'—');document.getElementById('chosenSummary').textContent=(state.mode||'—')+' · '+(state.tier||'—')+' · Défense';
+ document.getElementById('settingsSummary').textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Orientation : Défense uniquement · Accès : '+(state.access||'à choisir')+'. Les compositions sont issues du classement défensif public. Les flottes sont exclues.';var cfg=document.getElementById('padawanConfig');if(cfg)cfg.textContent='Format : '+(state.mode||'—')+' · Ligue : '+(state.tier||'—')+' · Défense uniquement · Accès : '+(state.access||'—');save();updateSourceLinks();
+}
+try{order.forEach(function(k){state[k]=sessionStorage.getItem('blueGac'+k.charAt(0).toUpperCase()+k.slice(1))||'';});}catch(_){}
+document.querySelectorAll('[data-mode]').forEach(function(b){b.addEventListener('click',function(){if(document.getElementById('modeGrid').classList.contains('is-crossing'))return;state.mode=b.dataset.mode;state.tier='';state.strategy='Défensive';state.access='';sync();var grid=document.getElementById('modeGrid');grid.classList.add('is-crossing');b.classList.add('is-entering');window.setTimeout(function(){grid.classList.remove('is-crossing');b.classList.remove('is-entering');show('tier');},window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:6000);});});
+document.querySelectorAll('[data-tier]').forEach(function(b){b.addEventListener('click',function(){state.tier=b.dataset.tier;state.strategy='Défensive';state.access='';sync();show('access');});});
+
+document.querySelectorAll('[data-access]').forEach(function(b){b.addEventListener('click',function(){state.access=b.dataset.access;sync();if(state.access==='Padawan'){show('padawan');initRosterStatus();}else{document.getElementById('masterConfig').textContent='Configuration : '+(state.mode||'—')+' · '+(state.tier||'—');show('master');}});});
+document.getElementById('backFromMaster').addEventListener('click',function(){show('access');});
+// V4.0.16 — compositions relevées sur les classements publics SWGOH.GG (saison indiquée par la source).
+// Ces compositions sont des observations réelles, pas des équipes inventées. Chaque équipe est filtrée
+// intégralement sur le roster. Les statistiques sont celles du classement Kyber consulté le 26/10/2026;
+// elles ne doivent pas être interprétées comme des statistiques propres aux autres ligues.
+var publicTeams=[
+{format:'5v5',name:'The Stranger · Barriss · Maul · Starkiller · Visas',members:['The Stranger','Inquisitor Barriss','Maul (Hate-Fueled)','Starkiller','Visas Marr'],hold:53.0,battles:33900,source:'https://swgoh.gg/tier-list/gac/?side=defense',note:'Très forte tenue observée dans un grand volume de combats.'},
+{format:'5v5',name:'SLKR · Rey (Dark Side Vision) · Sith Trooper · Hux · KRU',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Sith Trooper','General Hux','Kylo Ren (Unmasked)'],hold:46.4,battles:7533,source:'https://swgoh.gg/tier-list/gac/?side=defense',note:'Composition First Order observée avec une tenue élevée.'},
+{format:'5v5',name:'Leia · Raddus · Drogan · Jyn · R2-D2',members:['Leia Organa','Admiral Raddus','Captain Drogan','Jyn Erso','R2-D2'],hold:26.2,battles:5155,source:'https://swgoh.gg/tier-list/gac/?side=defense',note:'Composition observée ; tenue plus modérée que les équipes prioritaires.'},
+{format:'5v5',name:'Baylan · Dengar · Hondo · Marrok · Shin Hati',members:['Baylan Skoll','Dengar','Hondo Ohnaka','Marrok','Shin Hati'],hold:29.0,battles:17200,source:'https://swgoh.gg/tier-list/gac/?side=defense',note:'Équipe observée ; elle ne sera affichée que si les cinq personnages sont possédés.'},
+{format:'5v5',name:'Cere · Cal Kestis · KRU · Maul · Taron Malicos',members:['Cere Junda','Cal Kestis','Kylo Ren (Unmasked)','Maul','Taron Malicos'],hold:44.6,battles:2251,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 44,6 % sur 2 251 combats (Kyber, saison 84 en cours).'},
+{format:'5v5',name:'Ahsoka · Ezra Exilé · General Syndulla · Huyang · Sabine',members:['Ahsoka Tano','Ezra Bridger (Exile)','General Syndulla','Huyang','Padawan Sabine Wren'],hold:19.0,battles:114000,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 19,0 % sur 114 000 combats (Kyber, saison 84 en cours).'},
+{format:'5v5',name:'Kelleran Beq · Depa · Mace Windu · Jocasta · Temple Guard',members:['Kelleran Beq','Depa Billaba','Jedi Master Mace Windu','Jocasta Nu','Temple Guard'],hold:23.2,battles:1053,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 23,2 % sur 1 053 combats (Kyber, saison 84 en cours).'},
+{format:'5v5',name:'Great Mothers · Death Trooper Peridea · Morgan · Spirit · Night Trooper',members:['Great Mothers','Death Trooper (Peridea)','Morgan Elsbeth','Nightsister Spirit','Night Trooper'],hold:21.5,battles:29400,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 21,5 % sur 29 400 combats (Kyber, saison 84 en cours).'},
+{format:'5v5',name:'Rey · Amilyn Holdo · BB-8 · Ben Solo · Rey Jedi Training',members:['Rey','Amilyn Holdo','BB-8','Ben Solo','Rey (Jedi Training)'],hold:13.3,battles:12200,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 13,3 % sur 12 200 combats (Kyber, saison 84 en cours).'},
+{format:'5v5',name:'Queen Amidala · Grand Master Yoda · Master Qui-Gon · Padawan Obi-Wan · Shaak Ti',members:['Queen Amidala','Grand Master Yoda','Master Qui-Gon','Padawan Obi-Wan','Shaak Ti'],hold:10.9,battles:14000,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 10,9 % sur 14 000 combats (Kyber, saison 84 en cours).'},
+{format:'5v5',name:'Iden Versio · Death Trooper · Range Trooper · Scout Trooper · Shoretrooper',members:['Iden Versio','Death Trooper','Range Trooper','Scout Trooper','Shoretrooper'],hold:14.3,battles:2470,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 14,3 % sur 2 470 combats (Kyber, saison 84 en cours).'},
+{format:'5v5',name:'Hera · Captain Rex · Chopper · Kanan · Sabine',members:['Hera Syndulla','Captain Rex','Chopper','Kanan Jarrus','Sabine Wren'],hold:10.5,battles:3008,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 10,5 % sur 3 008 combats (Kyber, saison 84 en cours).'},
+{format:'5v5',name:'Raddus · Bistan · Cassian · Jyn · K-2SO',members:['Admiral Raddus','Bistan','Cassian Andor','Jyn Erso','K-2SO'],hold:3.8,battles:4973,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'Tenue observée de 3,8 % sur 4 973 combats (Kyber, saison 84 en cours) ; option de dernier recours.'},
+{format:'3v3',name:'SLKR · Rey (Dark Side Vision) · Kylo Ren (Unmasked)',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Kylo Ren (Unmasked)'],hold:37.2,battles:12400,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Une des compositions défensives les plus solides du classement consulté.'},
+{format:'3v3',name:'Lord Vader · Appo · CX-2',members:['Lord Vader','CC-1119 "Appo"','CX-2'],hold:31.6,battles:140000,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Volume d’observation important ; bonne tenue défensive mesurée.'},
+{format:'3v3',name:'Rey · Ben Solo · Cal Kestis',members:['Rey','Ben Solo','Cal Kestis'],hold:28.4,battles:93300,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Composition fréquemment observée, avec tenue défensive intermédiaire.'},
+{format:'3v3',name:'Ahsoka Tano · Ezra Bridger (Exile) · Huyang',members:['Ahsoka Tano','Ezra Bridger (Exile)','Huyang'],hold:28.0,battles:79100,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Composition fréquemment observée, avec tenue défensive intermédiaire.'},
+{format:'3v3',name:'The Stranger · Maul · Starkiller',members:['The Stranger','Maul (Hate-Fueled)','Starkiller'],hold:32.8,battles:83000,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Tenue défensive élevée sur un volume d’observations important.'},
+{format:'3v3',name:'Leia · Captain Drogan · R2-D2',members:['Leia Organa','Captain Drogan','R2-D2'],hold:24.5,battles:33000,source:'https://swgoh.gg/tier-list/3v3/?side=defense',note:'Composition observée ; priorité inférieure aux équipes ayant une meilleure tenue.'}
+
+];
+// Catalogue saisonnier relevé sur les classements défensifs SWGOH.GG.
+// Rang = rang affiché par la page « Best build » ; les saisons récentes passent avant les anciennes.
+// Statistiques volontairement conservées par saison : elles ne sont pas fusionnées artificiellement.
+publicTeams=publicTeams.filter(function(t){return false;}).concat([
+{format:'5v5',season:84,rank:1,name:'Rey · Ben Solo · Cal Kestis · Commander Ahsoka Tano · General Kenobi',members:['Rey','Ben Solo','Cal Kestis','Commander Ahsoka Tano','General Kenobi'],hold:64.8,battles:878,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #1 · Elo 2288.'},
+{format:'5v5',season:84,rank:2,name:'Baylan Skoll · Chewbacca · Marrok · Shin Hati · Taron Malicos',members:['Baylan Skoll','Chewbacca','Marrok','Shin Hati','Taron Malicos'],hold:34.9,battles:1144,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #2 · Elo 2153.'},
+{format:'5v5',season:84,rank:3,name:'The Stranger · Barriss Offee · Cal Kestis · Maul · Starkiller',members:['The Stranger','Barriss Offee','Cal Kestis','Maul (Hate-Fueled)','Starkiller'],hold:60.1,battles:150,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #3 · Elo 1992 · échantillon limité.'},
+{format:'5v5',season:84,rank:4,name:'SLKR · Rey (Dark Side Vision) · Sith Trooper · General Hux · KRU',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Sith Trooper','General Hux','Kylo Ren (Unmasked)'],hold:46.4,battles:7533,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #4 · Elo 1838.'},
+{format:'5v5',season:84,rank:5,name:'Leia Organa · Threepio & Chewie · Captain Drogan · Captain Rex · R2-D2',members:['Leia Organa','Threepio & Chewie','Captain Drogan','Captain Rex','R2-D2'],hold:33.5,battles:2038,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #5 · Elo 1721.'},
+{format:'5v5',season:84,rank:6,name:'Cere Junda · Cal Kestis · KRU · Maul · Taron Malicos',members:['Cere Junda','Cal Kestis','Kylo Ren (Unmasked)','Maul','Taron Malicos'],hold:44.6,battles:2251,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #6 · Elo 1708.'},
+{format:'5v5',season:82,rank:1,name:'The Stranger · Barriss Offee · Maul · Starkiller · Visas Marr',members:['The Stranger','Barriss Offee','Maul (Hate-Fueled)','Starkiller','Visas Marr'],hold:63.4,battles:1032,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #1 · Elo 2176.'},
+{format:'5v5',season:82,rank:2,name:'SLKR · Rey (Dark Side Vision) · Sith Trooper · General Hux · KRU',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Sith Trooper','General Hux','Kylo Ren (Unmasked)'],hold:57.7,battles:9549,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #2 · Elo 2159.'},
+{format:'5v5',season:82,rank:3,name:'Ahsoka Tano · Ezra Exile · General Syndulla · Huyang · Padawan Sabine',members:['Ahsoka Tano','Ezra Bridger (Exile)','General Syndulla','Huyang','Padawan Sabine Wren'],hold:48.0,battles:9350,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #3 · Elo 2065.'},
+{format:'5v5',season:82,rank:4,name:'Leia Organa · Captain Drogan · Captain Rex · Old Ben · R2-D2',members:['Leia Organa','Captain Drogan','Captain Rex','Obi-Wan Kenobi (Old Ben)','R2-D2'],hold:46.4,battles:6253,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #4 · Elo 2036.'},
+{format:'5v5',season:82,rank:5,name:'Pirate King Hondo · Brutus · Captain Silvo · SM-33 · Vane',members:['Pirate King Hondo Ohnaka','Brutus','Captain Silvo','SM-33','Vane'],hold:47.7,battles:1048,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #5 · Elo 2023.'},
+{format:'5v5',season:82,rank:6,name:'Lord Vader · Appo · Disguised Clone Trooper · CX-2 · Scorch',members:['Lord Vader','CC-1119 "Appo"','Disguised Clone Trooper','CX-2','RC-1262 "Scorch"'],hold:38.1,battles:22300,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #6 · Elo 1823.'},
+{format:'3v3',season:83,rank:1,name:'Leia Organa · Captain Drogan · R2-D2',members:['Leia Organa','Captain Drogan','R2-D2'],hold:50.1,battles:25300,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #1 · Elo 2723.'},
+{format:'3v3',season:83,rank:2,name:'SLKR · Rey (Dark Side Vision) · KRU',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Kylo Ren (Unmasked)'],hold:54.3,battles:8417,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #2 · Elo 2710.'},
+{format:'3v3',season:83,rank:3,name:'Ahsoka Tano · Ezra Exile · Huyang',members:['Ahsoka Tano','Ezra Bridger (Exile)','Huyang'],hold:47.9,battles:3317,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #3 · Elo 2689.'},
+{format:'3v3',season:83,rank:4,name:'The Stranger · Maul · Starkiller',members:['The Stranger','Maul (Hate-Fueled)','Starkiller'],hold:58.5,battles:1122,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #4 · Elo 2674.'},
+{format:'3v3',season:83,rank:5,name:'Lord Vader · Appo · CX-2',members:['Lord Vader','CC-1119 "Appo"','CX-2'],hold:49.9,battles:13100,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #5 · Elo 2660.'},
+{format:'3v3',season:83,rank:6,name:'Rey · Ben Solo · Commander Ahsoka Tano',members:['Rey','Ben Solo','Commander Ahsoka Tano'],hold:48.5,battles:350,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #6 · Elo 2592 · échantillon limité.'},
+{format:'3v3',season:81,rank:1,name:'Leia Organa · Captain Drogan · R2-D2',members:['Leia Organa','Captain Drogan','R2-D2'],hold:54.1,battles:23900,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #1 · Elo 2820.'},
+{format:'3v3',season:81,rank:2,name:'Ahsoka Tano · Ezra Exile · Huyang',members:['Ahsoka Tano','Ezra Bridger (Exile)','Huyang'],hold:51.3,battles:2554,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #2 · Elo 2770.'},
+{format:'3v3',season:81,rank:3,name:'The Stranger · Maul · Starkiller',members:['The Stranger','Maul (Hate-Fueled)','Starkiller'],hold:62.2,battles:926,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #3 · Elo 2733.'},
+{format:'3v3',season:81,rank:4,name:'Lord Vader · Appo · CX-2',members:['Lord Vader','CC-1119 "Appo"','CX-2'],hold:50.9,battles:11400,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #4 · Elo 2705.'},
+{format:'3v3',season:81,rank:5,name:'SLKR · Rey (Dark Side Vision) · KRU',members:['Supreme Leader Kylo Ren','Rey (Dark Side Vision)','Kylo Ren (Unmasked)'],hold:52.4,battles:7011,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #5 · Elo 2685.'},
+{format:'3v3',season:81,rank:6,name:'Rey · Ben Solo · Hermit Yoda',members:['Rey','Ben Solo','Hermit Yoda'],hold:48.1,battles:438,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #6 · Elo 2580 · échantillon limité.'}
+,
+{format:'5v5',season:84,rank:7,name:'Rotta the Hutt · Boushh · Gamorrean Guard · Mob Enforcer · Krrsantan',members:['Rotta the Hutt','Boushh (Leia Organa)','Gamorrean Guard','Mob Enforcer','Krrsantan'],hold:35.7,battles:398,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #7 · Elo 1651 · échantillon limité.'},
+{format:'5v5',season:84,rank:8,name:'Jedi Master Luke · General Skywalker · Jedi Knight Cal · Jedi Knight Luke · Leia (Jedi Training)',members:['Jedi Master Luke Skywalker','General Skywalker','Jedi Knight Cal Kestis','Jedi Knight Luke Skywalker','Leia (Jedi Training)'],hold:45.2,battles:194,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #8 · Elo 1572 · échantillon limité.'},
+{format:'5v5',season:84,rank:9,name:'Third Sister · Grand Inquisitor · Inquisitor Barriss · Ninth Sister · Seventh Sister',members:['Third Sister','Grand Inquisitor','Inquisitor Barriss','Ninth Sister','Seventh Sister'],hold:37.1,battles:3218,source:'https://swgoh.gg/tier-list/gac/?rank=best&side=defense',note:'S84 · Rang #9 · Elo 1548.'},
+{format:'5v5',season:82,rank:7,name:'Rotta the Hutt · Cad Bane · Gamorrean Guard · Greedo · Mob Enforcer',members:['Rotta the Hutt','Cad Bane','Gamorrean Guard','Greedo','Mob Enforcer'],hold:46.0,battles:1886,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #7 · Elo 1819.'},
+{format:'5v5',season:82,rank:8,name:'Jedi Master Luke · General Skywalker · Grand Master Yoda',members:['Jedi Master Luke Skywalker','General Skywalker','Grand Master Yoda','Jedi Knight Luke Skywalker','Hermit Yoda'],hold:24.7,battles:224,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #8 · Elo 1874 · échantillon limité.'},
+{format:'5v5',season:82,rank:9,name:'Baylan Skoll · Marrok · Shin Hati · Taron Malicos · Chewbacca',members:['Baylan Skoll','Marrok','Shin Hati','Taron Malicos','Chewbacca'],hold:27.2,battles:12800,source:'https://swgoh.gg/tier-list/gac/?league=chromium&season=82&side=defense',note:'S82 · Rang #9 · Elo 1818.'},
+{format:'3v3',season:83,rank:7,name:'Pirate King Hondo · Hondo Ohnaka · Vane',members:['Pirate King Hondo Ohnaka','Hondo Ohnaka','Vane'],hold:34.6,battles:234,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #7 · Elo 2372 · échantillon limité.'},
+{format:'3v3',season:83,rank:8,name:'Bastila Shan · Jedi Master Luke · Wat Tambor',members:['Bastila Shan','Jedi Master Luke Skywalker','Wat Tambor'],hold:48.3,battles:1222,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #8 · Elo 2324.'},
+{format:'3v3',season:83,rank:9,name:'Sith Eternal Emperor · Darth Malak · Sith Empire Trooper',members:['Sith Eternal Emperor','Darth Malak','Sith Empire Trooper'],hold:42.0,battles:128,source:'https://swgoh.gg/tier-list/3v3/?rank=best&side=defense',note:'S83 · Rang #9 · Elo 2271 · échantillon limité.'},
+{format:'3v3',season:81,rank:7,name:'Pirate King Hondo · Hondo Ohnaka · Vane',members:['Pirate King Hondo Ohnaka','Hondo Ohnaka','Vane'],hold:35.4,battles:182,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #7 · Elo 2367 · échantillon limité.'},
+{format:'3v3',season:81,rank:8,name:'Bastila Shan · Jedi Master Luke · Wat Tambor',members:['Bastila Shan','Jedi Master Luke Skywalker','Wat Tambor'],hold:48.6,battles:1220,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #8 · Elo 2349.'},
+{format:'3v3',season:81,rank:9,name:'Jedi Master Kenobi · Commander Ahsoka Tano · General Skywalker',members:['Jedi Master Kenobi','Commander Ahsoka Tano','General Skywalker'],hold:36.6,battles:892,source:'https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&season=81&side=defense',note:'S81 · Rang #9 · Elo 2322.'}
+]);
+function normalizeName(s){return String(s||'').toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');}
+var rosterAliases={'supreme leader kylo ren':'supreme leader kylo ren','slkr':'supreme leader kylo ren','kru':'kylo ren unmasked','kylo ren unmasked':'kylo ren unmasked','rey dark side vision':'rey dark side vision','cc 1119 appo':'cc1119 appo','appo':'cc1119 appo','the stranger':'the stranger','inquisitor barriss':'inquisitor barriss','barriss':'inquisitor barriss'};
+function canonicalName(s){var n=normalizeName(s);var aliases={slkr:'supremeleaderkyloren',kru:'kylorenunmasked',appo:'cc1119appo',barriss:'inquisitorbarriss'};return aliases[n]||n;}
+function parseRoster(){
+var raw='';
+try{raw=sessionStorage.getItem('holocronRosterNames')||localStorage.getItem('holocronRosterNames')||'';}catch(_){}
+try{var data=JSON.parse(raw);if(Array.isArray(data))return data.map(function(x){return canonicalName(typeof x==='string'?x:(x.name||x.character_name||x.characterName||x.base_id||x.baseId||x.defId||x.id||''));}).filter(Boolean);}catch(_){}
+return [];
+}
+function renderTeams(){
+var results=document.getElementById('teamResults');results.innerHTML='';
+var roster=parseRoster();var status=document.getElementById('padawanStatus');var fmt=state.mode||'5v5';
+
+ if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
+var rosterSet=new Set(roster);
+var requiredCounts={'5v5':{Kyber:11,Aurodium:9,Chromium:7,Bronzium:5,Carbonite:3},'3v3':{Kyber:15,Aurodium:13,Chromium:10,Bronzium:7,Carbonite:3}};
+var required=(requiredCounts[fmt]&&requiredCounts[fmt][state.tier])||requiredCounts[fmt].Kyber;
+var seasons=fmt==='5v5'?[84,82]:[83,81];var ranked=publicTeams.filter(function(t){return t.format===fmt&&seasons.indexOf(t.season)>=0&&Number.isFinite(t.rank);}).slice().sort(function(a,b){return b.season-a.season||a.rank-b.rank;});
+var used=new Set(),candidates=[],skippedMissing=0,skippedUsed=0;
+ranked.forEach(function(t){
+ if(candidates.length>=required)return;
+ var members=t.members.map(canonicalName);
+ if(!members.every(function(m){return rosterSet.has(m);})){skippedMissing++;return;}
+ if(members.some(function(m){return used.has(m);})){skippedUsed++;return;}
+ candidates.push(t);members.forEach(function(m){used.add(m);});
+});
+function addUnavailableTeamCard(number){
+ var card=document.createElement('article');card.className='team-card unavailable';
+ var h=document.createElement('h3');h.textContent='Équipe '+number;card.appendChild(h);
+ var message=document.createElement('div');message.className='empty-state';message.textContent='Aucune proposition ne répond aux critères pour cette équipe. Les compositions disponibles ne permettent pas de compléter la sélection sans personnage manquant ou doublon.';card.appendChild(message);
+ results.appendChild(card);
+}
+if(!candidates.length){
+ status.textContent='Roster détecté ('+roster.length+' personnages), mais aucune équipe complète du classement actuel ne peut être posée sans doublon.';
+ for(var emptyIndex=1;emptyIndex<=required;emptyIndex++)addUnavailableTeamCard(emptyIndex);
+ return;
+}
+status.textContent=candidates.length+' / '+required+' équipes défensives retenues pour '+fmt+' '+state.tier+'. Saisons analysées : '+seasons.map(function(s){return 'S'+s;}).join(' et ')+'. '+skippedMissing+' équipe(s) ignorée(s) faute de personnages ; '+skippedUsed+' ignorée(s) pour éviter les doublons. Catalogue relevé : '+ranked.length+' entrées saisonnières.';
+
+candidates.forEach(function(t,i){
+var card=document.createElement('article');card.className='team-card';
+var h=document.createElement('h3');h.textContent='Équipe '+(i+1)+' · '+t.name;card.appendChild(h);
+var members=document.createElement('div');members.className='team-members';members.textContent=t.members.join(' · ');card.appendChild(members);
+var stats=document.createElement('div');stats.className='team-stats';stats.textContent='Saison S'+t.season+' · Rang source #'+t.rank+' · Tenue observée : '+t.hold.toFixed(1)+' % · Combats : '+t.battles.toLocaleString('fr-FR');card.appendChild(stats);
+var reason=document.createElement('div');reason.className='team-reason';reason.textContent=t.note+' Équipe complète vérifiée contre le roster.';card.appendChild(reason);
+var link=document.createElement('a');link.href=t.source;link.target='_blank';link.rel='noopener';link.className='back';link.textContent='VÉRIFIER LA SOURCE ↗';link.style.display='inline-block';link.style.marginTop='12px';card.appendChild(link);results.appendChild(card);
+});
+for(var missingIndex=candidates.length+1;missingIndex<=required;missingIndex++)addUnavailableTeamCard(missingIndex);
+}
+
+function updateSourceLinks(){var league={Kyber:'kyber',Aurodium:'aurodium',Chromium:'chromium',Bronzium:'bronzium',Carbonite:'carbonite'}[state.tier]||'kyber';var mode=state.mode==='3v3'?'3v3':'gac';document.querySelectorAll('.padawan-actions a[href*="swgoh.gg/tier-list/"]').forEach(function(a){a.href='https://swgoh.gg/tier-list/'+mode+'/?league='+league+'&side=defense';});}
+
+function initRosterStatus(){var names=parseRoster();var status=document.getElementById('rosterConnectionStatus');if(names.length){status.textContent='Roster connecté détecté · '+names.length+' personnages disponibles. Les compositions seront filtrées automatiquement.';renderTeams();}else{status.textContent='Aucun roster synchronisé détecté dans le navigateur. Aucune composition ne sera affichée tant que le roster n’est pas reconnu.';renderTeams();}}
+document.getElementById('showAllTeams').addEventListener('click',renderTeams);
+document.getElementById('backToAccess').addEventListener('click',function(){show('access');});
+
+document.getElementById('backToMode').addEventListener('click',function(){show('mode');});document.getElementById('backToTierFromAccess').addEventListener('click',function(){show('tier');});
+sync();show(state.access==='Padawan'?'padawan':state.access==='Maître Jedi'?'master':state.tier?'access':state.mode?'tier':'mode');if(state.access==='Padawan')initRosterStatus();if(state.access==='Maître Jedi')document.getElementById('masterConfig').textContent='Configuration : '+(state.mode||'—')+' · '+(state.tier||'—');
+})();
+</script></body></html>

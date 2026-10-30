@@ -1,0 +1,39 @@
+/* V4.0.45 — Page statique : neutraliser aussi l'opacité initiale de l'animation. */
+#holocronChambers {
+  opacity: 1 !important;
+  animation: none !important;
+}
+#holocronChambers,
+#holocronChambers *,
+#holocronChambers *::before,
+#holocronChambers *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+#holocronChambers .holocron-energy-web,
+#holocronChambers .holocron-conflict i,
+#holocronChambers .holocron-conflict b,
+#holocronChambers .holocron-conflict em {
+  display: none !important;
+}
+#holocronChambers .chambers-mist {
+  animation: none !important;
+  filter: none !important;
+  opacity: .35;
+}
+#holocronChambers .holocron-aura {
+  animation: none !important;
+  opacity: .18;
+}
+#holocronChambers .holocron-choice:hover,
+#holocronChambers .holocron-choice:focus-visible {
+  transform: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #holocronChambers,
+  #holocronChambers * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

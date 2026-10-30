@@ -58,46 +58,6 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertEqual(len(builds), 1)
         self.assertEqual(len(builds[0]["build"]), 6)
 
-    def test_impossible_kyber_set_plan_falls_back_to_best_available_build(self):
-        slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
-        sets = ("Health", "Offense", "Defense", "Potency", "Tenacity", "Speed")
-        mods = [
-            {
-                "id": slot, "slot": slot, "set": set_name,
-                "primary_stat": "Speed", "primary_value": 10,
-                "secondary_1_stat": "Speed", "secondary_1_value": 5,
-                "level": 15, "rarity": 5,
-            }
-            for slot, set_name in zip(slots, sets)
-        ]
-        kyber = {"specific_sets": [{"name": "Health x6", "counts": {"Health": 6}, "weight": 1.0}]}
-        builds = optimize_kyber(
-            mods, base_stats={"Speed": 100}, kyber=kyber,
-            number_of_builds=1, limit_per_slot=1,
-        )
-        self.assertEqual(len(builds), 1)
-        self.assertEqual(len(builds[0]["build"]), 6)
-        self.assertEqual(builds[0]["set_plan"], {})
-
-    def test_available_kyber_set_plan_is_kept_as_hard_constraint(self):
-        slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
-        mods = [
-            {
-                "id": slot, "slot": slot, "set": "Speed",
-                "primary_stat": "Speed", "primary_value": 10,
-                "secondary_1_stat": "Speed", "secondary_1_value": 5,
-                "level": 15, "rarity": 5,
-            }
-            for slot in slots
-        ]
-        kyber = {"specific_sets": [{"name": "Speed x6", "counts": {"Speed": 6}, "weight": 1.0}]}
-        builds = optimize_kyber(
-            mods, base_stats={"Speed": 100}, kyber=kyber,
-            number_of_builds=1, limit_per_slot=1,
-        )
-        self.assertEqual(len(builds), 1)
-        self.assertEqual(builds[0]["set_plan"], {"Speed": 6})
-
     def test_partial_set_plan_rejects_excess_sets(self):
         build = [{"set": "Health"}, {"set": "Health"}]
         self.assertFalse(_partial_matches_set_plan(build, {"Speed": 6}))
