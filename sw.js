@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.0.52-jedi-tier-selector';
+const CACHE_NAME = 'holocron-static-v4.0.53-crawl-restart';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,9 +9,9 @@ const STATIC_ASSETS = [
   './app.css?v=4.0.0-seigneur-card-layout',
   './sithari.css?v=4.2.0-adaptive-mod-board',
   './holocron-system.css?v=4.0.0-disciple-clarity',
-  './entrance.css?v=4.0.45-static-holocrons',
+  './entrance.css?v=4.0.46-crawl-restart',
   './holocron-static.css?v=4.0.45',
-  './interface-adapter.js?v=4.0.45-static-holocrons',
+  './interface-adapter.js?v=4.0.46-crawl-restart',
   './gac-usage.js?v=3.2.1',
   './modules/core.js?v=3.4.4-cache-sync',
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
