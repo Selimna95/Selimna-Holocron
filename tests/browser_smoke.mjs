@@ -118,9 +118,11 @@ try {
   // mode -> league -> Padawan route remains functional.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addInitScript(() => {
-    sessionStorage.setItem("holocronRosterNames", JSON.stringify([
+    const sampleRoster = JSON.stringify([
       "Rey", "Ben Solo", "Cal Kestis", "Commander Ahsoka Tano", "General Kenobi"
-    ]));
+    ]);
+    sessionStorage.setItem("holocronRosterNames", sampleRoster);
+    localStorage.setItem("holocronRosterNames", sampleRoster);
   });
   const blueResponse = await page.goto(origin + "/blue-gac/", { waitUntil: "domcontentloaded" });
   assert.equal(blueResponse?.status(), 200, "The blue GAC page must return HTTP 200");
@@ -130,7 +132,7 @@ try {
   await page.locator('[data-tier="Kyber"]').click();
   await page.locator('[data-access="Padawan"]').click();
   await page.locator("#padawanView").waitFor({ state: "visible" });
-  console.log("Padawan smoke diagnostics:", await page.locator("#rosterConnectionStatus").textContent(), await page.locator("#teamResults").textContent());
+  await page.waitForFunction(() => document.querySelector("#rosterConnectionStatus")?.textContent.includes("personnages disponibles"));
   assert.ok(await page.locator("#teamResults .team-card:not(.unavailable)").count() >= 1, "Padawan should select a complete observed team from the supplied roster.");
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
