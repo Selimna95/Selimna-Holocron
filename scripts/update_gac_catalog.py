@@ -255,7 +255,7 @@ def fetch(url: str) -> str:
                 if response.status != 200:
                     raise ValueError(f"HTTP {response.status} for {url}")
                 body = response.read().decode("utf-8", errors="replace")
-                print(f"Fetched SWGOH.GG projection for {url} ({len(body)} chars)")
+                print(f"Fetched SWGOH.GG projection for {url}")
                 return body
         except (HTTPError, URLError, TimeoutError, ValueError) as exc:
             last_error = exc
@@ -293,10 +293,19 @@ def refresh() -> dict:
                     # the explicit season query remains authoritative.
                     actual = season
                 if actual != season:
-                    raise ValueError(
-                        f"Requested {fmt} {league} S{season}, received S{actual} from {url}"
-                    )
-                all_teams.extend(parse_page(html, fmt, league, season, url))
+                    message = f"Requested {fmt} {league} S{season}, received S{actual} from {url}"
+                    if season == current:
+                        raise ValueError(message)
+                    print(f"Skipping unavailable historical snapshot: {message}")
+                    continue
+                try:
+                    parsed = parse_page(html, fmt, league, season, url)
+                except ValueError as exc:
+                    if season == current:
+                        raise
+                    print(f"Skipping historical snapshot without enough public squad detail: {exc}")
+                    continue
+                all_teams.extend(parsed)
 
     keys = set()
     unique = []
