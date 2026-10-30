@@ -51,6 +51,22 @@ class GacCatalogParserTests(unittest.TestCase):
     def test_reads_season_from_page_heading(self):
         self.assertEqual(page_season("<h1>Defense tier list — Season 84</h1>"), 84)
 
+    def test_extracts_teams_from_reader_markdown(self):
+        text = """
+        Image: The Stranger
+        Image: Barriss Offee
+        Image: Maul (Hate-Fueled)
+        Image: Starkiller
+        Image: Visas Marr
+        Elo 1944 Hold % 53.2% Battles 51K 221 builds
+        #1 —
+        Meta Explorer
+        """
+        teams = parse_page(text, "5v5", "kyber", 84, "https://swgoh.gg/", minimum_teams=1)
+        self.assertEqual(len(teams), 1)
+        self.assertEqual(teams[0]["members"][0], "The Stranger")
+        self.assertEqual(teams[0]["battles"], 51000)
+
 
 if __name__ == "__main__":
     unittest.main()
