@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "source": "SWGOH.GG GAC tier lists · defense · most played",
+  "updatedAt": null,
+  "seasons": {"5v5": [], "3v3": []},
+  "coverage": {
+    "5v5": {"kyber": 0, "aurodium": 0, "chromium": 0, "bronzium": 0, "carbonite": 0},
+    "3v3": {"kyber": 0, "aurodium": 0, "chromium": 0, "bronzium": 0, "carbonite": 0}
+  },
+  "teams": []
+}
