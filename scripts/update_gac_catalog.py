@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""Refresh the Padawan defense catalogue from SWGOH.GG tier-list pages.
+
+The source is public and league/format/season filtered. We only publish a new
+snapshot when all ten requested views parse successfully; a broken upstream
+page never replaces the last known-good catalogue.
+"""
+from __future__ import annotations
+
+import json
+import re
+import time
+from datetime import datetime, timezone
+from html.parser import HTMLParser
+from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
+from urllib.request import Request, urlopen
+
+ROOT = Path(__file__).resolve().parents[1]
+OUTPUT = ROOT / "blue-gac" / "gac-catalog.json"
+BASES = {
+    "5v5": "https://swgoh.gg/tier-list/gac/",
+    "3v3": "https://swgoh.gg/tier-list/3v3/",
+}
+LEAGUES = ("kyber", "aurodium", "chromium", "bronzium", "carbonite")
+LEAGUE_LABELS = {x: x.capitalize() for x in LEAGUES}
+USER_AGENT = "SelimnasHolocron-GAC-Catalog/1.0 (+https://github.com/Selimna95/Selimna-Holocron)"
+MIN_TEAMS_PER_VIEW = 8
+
+
+class Node:
+    def __init__(self, tag: str, attrs: dict[str, str], parent: "Node | None"):
+        self.tag, self.attrs, self.parent = tag, attrs, parent
+        self.children: list[Node | str] = []
+
+    def walk(self):
+        yield self
+        for child in self.children:
+            if isinstance(child, Node):
+                yield from child.walk()
+
+    def text(self) -> str:
+        return " ".join(
+            [self.attrs.get("alt", "")] if self.tag == "img" else []
+            + [child.text() if isinstance(child, Node) else child for child in self.children]
+        )
+
+
+class TreeParser(HTMLParser):
+    VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input",
+            "link", "meta", "param", "source", "track", "wbr"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.root = Node("document", {}, None)
+        self.stack = [self.root]
+
+    def handle_starttag(self, tag, attrs):
+        node = Node(tag, dict(attrs), self.stack[-1])
+        self.stack[-1].children.append(node)
+        if tag not in self.VOID:
+            self.stack.append(node)
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        if tag not in self.VOID:
+            self.handle_endtag(tag)
+
+    def handle_endtag(self, tag):
+        for index in range(len(self.stack) - 1, 0, -1):
+            if self.stack[index].tag == tag:
+                del self.stack[index:]
+                break
+
+    def handle_data(self, data):
+        if data.strip():
+            self.stack[-1].children.append(data.strip())
+
+
+def number_value(value: str) -> int:
+    value = value.strip().replace(",", "").replace(" ", "")
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)([KMB]?)", value, re.I)
+    if not match:
+        raise ValueError(f"Unsupported battle count: {value!r}")
+    amount = float(match.group(1))
+    multiplier = {"": 1, "K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[match.group(2).upper()]
+    return round(amount * multiplier)
+
+
+def page_season(html: str) -> int:
+    match = re.search(r"Season\s+(\d+)", html, re.I)
+    if not match:
+        raise ValueError("SWGOH.GG page does not expose a season number")
+    return int(match.group(1))
+
+
+def discover_previous_season(html: str, current: int) -> int:
+    parser = TreeParser()
+    parser.feed(html)
+    found = set()
+    for node in parser.root.walk():
+        href = node.attrs.get("href", "")
+        query = parse_qs(urlparse(href).query)
+        for value in query.get("season", []):
+            if value.isdigit() and int(value) < current:
+                found.add(int(value))
+    if not found:
+        raise ValueError(f"No previous season link found below S{current}")
+    return max(found)
+
+
+def is_character_image(node: Node) -> bool:
+    if node.tag != "img":
+        return False
+    alt = node.attrs.get("alt", "").strip()
+    src = node.attrs.get("src", "") + " " + node.attrs.get("data-src", "")
+    return bool(alt) and (alt.startswith("Image:") or "game-assets.swgoh.gg" in src)
+
+
+def parse_page(html: str, fmt: str, league: str, expected_season: int, source_url: str) -> list[dict]:
+    size = 5 if fmt == "5v5" else 3
+    parser = TreeParser()
+    parser.feed(html)
+    root = parser.root
+    seen: set[tuple[str, ...]] = set()
+    teams = []
+
+    for image in (n for n in root.walk() if is_character_image(n)):
+        candidate = image.parent
+        chosen = None
+        for _ in range(12):
+            if candidate is None:
+                break
+            images = [n for n in candidate.walk() if is_character_image(n)]
+            text = re.sub(r"\s+", " ", candidate.text()).strip()
+            if (len(images) == size and "Hold %" in text and "Battles" in text
+                    and re.search(r"#\s*\d+", text)):
+                chosen = (candidate, images, text)
+                break
+            candidate = candidate.parent
+        if chosen is None:
+            continue
+
+        _, images, text = chosen
+        members = []
+        for img in images:
+            name = img.attrs.get("alt", "").strip()
+            if name.startswith("Image:"):
+                name = name[6:].strip()
+            if name and name not in members:
+                members.append(name)
+        if len(members) != size:
+            continue
+        signature = tuple(members)
+        if signature in seen:
+            continue
+
+        stats = re.search(
+            r"Hold\s*%\s*([\d.,]+)\s*%\s*Battles\s+([\d,.]+\s*[KMB]?)",
+            text, re.I,
+        )
+        rank = re.search(r"#\s*(\d+)", text)
+        if not stats or not rank:
+            continue
+        hold = float(stats.group(1).replace(",", "."))
+        battles = number_value(stats.group(2))
+        if not (0 <= hold <= 100 and battles > 0):
+            continue
+
+        seen.add(signature)
+        rank_value = int(rank.group(1))
+        teams.append({
+            "format": fmt,
+            "league": LEAGUE_LABELS[league],
+            "season": expected_season,
+            "rank": rank_value,
+            "name": " · ".join(members),
+            "members": members,
+            "hold": hold,
+            "battles": battles,
+            "source": source_url,
+            "note": f"S{expected_season} · {LEAGUE_LABELS[league]} · rang #{rank_value} · {battles:,} combats observés".replace(",", " "),
+        })
+
+    teams.sort(key=lambda t: (-t["battles"], -t["hold"], t["rank"]))
+    if len(teams) < MIN_TEAMS_PER_VIEW:
+        raise ValueError(
+            f"{fmt} {league} S{expected_season}: only {len(teams)} teams parsed "
+            f"(minimum {MIN_TEAMS_PER_VIEW}); refusing to publish a partial scrape"
+        )
+    return teams
+
+
+def fetch(url: str) -> str:
+    request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html"})
+    last_error = None
+    for attempt in range(4):
+        try:
+            with urlopen(request, timeout=45) as response:
+                if response.status != 200:
+                    raise ValueError(f"HTTP {response.status} for {url}")
+                return response.read().decode("utf-8", errors="replace")
+        except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+            last_error = exc
+            if attempt < 3:
+                time.sleep(2 ** attempt)
+    raise RuntimeError(f"Unable to fetch {url}: {last_error}")
+
+
+def build_url(base: str, league: str, season: int | None = None) -> str:
+    params = {"league": league, "side": "defense"}
+    if season is not None:
+        params["season"] = str(season)
+    return base + "?" + urlencode(params)
+
+
+def refresh() -> dict:
+    all_teams = []
+    seasons_by_format = {}
+
+    for fmt, base in BASES.items():
+        discovery_url = build_url(base, "kyber")
+        discovery_html = fetch(discovery_url)
+        current = page_season(discovery_html)
+        previous = discover_previous_season(discovery_html, current)
+        seasons_by_format[fmt] = [current, previous]
+
+        for league in LEAGUES:
+            for season in (current, previous):
+                url = build_url(base, league, season if season != current else None)
+                html = discovery_html if league == "kyber" and season == current else fetch(url)
+                actual = page_season(html)
+                if actual != season:
+                    raise ValueError(
+                        f"Requested {fmt} {league} S{season}, received S{actual} from {url}"
+                    )
+                all_teams.extend(parse_page(html, fmt, league, season, url))
+
+    keys = set()
+    unique = []
+    for team in all_teams:
+        key = (team["format"], team["league"], team["season"], tuple(team["members"]))
+        if key not in keys:
+            keys.add(key)
+            unique.append(team)
+
+    coverage = {
+        fmt: {
+            league: sum(1 for t in unique if t["format"] == fmt and t["league"] == LEAGUE_LABELS[league])
+            for league in LEAGUES
+        }
+        for fmt in BASES
+    }
+    for fmt in BASES:
+        for league in LEAGUES:
+            if coverage[fmt][league] < MIN_TEAMS_PER_VIEW * 2:
+                raise ValueError(f"Incomplete coverage for {fmt} {league}: {coverage[fmt][league]} teams")
+
+    return {
+        "schemaVersion": 1,
+        "source": "SWGOH.GG GAC tier lists · defense · most played",
+        "updatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "seasons": seasons_by_format,
+        "coverage": coverage,
+        "teams": unique,
+    }
+
+
+def main():
+    catalog = refresh()
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    temp = OUTPUT.with_suffix(".json.tmp")
+    temp.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temp.replace(OUTPUT)
+    print(
+        f"Published {len(catalog['teams'])} defensive teams; "
+        f"5 leagues × 2 formats × 2 seasons; updated {catalog['updatedAt']}"
+    )
+
+
+if __name__ == "__main__":
+    main()
