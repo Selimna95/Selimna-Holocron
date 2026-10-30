@@ -30,7 +30,8 @@ var catalogMeta=null;
 var catalogReady=false;
 var catalogError='';
 function loadCatalog(){
- return fetch('gac-catalog.json?v=4.1.0',{cache:'no-store'}).then(function(response){
+ var catalogUrl=location.hostname==='selimna95.github.io'?'https://raw.githubusercontent.com/Selimna95/Selimna-Holocron/main/blue-gac/gac-catalog.json?v=4.1.0':'gac-catalog.json?v=4.1.0';
+ return fetch(catalogUrl,{cache:'no-store'}).then(function(response){
   if(!response.ok)throw new Error('HTTP '+response.status);
   return response.json();
  }).then(function(data){
