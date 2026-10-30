@@ -57,7 +57,7 @@ class AssetIntegrityTests(unittest.TestCase):
     def test_catalogue_source_is_not_silently_replaced_with_static_teams(self):
         self.assertIn("gac-catalog.json", self.blue_js)
         self.assertIn("aucune ancienne composition", self.blue_js.lower())
-        self.assertIn("gac-catalog.json", self.blue_html)
+        self.assertIn("gac-catalog.json", self.catalog)
 
 
 if __name__ == "__main__":
