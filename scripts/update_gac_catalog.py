@@ -234,6 +234,7 @@ def parse_page(html: str, fmt: str, league: str, expected_season: int, source_ur
         })
 
     teams.sort(key=lambda t: (-t["battles"], -t["hold"], t["rank"]))
+    print(f"Parsed {fmt} {league} S{expected_season}: {len(teams)} teams")
     if len(teams) < minimum_teams:
         raise ValueError(
             f"{fmt} {league} S{expected_season}: only {len(teams)} teams parsed "
@@ -254,7 +255,7 @@ def fetch(url: str) -> str:
                 if response.status != 200:
                     raise ValueError(f"HTTP {response.status} for {url}")
                 body = response.read().decode("utf-8", errors="replace")
-                print(f"Reader preview for {url}: {body[:1800]!r}")
+                print(f"Fetched SWGOH.GG projection for {url} ({len(body)} chars)")
                 return body
         except (HTTPError, URLError, TimeoutError, ValueError) as exc:
             last_error = exc
