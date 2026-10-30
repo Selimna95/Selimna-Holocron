@@ -173,7 +173,7 @@
     if(shell)shell.hidden=true;if(gate)gate.hidden=false;if(temple)temple.hidden=true;if(chambers){chambers.hidden=false;chambers.scrollTop=0;}
     if(gate){gate.classList.remove('is-success','is-loading');gate.classList.add('intro-seen');}
     const back=el('returnToHolocrons');if(back)back.hidden=true;const msg=el('greenPathMessage');if(msg)msg.hidden=true;
-    try{sessionStorage.setItem('holocronIntroPlayed','1');sessionStorage.setItem('holocronProfileLoaded','1');const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
+    try{sessionStorage.setItem('holocronIntroPlayedV2','1');sessionStorage.setItem('holocronProfileLoaded','1');const ally=String(el('allyCode')?.value||'').replace(/\D/g,'').slice(0,9);if(ally.length===9)sessionStorage.setItem('holocronLastAllyCode',ally);}catch(_){}
   }
 
   function setGate(msg,kind){
@@ -241,7 +241,7 @@
     window.addEventListener('holocron:data-updated',renderDecision);
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
     try{
-      const introPlayed=sessionStorage.getItem('holocronIntroPlayed')==='1';
+      const introPlayed=sessionStorage.getItem('holocronIntroPlayedV2')==='1';
       const gate=el('holocronGate');
       const crawl=gate?.querySelector('.temple-crawl-copy');
       if(introPlayed){
@@ -250,7 +250,7 @@
         if(gate)gate.classList.remove('intro-seen');
         crawl.addEventListener('animationend',event=>{
           if(event.animationName==='templeCrawlDepth'){
-            try{sessionStorage.setItem('holocronIntroPlayed','1');}catch(_){}
+            try{sessionStorage.setItem('holocronIntroPlayedV2','1');}catch(_){}
             if(gate)gate.classList.add('intro-seen');
           }
         },{once:true});
