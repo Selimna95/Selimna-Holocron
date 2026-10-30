@@ -333,9 +333,13 @@ def refresh() -> dict:
                     continue
                 try:
                     parsed = parse_page(html, fmt, league, season, url)
-                except ValueError as exc:
-                    print(f"Skipping {fmt} {league} S{season}: {exc}")
-                    continue
+                except ValueError as html_error:
+                    try:
+                        markdown = fetch(url, "markdown")
+                        parsed = parse_page(markdown, fmt, league, season, url)
+                    except ValueError as markdown_error:
+                        print(f"Skipping {fmt} {league} S{season}: HTML={html_error}; Reader text={markdown_error}")
+                        continue
                 all_teams.extend(parsed)
                 available_seasons.append(season)
                 if len(available_seasons) >= 2:
