@@ -198,9 +198,6 @@ def parse_page(html: str, fmt: str, league: str, expected_season: int, source_ur
     parser = TreeParser()
     parser.feed(html)
     root = parser.root
-    raw_images = [n for n in root.walk() if n.tag == "img"]
-    character_images = [n for n in raw_images if is_character_image(n)]
-    print(f"Image diagnostics {fmt} {league} S{expected_season}: {len(raw_images)} img tags, {len(character_images)} character candidates; samples={[(n.attrs.get('alt', ''), n.attrs.get('src', '')[:100]) for n in raw_images[:8]]}")
     seen: set[tuple[str, ...]] = set()
     teams = []
 
