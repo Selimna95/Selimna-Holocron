@@ -38,5 +38,6 @@ jobs:
           else
             git add blue-gac/gac-catalog.json
             git commit -m "chore(gac): refresh live defensive catalogue"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
