@@ -503,26 +503,10 @@ async function fetchJSON(url){
   try{return JSON.parse(raw);}catch(_){throw new Error('Réponse JSON invalide reçue du relais.');}
 }
 async function fetchText(url) {
-  // Conserver le relais en priorité, mais ne pas supprimer le fallback historique :
-  // certaines réponses du Worker échouent alors que la page publique reste accessible.
-  const candidates=[];
-  const relay=workerUrl();
-  const match=url.match(/\\/p\\/(\\d{9})\\/(characters|mods)?\\/?(?:\\?page=(\\d+))?/);
-  if(relay && match){
-    const ally=match[1],path=match[2]||'profile',page=match[3]||'1';
-    candidates.push(`${relay}/?ally=${ally}&path=${path}&page=${page}`);
-  }
-  candidates.push(url);
-  let last='';
-  for(const candidate of candidates){
-    try{
-      const responseText=await fetchTextWithTimeout(candidate,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});
-      if(responseText && responseText.length>200) return responseText;
-      last=`Réponse vide via ${new URL(candidate).host}`;
-    }catch(error){
-      last=error?.message||String(error);
-    }
-  }
+  const candidates=[], relay=workerUrl();
+  if(relay){const m=url.match(/\/p\/(\d{9})\/(characters|mods)?\/?(?:\?page=(\d+))?/);if(m){const ally=m[1],path=m[2]||'profile',page=m[3]||'1';candidates.push(`${relay}/?ally=${ally}&path=${path}&page=${page}`);}}
+  candidates.push(url); let last='';
+  for(const u of candidates){try{const text=await fetchTextWithTimeout(u,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});if(text&&text.length>200)return text;last=`Réponse vide via ${new URL(u).host}`;}catch(e){last=e.message||String(e);}}
   throw new Error(last||'Impossible de lire la page SWGOH.GG.');
 }
 function parseHTML(text){return new DOMParser().parseFromString(text,'text/html');}
