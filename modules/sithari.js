@@ -270,7 +270,7 @@ function sithariBaseSpeed(character){
 }
 function sithariProjectedSpeed(character,modList){
   const list=Array.isArray(modList)?modList:[];
-  const modSpeed=list.reduce((sum,m)=>sum+num(modTotalSpeed(m),0),0);
+  const modSpeed=list.reduce((sum,m)=>sum+numericValue(modTotalSpeed(m),0),0);
   const speedSetPieces=list.filter(sithariIsSpeedSet).length;
   const baseSpeed=sithariBaseSpeed(character);
   // If the base stat is unavailable, the caller still rejects losing the
