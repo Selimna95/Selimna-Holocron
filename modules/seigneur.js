@@ -153,7 +153,7 @@ function forgeCharacterAudit(character,profile){
   }
   const issues=equipped.map((m,index)=>{
     const set=forgeModSetConformity(m,profile), primary=forgeModPrimaryConformity(m,profile);
-    return {...m,_equippedIndex:index,_set:set,_primary:primary,_mismatch:set.ok===false||primary.ok===false};
+    return {...m,_equippedIndex:index,_set:set,_primary:primary,_unknown:set.ok===null||primary.ok===null,_mismatch:set.ok===false||primary.ok===false};
   });
   return {equipped,issues,primaryBySlot,setRules:rules};
 }
@@ -224,8 +224,9 @@ function forgeSpeedSetCount(modList){
 }
 function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
-  const modSpeed=list.reduce((sum,m)=>sum+num(modTotalSpeed(m),0),0);
-  const baseSpeed=Number(profile?.base_stats?.Speed??profile?.base_stats?.speed??0);
+  const modSpeed=list.reduce((sum,m)=>sum+numericValue(modTotalSpeed(m),0),0);
+  const stats=baseStatsForCharacter(character)||{};
+  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??stats.Speed??stats.speed,0);
   const hasFourPieceSpeedSet=forgeSpeedSetCount(list)>=4;
   // A complete Speed set grants 10% of base Speed. Include it in the
   // comparison; counting only the candidate mod can hide a real character loss.
@@ -236,7 +237,7 @@ function forgeSearchCandidates(character,profile,slot,secA,secB){
   const equipped=getCharacterMods(character);
   const current=equipped.find(m=>forgeSlotCompatible(m,slot));
   const source=forgeAllSourceMods().filter(m=>forgeSourceAllowedForSearch(m)&&forgeSlotCompatible(m,slot));
-  const currentSpeed=current?num(modTotalSpeed(current),0):0;
+  const currentSpeed=current?numericValue(modTotalSpeed(current),0):0;
   const currentProjection=forgeProjectedModSpeed(character,profile,equipped);
   // Hard guard: compare the whole target configuration, including a complete
   // 4-piece Speed-set bonus, before a candidate is eligible for ranking.
@@ -248,6 +249,9 @@ function forgeSearchCandidates(character,profile,slot,secA,secB){
       const after=equipped.filter(x=>String(x.game_id||x.id||'')!==String(current.game_id||current.id||''));
       after.push(m);
       const afterProjection=forgeProjectedModSpeed(character,profile,after);
+      // Sans base Speed fiable, conserver intégralement un set Speed déjà complet :
+      // on ne peut pas chiffrer la perte du bonus de set autrement.
+      if(currentProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return false;
       if(afterProjection.total+1e-9<currentProjection.total)return false;
     }
     return true;
@@ -276,11 +280,14 @@ function renderForgeCharacterPanel(character,profile){
   const secondaries=forgeSecondaryOptions(profile);
   const first=secondaries[0]||'Offense %', second=secondaries.find(x=>x!==first)||'Health %';
   const characterPortrait=essentialPortraitHtml(character);
-  const currentSlots=audit.issues.map(m=>`<button type="button" class="forge-current-mod ${m._mismatch?'is-mismatch':'is-match'}" data-forge-slot="${esc(m.slot)}"><span>${modIconHtml(m,'48')}</span><b>${esc(m.slot||'—')}</b><small>${m._mismatch?'ÉCART':'CONFORME'}</small><em>${esc(m.set_name||'—')}</em></button>`).join('');
+  const currentSlots=audit.issues.map(m=>`<button type="button" class="forge-current-mod ${m._unknown?'is-unknown':m._mismatch?'is-mismatch':'is-match'}" data-forge-slot="${esc(m.slot)}"><span>${modIconHtml(m,'48')}</span><b>${esc(m.slot||'—')}</b><small>${m._unknown?'À VÉRIFIER':m._mismatch?'ÉCART':'CONFORME'}</small><em>${esc(m.set_name||'—')}</em></button>`).join('');
+  const unknownCount=audit.issues.filter(x=>x._unknown).length;
   const mismatchHtml=mismatches.length
     ? `<div class="forge-audit-empty">${mismatches.length} emplacement(s) présentent un écart. Sélectionne l’un des 6 mods ci-dessus pour cibler son slot, puis lance explicitement la recherche.</div>`
-    : `<div class="forge-audit-empty">Les mods équipés sont conformes aux critères disponibles. Aucun remplacement prioritaire détecté.</div>`;
-  $('forgeCharacterAudit').innerHTML=`<div class="forge-audit-character"><div class="forge-audit-character-portrait">${characterPortrait}</div><div><span>PERSONNAGE ANALYSÉ</span><strong>${esc(character?.name||'Personnage')}</strong><small>Référence Kyber appliquée aux 6 slots.</small></div></div><div class="forge-audit-summary"><div><span>MODS DU PERSONNAGE</span><b>${audit.equipped.length}/6</b></div><div><span>ÉCARTS DÉTECTÉS</span><b>${mismatches.length}</b></div><div><span>SETS KYBER</span><b>${audit.setRules.length?'IDENTIFIÉS':'À RÉCUPÉRER'}</b></div></div><div class="forge-current-mods">${currentSlots}</div><div class="forge-mismatch-list">${mismatchHtml}</div>`;
+    : unknownCount
+      ? `<div class="forge-audit-empty">Référence Kyber incomplète : ${unknownCount} emplacement(s) ne peuvent pas être déclarés conformes. Leur statut reste « à vérifier ».</div>`
+      : `<div class="forge-audit-empty">Les mods équipés sont conformes aux critères disponibles. Aucun remplacement prioritaire détecté.</div>`;
+  $('forgeCharacterAudit').innerHTML=`<div class="forge-audit-character"><div class="forge-audit-character-portrait">${characterPortrait}</div><div><span>PERSONNAGE ANALYSÉ</span><strong>${esc(character?.name||'Personnage')}</strong><small>Référence Kyber appliquée aux 6 slots.</small></div></div><div class="forge-audit-summary"><div><span>MODS DU PERSONNAGE</span><b>${audit.equipped.length}/6</b></div><div><span>ÉCARTS DÉTECTÉS</span><b>${mismatches.length}</b></div><div><span>À VÉRIFIER</span><b>${unknownCount}</b></div><div><span>SETS KYBER</span><b>${audit.setRules.length?'IDENTIFIÉS':'À RÉCUPÉRER'}</b></div></div><div class="forge-current-mods">${currentSlots}</div><div class="forge-mismatch-list">${mismatchHtml}</div>`;
   const selects=(id,val)=>`<select id="${id}">${secondaries.map(n=>`<option value="${esc(n)}" ${n===val?'selected':''}>${esc(n)}</option>`).join('')}</select>`;
   $('forgeSearchPanel').innerHTML=`<div class="forge-search-grid"><label>MOD À REMPLACER<select id="forgeTargetSlot">${audit.issues.map(m=>`<option value="${esc(m.slot)}" ${m._mismatch?'selected':''}>${esc(m.slot)} · ${m._mismatch?'ÉCART':'conforme'}</option>`).join('')}</select></label><label>SECONDAIRE 1 ${selects('forgeSecondaryA',first)}</label><label>SECONDAIRE 2 ${selects('forgeSecondaryB',second)}</label><button type="button" id="forgeSearchBtn" class="primary">RECHERCHER 5 OPTIONS</button></div><div class="forge-search-note">La vitesse n'est pas une secondaire recherchée. Elle sert uniquement à départager les candidats.</div><div id="forgeSearchResults"></div>`;
   $('forgeSearchBtn')?.addEventListener('click',()=>renderForgeSearchResults(character,profile));
