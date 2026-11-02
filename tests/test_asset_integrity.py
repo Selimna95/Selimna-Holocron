@@ -77,5 +77,17 @@ class AssetIntegrityTests(unittest.TestCase):
                     self.assertEqual(len(team["members"]), size)
                     self.assertIn("swgoh.gg", team["source"])
 
+    def test_relay_sync_uses_one_timeout_json_reader_and_never_falls_back_to_cross_origin_html(self):
+        core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        self.assertEqual(core.count("async function fetchJSON(url)"), 1)
+        fetch_text = core.split("async function fetchText(url)", 1)[1].split("function parseHTML", 1)[0]
+        self.assertIn("relayRequest", fetch_text)
+        self.assertIn("fetchTextWithTimeout(relayRequest", fetch_text)
+        self.assertNotIn("candidates.push(url)", fetch_text)
+        self.assertNotIn("fetchTextWithTimeout(url", fetch_text)
+        self.assertIn("modules/core.js?v=3.4.5-relay-sync", self.html)
+        self.assertIn("modules/core.js?v=3.4.5-relay-sync", self.sw)
+        self.assertIn("holocron-static-v4.1.1-relay-sync", self.sw)
+
 if __name__ == "__main__":
     unittest.main()
