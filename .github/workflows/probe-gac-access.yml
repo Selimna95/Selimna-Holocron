@@ -1,0 +1,33 @@
+name: Probe GAC source access
+
+on:
+  push:
+    branches:
+      - feature/gac-attack-counters-v4.2.0
+    paths:
+      - "scripts/probe_gac_access.py"
+      - ".github/workflows/probe-gac-access.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test existing relay and public GAC sources
+        run: python scripts/probe_gac_access.py
+      - name: Upload diagnostic results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gac-access-probe
+          path: gac-access-probe.json
+          if-no-files-found: ignore
+          retention-days: 7
