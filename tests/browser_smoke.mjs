@@ -87,7 +87,7 @@ try {
       rosterCharacters = [character];
       mods = slots.flatMap((slot, index) => [
         makeMod(slot, "equipped-" + index),
-        makeMod(slot, "duplicate-" + index),
+        makeMod(slot, "equipped-" + index),
       ]);
       sithariModCache = { signature: "", items: [], byOwner: new Map(), statusByOwner: new Map() };
       return {
@@ -101,6 +101,22 @@ try {
     }
   });
   assert.deepEqual(counts, { forge: 6, sithari: 6 });
+
+  const ambiguousSlotCount = await page.evaluate(() => {
+    const character = { baseId: "AHSOKATANO", name: "Ahsoka Tano", characterId: "UNIT-42" };
+    const make = (slot, id) => ({game_id:id,characterId:"UNIT-42",slot,set_name:"Speed",primary_stat:"Speed",primary_value:30,level:15,rarity:5,secondary_1_stat:"Speed",secondary_1_value:5});
+    const originalMods = mods, originalRoster = rosterCharacters;
+    try {
+      rosterCharacters = [character];
+      mods = [
+        make("Square","square-a"), make("Square","square-b"),
+        make("Arrow","arrow"), make("Diamond","diamond"),
+        make("Triangle","triangle"), make("Circle","circle"), make("Cross","cross"),
+      ];
+      return getCharacterMods(character).length;
+    } finally { mods = originalMods; rosterCharacters = originalRoster; }
+  });
+  assert.equal(ambiguousSlotCount, 5, "Two distinct mods claiming the same equipped slot must not be resolved by arbitrary first-row selection.");
 
   // Seigneur regression: never trade away a complete Speed-set bonus, even
   // when the incoming mod has the same individual speed as the equipped mod.
