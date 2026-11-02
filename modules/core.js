@@ -504,7 +504,7 @@ async function fetchJSON(url){
 }
 async function fetchText(url) {
   const relay=workerUrl();
-  const match=url.match(/\\/p\\/(\\d{9})\\/(characters|mods)?\\/?(?:\\?page=(\\d+))?/);
+  const match=url.match(/\/p\/(\d{9})\/(characters|mods)?\/?(?:\?page=(\d+))?/);
   if(!relay) throw new Error('Aucun relais configuré : le navigateur ne peut pas interroger SWGOH.GG directement (CORS).');
   if(!match) throw new Error('URL SWGOH.GG non reconnue par le relais.');
   const ally=match[1],path=match[2]||'profile',page=match[3]||'1';
