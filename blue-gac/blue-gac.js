@@ -262,7 +262,7 @@ function buildAttackPlan(){
    var label=document.createElement('strong');label.textContent='COUNTER RETENU';attack.appendChild(label);
    var team=document.createElement('div');team.className='team-members';team.textContent=chosen.members.join(' · ');attack.appendChild(team);
    var stats=document.createElement('div');stats.className='team-stats';
-   stats.textContent='Victoire observée : '+chosen.winRate.toFixed(1)+' % · confiance 95 % : '+(chosen.confidence*100).toFixed(1)+' % · '+chosen.battles.toLocaleString('fr-FR')+' combats · '+(chosen.averageBanners==null?'bannières non fournies':chosen.averageBanners.toFixed(1)+' bannières moyennes')+' · '+chosen.seasons.map(function(s){return 'S'+s;}).join(' + ');
+   stats.textContent='Victoire observée : '+chosen.winRate.toFixed(1)+' % · borne basse 95 % : '+(chosen.confidence*100).toFixed(1)+' % · '+chosen.battles.toLocaleString('fr-FR')+' combats · '+(chosen.averageBanners==null?'bannières non fournies':chosen.averageBanners.toFixed(1)+' bannières moyennes')+' · '+chosen.seasons.map(function(s){return 'S'+s;}).join(' + ');
    attack.appendChild(stats);
    var link=document.createElement('a');link.href=chosen.source;link.target='_blank';link.rel='noopener';link.className='back';link.textContent='VÉRIFIER LES STATISTIQUES ↗';link.style.display='inline-block';link.style.marginTop='10px';attack.appendChild(link);
    card.appendChild(attack);
