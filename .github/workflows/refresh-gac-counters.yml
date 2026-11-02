@@ -1,0 +1,43 @@
+name: Refresh GAC counters
+
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/update_gac_counters.py"
+      - ".github/workflows/refresh-gac-counters.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-gac-counters-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect and validate public counter statistics
+        run: python scripts/update_gac_counters.py
+      - name: Publish counter snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- blue-gac/gac-counters.json; then
+            echo "GAC counter snapshot is already up to date."
+          else
+            git add blue-gac/gac-counters.json
+            git commit -m "chore(gac): refresh attack counter statistics"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
