@@ -503,11 +503,15 @@ async function fetchJSON(url){
   try{return JSON.parse(raw);}catch(_){throw new Error('Réponse JSON invalide reçue du relais.');}
 }
 async function fetchText(url) {
-  const candidates=[], relay=workerUrl();
-  if(relay){const m=url.match(/\/p\/(\d{9})\/(characters|mods)?\/?(?:\?page=(\d+))?/);if(m){const ally=m[1],path=m[2]||'profile',page=m[3]||'1';candidates.push(`${relay}/?ally=${ally}&path=${path}&page=${page}`);}}
-  candidates.push(url); let last='';
-  for(const u of candidates){try{const text=await fetchTextWithTimeout(u,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});if(text&&text.length>200)return text;last=`Réponse vide via ${new URL(u).host}`;}catch(e){last=e.message||String(e);}}
-  throw new Error(last||'Impossible de lire la page SWGOH.GG.');
+  const relay=workerUrl();
+  const match=url.match(/\\/p\\/(\\d{9})\\/(characters|mods)?\\/?(?:\\?page=(\\d+))?/);
+  if(!relay) throw new Error('Aucun relais configuré : le navigateur ne peut pas interroger SWGOH.GG directement (CORS).');
+  if(!match) throw new Error('URL SWGOH.GG non reconnue par le relais.');
+  const ally=match[1],path=match[2]||'profile',page=match[3]||'1';
+  const relayRequest=`${relay}/?ally=${ally}&path=${path}&page=${page}`;
+  const text=await fetchTextWithTimeout(relayRequest,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});
+  if(!text||text.length<=200) throw new Error(`Réponse vide via le relais ${new URL(relay).host}`);
+  return text;
 }
 function parseHTML(text){return new DOMParser().parseFromString(text,'text/html');}
 function firstText(root,selectors){for(const sel of selectors){const n=root.querySelector(sel);if(n){const t=n.textContent?.trim();if(t)return t;}}return '';}
@@ -558,8 +562,6 @@ function extractApiMods(json){
 }
 function unitToCharacter(u,index=0){const o=u?.data&&typeof u.data==='object'?u.data:u;if(!o||typeof o!=='object')return null;const baseId=o.base_id??o.baseId??o.definitionId;const name=o.name??o.character??o.characterName??o.unitName;const hasRosterFields=baseId&&Number.isFinite(Number(o.level))&&Number.isFinite(Number(o.rarity))&&(Object.prototype.hasOwnProperty.call(o,'gear_level')||Object.prototype.hasOwnProperty.call(o,'gearLevel')||Object.prototype.hasOwnProperty.call(o,'gear')||Object.prototype.hasOwnProperty.call(o,'power')||Object.prototype.hasOwnProperty.call(o,'combat_type'));if(!hasRosterFields)return null;const relicTierRaw=o.relic_tier??o.relicTier??o.relic_level??o.relicLevel??o.relic?.tier??o.relic?.relicTier??0;const thumbnailName=o.thumbnail_name??o.thumbnailName??o.thumbnail??o.icon??o.image??'';const portraitUrl=o.portrait_url??o.portraitUrl??o.image_url??o.imageUrl??'';return{name:name||baseId,baseId,level:Number(o.level||0),gear:Number(o.gear_level??o.gearLevel??o.gear??0),stars:Number(o.rarity??o.starLevel??o.stars??0),power:Number(o.power||0),combatType:Number(o.combat_type??o.combatType??1),relic_tier:Number(relicTierRaw)||0,thumbnailName,portraitUrl,raw:u};}
 function extractApiCharacters(json){const direct=Array.isArray(json?.units)?json.units:[];let out=direct.map(unitToCharacter).filter(Boolean);if(!out.length){const candidates=[];walkObjects(json,o=>{const unit=unitToCharacter(o);if(unit)candidates.push(unit);});out=candidates;}const seen=new Set();return out.filter(x=>{const key=`${x.baseId||''}|${x.name||''}`;if(seen.has(key))return false;seen.add(key);return true;});}
-async function fetchJSON(url){const r=await fetch(url,{headers:{'Accept':'application/json,text/plain,*/*'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);return JSON.parse(await r.text());}
-
 async function loadRemotePlayer(){
   const allyCode=cleanAllyCode($('allyCode').value);if(allyCode.length!==9){log('Ally Code invalide : 9 chiffres attendus.');return;}
   $('loadPlayer').disabled=true;$('loadPlayer').textContent='CHARGEMENT…';$('log').textContent='';const fmt=formatAlly(allyCode);log(`Recherche du joueur ${fmt}…`);
