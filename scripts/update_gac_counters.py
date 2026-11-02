@@ -75,6 +75,7 @@ def leader_links(html: str, page_url: str) -> list[dict]:
         if not season_id:
             continue
         label = node_text(node) or node.attrs.get("aria-label", "") or node.attrs.get("title", "")
+        label = re.sub(r"^Image:\s*", "", label, flags=re.I).strip()
         label = re.sub(r"\s*counters?\s*$", "", label, flags=re.I).strip()
         if not label:
             label = slug
