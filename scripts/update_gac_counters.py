@@ -246,6 +246,7 @@ def refresh() -> dict:
             season, season_url = season_info["season"], season_info["url"]
             html = fetch(season_url)
             links = leader_links(html, season_url)
+            print(f"Season S{season} {fmt}: parsed {len(links)} leader links; HTML preview: {html[:1800]}")
             # Follow all public pages of leader links; the site exposes the real
             # season_id in each URL and may paginate the leader index.
             page_url = next_page_url(html, season_url)
@@ -284,6 +285,7 @@ def refresh() -> dict:
                 errors.append(error)
 
     if not results:
+        print(f"Counter scrape requested {requested} leader pages; errors: {errors[:30]}")
         raise RuntimeError("No counter rows were parsed; preserving the previous snapshot.")
     coverage = {
         fmt: {
