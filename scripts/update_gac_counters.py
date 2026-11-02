@@ -44,9 +44,9 @@ def season_pages(html: str) -> dict[str, list[dict]]:
         value = node.attrs.get("value", "").strip()
         target = href or value
         label = node_text(node)
-        season_match = re.search(r"season\\s*(\\d+)", label, re.I)
+        season_match = re.search(r"season\s*(\d+)", label, re.I)
         if not season_match:
-            season_match = re.search(r"SEASON_(\\d+)", target, re.I)
+            season_match = re.search(r"SEASON_(\d+)", target, re.I)
         if not season_match:
             continue
         season = int(season_match.group(1))
@@ -56,7 +56,7 @@ def season_pages(html: str) -> dict[str, list[dict]]:
         if "/gac/counters/season/" in target:
             season_url = urljoin(INDEX_URL, target)
         else:
-            season_id = re.search(r"(CHAMPIONSHIPS_[A-Z0-9_]*SEASON_\\d+)", target, re.I)
+            season_id = re.search(r"(CHAMPIONSHIPS_[A-Z0-9_]*SEASON_\d+)", target, re.I)
             if not season_id:
                 continue
             season_url = urljoin(INDEX_URL, "season/" + season_id.group(1) + "/")
