@@ -562,6 +562,7 @@ function profilePowerNumber(value){const n=Number(String(value??'').replace(/[\s
 function normalizeProfilePower(total,characters,ships){const c=profilePowerNumber(characters),s=profilePowerNumber(ships);let t=profilePowerNumber(total);if(!t)t=c+s;return{total:t,characters:c,ships:s};}
 async function loadRemotePlayer(){
   const allyCode=cleanAllyCode($('allyCode').value);if(allyCode.length!==9){log('Ally Code invalide : 9 chiffres attendus.');return;}
+  const previousSnapshot={currentData,rosterCharacters,rosterShips,mods,accountGalacticPower};
   $('loadPlayer').disabled=true;$('loadPlayer').textContent='CHARGEMENT…';$('log').textContent='';const fmt=formatAlly(allyCode);log(`Recherche du joueur ${fmt}…`);
   try{
     const relay=workerUrl(),base=`https://swgoh.gg/p/${allyCode}`;
@@ -651,7 +652,7 @@ async function loadRemotePlayer(){
     log(`TERMINÉ : ${chars.length} personnages, ${ships.length} vaisseaux, ${mods.length} mods exploitables.`);
     if(!mods.length)log('Aucun mod lisible : vérifier la disponibilité de l’API mods.');
     showPage('dashboard');window.dispatchEvent(new CustomEvent('holocron:data-updated'));return true;
-  }catch(e){log(`Échec du chargement : ${e.message||e}`);log(currentData?'Le dernier profil entièrement validé est conservé à l’écran.':'Aucun profil n’a été remplacé : corrige la source puis relance la synchronisation.');return false;}
+  }catch(e){rosterCharacters=previousSnapshot.rosterCharacters;rosterShips=previousSnapshot.rosterShips;mods=previousSnapshot.mods;accountGalacticPower=previousSnapshot.accountGalacticPower;currentData=previousSnapshot.currentData;log(`Échec du chargement : ${e.message||e}`);log(currentData?'Le dernier profil entièrement validé est conservé à l’écran.':'Aucun profil n’a été remplacé : corrige la source puis relance la synchronisation.');return false;}
   finally{$('loadPlayer').disabled=false;$('loadPlayer').textContent='CHARGER MON PROFIL';}
 }
 function updateAccountSummary(title,fmt){if($('playerName'))$('playerName').textContent=title||'Profil';if($('playerAlly'))$('playerAlly').textContent=fmt||'—';if($('heroPlayerName'))$('heroPlayerName').textContent=title||'Profil';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent=fmt||'—';setText('topAccountName',title||'—');setText('topProfileState','CONNECTÉ');setText('heroProfileState','CONNECTÉ');}
