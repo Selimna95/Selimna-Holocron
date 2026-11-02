@@ -12,9 +12,9 @@ WORKER = "https://swgoh-optimizer-relay.lorg75017.workers.dev"
 SEASON84 = "https://swgoh.gg/gac/counters/season/CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84/"
 GRIEVOUS84 = "https://swgoh.gg/gac/counters/GRIEVOUS/?season_id=CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84"
 URLS = [
-    ("worker-root", WORKER + "/"),
-    ("worker-characters-index", WORKER + "/?path=characters-index"),
-    ("worker-known-best-mods-route", WORKER + "/?path=best-mods&slug=general-grievous"),
+    ("worker-root-with-pages-origin", WORKER + "/"),
+    ("worker-characters-index-with-pages-origin", WORKER + "/?path=characters-index"),
+    ("worker-known-best-mods-route-with-pages-origin", WORKER + "/?path=best-mods&slug=general-grievous"),
     ("swgoh-counters-index-direct", "https://swgoh.gg/gac/counters/"),
     ("swgoh-season84-direct", SEASON84),
     ("swgoh-grievous84-direct", GRIEVOUS84),
@@ -27,6 +27,8 @@ def probe(name: str, url: str) -> dict:
     request = Request(url, headers={
         "User-Agent": "Selimnas-Holocron-GAC-Probe/1.0",
         "Accept": "text/html,application/xhtml+xml,text/plain,*/*",
+        "Origin": "https://selimna95.github.io",
+        "Referer": "https://selimna95.github.io/Selimna-Holocron/",
     })
     started = time.monotonic()
     try:
@@ -57,7 +59,11 @@ def probe(name: str, url: str) -> dict:
             "sample": re.sub(r"\s+", " ", body[:220]).strip(),
         }
     except HTTPError as exc:
-        return {"name": name, "status": exc.code, "error": str(exc.reason)}
+        try:
+            error_body = exc.read(3000).decode("utf-8", "replace")
+        except Exception:
+            error_body = ""
+        return {"name": name, "status": exc.code, "error": str(exc.reason), "body": re.sub(r"\\s+", " ", error_body[:1200]).strip()}
     except (URLError, TimeoutError, OSError) as exc:
         return {"name": name, "error": str(exc)}
 
