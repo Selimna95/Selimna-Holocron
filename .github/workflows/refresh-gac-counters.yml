@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Collect and validate public counter statistics
-        run: python scripts/update_gac_counters.py
+        run: python -m scripts.update_gac_counters
       - name: Publish counter snapshot
         run: |
           git config user.name "github-actions[bot]"
