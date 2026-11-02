@@ -1,11 +1,12 @@
 ## V4.2.0 — Planification offensive GAC (2026-11-02)
 
-- Ajout du collecteur SWGOH.GG des counters offensifs, par leader défensif et par saison 5v5/3v3.
+- Ajout du parseur et du schéma de snapshot des counters offensifs, par leader défensif et par saison 5v5/3v3. La collecte réelle reste en attente d'une route proxy dans le Worker Cloudflare : SWGOH.GG bloque les requêtes automatisées directes.
 - Conservation des métriques propres à chaque composition d'attaque : taux de victoire, combats observés et bannières moyennes.
 - Ajout du parcours Maître Jedi : sélection des défenses adverses, filtrage strict par roster et allocation globale sans personnage réutilisé.
 - Classement statistique par borne basse de confiance de Wilson à 95 %, afin de tenir compte du volume de combats.
 - Padawan reste réservé à la défense ; les flottes restent exclues.
 - Le service worker et les ressources du Sanctuaire bleu sont versionnés en 4.2.0.
+- Publication différée : aucune donnée de counter n'est inventée ou affichée tant que le relais Worker n'a pas été étendu.
 - Limite explicite : SWGOH.GG expose ces counters par leader défensif ; les statistiques ne sont pas garanties pour une composition défensive exacte.
 
 ## V4.1.3 — Fiabilisation des fondations (2026-11-02)
