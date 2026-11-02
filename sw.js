@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.1.2-api-first';
+const CACHE_NAME = 'holocron-static-v4.1.3-profile-integrity';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -17,7 +17,7 @@ const STATIC_ASSETS = [
   './holocron-static.css?v=4.0.45',
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.2.1',
-  './modules/core.js?v=4.1.2-api-first',
+  './modules/core.js?v=4.1.3-profile-integrity',
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
   './modules/disciple.js?v=3.5.0-disciple-clarity',
   './modules/seigneur.js?v=3.5.4-total-speed-guard',
@@ -48,31 +48,49 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
-  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
-  if (url.searchParams.has('ally')) return;
-  if (url.pathname.endsWith('/blue-gac/gac-catalog.json') ||
-      (url.hostname === 'raw.githubusercontent.com' && url.pathname.endsWith('/Selimna-Holocron/main/blue-gac/gac-catalog.json'))) {
+  if (request.method !== 'GET') return;
+
+  // Le catalogue Raw est cross-origin : traiter ce cas avant le filtre same-origin.
+  if (url.hostname === 'raw.githubusercontent.com' &&
+      url.pathname.endsWith('/Selimna-Holocron/main/blue-gac/gac-catalog.json')) {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {
         const copy = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});
       }
       return response;
-    }).catch(async () => (await caches.match(request)) || (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope).href)));
+    }).catch(async () => (await caches.match(request)) ||
+      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
+    return;
+  }
+
+  if (url.origin !== self.location.origin || url.searchParams.has('ally')) return;
+
+  if (url.pathname.endsWith('/blue-gac/gac-catalog.json')) {
+    event.respondWith(fetch(request).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});
+      }
+      return response;
+    }).catch(async () => (await caches.match(request)) ||
+      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
     return;
   }
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {
         const copy = response.clone();
-        const indexUrl = new URL('./index.html', self.registration.scope).href;
-        caches.open(CACHE_NAME).then(cache => cache.put(indexUrl, copy));
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});
       }
       return response;
     }).catch(async () => {
       const cached = await caches.match(request);
       if (cached) return cached;
-      return caches.match(new URL('./index.html', self.registration.scope).href);
+      const fallbackUrl = url.pathname.includes('/blue-gac')
+        ? new URL('./blue-gac/index.html', self.registration.scope)
+        : new URL('./index.html', self.registration.scope);
+      return (await caches.match(fallbackUrl)) || Response.error();
     }));
     return;
   }

@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.1.2-api-first", self.sw)
+        self.assertIn("holocron-static-v4.1.3-profile-integrity", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.0", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -54,6 +54,28 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertNotIn("sourceLeague:(Number(t.season)", self.blue_js)
         self.assertIn("font-size:max(13px", self.blue_css)
         self.assertIn("V4.1.0", self.blue_html)
+
+
+    def test_profile_sync_is_staged_and_rejects_incomplete_mod_inventory(self):
+        core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        load_player = core.split("async function loadRemotePlayer(){", 1)[1].split("\nfunction updateAccountSummary", 1)[0]
+        self.assertIn("const previousSnapshot={currentData,rosterCharacters,rosterShips,mods,accountGalacticPower}", load_player)
+        self.assertIn("let nextGalacticPower={total:0,characters:0,ships:0}", load_player)
+        self.assertIn("let htmlModsComplete=true", load_player)
+        self.assertIn("!apiMods.length && (!htmlMods.length || !htmlModsComplete)", load_player)
+        self.assertIn("if(!chars.length)throw new Error", load_player)
+        self.assertIn("mods=nextMods;rosterCharacters=chars;rosterShips=ships;accountGalacticPower=nextGalacticPower", load_player)
+        self.assertIn("currentData=previousSnapshot.currentData", load_player)
+        self.assertNotIn("accountGalacticPower={total:0,characters:0,ships:0}", load_player)
+
+    def test_pwa_navigation_and_cross_origin_catalog_cache_are_route_aware(self):
+        raw_handler = self.sw.index("url.hostname === 'raw.githubusercontent.com'")
+        same_origin_filter = self.sw.index("url.origin !== self.location.origin")
+        self.assertLess(raw_handler, same_origin_filter, "Raw GitHub cache handler must run before same-origin filtering")
+        self.assertIn("cache.put(request, copy)", self.sw)
+        self.assertIn("new URL('./blue-gac/index.html', self.registration.scope)", self.sw)
+        self.assertIn("new URL('./index.html', self.registration.scope)", self.sw)
+        self.assertNotIn("cache.put(indexUrl, copy)", self.sw)
 
     def test_catalogue_source_is_not_silently_replaced_with_static_teams(self):
         self.assertIn("gac-catalog.json", self.blue_js)
@@ -89,12 +111,12 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("path=api-profile", load_player)
         self.assertIn("path=api-mods", load_player)
         self.assertIn("if(!apiMods.length)", load_player)
-        self.assertIn("if(!ownedApi.length || !profileApi)", load_player)
+        self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.1.2-api-first", self.html)
-        self.assertIn("modules/core.js?v=4.1.2-api-first", self.sw)
-        self.assertIn("holocron-static-v4.1.2-api-first", self.sw)
+        self.assertIn("modules/core.js?v=4.1.3-profile-integrity", self.html)
+        self.assertIn("modules/core.js?v=4.1.3-profile-integrity", self.sw)
+        self.assertIn("holocron-static-v4.1.3-profile-integrity", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
