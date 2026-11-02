@@ -32,12 +32,12 @@ def fetch_counter_source(url: str) -> str:
     except Exception as exc:
         raise RuntimeError(
             f"SWGOH.GG counter source is inaccessible from this server-side collector ({url}): {exc}. "
-            "A route through the existing Cloudflare Worker is required."
+            "The existing Cloudflare Worker is also blocked when fetching SWGOH.GG pages; adding a proxy route alone will not solve the upstream 403."
         ) from exc
     if "Attention Required! | Cloudflare" in html or "Sorry, you have been blocked" in html:
         raise RuntimeError(
             f"SWGOH.GG Cloudflare blocked automated counter retrieval ({url}). "
-            "The existing Cloudflare Worker needs a dedicated GAC counter proxy route."
+            "The existing Worker has been tested: its known SWGOH.GG routes also receive upstream HTTP 403. Do not add a GAC proxy route until an upstream access method is demonstrated."
         )
     return html
 
