@@ -37,6 +37,8 @@ function formatAlly(code) { const x=cleanAllyCode(code); return x.length===9 ? `
 function slug(s) { return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
 function esc(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function num(value, digits=0) { const n=Number(value); return Number.isFinite(n) ? n.toLocaleString('fr-FR',{maximumFractionDigits:digits}) : '0'; }
+// Valeur numérique dédiée aux calculs : num() est un formateur d'affichage et renvoie une chaîne localisée.
+function numericValue(value, fallback=0) { if(typeof value==='number')return Number.isFinite(value)?value:fallback; const raw=String(value??'').trim().replace(/[\s\u00a0\u202f]/g,'').replace(',','.'); if(!raw)return fallback; const n=Number(raw); return Number.isFinite(n)?n:fallback; }
 function parseLabeledNumber(text,label){const escaped=String(label).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const m=String(text||'').match(new RegExp(escaped+'\\s*([0-9][0-9,]*)','i'));return m?Number(String(m[1]).replace(/,/g,'')):0;}
 function extractGalacticPowerFromProfile(text){const body=String(text||'');let total=parseLabeledNumber(body,'Galactic Power');const characters=parseLabeledNumber(body,'Galactic Power (Characters)');const ships=parseLabeledNumber(body,'Galactic Power (Ships)');if(!total)total=characters+ships;return {total,characters,ships};}
 function renderGalacticPower(){const gp=accountGalacticPower||{total:0,characters:0,ships:0};setText('gpTotal',gp.total?num(gp.total):'0');setText('gpCharacters',gp.characters?num(gp.characters):'0');setText('gpShips',gp.ships?num(gp.ships):'0');setText('gpBreakdown',gp.total?`${num(gp.characters)} terrestre · ${num(gp.ships)} spatial`:'En attente de synchronisation');}
@@ -936,10 +938,16 @@ function modOwnerKey(m){
 }
 function getCharacterMods(c){
   if(!c) return [];
+  const aliasCounts=new Map();
+  for(const unit of rosterCharacters||[]){
+    const keys=new Set([unit?.baseId,unit?.base_id,unit?.characterId,unit?.character_id,unit?.name,unit?.character].map(compactKey).filter(Boolean));
+    for(const key of keys)aliasCounts.set(key,(aliasCounts.get(key)||0)+1);
+  }
+  // Un alias partagé par plusieurs unités ne permet pas d'attribuer un mod sans ambiguïté.
   const aliases=new Set([
     compactKey(c.baseId),compactKey(c.base_id),compactKey(c.characterId),compactKey(c.character_id),
     compactKey(c.name),compactKey(c.character)
-  ].filter(Boolean));
+  ].filter(key=>key&&(aliasCounts.get(key)||0)<=1));
   const slots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const rankOwner=(m)=>{
     const raw=m?._rawOwnerFields||[];
@@ -965,14 +973,21 @@ function getCharacterMods(c){
   }).filter(m=>rankOwner(m)>0);
   // One equipped mod per physical slot. Duplicate API aliases/rows must never
   // inflate a character's equipment grid beyond the six real slots.
-  const bySlot=new Map();
+  const bySlot=new Map(),ambiguousSlots=new Set();
   for(const m of matched){
     const slot=String(m.slot||'');
-    if(!slots.includes(slot))continue;
+    if(!slots.includes(slot)||ambiguousSlots.has(slot))continue;
     const previous=bySlot.get(slot);
     const score=rankOwner(m);
     const previousScore=previous?rankOwner(previous):0;
-    if(!previous||score>previousScore)bySlot.set(slot,m);
+    if(!previous||score>previousScore){bySlot.set(slot,m);continue;}
+    if(score===previousScore){
+      const previousId=String(previous.game_id||previous.id||'');
+      const currentId=String(m.game_id||m.id||'');
+      // Des lignes dupliquées portant le même identifiant sont fusionnables.
+      // Deux mods distincts revendiquant le même slot sont ambigus : aucun n'est choisi.
+      if(!previousId||!currentId||previousId!==currentId){bySlot.delete(slot);ambiguousSlots.add(slot);}
+    }
   }
   return slots.map(slot=>bySlot.get(slot)).filter(Boolean);
 }

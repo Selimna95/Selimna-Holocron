@@ -48,7 +48,7 @@ function holocronTopChangeCandidates(){
   const secondarySpeedValue=mod=>{
     for(let i=1;i<=4;i++){
       const stat=compactKey(mod?.[`secondary_${i}_stat`]);
-      if(stat==='SPEED'||stat==='VITESSE')return num(mod?.[`secondary_${i}_value`],0);
+      if(stat==='SPEED'||stat==='VITESSE')return numericValue(mod?.[`secondary_${i}_value`],0);
     }
     return 0;
   };
@@ -126,7 +126,7 @@ function holocronTopChangeCandidates(){
   for(const r of units){
     const targetMods=[...r.mods].sort((a,b)=>
       secondarySpeedValue(a)-secondarySpeedValue(b) ||
-      num(modTotalSpeed(a),0)-num(modTotalSpeed(b),0)
+      numericValue(modTotalSpeed(a),0)-numericValue(modTotalSpeed(b),0)
     );
     for(const currentMod of targetMods){
       if(!isUnambiguouslyOwnedBy(currentMod,r.c))continue;
@@ -134,8 +134,8 @@ function holocronTopChangeCandidates(){
       if(oldSecondarySpeed>9)continue;
       const before=holocronModScoreForCharacter(currentMod,r.c);
       const kyberBefore=holocronKyberFit(currentMod,r.c);
-      const oldSpeed=num(modTotalSpeed(currentMod),0);
-      const recipientSpeedBefore=r.mods.reduce((sum,m)=>sum+num(modTotalSpeed(m),0),0);
+      const oldSpeed=numericValue(modTotalSpeed(currentMod),0);
+      const recipientSpeedBefore=r.mods.reduce((sum,m)=>sum+numericValue(modTotalSpeed(m),0),0);
 
       for(const d of units){
         if(characterKey(d.c)===characterKey(r.c))continue;
@@ -159,7 +159,7 @@ function holocronTopChangeCandidates(){
           if(!Number.isFinite(oldPrimaryValue)||!Number.isFinite(newPrimaryValue)||newPrimaryValue<oldPrimaryValue)continue;
 
           const newSecondarySpeed=secondarySpeedValue(donorMod);
-          const newSpeed=num(modTotalSpeed(donorMod),0);
+          const newSpeed=numericValue(modTotalSpeed(donorMod),0);
           // La cible doit gagner de la vitesse. La baisse éventuelle est tolérée
           // uniquement côté donneur, qui récupère le mod lent de la cible.
           if(newSecondarySpeed<=oldSecondarySpeed || newSpeed<=oldSpeed)continue;

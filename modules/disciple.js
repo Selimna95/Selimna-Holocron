@@ -442,8 +442,9 @@ function reallocationSecondaryOptions(){
 function reallocationModOwnerKey(mod){
   const ownerKey=modOwnerKey(mod);
   if(!ownerKey)return '';
-  const owner=rosterCharacters.find(c=>[characterKey(c),compactKey(c?.name),compactKey(c?.baseId),compactKey(c?.base_id),compactKey(c?.characterId),compactKey(c?.character_id)].filter(Boolean).some(k=>k===ownerKey||k.includes(ownerKey)||ownerKey.includes(k)));
-  return owner?characterKey(owner):ownerKey;
+  const matches=rosterCharacters.filter(c=>[characterKey(c),compactKey(c?.name),compactKey(c?.baseId),compactKey(c?.base_id),compactKey(c?.characterId),compactKey(c?.character_id)].filter(Boolean).some(k=>k===ownerKey));
+  // Une correspondance partielle ou plusieurs propriétaires possibles ne sont pas une attribution fiable.
+  return matches.length===1?characterKey(matches[0]):'';
 }
 function reallocationModBelongsToSelection(mod){
   if(reallocationSpeedTier===null || !reallocationCharacterKey || !mod)return false;
@@ -527,9 +528,12 @@ function discipleCanonicalSlot(value){
     '1':'SQUARE','2':'SQUARE','3':'ARROW','4':'DIAMOND','5':'TRIANGLE','6':'CIRCLE','7':'CROSS'})[k]||k;
 }
 function discipleCanonicalStat(value){
-  let k=compactKey(value);
-  k=k.replace(/PERCENT|PCT|PERCENTAGE/g,'');
-  return ({SPEED:'SPEED',OFFENSE:'OFFENSE',OFFENSEPERCENT:'OFFENSE',DEFENSE:'DEFENSE',DEFENSEPERCENT:'DEFENSE',HEALTH:'HEALTH',HEALTHPERCENT:'HEALTH',PROTECTION:'PROTECTION',PROTECTIONPERCENT:'PROTECTION',POTENCY:'POTENCY',TENACITY:'TENACITY',CRITICALCHANCE:'CRITICALCHANCE',CRITICCHANCE:'CRITICALCHANCE',CRITCHANCE:'CRITICALCHANCE',CRITICALDAMAGE:'CRITICALDAMAGE',CRITDAMAGE:'CRITICALDAMAGE',CRITICALAVOIDANCE:'CRITICALAVOIDANCE'})[k]||k;
+  const raw=String(value??'');
+  const percent=/%|PERCENT|PCT|PERCENTAGE/i.test(raw);
+  const k=compactKey(raw).replace(/PERCENT|PCT|PERCENTAGE/g,'');
+  // compactKey retire les signes : détecter le « % » avant de le normaliser.
+  const canonical=({SPEED:'SPEED',OFFENSE:'OFFENSE',DEFENSE:'DEFENSE',HEALTH:'HEALTH',PROTECTION:'PROTECTION',POTENCY:'POTENCY',TENACITY:'TENACITY',CRITICALCHANCE:'CRITICALCHANCE',CRITICCHANCE:'CRITICALCHANCE',CRITCHANCE:'CRITICALCHANCE',CRITICALDAMAGE:'CRITICALDAMAGE',CRITDAMAGE:'CRITICALDAMAGE',CRITICALAVOIDANCE:'CRITICALAVOIDANCE'})[k]||k;
+  return percent&&['OFFENSE','DEFENSE','HEALTH','PROTECTION'].includes(canonical)?canonical+'PERCENT':canonical;
 }
 function discipleCanonicalSet(value){
   let k=compactKey(value);

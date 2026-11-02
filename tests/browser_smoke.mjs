@@ -87,7 +87,7 @@ try {
       rosterCharacters = [character];
       mods = slots.flatMap((slot, index) => [
         makeMod(slot, "equipped-" + index),
-        makeMod(slot, "duplicate-" + index),
+        makeMod(slot, "equipped-" + index),
       ]);
       sithariModCache = { signature: "", items: [], byOwner: new Map(), statusByOwner: new Map() };
       return {
@@ -102,6 +102,22 @@ try {
   });
   assert.deepEqual(counts, { forge: 6, sithari: 6 });
 
+  const ambiguousSlotCount = await page.evaluate(() => {
+    const character = { baseId: "AHSOKATANO", name: "Ahsoka Tano", characterId: "UNIT-42" };
+    const make = (slot, id) => ({game_id:id,characterId:"UNIT-42",slot,set_name:"Speed",primary_stat:"Speed",primary_value:30,level:15,rarity:5,secondary_1_stat:"Speed",secondary_1_value:5});
+    const originalMods = mods, originalRoster = rosterCharacters;
+    try {
+      rosterCharacters = [character];
+      mods = [
+        make("Square","square-a"), make("Square","square-b"),
+        make("Arrow","arrow"), make("Diamond","diamond"),
+        make("Triangle","triangle"), make("Circle","circle"), make("Cross","cross"),
+      ];
+      return getCharacterMods(character).length;
+    } finally { mods = originalMods; rosterCharacters = originalRoster; }
+  });
+  assert.equal(ambiguousSlotCount, 5, "Two distinct mods claiming the same equipped slot must not be resolved by arbitrary first-row selection.");
+
   // Seigneur regression: never trade away a complete Speed-set bonus, even
   // when the incoming mod has the same individual speed as the equipped mod.
   const speedGuard = await page.evaluate(() => {
@@ -113,6 +129,22 @@ try {
     return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total};
   });
   assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus");
+
+  // Mod P0 regressions: keep arithmetic numeric and preserve stat identity.
+  const modMath = await page.evaluate(() => ({
+    localized: numericValue("1 234,5"),
+    forgeTotal: forgeProjectedModSpeed({baseId:"TEST",name:"Test"},{},Array.from({length:6},(_,i)=>({game_id:"m"+i,slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",secondary_1_stat:"Speed",secondary_1_value:5}))).total,
+    sithariTotal: sithariProjectedSpeed({baseId:"TEST",name:"Test"},Array.from({length:6},(_,i)=>({slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",secondary_1_stat:"Speed",secondary_1_value:5}))).total,
+    offenseFlat: discipleCanonicalStat("Offense"),
+    offensePercent: discipleCanonicalStat("Offense %"),
+    healthFlat: discipleCanonicalStat("Health"),
+    healthPercent: discipleCanonicalStat("Health %"),
+  }));
+  assert.equal(modMath.localized, 1234.5);
+  assert.equal(modMath.forgeTotal, 30, "Forge must add six mod speeds numerically, not concatenate strings");
+  assert.equal(modMath.sithariTotal, 30, "Sith'ari must add six mod speeds numerically, not concatenate strings");
+  assert.notEqual(modMath.offenseFlat, modMath.offensePercent, "Offense and Offense % are distinct secondary stats");
+  assert.notEqual(modMath.healthFlat, modMath.healthPercent, "Health and Health % are distinct secondary stats");
 
   // Profile sync: a valid API payload replaces the snapshot atomically.
   let failProfileSync = false;

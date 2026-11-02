@@ -242,11 +242,11 @@ def final_stats(build, base_stats=None):
     # Relative-to-base bonuses (Health/Protection/Offense/Speed/Defense).
     relative_bonuses={
         "Health": (2,0.10), "Protection": (2,0.10), "Offense": (4,0.15),
-        "Speed": (4,0.15), "Defense": (2,0.25),
+        "Speed": (4,0.10), "Defense": (2,0.25),
     }
     # Percentage-point bonuses for percentage-style game stats.
     additive_bonuses={
-        "Critical Damage": (4,0.08), "Critical Chance": (2,0.08),
+        "Critical Damage": (4,0.30), "Critical Chance": (2,0.08),
         "Potency": (2,0.15), "Tenacity": (2,0.20), "Critical Avoidance": (2,0.20),
     }
     for set_name,(required,bonus) in relative_bonuses.items():
