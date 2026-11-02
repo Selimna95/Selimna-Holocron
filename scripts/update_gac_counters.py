@@ -35,25 +35,32 @@ def normalized(value: str) -> str:
 
 
 def season_pages(html: str) -> dict[str, list[dict]]:
-    """Find the actual season URLs exposed by SWGOH.GG; do not guess IDs."""
+    """Find the real season selectors exposed by SWGOH.GG; do not guess IDs."""
     parser = TreeParser()
     parser.feed(html)
     found = {"5v5": {}, "3v3": {}}
     for node in parser.root.walk():
-        href = node.attrs.get("href", "")
-        if "/gac/counters/season/" not in href:
-            continue
+        href = node.attrs.get("href", "").strip()
+        value = node.attrs.get("value", "").strip()
+        target = href or value
         label = node_text(node)
-        match = re.search(r"season\s*(\d+)", label, re.I)
-        if not match:
-            match = re.search(r"SEASON_(\d+)", href, re.I)
-        if not match:
+        season_match = re.search(r"season\\s*(\\d+)", label, re.I)
+        if not season_match:
+            season_match = re.search(r"SEASON_(\\d+)", target, re.I)
+        if not season_match:
             continue
-        season = int(match.group(1))
+        season = int(season_match.group(1))
         fmt_match = re.search(r"(5v5|3v3)", label, re.I)
         fmt = fmt_match.group(1) if fmt_match else ("5v5" if season % 2 == 0 else "3v3")
-        absolute = urljoin(INDEX_URL, href)
-        found[fmt][season] = {"season": season, "url": absolute}
+
+        if "/gac/counters/season/" in target:
+            season_url = urljoin(INDEX_URL, target)
+        else:
+            season_id = re.search(r"(CHAMPIONSHIPS_[A-Z0-9_]*SEASON_\\d+)", target, re.I)
+            if not season_id:
+                continue
+            season_url = urljoin(INDEX_URL, "season/" + season_id.group(1) + "/")
+        found[fmt][season] = {"season": season, "url": season_url}
     return {fmt: sorted(rows.values(), key=lambda x: x["season"], reverse=True) for fmt, rows in found.items()}
 
 
