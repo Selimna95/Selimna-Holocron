@@ -114,6 +114,22 @@ try {
   });
   assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus");
 
+  // Mod P0 regressions: keep arithmetic numeric and preserve stat identity.
+  const modMath = await page.evaluate(() => ({
+    localized: numericValue("1 234,5"),
+    forgeTotal: forgeProjectedModSpeed({baseId:"TEST",name:"Test"},{},Array.from({length:6},(_,i)=>({game_id:"m"+i,slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",secondary_1_stat:"Speed",secondary_1_value:5}))).total,
+    sithariTotal: sithariProjectedSpeed({baseId:"TEST",name:"Test"},Array.from({length:6},(_,i)=>({slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",secondary_1_stat:"Speed",secondary_1_value:5}))).total,
+    offenseFlat: discipleCanonicalStat("Offense"),
+    offensePercent: discipleCanonicalStat("Offense %"),
+    healthFlat: discipleCanonicalStat("Health"),
+    healthPercent: discipleCanonicalStat("Health %"),
+  }));
+  assert.equal(modMath.localized, 1234.5);
+  assert.equal(modMath.forgeTotal, 30, "Forge must add six mod speeds numerically, not concatenate strings");
+  assert.equal(modMath.sithariTotal, 30, "Sith'ari must add six mod speeds numerically, not concatenate strings");
+  assert.notEqual(modMath.offenseFlat, modMath.offensePercent, "Offense and Offense % are distinct secondary stats");
+  assert.notEqual(modMath.healthFlat, modMath.healthPercent, "Health and Health % are distinct secondary stats");
+
   // Profile sync: a valid API payload replaces the snapshot atomically.
   let failProfileSync = false;
   await page.route("**/swgoh-optimizer-relay.lorg75017.workers.dev/**", async route => {
