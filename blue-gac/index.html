@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
-<title>Sanctuaire bleu | Selimna’s Holocron V4.1.0</title>
-<link rel="stylesheet" href="blue-gac.css?v=4.1.0">
+<title>Sanctuaire bleu | Selimna’s Holocron V4.2.0</title>
+<link rel="stylesheet" href="blue-gac.css?v=4.2.0">
 </head>
 <body><div class="shell">
 <header><div class="brand">SELIMNA’S HOLOCRON<strong>LE SANCTUAIRE BLEU</strong></div><a class="back" href="../index.html">← RETOUR AU TEMPLE</a></header>
@@ -38,10 +38,24 @@
 <div class="step-tools"><button class="ghost" id="backToTierFromAccess" type="button">← CHANGER DE LIGUE</button><span class="selection" id="chosenSummary">Configuration : —</span></div>
 <div class="note" id="settingsSummary" aria-live="polite">Le moteur n’affiche que des équipes complètes observées dans les données publiques et présentes dans le roster.</div></section>
 <section class="view" id="masterView" aria-label="Zone Maître Jedi" hidden>
-<div class="padawan-panel">
-<h2 class="view-title">MAÎTRE JEDI · PARCOURS EXPERT</h2>
-<div class="note">Tu as rejoint la zone Maître Jedi pour la configuration sélectionnée. Le parcours expert est encore en préparation ; ses outils ne sont pas activés à ce stade.</div>
-<div class="step-tools"><button class="ghost" id="backFromMaster" type="button">← RETOUR AU CHOIX DES PARCOURS</button><span class="selection" id="masterConfig">Configuration : —</span></div>
+<div class="padawan-panel master-panel">
+<div class="padawan-toolbar"><h2 class="view-title" style="margin:0;text-align:left">MAÎTRE JEDI · PLAN D’ATTAQUE</h2><span class="source-tag">ARBITRAGE GLOBAL</span></div>
+<p class="subtitle master-intro">Sélectionne les défenses adverses que tu dois franchir. Le moteur recherche les counters réellement observés, vérifie ton roster et répartit tes équipes sans réutiliser un personnage.</p>
+<div class="note" id="masterConfig">Configuration : —</div>
+<div class="roster-help" id="counterSourceStatus" aria-live="polite">Chargement des statistiques de counters SWGOH.GG…</div>
+<div class="master-input-row">
+<label for="enemyDefenseSelect">DÉFENSE ADVERSE À AJOUTER</label>
+<select id="enemyDefenseSelect"><option value="">Chargement des défenses disponibles…</option></select>
+<button id="addEnemyDefense" type="button">AJOUTER</button>
+</div>
+<div id="enemyDefenseList" class="master-defense-list" aria-live="polite"></div>
+<div class="padawan-actions master-actions">
+<button id="buildAttackPlan" type="button">CONSTRUIRE LE PLAN D’ATTAQUE</button>
+<button id="backFromMaster" type="button">← RETOUR AUX NIVEAUX</button>
+</div>
+<div class="note" id="attackPlanStatus" aria-live="polite">Ajoute les défenses que tu souhaites attaquer, puis lance l’analyse globale.</div>
+<div id="attackPlanResults" class="team-list"></div>
+<div class="note master-method-note">Les statistiques SWGOH.GG sont calculées sur les premières tentatives. Le taux affiché est celui de chaque composition d’attaque contre des équipes menées par le leader adverse ; il ne garantit pas que la composition défensive exacte soit identique. Les flottes sont exclues.</div>
 </div>
 </section>
 <section class="view" id="padawanView" aria-label="Propositions Padawan" hidden>
@@ -56,6 +70,6 @@
 <div class="note">V4.0.23 : Padawan est exclusivement défensif en 3v3 et 5v5, dans toutes les ligues. Les choix Attaque et Équilibrée ne sont pas disponibles. Les propositions respectent le roster et évitent les doublons de personnages.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.1.0</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.2.0</footer>
 </div>
-<script src="blue-gac.js?v=4.1.0"></script></body></html>
+<script src="blue-gac.js?v=4.2.0"></script></body></html>
