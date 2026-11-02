@@ -27,7 +27,7 @@ MAX_WORKERS = 5
 
 
 def node_text(node) -> str:
-    return re.sub(r"\\s+", " ", node.text()).strip()
+    return re.sub(r"\s+", " ", node.text()).strip()
 
 
 def normalized(value: str) -> str:
@@ -44,9 +44,9 @@ def season_pages(html: str) -> dict[str, list[dict]]:
         if "/gac/counters/season/" not in href:
             continue
         label = node_text(node)
-        match = re.search(r"season\\s*(\\d+)", label, re.I)
+        match = re.search(r"season\s*(\d+)", label, re.I)
         if not match:
-            match = re.search(r"SEASON_(\\d+)", href, re.I)
+            match = re.search(r"SEASON_(\d+)", href, re.I)
         if not match:
             continue
         season = int(match.group(1))
@@ -75,7 +75,7 @@ def leader_links(html: str, page_url: str) -> list[dict]:
         if not season_id:
             continue
         label = node_text(node) or node.attrs.get("aria-label", "") or node.attrs.get("title", "")
-        label = re.sub(r"\\s*counters?\\s*$", "", label, flags=re.I).strip()
+        label = re.sub(r"\s*counters?\s*$", "", label, flags=re.I).strip()
         if not label:
             label = slug
         url = urljoin(page_url, href)
@@ -110,7 +110,7 @@ def is_character_image(node) -> bool:
 
 def image_name(node) -> str:
     name = node.attrs.get("alt", "").strip()
-    return re.sub(r"^Image:\\s*", "", name, flags=re.I).strip()
+    return re.sub(r"^Image:\s*", "", name, flags=re.I).strip()
 
 
 def parse_counter_page(html: str, fmt: str, leader: dict, season: int) -> list[dict]:
@@ -127,9 +127,9 @@ def parse_counter_page(html: str, fmt: str, leader: dict, season: int) -> list[d
                 break
             images = [n for n in candidate.walk() if is_character_image(n)]
             text = node_text(candidate)
-            if (len(images) == size and re.search(r"\\bSeen\\s+[\\d,.]+\\s*[KMB]?", text, re.I)
-                    and re.search(r"\\bWin\\s*%\\s*[\\d.,]+\\s*%", text, re.I)
-                    and re.search(r"\\bAvg(?:\\s+Banners?)?\\s+[\\d.,]+", text, re.I)):
+            if (len(images) == size and re.search(r"\bSeen\s+[\d,.]+\s*[KMB]?", text, re.I)
+                    and re.search(r"\bWin\s*%\s*[\d.,]+\s*%", text, re.I)
+                    and re.search(r"\bAvg(?:\s+Banners?)?\s+[\d.,]+", text, re.I)):
                 chosen = (images, text)
                 break
             candidate = candidate.parent
@@ -142,9 +142,9 @@ def parse_counter_page(html: str, fmt: str, leader: dict, season: int) -> list[d
         signature = tuple(normalized(x) for x in members)
         if signature in seen_signatures:
             continue
-        seen = re.search(r"\\bSeen\\s+([\\d,.]+\\s*[KMB]?)", text, re.I)
-        win = re.search(r"\\bWin\\s*%\\s*([\\d.,]+)\\s*%", text, re.I)
-        avg = re.search(r"\\bAvg(?:\\s+Banners?)?\\s+([\\d.,]+)", text, re.I)
+        seen = re.search(r"\bSeen\s+([\d,.]+\s*[KMB]?)", text, re.I)
+        win = re.search(r"\bWin\s*%\s*([\d.,]+)\s*%", text, re.I)
+        avg = re.search(r"\bAvg(?:\s+Banners?)?\s+([\d.,]+)", text, re.I)
         if not (seen and win and avg):
             continue
         try:
