@@ -61,6 +61,19 @@ def season_pages(html: str) -> dict[str, list[dict]]:
                 continue
             season_url = urljoin(INDEX_URL, "season/" + season_id.group(1) + "/")
         found[fmt][season] = {"season": season, "url": season_url}
+
+    # Some Reader projections strip the select/anchor attributes but retain the
+    # season IDs in the page payload. Recover only IDs actually present in source.
+    for season_id in set(re.findall(r"(CHAMPIONSHIPS_[A-Z0-9_]*SEASON_\d+)", html, re.I)):
+        match = re.search(r"SEASON_(\d+)", season_id, re.I)
+        if not match:
+            continue
+        season = int(match.group(1))
+        fmt = "5v5" if season % 2 == 0 else "3v3"
+        found[fmt].setdefault(season, {
+            "season": season,
+            "url": urljoin(INDEX_URL, "season/" + season_id + "/"),
+        })
     return {fmt: sorted(rows.values(), key=lambda x: x["season"], reverse=True) for fmt, rows in found.items()}
 
 
