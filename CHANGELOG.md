@@ -1,6 +1,6 @@
 ## V4.2.0 — Planification offensive GAC (2026-11-02)
 
-- Ajout du parseur et du schéma de snapshot des counters offensifs, par leader défensif et par saison 5v5/3v3. La collecte réelle reste en attente d'une route proxy dans le Worker Cloudflare : SWGOH.GG bloque les requêtes automatisées directes.
+- Ajout du parseur et du schéma de snapshot des counters offensifs, par leader défensif et par saison 5v5/3v3. La collecte réelle reste suspendue : SWGOH.GG bloque les requêtes automatisées directes et via Jina Reader (403). Le Worker existant renvoie lui aussi 502 avec un 403 amont sur ses routes SWGOH.GG connues ; une route supplémentaire ne suffirait donc pas.
 - Conservation des métriques propres à chaque composition d'attaque : taux de victoire, combats observés et bannières moyennes.
 - Ajout du parcours Maître Jedi : sélection des défenses adverses, filtrage strict par roster et allocation globale sans personnage réutilisé.
 - Classement statistique par borne basse de confiance de Wilson à 95 %, afin de tenir compte du volume de combats.
