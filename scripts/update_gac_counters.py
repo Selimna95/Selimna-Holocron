@@ -222,6 +222,10 @@ def refresh() -> dict:
 
     index_html = fetch(INDEX_URL)
     available = season_pages(index_html)
+    if not any(available.values()):
+        print("Counter index HTML preview (first 5000 chars):")
+        print(index_html[:5000])
+        print("Counter index season ID candidates:", sorted(set(re.findall(r"CHAMPIONSHIPS_[A-Z0-9_]*SEASON_\d+", index_html, re.I))))
     selected = {fmt: rows[:2] for fmt, rows in available.items()}
     for fmt in FORMATS:
         if not selected[fmt]:
