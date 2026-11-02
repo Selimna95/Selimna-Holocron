@@ -55,6 +55,20 @@ class GacCounterParserTests(unittest.TestCase):
         self.assertEqual(rows[0]["averageBanners"], 56.8)
         self.assertEqual(rows[0]["scope"], "leader")
 
+    def test_keeps_counter_rows_when_average_banners_are_not_published(self):
+        members = ["Rey", "Ben Solo", "Resistance Hero Finn", "BB-8", "JTR"]
+        images = "".join(
+            f'<img alt="Image: {name}" src="https://game-assets.swgoh.gg/{i}.png">'
+            for i, name in enumerate(members)
+        )
+        html = f'<div>{images}<p>Seen 300 Win % 82%</p></div>'
+        leader = {"name": "Jabba", "slug": "JABBA",
+                  "url": "https://swgoh.gg/gac/counters/JABBA/?season_id=84"}
+        rows = parse_counter_page(html, "5v5", leader, 84)
+        self.assertEqual(len(rows), 1)
+        self.assertIsNone(rows[0]["averageBanners"])
+        self.assertEqual(rows[0]["battles"], 300)
+
     def test_extracts_3v3_and_rejects_wrong_squad_size(self):
         members = ["Darth Bane", "Darth Revan", "Sith Empire Trooper"]
         images = "".join(
