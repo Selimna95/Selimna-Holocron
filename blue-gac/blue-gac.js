@@ -216,7 +216,7 @@ function countersForDefense(defense,rosterSet){
 }
 function allocateAttackPlan(items){
  var ordered=items.slice().sort(function(a,b){return a.candidates.length-b.candidates.length;});
- var best={covered:-1,score:-Infinity,picks:{}},nodes=0,limit=50000;
+ var best={covered:-1,score:-Infinity,picks:{}},nodes=0,limit=100000;
  function visit(index,used,picks,score){
   nodes++;
   if(nodes>limit)return;
@@ -226,7 +226,7 @@ function allocateAttackPlan(items){
    if(covered>best.covered||(covered===best.covered&&score>best.score))best={covered:covered,score:score,picks:Object.assign({},picks)};
    return;
   }
-  var item=ordered[index],candidates=item.candidates.slice(0,18);
+  var item=ordered[index],candidates=item.candidates;
   candidates.forEach(function(candidate){
    if(candidate.canonical.some(function(member){return used.has(member);}))return;
    var nextUsed=new Set(used);candidate.canonical.forEach(function(member){nextUsed.add(member);});
