@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 4.1.2** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 4.1.3** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
@@ -77,3 +77,10 @@ Le projet est distribué sous licence MIT ; voir `LICENSE`.
 ### Limite connue des données GAC
 Le catalogue embarqué n'est pas un flux live. Il ne contient actuellement que Kyber S84/S83 et Chromium S82/S81. Aurodium, Bronzium et Carbonite sont signalées comme non couvertes plutôt que de recevoir des équipes présentées à tort comme spécifiques à leur ligue. L'actualisation automatique des sources reste à implémenter.
 \n\n## Catalogue GAC dynamique — V4.1.0\n- Le Sanctuaire bleu ne contient plus de compositions défensives codées en dur. Il charge `blue-gac/gac-catalog.json`.\n- Le relevé automatique lit les classements SWGOH.GG en défense pour Kyber, Aurodium, Chromium, Bronzium et Carbonite, en 3v3 et 5v5.\n- Pour chaque format, les deux saisons publiées les plus récentes sont récupérées automatiquement depuis les liens de saison SWGOH.GG. Les données sont triées par nombre de combats observés, puis par taux de tenue.\n- GitHub Actions actualise le snapshot toutes les six heures et sur demande. La publication est atomique : si une page source manque ou si le parseur ne retrouve pas assez d'équipes, le dernier catalogue valide est conservé.\n- Sur GitHub Pages, le client lit le JSON directement depuis la branche `main` de GitHub Raw : les nouvelles collectes sont donc visibles sans attendre une reconstruction de Pages. Le service worker privilégie le réseau pour cette URL et garde une copie locale en cache comme secours hors ligne.\n- Les compositions sont toujours filtrées sur la possession complète des personnages et l'absence de doublons. Les flottes sont exclues.\n- Source : [SWGOH.GG — classements GAC défensifs](https://swgoh.gg/tier-list/), récupérés via le lecteur public Jina Reader car SWGOH.GG refuse les requêtes directes des runners automatisés. Les statistiques sont celles des premières tentatives enregistrées par SWGOH.GG, pas une garantie de résultat en combat.\n
+
+## Fiabilisation du profil — V4.1.3
+- La synchronisation prépare désormais roster, mods et puissance galactique avant de remplacer les données affichées.
+- Un roster vide ou un inventaire HTML de mods vide/incomplet ne remplace plus le dernier profil validé.
+- Les erreurs de rafraîchissement conservent le dernier instantané cohérent et le signalent dans le journal.
+- La puissance galactique est normalisée et son total est recalculé depuis les puissances terrestre et spatiale si le total est absent.
+- Le service worker met en cache chaque navigation sous sa propre URL, avec un secours hors ligne distinct pour l'accueil et le Sanctuaire bleu. Le cache du catalogue GitHub Raw est désormais réellement intercepté.
