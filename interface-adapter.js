@@ -232,11 +232,41 @@
     }
   }
 
+  async function openRedSanctuary(){
+    const chars=()=>typeof rosterCharacters!=='undefined'&&Array.isArray(rosterCharacters)?rosterCharacters:[];
+    const ownedMods=()=>typeof mods!=='undefined'&&Array.isArray(mods)?mods:[];
+    const profileReady=()=>!!(typeof currentData!=='undefined'&&currentData&&chars().length&&ownedMods().length);
+    if(!profileReady()){
+      let ally='';
+      try{ally=sessionStorage.getItem('holocronLastAllyCode')||localStorage.getItem('holocronLastAllyCode')||'';}catch(_){}
+      ally=String(ally||el('allyCode')?.value||el('gateAllyCode')?.value||'').replace(/\\D/g,'').slice(0,9);
+      if(ally.length!==9){
+        showChambers();
+        const status=el('greenPathMessage');if(status){status.textContent='Aucun profil synchronisé disponible. Retourne à l’identification pour charger ton roster.';status.hidden=false;}
+        transitionInProgress=false;
+        return;
+      }
+      if(el('allyCode'))el('allyCode').value=ally;
+      if(el('gateAllyCode'))el('gateAllyCode').value=ally;
+      try{
+        if(typeof window.loadRemotePlayer!=='function')throw new Error('Moteur de synchronisation indisponible.');
+        const loaded=await window.loadRemotePlayer();
+        if(loaded===false||!profileReady())throw new Error('Le profil n’a pas pu être restauré intégralement.');
+      }catch(error){
+        showChambers();
+        const status=el('greenPathMessage');if(status){status.textContent='Impossible de restaurer le roster : '+(error?.message||String(error))+' Réessaie la synchronisation avant d’ouvrir le sanctuaire rouge.';status.hidden=false;}
+        transitionInProgress=false;
+        return;
+      }
+    }
+    showApp();
+  }
+
   function init(){
     const gateBtn=el('gateActivate');if(gateBtn)gateBtn.addEventListener('click',startLegacyLoad);
     const code=el('gateAllyCode');if(code)code.addEventListener('keydown',e=>{if(e.key==='Enter')startLegacyLoad();});
     const relayInput=el('gateRelayUrl');if(relayInput)relayInput.value=safeStorageGet('swgohRelayUrl')||DEFAULT_RELAY;
-    const red=el('redHolocron');if(red)red.addEventListener('click',event=>{event.preventDefault();launchEnergyStorm('red',showApp);});
+    const red=el('redHolocron');if(red)red.addEventListener('click',event=>{event.preventDefault();launchEnergyStorm('red',openRedSanctuary);});
     const back=el('returnToHolocrons');if(back)back.addEventListener('click',showChambers);
     window.addEventListener('holocron:data-updated',renderDecision);
     window.addEventListener('storage',event=>{if(event.key==='swgohRelayUrl'&&relayInput)relayInput.value=event.newValue||DEFAULT_RELAY;});
