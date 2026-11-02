@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.1.1-relay-sync';
+const CACHE_NAME = 'holocron-static-v4.1.2-api-first';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -17,7 +17,7 @@ const STATIC_ASSETS = [
   './holocron-static.css?v=4.0.45',
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.2.1',
-  './modules/core.js?v=3.4.5-relay-sync',
+  './modules/core.js?v=4.1.2-api-first',
   './modules/acolyte.js?v=3.4.3-weak-donor-pool',
   './modules/disciple.js?v=3.5.0-disciple-clarity',
   './modules/seigneur.js?v=3.5.4-total-speed-guard',
