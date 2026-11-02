@@ -220,16 +220,24 @@ def refresh() -> dict:
     if not isinstance(defense.get("teams"), list):
         raise RuntimeError("The defensive catalogue has no teams array.")
 
-    index_html = fetch(INDEX_URL)
-    available = season_pages(index_html)
-    if not any(available.values()):
-        print("Counter index HTML preview (first 5000 chars):")
-        print(index_html[:5000])
-        print("Counter index season ID candidates:", sorted(set(re.findall(r"CHAMPIONSHIPS_[A-Z0-9_]*SEASON_\d+", index_html, re.I))))
-    selected = {fmt: rows[:2] for fmt, rows in available.items()}
+    # The root counters index is intermittently challenged by Cloudflare.
+    # Reuse season numbers already verified in the defensive catalogue, then
+    # request the public season route directly.
+    selected = {}
     for fmt in FORMATS:
-        if not selected[fmt]:
-            raise RuntimeError(f"No public {fmt} counter season was found.")
+        numbers = set()
+        for values in defense.get("seasons", {}).get(fmt, {}).values():
+            numbers.update(int(value) for value in values)
+        latest = sorted(numbers, reverse=True)[:2]
+        if not latest:
+            raise RuntimeError(f"No verified {fmt} season is available in the defensive catalogue.")
+        selected[fmt] = [
+            {
+                "season": season,
+                "url": urljoin(INDEX_URL, "season/CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_" + str(season) + "/"),
+            }
+            for season in latest
+        ]
 
     tasks, season_meta = [], {}
     for fmt, seasons in selected.items():
