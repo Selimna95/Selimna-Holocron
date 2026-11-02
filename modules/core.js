@@ -602,7 +602,7 @@ async function loadRemotePlayer(){
         log(`Profil HTML de secours : ${title}.`);
         if(rosterMatch)log(`Roster annoncé : ${rosterMatch[1]} unités.`);
         if(modsMatch)log(`Mods annoncés : ${modsMatch[1]}.`);
-      }catch(e){if(!ownedApi.length)throw e;log(`Page profil HTML ignorée : ${e.message} (API déjà exploitable).`);}
+      }catch(e){log(`Page profil HTML indisponible : ${e.message} ; tentative de récupération du roster par son endpoint dédié.`);}
     }
     if(!chars.length){
       const charsDoc=parseHTML(await fetchText(`${base}/characters/`));
