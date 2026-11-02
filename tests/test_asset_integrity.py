@@ -106,8 +106,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("winRate", collector)
         self.assertIn("averageBanners", collector)
         self.assertIn("preserving the previous snapshot", collector.lower())
-        workflow = (ROOT / ".github" / "workflows" / "refresh-gac-counters.yml").read_text(encoding="utf-8")
-        self.assertIn("python -m scripts.update_gac_counters", workflow)
+        self.assertIn("fetch_counter_source", collector)
+        self.assertIn("Cloudflare Worker", collector)
 
 
     def test_live_catalogue_covers_every_league_and_format(self):
