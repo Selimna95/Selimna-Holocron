@@ -114,6 +114,88 @@ try {
   });
   assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus");
 
+  // Profile sync: a valid API payload replaces the snapshot atomically.
+  let failProfileSync = false;
+  await page.route("**/swgoh-optimizer-relay.lorg75017.workers.dev/**", async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("path") === "api-profile" && !failProfileSync) {
+      const units = [{
+        base_id: "TESTCHAR",
+        name: "Test Character",
+        level: 85,
+        rarity: 7,
+        gear_level: 13,
+        combat_type: 1,
+      }];
+      const mods = [2, 3, 4, 5, 6, 7].map((slot, index) => ({
+        id: "sync-mod-" + index,
+        slot,
+        level: 15,
+        set: 4,
+        pips: 5,
+        primary_stat: { name: "Offense", value: 5 },
+        secondary_stats: [{ name: "Speed", value: 5 }],
+        unit_equiped: "TESTCHAR",
+      }));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            name: "Sync Test",
+            galactic_power: 12345,
+            character_galactic_power: 10000,
+            ship_galactic_power: 2345,
+          },
+          units,
+          mods,
+        }),
+      });
+      return;
+    }
+    await route.fulfill({ status: 502, contentType: "text/plain", body: "upstream unavailable" });
+  });
+  await page.route("https://swgoh.gg/**", route =>
+    route.fulfill({ status: 502, contentType: "text/plain", body: "upstream unavailable" })
+  );
+  await page.locator("#allyCode").evaluate(el => { el.value = "123456789"; });
+  const syncOk = await page.evaluate(() => loadRemotePlayer());
+  assert.equal(syncOk, true, "A valid API profile and mod inventory must synchronize");
+  const committedProfile = await page.evaluate(() => ({
+    name: currentData?.name,
+    allyCode: currentData?.allyCode,
+    characters: rosterCharacters.length,
+    ships: rosterShips.length,
+    mods: mods.length,
+    gp: accountGalacticPower,
+  }));
+  assert.equal(committedProfile.name, "Sync Test");
+  assert.equal(committedProfile.characters, 1);
+  assert.equal(committedProfile.ships, 0);
+  assert.equal(committedProfile.mods, 6);
+  assert.deepEqual(committedProfile.gp, { total: 12345, characters: 10000, ships: 2345 });
+
+  // A failed refresh must not zero GP or partially replace the last valid roster.
+  failProfileSync = true;
+  const syncFailed = await page.evaluate(() => loadRemotePlayer());
+  assert.equal(syncFailed, false, "An unavailable source must fail cleanly");
+  const retainedProfile = await page.evaluate(() => ({
+    name: currentData?.name,
+    characters: rosterCharacters.length,
+    ships: rosterShips.length,
+    mods: mods.length,
+    gp: accountGalacticPower,
+  }));
+  assert.deepEqual(retainedProfile, {
+    name: committedProfile.name,
+    characters: committedProfile.characters,
+    ships: committedProfile.ships,
+    mods: committedProfile.mods,
+    gp: committedProfile.gp,
+  });
+  await page.unroute("**/swgoh-optimizer-relay.lorg75017.workers.dev/**");
+  await page.unroute("https://swgoh.gg/**");
+
   // Sanctuaire bleu: verify that extracted CSS/JS load and the real
   // mode -> league -> Padawan route remains functional.
   await page.emulateMedia({ reducedMotion: "reduce" });
