@@ -239,7 +239,7 @@
     if(!profileReady()){
       let ally='';
       try{ally=sessionStorage.getItem('holocronLastAllyCode')||localStorage.getItem('holocronLastAllyCode')||'';}catch(_){}
-      ally=String(ally||el('allyCode')?.value||el('gateAllyCode')?.value||'').replace(/\\D/g,'').slice(0,9);
+      ally=String(ally||el('allyCode')?.value||el('gateAllyCode')?.value||'').replace(/\D/g,'').slice(0,9);
       if(ally.length!==9){
         showChambers();
         const status=el('greenPathMessage');if(status){status.textContent='Aucun profil synchronisé disponible. Retourne à l’identification pour charger ton roster.';status.hidden=false;}
