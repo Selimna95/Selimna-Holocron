@@ -1,3 +1,11 @@
+## V4.2.1 — Restauration du profil au retour vers le sanctuaire rouge (2026-11-02)
+
+- Le clic sur l’holocron rouge vérifie désormais que le profil complet est encore chargé avant d’afficher le Sanctuaire.
+- Si les données mémoire ne sont plus présentes après un passage par le Sanctuaire bleu, le profil est restauré avec le dernier Ally Code connu ; l’ouverture attend la fin de la synchronisation.
+- En cas d’échec, le retour au choix des holocrons affiche un message explicite au lieu d’ouvrir un tableau de bord vide.
+- Le verrou de transition est réinitialisé au retour au choix des holocrons afin de permettre des allers-retours répétés entre les deux voies.
+- Version des ressources et cache PWA incrémentés pour invalider l’ancien adaptateur mis en cache.
+
 ## V4.2.0 — Planification offensive GAC (2026-11-02)
 
 - Ajout du parseur et du schéma de snapshot des counters offensifs, par leader défensif et par saison 5v5/3v3. La collecte réelle reste suspendue : SWGOH.GG bloque les requêtes automatisées directes et via Jina Reader (403). Le Worker existant renvoie lui aussi 502 avec un 403 amont sur ses routes SWGOH.GG connues ; une route supplémentaire ne suffirait donc pas.
