@@ -1,7 +1,7 @@
 import unittest
 
 from python.optimizer import (
-    normalize_slot, normalize_set, mod_slot_value, optimize_kyber,
+    normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
     _partial_matches_set_plan,
 )
 
@@ -85,6 +85,16 @@ class OptimizerNormalizationTests(unittest.TestCase):
         builds = optimize_kyber(mods, base_stats={"Speed": 100}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
         self.assertEqual(len(builds), 1)
         self.assertEqual(builds[0]["set_plan"], {"Speed": 6})
+
+    def test_speed_set_bonus_is_ten_percent_of_base_speed(self):
+        build = [{"set": "Speed"} for _ in range(4)]
+        stats = final_stats(build, {"Speed": 200})
+        self.assertAlmostEqual(stats["Speed"], 220.0)
+
+    def test_critical_damage_set_bonus_is_thirty_percentage_points(self):
+        build = [{"set": "Critical Damage"} for _ in range(4)]
+        stats = final_stats(build, {"Critical Damage": 150})
+        self.assertAlmostEqual(stats["Critical Damage"], 1.20)
 
     def test_partial_set_plan_rejects_excess_sets(self):
         build = [{"set": "Health"}, {"set": "Health"}]
