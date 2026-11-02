@@ -503,15 +503,27 @@ async function fetchJSON(url){
   try{return JSON.parse(raw);}catch(_){throw new Error('Réponse JSON invalide reçue du relais.');}
 }
 async function fetchText(url) {
+  // Conserver le relais en priorité, mais ne pas supprimer le fallback historique :
+  // certaines réponses du Worker échouent alors que la page publique reste accessible.
+  const candidates=[];
   const relay=workerUrl();
-  const match=url.match(/\/p\/(\d{9})\/(characters|mods)?\/?(?:\?page=(\d+))?/);
-  if(!relay) throw new Error('Aucun relais configuré : le navigateur ne peut pas interroger SWGOH.GG directement (CORS).');
-  if(!match) throw new Error('URL SWGOH.GG non reconnue par le relais.');
-  const ally=match[1],path=match[2]||'profile',page=match[3]||'1';
-  const relayRequest=`${relay}/?ally=${ally}&path=${path}&page=${page}`;
-  const text=await fetchTextWithTimeout(relayRequest,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});
-  if(!text||text.length<=200) throw new Error(`Réponse vide via le relais ${new URL(relay).host}`);
-  return text;
+  const match=url.match(/\\/p\\/(\\d{9})\\/(characters|mods)?\\/?(?:\\?page=(\\d+))?/);
+  if(relay && match){
+    const ally=match[1],path=match[2]||'profile',page=match[3]||'1';
+    candidates.push(`${relay}/?ally=${ally}&path=${path}&page=${page}`);
+  }
+  candidates.push(url);
+  let last='';
+  for(const candidate of candidates){
+    try{
+      const responseText=await fetchTextWithTimeout(candidate,{headers:{'Accept':'text/html,application/xhtml+xml,application/json'}});
+      if(responseText && responseText.length>200) return responseText;
+      last=`Réponse vide via ${new URL(candidate).host}`;
+    }catch(error){
+      last=error?.message||String(error);
+    }
+  }
+  throw new Error(last||'Impossible de lire la page SWGOH.GG.');
 }
 function parseHTML(text){return new DOMParser().parseFromString(text,'text/html');}
 function firstText(root,selectors){for(const sel of selectors){const n=root.querySelector(sel);if(n){const t=n.textContent?.trim();if(t)return t;}}return '';}
