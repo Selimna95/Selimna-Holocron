@@ -1,13 +1,14 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.1.3-profile-integrity';
+const CACHE_NAME = 'holocron-static-v4.2.0-gac-attack-counters';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './blue-gac/index.html',
-  './blue-gac/blue-gac.css?v=4.1.0',
-  './blue-gac/blue-gac.js?v=4.1.0',
+  './blue-gac/blue-gac.css?v=4.2.0',
+  './blue-gac/blue-gac.js?v=4.2.0',
   './blue-gac/gac-catalog.json?v=4.1.0',
+  './blue-gac/gac-counters.json?v=4.2.0',
   './assets/image/padawan.png',
   './assets/image/jpeg.jpg',
   './app.css?v=4.0.0-seigneur-card-layout',
@@ -52,7 +53,7 @@ self.addEventListener('fetch', event => {
 
   // Le catalogue Raw est cross-origin : traiter ce cas avant le filtre same-origin.
   if (url.hostname === 'raw.githubusercontent.com' &&
-      url.pathname.endsWith('/Selimna-Holocron/main/blue-gac/gac-catalog.json')) {
+      (url.pathname.endsWith('/Selimna-Holocron/main/blue-gac/gac-catalog.json') || url.pathname.endsWith('/Selimna-Holocron/main/blue-gac/gac-counters.json'))) {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {
         const copy = response.clone();
@@ -60,13 +61,13 @@ self.addEventListener('fetch', event => {
       }
       return response;
     }).catch(async () => (await caches.match(request)) ||
-      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
+      (await caches.match(new URL(url.pathname.endsWith('gac-counters.json') ? './blue-gac/gac-counters.json?v=4.2.0' : './blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
     return;
   }
 
   if (url.origin !== self.location.origin || url.searchParams.has('ally')) return;
 
-  if (url.pathname.endsWith('/blue-gac/gac-catalog.json')) {
+  if (url.pathname.endsWith('/blue-gac/gac-catalog.json') || url.pathname.endsWith('/blue-gac/gac-counters.json')) {
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {
         const copy = response.clone();
@@ -74,7 +75,7 @@ self.addEventListener('fetch', event => {
       }
       return response;
     }).catch(async () => (await caches.match(request)) ||
-      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
+      (await caches.match(new URL(url.pathname.endsWith('gac-counters.json') ? './blue-gac/gac-counters.json?v=4.2.0' : './blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
     return;
   }
   if (request.mode === 'navigate') {

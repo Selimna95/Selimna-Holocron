@@ -15,6 +15,7 @@ class AssetIntegrityTests(unittest.TestCase):
         cls.blue_js = (ROOT / "blue-gac" / "blue-gac.js").read_text(encoding="utf-8")
         cls.blue_css = (ROOT / "blue-gac" / "blue-gac.css").read_text(encoding="utf-8")
         cls.catalog = (ROOT / "blue-gac" / "gac-catalog.json").read_text(encoding="utf-8")
+        cls.counter_catalog = (ROOT / "blue-gac" / "gac-counters.json").read_text(encoding="utf-8")
         section = cls.sw.split("const STATIC_ASSETS = [", 1)[1].split("];", 1)[0]
         cls.cached_assets = {
             value.removeprefix("./")
@@ -31,8 +32,10 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.1.3-profile-integrity", self.sw)
+        self.assertIn("holocron-static-v4.2.0-gac-attack-counters", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.0", self.sw)
+        self.assertIn("blue-gac/gac-counters.json?v=4.2.0", self.sw)
+        self.assertIn("gac-counters.json", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
@@ -53,7 +56,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("var publicTeams=[];", self.blue_js)
         self.assertNotIn("sourceLeague:(Number(t.season)", self.blue_js)
         self.assertIn("font-size:max(13px", self.blue_css)
-        self.assertIn("V4.1.0", self.blue_html)
+        self.assertIn("V4.2.0", self.blue_html)
 
 
     def test_profile_sync_is_staged_and_rejects_incomplete_mod_inventory(self):
@@ -81,6 +84,30 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("gac-catalog.json", self.blue_js)
         self.assertIn("aucune ancienne composition", self.blue_js.lower())
         self.assertIn("gac-catalog.json", self.blue_js)
+
+    def test_maitre_jedi_uses_roster_filtered_counters_and_global_no_reuse_allocation(self):
+        for value in ("enemyDefenseSelect", "addEnemyDefense", "buildAttackPlan",
+                      "attackPlanResults", "counterSourceStatus"):
+            self.assertIn(value, self.blue_html)
+        for value in ("gac-counters.json", "wilsonLowerBound", "allocateAttackPlan",
+                      "used.has(member)", "rosterSet.has(m)", "averageBanners", "defenseLeader"):
+            self.assertIn(value, self.blue_js)
+        self.assertIn("scope", self.counter_catalog)
+        self.assertIn("leader", self.counter_catalog)
+
+    def test_counter_collector_and_snapshot_are_versioned(self):
+        import json
+        data = json.loads(self.counter_catalog)
+        self.assertEqual(data["schemaVersion"], 1)
+        self.assertEqual(data["scope"], "leader")
+        self.assertEqual(data["leagueScope"], "global")
+        collector = (ROOT / "scripts" / "update_gac_counters.py").read_text(encoding="utf-8")
+        self.assertIn("parse_counter_page", collector)
+        self.assertIn("winRate", collector)
+        self.assertIn("averageBanners", collector)
+        self.assertIn("preserving the previous snapshot", collector.lower())
+        self.assertIn("fetch_counter_source", collector)
+        self.assertIn("Cloudflare Worker", collector)
 
 
     def test_live_catalogue_covers_every_league_and_format(self):
@@ -116,7 +143,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.1.3-profile-integrity", self.html)
         self.assertIn("modules/core.js?v=4.1.3-profile-integrity", self.sw)
-        self.assertIn("holocron-static-v4.1.3-profile-integrity", self.sw)
+        self.assertIn("holocron-static-v4.2.0-gac-attack-counters", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
