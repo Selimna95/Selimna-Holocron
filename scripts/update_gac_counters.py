@@ -175,8 +175,17 @@ def parse_counter_page(html: str, fmt: str, leader: dict, season: int) -> list[d
 def scrape_leader(item: tuple[str, int, dict]) -> tuple[str, int, dict, list[dict], str | None]:
     fmt, season, leader = item
     try:
-        html = fetch(leader["url"])
-        rows = parse_counter_page(html, fmt, leader, season)
+        page_url = leader["url"]
+        visited, rows, signatures = set(), [], set()
+        while page_url and page_url not in visited:
+            visited.add(page_url)
+            html = fetch(page_url)
+            for row in parse_counter_page(html, fmt, leader, season):
+                signature = tuple(normalized(x) for x in row["attackMembers"])
+                if signature not in signatures:
+                    signatures.add(signature)
+                    rows.append(row)
+            page_url = next_page_url(html, page_url)
         if len(rows) < MIN_COUNTER_ROWS:
             return fmt, season, leader, [], f"{leader['name']}: no counter rows parsed"
         return fmt, season, leader, rows, None
@@ -263,6 +272,7 @@ def refresh() -> dict:
         "schemaVersion": 1,
         "source": "SWGOH.GG GAC counters · first-attempt squad matchups",
         "scope": "leader",
+        "leagueScope": "global",
         "updatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "seasons": season_meta,
         "coverage": coverage,
