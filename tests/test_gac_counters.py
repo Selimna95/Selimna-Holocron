@@ -5,10 +5,17 @@ from scripts.update_gac_counters import (
     leader_links,
     parse_counter_page,
     season_pages,
+    fetch_counter_source,
 )
 
 
 class GacCounterParserTests(unittest.TestCase):
+    def test_cloudflare_challenge_is_reported_as_a_relay_requirement(self):
+        from unittest.mock import patch
+        with patch("scripts.update_gac_counters.fetch", return_value="<title>Attention Required! | Cloudflare</title><h1>Sorry, you have been blocked</h1>"):
+            with self.assertRaisesRegex(RuntimeError, "Cloudflare blocked automated counter retrieval"):
+                fetch_counter_source("https://swgoh.gg/gac/counters/season/example/")
+
     def test_discovers_real_season_urls_and_formats(self):
         html = """
         <a href="/gac/counters/season/CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84/">Season 84 - 5v5</a>
