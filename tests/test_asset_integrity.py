@@ -58,7 +58,7 @@ class AssetIntegrityTests(unittest.TestCase):
 
     def test_profile_sync_is_staged_and_rejects_incomplete_mod_inventory(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
-        load_player = core.split("async function loadRemotePlayer(){", 1)[1].split("\\nfunction updateAccountSummary", 1)[0]
+        load_player = core.split("async function loadRemotePlayer(){", 1)[1].split("\nfunction updateAccountSummary", 1)[0]
         self.assertIn("const previousSnapshot={currentData,rosterCharacters,rosterShips,mods,accountGalacticPower}", load_player)
         self.assertIn("let nextGalacticPower={total:0,characters:0,ships:0}", load_player)
         self.assertIn("let htmlModsComplete=true", load_player)
