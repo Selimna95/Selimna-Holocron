@@ -111,12 +111,12 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("path=api-profile", load_player)
         self.assertIn("path=api-mods", load_player)
         self.assertIn("if(!apiMods.length)", load_player)
-        self.assertIn("if(!ownedApi.length || !profileApi)", load_player)
+        self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.1.3-profile-integrity", self.html)
         self.assertIn("modules/core.js?v=4.1.3-profile-integrity", self.sw)
-        self.assertIn("holocron-static-v4.1.2-api-first", self.sw)
+        self.assertIn("holocron-static-v4.1.3-profile-integrity", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
