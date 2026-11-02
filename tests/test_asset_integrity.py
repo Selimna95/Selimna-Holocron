@@ -100,6 +100,7 @@ class AssetIntegrityTests(unittest.TestCase):
         data = json.loads(self.counter_catalog)
         self.assertEqual(data["schemaVersion"], 1)
         self.assertEqual(data["scope"], "leader")
+        self.assertEqual(data["leagueScope"], "global")
         collector = (ROOT / "scripts" / "update_gac_counters.py").read_text(encoding="utf-8")
         self.assertIn("parse_counter_page", collector)
         self.assertIn("winRate", collector)
@@ -142,7 +143,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.1.3-profile-integrity", self.html)
         self.assertIn("modules/core.js?v=4.1.3-profile-integrity", self.sw)
-        self.assertIn("holocron-static-v4.1.3-profile-integrity", self.sw)
+        self.assertIn("holocron-static-v4.2.0-gac-attack-counters", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
