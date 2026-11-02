@@ -563,30 +563,43 @@ function reallocationSourceRows(selected){
   const selectedKeys=discipleModKeys(selected);
   if(!selectedKeys.slot||!selectedKeys.set||!selectedKeys.primary)return rows;
 
-  // One-pass owner index. This is both faster and safer than rebuilding
-  // getCharacterMods(character) for every character and every search.
-  const normalizedMods=mods.map(raw=>normalizeModForDisplay(raw));
-  const ownerBuckets=new Map();
-  for(const m of normalizedMods){
-    const owner=modOwnerKey(m);
-    if(!owner)continue;
-    const bucket=ownerBuckets.get(owner)||[];
-    bucket.push(m);
-    ownerBuckets.set(owner,bucket);
-  }
-
-  const characterByKey=new Map();
-  const allowedOwners=new Map();
+  // Résolution exacte des propriétaires. Le baseId du jeu prime sur les noms
+  // affichés qui peuvent entrer en collision (Rey, Maul, Ahsoka Tano, Sith Trooper).
+  const aliasOwners=new Map(),baseIdOwners=new Map(),characterByKey=new Map();
   for(const c of rosterCharacters){
-    const variants=[characterKey(c),compactKey(c?.name),compactKey(c?.baseId),compactKey(c?.base_id),compactKey(c?.characterId),compactKey(c?.character_id)].filter(Boolean);
-    const unique=[...new Set(variants)];
-    const cm=[];
-    for(const [owner,bucket] of ownerBuckets){
-      if(unique.some(k=>owner===k || owner.includes(k) || k.includes(owner)))cm.push(...bucket);
-    }
+    if(rosterUnitType(c)==='ship')continue;
     const ck=characterKey(c);
     characterByKey.set(ck,c);
-    const st=v176ModStatus(cm);
+    const base=compactKey(c?.baseId??c?.base_id??c?.characterId??c?.character_id);
+    if(base){
+      if(!baseIdOwners.has(base))baseIdOwners.set(base,new Set());
+      baseIdOwners.get(base).add(ck);
+    }
+    const aliases=new Set([c?.baseId,c?.base_id,c?.characterId,c?.character_id,c?.name,c?.character].map(compactKey).filter(Boolean));
+    for(const alias of aliases){
+      if(!aliasOwners.has(alias))aliasOwners.set(alias,new Set());
+      aliasOwners.get(alias).add(ck);
+    }
+  }
+  const ownerToCharacter=new Map();
+  for(const [alias,owners] of baseIdOwners)if(owners.size===1)ownerToCharacter.set(alias,[...owners][0]);
+  for(const [alias,owners] of aliasOwners){
+    // Un alias de nom ne peut jamais détourner un baseId existant.
+    if(!ownerToCharacter.has(alias)&&!baseIdOwners.has(alias)&&owners.size===1)ownerToCharacter.set(alias,[...owners][0]);
+  }
+
+  const normalizedMods=mods.map(raw=>normalizeModForDisplay(raw));
+  const modsByCharacter=new Map();
+  for(const m of normalizedMods){
+    const owner=modOwnerKey(m);
+    const ck=ownerToCharacter.get(owner);
+    if(!ck)continue;
+    if(!modsByCharacter.has(ck))modsByCharacter.set(ck,[]);
+    modsByCharacter.get(ck).push(m);
+  }
+  const allowedOwners=new Map();
+  for(const [ck,c] of characterByKey){
+    const st=v176ModStatus(modsByCharacter.get(ck)||[]);
     if(reallocationStatusAllowed(st.status))allowedOwners.set(ck,st);
   }
 
@@ -594,15 +607,10 @@ function reallocationSourceRows(selected){
     const id=String(m.game_id||m.id||'');
     if(selectedId&&id===selectedId)continue;
     const keys=discipleModKeys(m);
-    if(keys.slot!==selectedKeys.slot || keys.set!==selectedKeys.set || keys.primary!==selectedKeys.primary)continue;
+    if(keys.slot!==selectedKeys.slot||keys.set!==selectedKeys.set||keys.primary!==selectedKeys.primary)continue;
     const owner=modOwnerKey(m);
-    if(!owner)continue;
-    let ownerKey='';
-    for(const [ck,c] of characterByKey){
-      const variants=[ck,compactKey(c?.name),compactKey(c?.baseId),compactKey(c?.base_id),compactKey(c?.characterId),compactKey(c?.character_id)].filter(Boolean);
-      if(variants.some(k=>owner===k || owner.includes(k) || k.includes(owner))){ownerKey=ck;break;}
-    }
-    if(!ownerKey || (selectedOwner && owner===selectedOwner))continue;
+    const ownerKey=ownerToCharacter.get(owner);
+    if(!ownerKey||owner===selectedOwner)continue;
     const st=allowedOwners.get(ownerKey);
     if(!st)continue;
     rows.push({character:characterByKey.get(ownerKey),mod:m,status:st.status,class:st.class,speed:modTotalSpeed(m)});

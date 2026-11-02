@@ -52,8 +52,10 @@ function holocronTopChangeCandidates(){
     }
     return 0;
   };
-  // Filtre expérimental V3.4.3 : sélectionner les donneurs selon la faiblesse
-  // globale de leurs mods, sans interdire leurs meilleurs mods individuels.
+  // Les donneurs sont exclusivement les personnages réellement incomplets,
+  // très faibles ou faibles selon le statut global de leurs six emplacements.
+  // Un mod individuellement rapide reste éligible s'il appartient à un donneur
+  // globalement faible : c'est précisément le stock intéressant à redistribuer.
   const donorWeakness=unit=>{
     const speeds=unit.mods.map(secondarySpeedValue).sort((a,b)=>a-b);
     const count=speeds.length||1;
@@ -66,16 +68,14 @@ function holocronTopChangeCandidates(){
     const average=speeds.reduce((sum,v)=>sum+v,0)/count;
     return noSpeed*5 + veryLow*4 + low*2 + Math.max(0,12-median)*0.35 + Math.max(0,10-average)*0.15;
   };
+  const donorStatuses=new Set(['INCOMPLETS','TRÈS FAIBLES','FAIBLES']);
   const donorPool=units
-    .filter(unit=>!unit.isGL)
+    .filter(unit=>!unit.isGL&&donorStatuses.has(unit.status))
     .map(unit=>({...unit,weaknessScore:donorWeakness(unit)}))
     .sort((a,b)=>b.weaknessScore-a.weaknessScore ||
       (a.gacUses===null?Number.POSITIVE_INFINITY:a.gacUses) -
       (b.gacUses===null?Number.POSITIVE_INFINITY:b.gacUses));
-  // Environ les 30 % des non-GL les moins bien moddés deviennent donneurs.
-  // Tous leurs mods restent candidats, même un mod rapide comme 20 de vitesse.
-  const donorCount=donorPool.length?Math.max(1,Math.ceil(donorPool.length*0.30)):0;
-  const eligibleDonorKeys=new Set(donorPool.slice(0,donorCount).map(unit=>characterKey(unit.c)));
+  const eligibleDonorKeys=new Set(donorPool.map(unit=>characterKey(unit.c)));
   for(const unit of units){
     unit.weaknessScore=donorWeakness(unit);
     unit.isWeakDonor=eligibleDonorKeys.has(characterKey(unit.c));
@@ -121,7 +121,7 @@ function holocronTopChangeCandidates(){
   const out=[];
 
   // Acolyte cible les mods lents des personnages prioritaires.
-  // Les donneurs sont les ~30 % de non-GL les moins bien moddés ; tous leurs mods
+  // Seuls les non-GL incomplets/faibles/très faibles sont donneurs ; tous leurs mods
   // peuvent être proposés, même un mod individuel avec une vitesse élevée.
   for(const r of units){
     const targetMods=[...r.mods].sort((a,b)=>

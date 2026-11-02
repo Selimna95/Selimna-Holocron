@@ -938,16 +938,30 @@ function modOwnerKey(m){
 }
 function getCharacterMods(c){
   if(!c) return [];
-  const aliasCounts=new Map();
+  const aliasOwners=new Map(),baseIdOwners=new Map();
   for(const unit of rosterCharacters||[]){
+    const ck=characterKey(unit);
+    const base=compactKey(unit?.baseId??unit?.base_id??unit?.characterId??unit?.character_id);
+    if(base){
+      if(!baseIdOwners.has(base))baseIdOwners.set(base,new Set());
+      baseIdOwners.get(base).add(ck);
+    }
     const keys=new Set([unit?.baseId,unit?.base_id,unit?.characterId,unit?.character_id,unit?.name,unit?.character].map(compactKey).filter(Boolean));
-    for(const key of keys)aliasCounts.set(key,(aliasCounts.get(key)||0)+1);
+    for(const key of keys){
+      if(!aliasOwners.has(key))aliasOwners.set(key,new Set());
+      aliasOwners.get(key).add(ck);
+    }
   }
-  // Un alias partagé par plusieurs unités ne permet pas d'attribuer un mod sans ambiguïté.
-  const aliases=new Set([
-    compactKey(c.baseId),compactKey(c.base_id),compactKey(c.characterId),compactKey(c.character_id),
-    compactKey(c.name),compactKey(c.character)
-  ].filter(key=>key&&(aliasCounts.get(key)||0)<=1));
+  // Le baseId est l'identité canonique : il reste prioritaire même si sa chaîne
+  // ressemble au nom affiché d'une autre unité (ex. AHSOKATANO / GLAHSOKATANO).
+  const ownKey=characterKey(c);
+  const ownBase=compactKey(c.baseId??c.base_id??c.characterId??c.character_id);
+  const aliases=new Set();
+  if(ownBase&&baseIdOwners.get(ownBase)?.size===1&&baseIdOwners.get(ownBase).has(ownKey))aliases.add(ownBase);
+  for(const key of [c.baseId,c.base_id,c.characterId,c.character_id,c.name,c.character].map(compactKey).filter(Boolean)){
+    const owners=aliasOwners.get(key),baseOwners=baseIdOwners.get(key);
+    if(owners?.size===1&&owners.has(ownKey)&&(!baseOwners||(baseOwners.size===1&&baseOwners.has(ownKey))))aliases.add(key);
+  }
   const slots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const rankOwner=(m)=>{
     const raw=m?._rawOwnerFields||[];
