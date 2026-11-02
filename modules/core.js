@@ -558,14 +558,17 @@ function extractApiMods(json){
 }
 function unitToCharacter(u,index=0){const o=u?.data&&typeof u.data==='object'?u.data:u;if(!o||typeof o!=='object')return null;const baseId=o.base_id??o.baseId??o.definitionId;const name=o.name??o.character??o.characterName??o.unitName;const hasRosterFields=baseId&&Number.isFinite(Number(o.level))&&Number.isFinite(Number(o.rarity))&&(Object.prototype.hasOwnProperty.call(o,'gear_level')||Object.prototype.hasOwnProperty.call(o,'gearLevel')||Object.prototype.hasOwnProperty.call(o,'gear')||Object.prototype.hasOwnProperty.call(o,'power')||Object.prototype.hasOwnProperty.call(o,'combat_type'));if(!hasRosterFields)return null;const relicTierRaw=o.relic_tier??o.relicTier??o.relic_level??o.relicLevel??o.relic?.tier??o.relic?.relicTier??0;const thumbnailName=o.thumbnail_name??o.thumbnailName??o.thumbnail??o.icon??o.image??'';const portraitUrl=o.portrait_url??o.portraitUrl??o.image_url??o.imageUrl??'';return{name:name||baseId,baseId,level:Number(o.level||0),gear:Number(o.gear_level??o.gearLevel??o.gear??0),stars:Number(o.rarity??o.starLevel??o.stars??0),power:Number(o.power||0),combatType:Number(o.combat_type??o.combatType??1),relic_tier:Number(relicTierRaw)||0,thumbnailName,portraitUrl,raw:u};}
 function extractApiCharacters(json){const direct=Array.isArray(json?.units)?json.units:[];let out=direct.map(unitToCharacter).filter(Boolean);if(!out.length){const candidates=[];walkObjects(json,o=>{const unit=unitToCharacter(o);if(unit)candidates.push(unit);});out=candidates;}const seen=new Set();return out.filter(x=>{const key=`${x.baseId||''}|${x.name||''}`;if(seen.has(key))return false;seen.add(key);return true;});}
+function profilePowerNumber(value){const n=Number(String(value??'').replace(/[\\s,]/g,''));return Number.isFinite(n)&&n>0?n:0;}
+function normalizeProfilePower(total,characters,ships){const c=profilePowerNumber(characters),s=profilePowerNumber(ships);let t=profilePowerNumber(total);if(!t)t=c+s;return{total:t,characters:c,ships:s};}
 async function loadRemotePlayer(){
   const allyCode=cleanAllyCode($('allyCode').value);if(allyCode.length!==9){log('Ally Code invalide : 9 chiffres attendus.');return;}
-  accountGalacticPower={total:0,characters:0,ships:0};
   $('loadPlayer').disabled=true;$('loadPlayer').textContent='CHARGEMENT…';$('log').textContent='';const fmt=formatAlly(allyCode);log(`Recherche du joueur ${fmt}…`);
   try{
     const relay=workerUrl(),base=`https://swgoh.gg/p/${allyCode}`;
     if(relay)log('Relais Cloudflare actif : récupération API JSON prioritaire.');else log('Aucun relais configuré : tentative directe depuis le navigateur.');
     let profileApi=null,apiChars=[],apiMods=[],title='Joueur',chars=[],ships=[];
+    let nextGalacticPower={total:0,characters:0,ships:0};
+    let htmlModsComplete=true;
     if(relay){
       log('Récupération du profil JSON SWGOH.GG via le Worker…');
       try{
@@ -574,8 +577,7 @@ async function loadRemotePlayer(){
         apiMods=extractApiMods(profileApi);
         title=String(profileApi?.data?.name||profileApi?.name||title);
         const account=profileApi?.data||{};
-        const total=Number(account.galactic_power||0),characters=Number(account.character_galactic_power||0),fleet=Number(account.ship_galactic_power||0);
-        if(total||characters||fleet)accountGalacticPower={total,characters,ships:fleet};
+        nextGalacticPower=normalizeProfilePower(account.galactic_power,account.character_galactic_power,account.ship_galactic_power);
         log(`API profil : ${apiChars.length} unités candidates et ${apiMods.length} mods.`);
       }catch(e){log(`API profil indisponible : ${e.message}`);}
       if(!apiMods.length){
@@ -590,11 +592,11 @@ async function loadRemotePlayer(){
     }
     // Les pages HTML SWGOH.GG sont un secours uniquement : leur endpoint profil peut répondre 403.
     let htmlMods=[];
-    if(!ownedApi.length || !profileApi){
+    if(!ownedApi.length || !profileApi || (!nextGalacticPower.total && !nextGalacticPower.characters && !nextGalacticPower.ships)){
       try{
         const profileText=await fetchText(`${base}/`),profileDoc=parseHTML(profileText),bodyText=profileDoc.body.textContent||'';
         title=profileDoc.querySelector('h1')?.textContent?.trim()||title;
-        if(!accountGalacticPower.total)accountGalacticPower=extractGalacticPowerFromProfile(bodyText);
+        if(!nextGalacticPower.total && !nextGalacticPower.characters && !nextGalacticPower.ships){const htmlPower=extractGalacticPowerFromProfile(bodyText);nextGalacticPower=normalizeProfilePower(htmlPower.total,htmlPower.characters,htmlPower.ships);}
         const rosterMatch=bodyText.match(/Roster\s+([0-9,]+)\s+units/i),modsMatch=bodyText.match(/([0-9,]+)\s+Mods/i);
         log(`Profil HTML de secours : ${title}.`);
         if(rosterMatch)log(`Roster annoncé : ${rosterMatch[1]} unités.`);
@@ -606,18 +608,17 @@ async function loadRemotePlayer(){
       chars=parseCharacters(charsDoc);
       log(`Fallback HTML : ${chars.length} personnages détectés.`);
     }
-    rosterCharacters=chars;rosterShips=ships;
     log(`${chars.length} personnages récupérés, ${ships.length} vaisseaux.`);
-    renderGalacticPower();
     if(!apiMods.length){
       log('Aucun mod fourni par l’API : lecture des pages HTML en secours…');
       for(let page=1;page<=100;page++){
         try{
           const pageMods=parseModsPage(parseHTML(await fetchText(`${base}/mods/?page=${page}`)),page);
-          if(!pageMods.length)break;
+          if(!pageMods.length){if(page===1)htmlModsComplete=false;break;}
           htmlMods.push(...pageMods);log(`Page mods ${page}: ${pageMods.length} mods.`);
           if(pageMods.length<30)break;
-        }catch(e){log(`Lecture HTML des mods interrompue à la page ${page}: ${e.message}`);break;}
+          if(page===100)htmlModsComplete=false;
+        }catch(e){htmlModsComplete=false;log(`Lecture HTML des mods interrompue à la page ${page}: ${e.message}`);break;}
       }
     }
     // L’API JSON fournit les mods complets (set, slot, tier, primaire et secondaires).
@@ -636,15 +637,21 @@ async function loadRemotePlayer(){
     });
     const seenIds=new Set(merged.map(m=>m.game_id));
     for(const m of apiMods){if(!seenIds.has(m.game_id)){merged.push(m);seenIds.add(m.game_id);}}
-    const seen=new Set();mods=merged.filter(m=>m&&!seen.has(m.game_id)&&seen.add(m.game_id));
+    const seen=new Set();
+    const nextMods=merged.filter(m=>m&&!seen.has(m.game_id)&&seen.add(m.game_id));
+    if(!chars.length)throw new Error('Roster non validé : aucune unité possédée exploitable n’a été récupérée. Les données précédentes sont conservées.');
+    if(!apiMods.length && (!htmlMods.length || !htmlModsComplete))throw new Error('Inventaire des mods non validé : la lecture HTML est vide ou incomplète. Les données précédentes sont conservées pour éviter une optimisation sur un inventaire tronqué.');
+    if(!nextMods.length)throw new Error('Inventaire des mods vide : synchronisation refusée pour ne pas remplacer un profil valide par des données incomplètes.');
+    mods=nextMods;rosterCharacters=chars;rosterShips=ships;accountGalacticPower=nextGalacticPower;
     log(`Mods exploitables : ${apiMods.length} via API + ${htmlMods.length} via HTML de secours = ${mods.length}.`);
+    renderGalacticPower();
     updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();
     currentData={allyCode,name:title,characters:chars,ships,mods,galacticPower:accountGalacticPower};
-    $('dataInfo').textContent=`Source: SWGOH.GG API JSON${relay?' via Cloudflare Worker':''}${htmlMods.length?' + HTML secours':''}\nJoueur: ${title}\nAlly Code: ${fmt}\nPersonnages: ${chars.length}\nVaisseaux: ${ships.length}\nUnités totales: ${chars.length+ships.length}\nMods: ${mods.length}\nProfils Kyber disponibles dans cette version: ${Object.keys(profiles).length}`;
+    $('dataInfo').textContent=`Source: ${apiChars.length?'SWGOH.GG API JSON':'SWGOH.GG HTML'}${relay?' via Cloudflare Worker':''}${!apiMods.length?' · mods HTML secours':''}\nJoueur: ${title}\nAlly Code: ${fmt}\nPersonnages: ${chars.length}\nVaisseaux: ${ships.length}\nUnités totales: ${chars.length+ships.length}\nMods: ${mods.length}\nProfils Kyber disponibles dans cette version: ${Object.keys(profiles).length}`;
     log(`TERMINÉ : ${chars.length} personnages, ${ships.length} vaisseaux, ${mods.length} mods exploitables.`);
     if(!mods.length)log('Aucun mod lisible : vérifier la disponibilité de l’API mods.');
     showPage('dashboard');window.dispatchEvent(new CustomEvent('holocron:data-updated'));return true;
-  }catch(e){log(`Échec du chargement : ${e.message||e}`);log('Le profil API est prioritaire ; si l’API est indisponible, vérifie le relais ou utilise l’import JSON.');return false;}
+  }catch(e){log(`Échec du chargement : ${e.message||e}`);log(currentData?'Le dernier profil entièrement validé est conservé à l’écran.':'Aucun profil n’a été remplacé : corrige la source puis relance la synchronisation.');return false;}
   finally{$('loadPlayer').disabled=false;$('loadPlayer').textContent='CHARGER MON PROFIL';}
 }
 function updateAccountSummary(title,fmt){if($('playerName'))$('playerName').textContent=title||'Profil';if($('playerAlly'))$('playerAlly').textContent=fmt||'—';if($('heroPlayerName'))$('heroPlayerName').textContent=title||'Profil';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent=fmt||'—';setText('topAccountName',title||'—');setText('topProfileState','CONNECTÉ');setText('heroProfileState','CONNECTÉ');}
