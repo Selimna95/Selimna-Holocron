@@ -26,6 +26,22 @@ MIN_COUNTER_ROWS = 1
 MAX_WORKERS = 5
 
 
+def fetch_counter_source(url: str) -> str:
+    try:
+        html = fetch(url)
+    except Exception as exc:
+        raise RuntimeError(
+            f"SWGOH.GG counter source is inaccessible from this server-side collector ({url}): {exc}. "
+            "A route through the existing Cloudflare Worker is required."
+        ) from exc
+    if "Attention Required! | Cloudflare" in html or "Sorry, you have been blocked" in html:
+        raise RuntimeError(
+            f"SWGOH.GG Cloudflare blocked automated counter retrieval ({url}). "
+            "The existing Cloudflare Worker needs a dedicated GAC counter proxy route."
+        )
+    return html
+
+
 def node_text(node) -> str:
     return re.sub(r"\s+", " ", node.text()).strip()
 
@@ -199,7 +215,7 @@ def scrape_leader(item: tuple[str, int, dict]) -> tuple[str, int, dict, list[dic
         visited, rows, signatures = set(), [], set()
         while page_url and page_url not in visited:
             visited.add(page_url)
-            html = fetch(page_url)
+            html = fetch_counter_source(page_url)
             for row in parse_counter_page(html, fmt, leader, season):
                 signature = tuple(normalized(x) for x in row["attackMembers"])
                 if signature not in signatures:
@@ -244,7 +260,7 @@ def refresh() -> dict:
         season_meta[fmt] = [item["season"] for item in seasons]
         for season_info in seasons:
             season, season_url = season_info["season"], season_info["url"]
-            html = fetch(season_url)
+            html = fetch_counter_source(season_url)
             links = leader_links(html, season_url)
             print(f"Season S{season} {fmt}: parsed {len(links)} leader links; HTML preview: {html[:1800]}")
             # Follow all public pages of leader links; the site exposes the real
