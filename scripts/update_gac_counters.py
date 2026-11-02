@@ -128,8 +128,7 @@ def parse_counter_page(html: str, fmt: str, leader: dict, season: int) -> list[d
             images = [n for n in candidate.walk() if is_character_image(n)]
             text = node_text(candidate)
             if (len(images) == size and re.search(r"\bSeen\s+[\d,.]+\s*[KMB]?", text, re.I)
-                    and re.search(r"\bWin\s*%\s*[\d.,]+\s*%", text, re.I)
-                    and re.search(r"\bAvg(?:\s+Banners?)?\s+[\d.,]+", text, re.I)):
+                    and re.search(r"\bWin\s*%\s*[\d.,]+\s*%", text, re.I)):
                 chosen = (images, text)
                 break
             candidate = candidate.parent
@@ -145,15 +144,15 @@ def parse_counter_page(html: str, fmt: str, leader: dict, season: int) -> list[d
         seen = re.search(r"\bSeen\s+([\d,.]+\s*[KMB]?)", text, re.I)
         win = re.search(r"\bWin\s*%\s*([\d.,]+)\s*%", text, re.I)
         avg = re.search(r"\bAvg(?:\s+Banners?)?\s+([\d.,]+)", text, re.I)
-        if not (seen and win and avg):
+        if not (seen and win):
             continue
         try:
             battles = number_value(seen.group(1))
             win_rate = float(win.group(1).replace(",", "."))
-            banners = float(avg.group(1).replace(",", "."))
+            banners = float(avg.group(1).replace(",", ".")) if avg else None
         except (ValueError, TypeError):
             continue
-        if battles <= 0 or not 0 <= win_rate <= 100 or not 0 <= banners <= 100:
+        if battles <= 0 or not 0 <= win_rate <= 100 or (banners is not None and not 0 <= banners <= 100):
             continue
         seen_signatures.add(signature)
         rows.append({
@@ -168,7 +167,7 @@ def parse_counter_page(html: str, fmt: str, leader: dict, season: int) -> list[d
             "source": leader["url"],
             "scope": "leader",
         })
-    rows.sort(key=lambda row: (-row["battles"], -row["winRate"], -row["averageBanners"]))
+    rows.sort(key=lambda row: (-row["battles"], -row["winRate"], -(row["averageBanners"] or 0)))
     return rows
 
 
