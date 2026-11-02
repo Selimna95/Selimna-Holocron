@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 4.1.3** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 4.1.4** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
@@ -84,3 +84,11 @@ Le catalogue embarqué n'est pas un flux live. Il ne contient actuellement que K
 - Les erreurs de rafraîchissement conservent le dernier instantané cohérent et le signalent dans le journal.
 - La puissance galactique est normalisée et son total est recalculé depuis les puissances terrestre et spatiale si le total est absent.
 - Le service worker met en cache chaque navigation sous sa propre URL, avec un secours hors ligne distinct pour l'accueil et le Sanctuaire bleu. Le cache du catalogue GitHub Raw est désormais réellement intercepté.
+
+
+## Fiabilisation des mods — V4.1.4
+- Les calculs de vitesse des modules actifs utilisent des valeurs numériques, jamais les chaînes localisées destinées à l'affichage.
+- Disciple distingue désormais les secondaires plates et les secondaires en pourcentage (Offense, Offense %, Santé, Santé %, Protection, Protection %, Défense, Défense %).
+- Seigneur Sith marque explicitement « à vérifier » les conformités impossibles à établir faute de référence Kyber et conserve un set Speed complet si la vitesse de base est inconnue.
+- Sith’ari et Acolyte utilisent des additions numériques pour les vitesses projetées et les comparaisons.
+- Le moteur Python applique les bonus de set Speed (+10 % de vitesse de base) et Critical Damage (+30 points) et dispose de tests de non-régression associés.
