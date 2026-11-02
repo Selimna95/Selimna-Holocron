@@ -93,8 +93,8 @@ class OptimizerNormalizationTests(unittest.TestCase):
 
     def test_critical_damage_set_bonus_is_thirty_percentage_points(self):
         build = [{"set": "Critical Damage"} for _ in range(4)]
-        stats = final_stats(build, {"Critical Damage": 150})
-        self.assertAlmostEqual(stats["Critical Damage"], 1.20)
+        stats = final_stats(build, {"Critical Damage": 1.50})
+        self.assertAlmostEqual(stats["Critical Damage"], 1.80)
 
     def test_partial_set_plan_rejects_excess_sets(self):
         build = [{"set": "Health"}, {"set": "Health"}]
