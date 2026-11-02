@@ -215,7 +215,7 @@ try {
   assert.equal(rawCatalogAccessible, true, "The GitHub Raw catalogue must be readable cross-origin from the Pages app.");
   const blueResponse = await page.goto(origin + "/blue-gac/", { waitUntil: "domcontentloaded" });
   assert.equal(blueResponse?.status(), 200, "The blue GAC page must return HTTP 200");
-  assert.match(await page.title(), /V4\.1\.0/);
+  assert.match(await page.title(), /V4\.2\.0/);
   assert.equal(await page.locator("#modeView").isVisible(), true);
   await page.locator('[data-mode="5v5"]').click();
   await page.locator('[data-tier="Kyber"]').click();
@@ -223,6 +223,13 @@ try {
   await page.locator("#padawanView").waitFor({ state: "visible" });
   assert.equal(await page.locator("#teamResults").count(), 1, "The Padawan result area must be present.");
   assert.match(await page.locator("#padawanStatus").textContent(), /catalogue dynamique|compositions observées|équipes défensives retenues|classement actuel/i);
+  await page.locator("#backToAccess").click();
+  await page.locator('[data-access="Maître Jedi"]').click();
+  await page.locator("#masterView").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#enemyDefenseSelect").count(), 1, "Maître Jedi must expose enemy defense selection.");
+  assert.equal(await page.locator("#buildAttackPlan").isVisible(), true, "Maître Jedi must expose the global attack plan action.");
+  await page.locator("#counterSourceStatus").waitFor({ state: "visible" });
+  assert.match(await page.locator("#counterSourceStatus").textContent(), /counters|collecte|défenses disponibles/i);
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
   console.log("Browser smoke passed: shell, navigation, six-slot invariant, characterId ownership, and numeric slot aliases.");
