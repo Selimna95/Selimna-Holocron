@@ -155,7 +155,8 @@ function initMasterPlanner(){
  if(status){
   if(!counterReady)status.textContent='Défenses disponibles : '+masterDefenseOptions.length+'. Chargement des counters d’attaque…';
   else if(counterError)status.textContent='Défenses disponibles : '+masterDefenseOptions.length+'. Données de counters indisponibles : '+counterError;
-  else status.textContent='Défenses disponibles : '+masterDefenseOptions.length+'. Counters chargés : '+counterCatalog.counters.length+' confrontations observées · relevé du '+new Date(counterCatalog.updatedAt).toLocaleString('fr-FR')+'.';
+  else if(!counterCatalog.counters.length)status.textContent='Défenses disponibles : '+masterDefenseOptions.length+'. Le catalogue de counters est prêt mais attend sa première collecte SWGOH.GG ; aucune statistique ne sera inventée.';
+  else status.textContent='Défenses disponibles : '+masterDefenseOptions.length+'. '+counterCatalog.counters.length+' confrontations observées · données globales à la saison, par leader défensif · relevé : '+(counterCatalog.updatedAt?new Date(counterCatalog.updatedAt).toLocaleString('fr-FR'):'date non fournie')+'.';
  }
  renderSelectedEnemyDefenses();
 }
@@ -242,6 +243,7 @@ function buildAttackPlan(){
  if(!selectedEnemyDefenses.length){status.textContent='Ajoute au moins une défense adverse avant de construire le plan.';return;}
  if(!counterReady){status.textContent='Les statistiques de counters sont encore en cours de chargement.';return;}
  if(counterError||!counterCatalog){status.textContent='Le catalogue des counters est indisponible : '+(counterError||'aucune donnée reçue')+'.';return;}
+ if(!counterCatalog.counters.length){status.textContent='Aucune collecte SWGOH.GG des counters n’a encore été publiée. Le plan d’attaque reste indisponible tant que les statistiques réelles ne sont pas présentes.';return;}
  var roster=parseRoster().map(canonicalName),rosterSet=new Set(roster);
  if(!roster.length){status.textContent='Aucun roster synchronisé reconnu. Charge ton profil dans le Temple avant de préparer tes attaques.';return;}
  var items=selectedEnemyDefenses.map(function(defense,index){
