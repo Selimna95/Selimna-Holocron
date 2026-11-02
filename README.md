@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 4.1.0** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 4.1.2** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
@@ -8,7 +8,7 @@
 - Thème appliqué directement aux règles existantes pour éviter une feuille de surcouche dédiée.
 
 ## Fonctionnalités
-- Import et synchronisation du profil public SWGOH.GG via un relais HTTP(S) configurable ou par les chemins d’import prévus dans l’application.
+- Import et synchronisation du profil public SWGOH.GG via l’API JSON prioritaire (roster, mods et puissance galactique), avec les pages HTML comme secours.
 - Analyse et optimisation des mods avec un moteur Python exécuté dans Web Worker via Pyodide.
 - Analyse de roster, comparaison aux références Kyber et outils Holocron/Sith’ari.
 - Interface responsive, installation PWA et prise en charge de `prefers-reduced-motion`.

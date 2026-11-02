@@ -560,28 +560,68 @@ function unitToCharacter(u,index=0){const o=u?.data&&typeof u.data==='object'?u.
 function extractApiCharacters(json){const direct=Array.isArray(json?.units)?json.units:[];let out=direct.map(unitToCharacter).filter(Boolean);if(!out.length){const candidates=[];walkObjects(json,o=>{const unit=unitToCharacter(o);if(unit)candidates.push(unit);});out=candidates;}const seen=new Set();return out.filter(x=>{const key=`${x.baseId||''}|${x.name||''}`;if(seen.has(key))return false;seen.add(key);return true;});}
 async function loadRemotePlayer(){
   const allyCode=cleanAllyCode($('allyCode').value);if(allyCode.length!==9){log('Ally Code invalide : 9 chiffres attendus.');return;}
+  accountGalacticPower={total:0,characters:0,ships:0};
   $('loadPlayer').disabled=true;$('loadPlayer').textContent='CHARGEMENT…';$('log').textContent='';const fmt=formatAlly(allyCode);log(`Recherche du joueur ${fmt}…`);
   try{
-    if(workerUrl())log('Relais Cloudflare actif : récupération via relais sécurisé.');else log('Aucun relais configuré : tentative directe depuis le navigateur.');
-    const base=`https://swgoh.gg/p/${allyCode}`,relay=workerUrl();let apiChars=[],apiMods=[];
-    if(relay){log('Tentative API JSON SWGOH.GG via le Worker…');try{const api=await fetchJSON(`${relay}/?ally=${allyCode}&path=api-profile`);apiChars=extractApiCharacters(api);apiMods=extractApiMods(api);log(`API : ${apiChars.length} unités candidates, ${apiMods.length} mods candidats.`);}catch(e){log(`API profil indisponible : ${e.message}`);}if(!apiMods.length){try{const apiModsJson=await fetchJSON(`${relay}/?ally=${allyCode}&path=api-mods`);apiMods=extractApiMods(apiModsJson);log(`API mods : ${apiMods.length} mods candidats.`);}catch(e){log(`API mods indisponible : ${e.message}`);}}}
-    const profileText=await fetchText(`${base}/`),profileDoc=parseHTML(profileText),title=profileDoc.querySelector('h1')?.textContent?.trim()||'Joueur',bodyText=profileDoc.body.textContent||'';accountGalacticPower=extractGalacticPowerFromProfile(bodyText);renderGalacticPower();const rosterMatch=bodyText.match(/Roster\s+([0-9,]+)\s+units/i);const modsMatch=bodyText.match(/([0-9,]+)\s+Mods/i);log(`Profil SWGOH.GG trouvé : ${title}.`);if(rosterMatch)log(`Roster annoncé : ${rosterMatch[1]} unités.`);if(modsMatch)log(`Mods annoncés : ${modsMatch[1]}.`);log('Lecture du roster…');
-    if(apiChars.length)log(`Unités directes API retenues : ${apiChars.length}.`);
-    const ownedApi=apiChars.filter(c=>Number(c.level||0)>0||Number(c.gear||0)>0||Number(c.stars||0)>0);
-    let chars=[],ships=[];
-    if(ownedApi.length){const split=splitRosterUnits(ownedApi);chars=split.characters;ships=split.ships;log(`Unités possédées : ${chars.length} personnages + ${ships.length} vaisseaux.`);}else{chars=parseCharacters(parseHTML(await fetchText(`${base}/characters/`)));log(`Fallback HTML : ${chars.length} personnages détectés.`);}
-    rosterCharacters=chars;rosterShips=ships;log(`${chars.length} personnages récupérés (${apiChars.length} unités candidates API, filtrées sur les unités possédées).`);
-    log('Lecture des mods publics pour décoder les statistiques affichées…');
-    const htmlMods=[];
-    for(let page=1;page<=100;page++){
-      const pageMods=parseModsPage(parseHTML(await fetchText(`${base}/mods/?page=${page}`)),page);
-      if(!pageMods.length)break;
-      htmlMods.push(...pageMods);
-      log(`Page mods ${page}: ${pageMods.length} mods.`);
-      if(pageMods.length<30)break;
+    const relay=workerUrl(),base=`https://swgoh.gg/p/${allyCode}`;
+    if(relay)log('Relais Cloudflare actif : récupération API JSON prioritaire.');else log('Aucun relais configuré : tentative directe depuis le navigateur.');
+    let profileApi=null,apiChars=[],apiMods=[],title='Joueur',chars=[],ships=[];
+    if(relay){
+      log('Récupération du profil JSON SWGOH.GG via le Worker…');
+      try{
+        profileApi=await fetchJSON(`${relay}/?ally=${allyCode}&path=api-profile`);
+        apiChars=extractApiCharacters(profileApi);
+        apiMods=extractApiMods(profileApi);
+        title=String(profileApi?.data?.name||profileApi?.name||title);
+        const account=profileApi?.data||{};
+        const total=Number(account.galactic_power||0),characters=Number(account.character_galactic_power||0),fleet=Number(account.ship_galactic_power||0);
+        if(total||characters||fleet)accountGalacticPower={total,characters,ships:fleet};
+        log(`API profil : ${apiChars.length} unités candidates et ${apiMods.length} mods.`);
+      }catch(e){log(`API profil indisponible : ${e.message}`);}
+      if(!apiMods.length){
+        try{const apiModsJson=await fetchJSON(`${relay}/?ally=${allyCode}&path=api-mods`);apiMods=extractApiMods(apiModsJson);log(`API mods séparée : ${apiMods.length} mods candidats.`);}
+        catch(e){log(`API mods séparée indisponible : ${e.message}`);}
+      }
     }
-    // Les pages publiques donnent les valeurs réellement affichées (ex. 8 Speed, 5.88%).
-    // L'API reste un filet de sécurité pour les éventuels mods non présents dans les pages.
+    const ownedApi=apiChars.filter(c=>Number(c.level||0)>0||Number(c.gear||0)>0||Number(c.stars||0)>0);
+    if(ownedApi.length){
+      const split=splitRosterUnits(ownedApi);chars=split.characters;ships=split.ships;
+      log(`Roster API retenu : ${chars.length} personnages + ${ships.length} vaisseaux.`);
+    }
+    // Les pages HTML SWGOH.GG sont un secours uniquement : leur endpoint profil peut répondre 403.
+    let htmlMods=[];
+    if(!ownedApi.length || !profileApi){
+      try{
+        const profileText=await fetchText(`${base}/`),profileDoc=parseHTML(profileText),bodyText=profileDoc.body.textContent||'';
+        title=profileDoc.querySelector('h1')?.textContent?.trim()||title;
+        if(!accountGalacticPower.total)accountGalacticPower=extractGalacticPowerFromProfile(bodyText);
+        const rosterMatch=bodyText.match(/Roster\s+([0-9,]+)\s+units/i),modsMatch=bodyText.match(/([0-9,]+)\s+Mods/i);
+        log(`Profil HTML de secours : ${title}.`);
+        if(rosterMatch)log(`Roster annoncé : ${rosterMatch[1]} unités.`);
+        if(modsMatch)log(`Mods annoncés : ${modsMatch[1]}.`);
+      }catch(e){if(!ownedApi.length)throw e;log(`Page profil HTML ignorée : ${e.message} (API déjà exploitable).`);}
+    }
+    if(!chars.length){
+      const charsDoc=parseHTML(await fetchText(`${base}/characters/`));
+      chars=parseCharacters(charsDoc);
+      log(`Fallback HTML : ${chars.length} personnages détectés.`);
+    }
+    rosterCharacters=chars;rosterShips=ships;
+    log(`${chars.length} personnages récupérés, ${ships.length} vaisseaux.`);
+    renderGalacticPower();
+    if(!apiMods.length){
+      log('Aucun mod fourni par l’API : lecture des pages HTML en secours…');
+      for(let page=1;page<=100;page++){
+        try{
+          const pageMods=parseModsPage(parseHTML(await fetchText(`${base}/mods/?page=${page}`)),page);
+          if(!pageMods.length)break;
+          htmlMods.push(...pageMods);log(`Page mods ${page}: ${pageMods.length} mods.`);
+          if(pageMods.length<30)break;
+        }catch(e){log(`Lecture HTML des mods interrompue à la page ${page}: ${e.message}`);break;}
+      }
+    }
+    // L’API JSON fournit les mods complets (set, slot, tier, primaire et secondaires).
+    // Les pages HTML ne servent qu'à compléter un profil dont l'API ne renvoie pas de mods.
     const apiById=new Map(apiMods.map(m=>[String(m.game_id||''),m]));
     const apiByShape=new Map();
     for(const m of apiMods){
@@ -595,15 +635,16 @@ async function loadRemotePlayer(){
       return api ? normalizeMod({...h,...api,game_id:h.game_id||api.game_id,slot:h.slot||api.slot,set_name:h.set_name||api.set_name,primary_stat:h.primary_stat||api.primary_stat,primary_value:h.primary_value||api.primary_value,character:h.character||api.character||api.location||api.unit_equiped}) : h;
     });
     const seenIds=new Set(merged.map(m=>m.game_id));
-    for(const m of apiMods){ if(!seenIds.has(m.game_id)){ merged.push(m); seenIds.add(m.game_id); } }
+    for(const m of apiMods){if(!seenIds.has(m.game_id)){merged.push(m);seenIds.add(m.game_id);}}
     const seen=new Set();mods=merged.filter(m=>m&&!seen.has(m.game_id)&&seen.add(m.game_id));
-    log(`Mods décodés : ${htmlMods.length} via pages publiques + ${Math.max(0,mods.length-htmlMods.length)} compléments API = ${mods.length}.`);
-    currentData={allyCode,name:title,characters:chars,ships,mods,galacticPower:accountGalacticPower};updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();
-    $('dataInfo').textContent=`Source: SWGOH.GG public pages${workerUrl()?' + Cloudflare Worker relay':''}\nJoueur: ${title}\nAlly Code: ${fmt}\nPersonnages: ${chars.length}\nVaisseaux: ${ships.length}\nUnités totales: ${chars.length+ships.length}\nMods: ${mods.length}\nProfils Kyber disponibles dans cette version: ${Object.keys(profiles).length}`;
-    log(`TERMINÉ : ${chars.length} personnages, ${ships.length} vaisseaux, ${mods.length} mods exploitables.`);if(!mods.length)log('Aucun mod lisible.');showPage('dashboard');
-    window.dispatchEvent(new CustomEvent('holocron:data-updated'));
-    return true;
-  }catch(e){log(`Échec du chargement : ${e.message||e}`);log('Si le relais est configuré et renvoie une erreur HTTP, utilise l’import JSON.');return false;}
+    log(`Mods exploitables : ${apiMods.length} via API + ${htmlMods.length} via HTML de secours = ${mods.length}.`);
+    updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();
+    currentData={allyCode,name:title,characters:chars,ships,mods,galacticPower:accountGalacticPower};
+    $('dataInfo').textContent=`Source: SWGOH.GG API JSON${relay?' via Cloudflare Worker':''}${htmlMods.length?' + HTML secours':''}\nJoueur: ${title}\nAlly Code: ${fmt}\nPersonnages: ${chars.length}\nVaisseaux: ${ships.length}\nUnités totales: ${chars.length+ships.length}\nMods: ${mods.length}\nProfils Kyber disponibles dans cette version: ${Object.keys(profiles).length}`;
+    log(`TERMINÉ : ${chars.length} personnages, ${ships.length} vaisseaux, ${mods.length} mods exploitables.`);
+    if(!mods.length)log('Aucun mod lisible : vérifier la disponibilité de l’API mods.');
+    showPage('dashboard');window.dispatchEvent(new CustomEvent('holocron:data-updated'));return true;
+  }catch(e){log(`Échec du chargement : ${e.message||e}`);log('Le profil API est prioritaire ; si l’API est indisponible, vérifie le relais ou utilise l’import JSON.');return false;}
   finally{$('loadPlayer').disabled=false;$('loadPlayer').textContent='CHARGER MON PROFIL';}
 }
 function updateAccountSummary(title,fmt){if($('playerName'))$('playerName').textContent=title||'Profil';if($('playerAlly'))$('playerAlly').textContent=fmt||'—';if($('heroPlayerName'))$('heroPlayerName').textContent=title||'Profil';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent=fmt||'—';setText('topAccountName',title||'—');setText('topProfileState','CONNECTÉ');setText('heroProfileState','CONNECTÉ');}

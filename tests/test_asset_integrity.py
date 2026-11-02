@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.1.1-relay-sync", self.sw)
+        self.assertIn("holocron-static-v4.1.2-api-first", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.0", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -85,9 +85,16 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("fetchTextWithTimeout(u", fetch_text)
         self.assertIn("const candidates=[], relay=workerUrl()", fetch_text)
         self.assertIn("if(relay)", fetch_text)
-        self.assertIn("modules/core.js?v=3.4.5-relay-sync", self.html)
-        self.assertIn("modules/core.js?v=3.4.5-relay-sync", self.sw)
-        self.assertIn("holocron-static-v4.1.1-relay-sync", self.sw)
+        load_player = core.split("async function loadRemotePlayer(){", 1)[1].split("\nfunction updateAccountSummary", 1)[0]
+        self.assertIn("path=api-profile", load_player)
+        self.assertIn("path=api-mods", load_player)
+        self.assertIn("if(!apiMods.length)", load_player)
+        self.assertIn("if(!ownedApi.length || !profileApi)", load_player)
+        self.assertIn("account.character_galactic_power", load_player)
+        self.assertIn("account.ship_galactic_power", load_player)
+        self.assertIn("modules/core.js?v=4.1.2-api-first", self.html)
+        self.assertIn("modules/core.js?v=4.1.2-api-first", self.sw)
+        self.assertIn("holocron-static-v4.1.2-api-first", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
