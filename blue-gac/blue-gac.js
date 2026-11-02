@@ -202,16 +202,16 @@ function countersForDefense(defense,rosterSet){
   var members=(row.attackMembers||[]).map(canonicalName);
   if(members.length!==(fmt==='3v3'?3:5)||!members.every(function(m){return rosterSet.has(m);}))return;
   var key=members.join('|');
-  if(!grouped[key])grouped[key]={members:row.attackMembers.slice(),canonical:members,battles:0,wins:0,banners:0,seasons:[],sources:[]};
+  if(!grouped[key])grouped[key]={members:row.attackMembers.slice(),canonical:members,battles:0,wins:0,banners:0,bannerBattles:0,seasons:[],sources:[]};
   var g=grouped[key],n=Number(row.battles)||0;
-  g.battles+=n;g.wins+=(Number(row.winRate)||0)*n;g.banners+=(Number(row.averageBanners)||0)*n;
+  g.battles+=n;g.wins+=(Number(row.winRate)||0)*n;if(row.averageBanners!=null&&Number.isFinite(Number(row.averageBanners))){g.banners+=Number(row.averageBanners)*n;g.bannerBattles+=n;}
   if(g.seasons.indexOf(Number(row.season))<0)g.seasons.push(Number(row.season));
   if(row.source&&g.sources.indexOf(row.source)<0)g.sources.push(row.source);
  });
  return Object.keys(grouped).map(function(key){
-  var g=grouped[key],rate=g.battles?g.wins/g.battles:0,banners=g.battles?g.banners/g.battles:0;
+  var g=grouped[key],rate=g.battles?g.wins/g.battles:0,banners=g.bannerBattles?g.banners/g.bannerBattles:null;
   var lower=wilsonLowerBound(rate,g.battles);
-  return {members:g.members,battles:g.battles,winRate:rate,averageBanners:banners,confidence:lower,seasons:g.seasons.sort(function(a,b){return b-a;}),source:g.sources[0]||'',score:lower*100+banners*.04};
+  return {members:g.members,battles:g.battles,winRate:rate,averageBanners:banners,confidence:lower,seasons:g.seasons.sort(function(a,b){return b-a;}),source:g.sources[0]||'',score:lower*100+(banners==null?0:banners*.04)};
  }).sort(function(a,b){return b.score-a.score||b.battles-a.battles;});
 }
 function allocateAttackPlan(items){
@@ -262,7 +262,7 @@ function buildAttackPlan(){
    var label=document.createElement('strong');label.textContent='COUNTER RETENU';attack.appendChild(label);
    var team=document.createElement('div');team.className='team-members';team.textContent=chosen.members.join(' · ');attack.appendChild(team);
    var stats=document.createElement('div');stats.className='team-stats';
-   stats.textContent='Victoire observée : '+chosen.winRate.toFixed(1)+' % · confiance 95 % : '+(chosen.confidence*100).toFixed(1)+' % · '+chosen.battles.toLocaleString('fr-FR')+' combats · '+chosen.averageBanners.toFixed(1)+' bannières moyennes · '+chosen.seasons.map(function(s){return 'S'+s;}).join(' + ');
+   stats.textContent='Victoire observée : '+chosen.winRate.toFixed(1)+' % · confiance 95 % : '+(chosen.confidence*100).toFixed(1)+' % · '+chosen.battles.toLocaleString('fr-FR')+' combats · '+(chosen.averageBanners==null?'bannières non fournies':chosen.averageBanners.toFixed(1)+' bannières moyennes')+' · '+chosen.seasons.map(function(s){return 'S'+s;}).join(' + ');
    attack.appendChild(stats);
    var link=document.createElement('a');link.href=chosen.source;link.target='_blank';link.rel='noopener';link.className='back';link.textContent='VÉRIFIER LES STATISTIQUES ↗';link.style.display='inline-block';link.style.marginTop='10px';attack.appendChild(link);
    card.appendChild(attack);
@@ -277,7 +277,7 @@ function buildAttackPlan(){
    item.candidates.slice(0,5).forEach(function(candidate){
     var row=document.createElement('div');row.className='master-alternative';
     var names=document.createElement('span');names.textContent=candidate.members.join(' · ');row.appendChild(names);
-    var metric=document.createElement('small');metric.textContent=candidate.winRate.toFixed(1)+' % · '+candidate.battles.toLocaleString('fr-FR')+' combats · '+candidate.averageBanners.toFixed(1)+' bannières';row.appendChild(metric);details.appendChild(row);
+    var metric=document.createElement('small');metric.textContent=candidate.winRate.toFixed(1)+' % · '+candidate.battles.toLocaleString('fr-FR')+' combats · '+(candidate.averageBanners==null?'bannières non fournies':candidate.averageBanners.toFixed(1)+' bannières');row.appendChild(metric);details.appendChild(row);
    });
    card.appendChild(details);
   }
