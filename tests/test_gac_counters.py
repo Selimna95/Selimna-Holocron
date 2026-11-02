@@ -20,6 +20,18 @@ class GacCounterParserTests(unittest.TestCase):
         self.assertEqual(found["3v3"][0]["season"], 83)
         self.assertIn("SEASON_84", found["5v5"][0]["url"])
 
+    def test_reads_seasons_from_select_option_values(self):
+        html = """
+        <select name="season">
+          <option value="CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84">Season 84 - 5v5</option>
+          <option value="CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_83">Season 83 - 3v3</option>
+        </select>
+        """
+        found = season_pages(html)
+        self.assertEqual(found["5v5"][0]["season"], 84)
+        self.assertEqual(found["3v3"][0]["season"], 83)
+        self.assertIn("/season/CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84/", found["5v5"][0]["url"])
+
     def test_extracts_leader_counter_links_with_season_id(self):
         html = """
         <a href="/gac/counters/GLREY/?season_id=CHAMPIONSHIPS_GRAND_ARENA_GA2_EVENT_SEASON_84">Rey Counters</a>
