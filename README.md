@@ -92,5 +92,5 @@ Le catalogue embarqué n'est pas un flux live. Il ne contient actuellement que K
 - Les propositions sont filtrées sur la possession complète des personnages ; l'allocation globale interdit tout personnage réutilisé entre deux attaques.
 - Le classement utilise la borne basse de confiance de Wilson à 95 % pour éviter de surévaluer les taux de victoire issus de petits échantillons.
 - Padawan reste exclusivement dédié à la préparation défensive. Maître Jedi porte l'analyse offensive et l'arbitrage global.
-- Limite de source : les pages publiques de counters SWGOH.GG agrègent les statistiques par leader défensif, pas par composition adverse exacte. L'interface l'indique explicitement ; les résultats ne prétendent donc pas être des statistiques exactes de chaque lineup.
+- Limite de source : les pages publiques de counters SWGOH.GG agrègent les statistiques par leader défensif et globalement à la saison (sans filtre de ligue), pas par composition adverse exacte. L'interface l'indique explicitement ; les résultats ne prétendent donc pas être des statistiques exactes de chaque lineup.
 - Le relevé des counters est publié dans `blue-gac/gac-counters.json` par GitHub Actions. Une absence de données ne déclenche aucune équipe inventée.
