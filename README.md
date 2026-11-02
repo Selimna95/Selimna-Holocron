@@ -1,6 +1,6 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 4.1.3** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Version : 4.2.0** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
 ## Direction artistique et expérience v3.2.0
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
@@ -84,3 +84,13 @@ Le catalogue embarqué n'est pas un flux live. Il ne contient actuellement que K
 - Les erreurs de rafraîchissement conservent le dernier instantané cohérent et le signalent dans le journal.
 - La puissance galactique est normalisée et son total est recalculé depuis les puissances terrestre et spatiale si le total est absent.
 - Le service worker met en cache chaque navigation sous sa propre URL, avec un secours hors ligne distinct pour l'accueil et le Sanctuaire bleu. Le cache du catalogue GitHub Raw est désormais réellement intercepté.
+
+
+## Planification offensive GAC — V4.2.0
+- Maître Jedi permet de sélectionner les défenses adverses observées pour la ligue et le format choisis.
+- Un collecteur distinct récupère les counters SWGOH.GG des deux saisons récentes par format, avec composition d'attaque, nombre de combats, taux de victoire propre au counter et bannières moyennes.
+- Les propositions sont filtrées sur la possession complète des personnages ; l'allocation globale interdit tout personnage réutilisé entre deux attaques.
+- Le classement utilise la borne basse de confiance de Wilson à 95 % pour éviter de surévaluer les taux de victoire issus de petits échantillons.
+- Padawan reste exclusivement dédié à la préparation défensive. Maître Jedi porte l'analyse offensive et l'arbitrage global.
+- Limite de source : les pages publiques de counters SWGOH.GG agrègent les statistiques par leader défensif, pas par composition adverse exacte. L'interface l'indique explicitement ; les résultats ne prétendent donc pas être des statistiques exactes de chaque lineup.
+- Le relevé des counters est publié dans `blue-gac/gac-counters.json` par GitHub Actions. Une absence de données ne déclenche aucune équipe inventée.
