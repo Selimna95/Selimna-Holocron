@@ -23,6 +23,17 @@ function holocronGacUsage(c, season=holocronLatestGacSeason()){
   const uses=Number(record.uses ?? record.usage);
   return Number.isFinite(uses)?Math.max(0,uses):null;
 }
+function holocronModSecondarySpeed(mod){
+  for(let i=1;i<=4;i++){const stat=compactKey(mod?.[`secondary_${i}_stat`]);if(stat==='SPEED'||stat==='VITESSE')return numericValue(mod?.[`secondary_${i}_value`],0);}
+  return 0;
+}
+function holocronAcolyteTransferPreservesSpeed(currentMod,candidateMod,recipientMods){
+  const oldSecondary=holocronModSecondarySpeed(currentMod),newSecondary=holocronModSecondarySpeed(candidateMod);
+  const oldSpeed=numericValue(modTotalSpeed(currentMod),0),newSpeed=numericValue(modTotalSpeed(candidateMod),0);
+  const before=(Array.isArray(recipientMods)?recipientMods:[]).reduce((sum,m)=>sum+numericValue(modTotalSpeed(m),0),0);
+  const after=before-oldSpeed+newSpeed;
+  return newSecondary>oldSecondary&&newSpeed>oldSpeed&&after+1e-9>=before;
+}
 function holocronTopChangeCandidates(){
   const gacSeason=holocronLatestGacSeason();
   const units=rosterCharacters
@@ -45,19 +56,12 @@ function holocronTopChangeCandidates(){
     (b.gacUses===null?-1:b.gacUses) - (a.gacUses===null?-1:a.gacUses)
   );
 
-  const secondarySpeedValue=mod=>{
-    for(let i=1;i<=4;i++){
-      const stat=compactKey(mod?.[`secondary_${i}_stat`]);
-      if(stat==='SPEED'||stat==='VITESSE')return numericValue(mod?.[`secondary_${i}_value`],0);
-    }
-    return 0;
-  };
   // Les donneurs sont exclusivement les personnages réellement incomplets,
   // très faibles ou faibles selon le statut global de leurs six emplacements.
   // Un mod individuellement rapide reste éligible s'il appartient à un donneur
   // globalement faible : c'est précisément le stock intéressant à redistribuer.
   const donorWeakness=unit=>{
-    const speeds=unit.mods.map(secondarySpeedValue).sort((a,b)=>a-b);
+    const speeds=unit.mods.map(holocronModSecondarySpeed).sort((a,b)=>a-b);
     const count=speeds.length||1;
     const noSpeed=speeds.filter(v=>v===0).length;
     const veryLow=speeds.filter(v=>v>0&&v<=5).length;
@@ -125,17 +129,16 @@ function holocronTopChangeCandidates(){
   // peuvent être proposés, même un mod individuel avec une vitesse élevée.
   for(const r of units){
     const targetMods=[...r.mods].sort((a,b)=>
-      secondarySpeedValue(a)-secondarySpeedValue(b) ||
+      holocronModSecondarySpeed(a)-holocronModSecondarySpeed(b) ||
       numericValue(modTotalSpeed(a),0)-numericValue(modTotalSpeed(b),0)
     );
     for(const currentMod of targetMods){
       if(!isUnambiguouslyOwnedBy(currentMod,r.c))continue;
-      const oldSecondarySpeed=secondarySpeedValue(currentMod);
+      const oldSecondarySpeed=holocronModSecondarySpeed(currentMod);
       if(oldSecondarySpeed>9)continue;
       const before=holocronModScoreForCharacter(currentMod,r.c);
       const kyberBefore=holocronKyberFit(currentMod,r.c);
       const oldSpeed=numericValue(modTotalSpeed(currentMod),0);
-      const recipientSpeedBefore=r.mods.reduce((sum,m)=>sum+numericValue(modTotalSpeed(m),0),0);
 
       for(const d of units){
         if(characterKey(d.c)===characterKey(r.c))continue;
@@ -158,22 +161,9 @@ function holocronTopChangeCandidates(){
           const newPrimaryValue=Number(donorMod.primary_value);
           if(!Number.isFinite(oldPrimaryValue)||!Number.isFinite(newPrimaryValue)||newPrimaryValue<oldPrimaryValue)continue;
 
-          const newSecondarySpeed=secondarySpeedValue(donorMod);
+          const newSecondarySpeed=holocronModSecondarySpeed(donorMod);
           const newSpeed=numericValue(modTotalSpeed(donorMod),0);
-          // La cible doit gagner de la vitesse. La baisse éventuelle est tolérée
-          // uniquement côté donneur, qui récupère le mod lent de la cible.
-          if(newSecondarySpeed<=oldSecondarySpeed || newSpeed<=oldSpeed)continue;
-          const recipientSpeedAfter=recipientSpeedBefore-oldSpeed+newSpeed;
-          if(recipientSpeedAfter<recipientSpeedBefore)continue;
-
-          const after=holocronModScoreForCharacter(donorMod,r.c);
-          const gain=after-before;
-          const gainPct=(gain/Math.max(Math.abs(before),1))*100;
-          const kyberGain=holocronKyberFit(donorMod,r.c)-kyberBefore;
-          // La compatibilité slot/set/primaire, la hausse de vitesse secondaire
-          // et l'absence de baisse de vitesse totale cible sont les critères
-          // de validité. Le score composite ne doit pas supprimer ces échanges
-          // valides uniquement parce que son gain relatif est inférieur à 1 %.
+          if(!holocronAcolyteTransferPreservesSpeed(currentMod,donorMod,r.mods))continue;
 
           const donorBefore=holocronModScoreForCharacter(donorMod,d.c);
           const donorAfter=holocronModScoreForCharacter(currentMod,d.c);

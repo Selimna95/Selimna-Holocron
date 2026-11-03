@@ -439,13 +439,7 @@ function reallocationSecondaryOptions(){
   }
   return [...names.values()].sort((a,b)=>a.localeCompare(b,'fr'));
 }
-function reallocationModOwnerKey(mod){
-  const ownerKey=modOwnerKey(mod);
-  if(!ownerKey)return '';
-  const matches=rosterCharacters.filter(c=>[characterKey(c),compactKey(c?.name),compactKey(c?.baseId),compactKey(c?.base_id),compactKey(c?.characterId),compactKey(c?.character_id)].filter(Boolean).some(k=>k===ownerKey));
-  // Une correspondance partielle ou plusieurs propriétaires possibles ne sont pas une attribution fiable.
-  return matches.length===1?characterKey(matches[0]):'';
-}
+function reallocationModOwnerKey(mod){return resolveModOwnerKey(mod);}
 function reallocationModBelongsToSelection(mod){
   if(reallocationSpeedTier===null || !reallocationCharacterKey || !mod)return false;
   return reallocationSpeedTierMatch(mod,reallocationSpeedTier) && reallocationModOwnerKey(mod)===reallocationCharacterKey;
@@ -559,41 +553,14 @@ function reallocationCandidateSecondary(candidate,secondaryKey){
 function reallocationSourceRows(selected){
   const rows=[];
   const selectedId=String(selected?.game_id||selected?.id||'');
-  const selectedOwner=modOwnerKey(selected);
   const selectedKeys=discipleModKeys(selected);
   if(!selectedKeys.slot||!selectedKeys.set||!selectedKeys.primary)return rows;
 
-  // Résolution exacte des propriétaires. Le baseId du jeu prime sur les noms
-  // affichés qui peuvent entrer en collision (Rey, Maul, Ahsoka Tano, Sith Trooper).
-  const aliasOwners=new Map(),baseIdOwners=new Map(),characterByKey=new Map();
-  for(const c of rosterCharacters){
-    if(rosterUnitType(c)==='ship')continue;
-    const ck=characterKey(c);
-    characterByKey.set(ck,c);
-    const base=compactKey(c?.baseId??c?.base_id??c?.characterId??c?.character_id);
-    if(base){
-      if(!baseIdOwners.has(base))baseIdOwners.set(base,new Set());
-      baseIdOwners.get(base).add(ck);
-    }
-    const aliases=new Set([c?.baseId,c?.base_id,c?.characterId,c?.character_id,c?.name,c?.character].map(compactKey).filter(Boolean));
-    for(const alias of aliases){
-      if(!aliasOwners.has(alias))aliasOwners.set(alias,new Set());
-      aliasOwners.get(alias).add(ck);
-    }
-  }
-  const ownerToCharacter=new Map();
-  for(const [alias,owners] of baseIdOwners)if(owners.size===1)ownerToCharacter.set(alias,[...owners][0]);
-  for(const [alias,owners] of aliasOwners){
-    // Un alias de nom ne peut jamais détourner un baseId existant.
-    if(!ownerToCharacter.has(alias)&&!baseIdOwners.has(alias)&&owners.size===1)ownerToCharacter.set(alias,[...owners][0]);
-  }
-
-  const normalizedMods=mods.map(raw=>normalizeModForDisplay(raw));
-  const modsByCharacter=new Map();
+  const ownerResolver=buildRosterOwnerResolver(rosterCharacters),selectedOwnerKey=resolveModOwnerKey(selected,ownerResolver),characterByKey=new Map();
+  for(const c of rosterCharacters){if(rosterUnitType(c)!=='ship')characterByKey.set(characterKey(c),c);}
+  const normalizedMods=mods.map(raw=>normalizeModForDisplay(raw)),modsByCharacter=new Map();
   for(const m of normalizedMods){
-    const owner=modOwnerKey(m);
-    const ck=ownerToCharacter.get(owner);
-    if(!ck)continue;
+    const ck=ownerResolver.resolve(modOwnerKey(m));if(!ck)continue;
     if(!modsByCharacter.has(ck))modsByCharacter.set(ck,[]);
     modsByCharacter.get(ck).push(m);
   }
@@ -608,12 +575,20 @@ function reallocationSourceRows(selected){
     if(selectedId&&id===selectedId)continue;
     const keys=discipleModKeys(m);
     if(keys.slot!==selectedKeys.slot||keys.set!==selectedKeys.set||keys.primary!==selectedKeys.primary)continue;
-    const owner=modOwnerKey(m);
-    const ownerKey=ownerToCharacter.get(owner);
-    if(!ownerKey||owner===selectedOwner)continue;
+    const ownerKey=resolveModOwnerKey(m,ownerResolver);
+    if(!ownerKey||ownerKey===selectedOwnerKey)continue;
     const st=allowedOwners.get(ownerKey);
     if(!st)continue;
     rows.push({character:characterByKey.get(ownerKey),mod:m,status:st.status,class:st.class,speed:modTotalSpeed(m)});
+  }
+  return rows;
+}
+function discipleSpeedSafeCandidates(selected,sourceRows,secondaryKey){
+  const currentSpeed=numericValue(modTotalSpeed(selected),0),rows=[];
+  for(const row of Array.isArray(sourceRows)?sourceRows:[]){
+    if(numericValue(row?.speed,0)+1e-9<currentSpeed)continue;
+    const match=reallocationCandidateSecondary(row.mod,secondaryKey);
+    if(match)rows.push({...row,value:match.value});
   }
   return rows;
 }
@@ -627,14 +602,8 @@ function renderReallocationResults(){
   if(!secondaryKey){box.innerHTML='<div class="empty">Choisissez une seule secondaire recherchée.</div>';return;}
   const selectedKeys=discipleModKeys(selected);
   const currentSpeed=modTotalSpeed(selected);
-  const sourceRows=reallocationSourceRows(selected), rows=[];
-  // Disciple may improve other stats, but never at the cost of target speed.
-  for(const r of sourceRows){
-    if(num(r.speed,0)<num(currentSpeed,0))continue;
-    const match=reallocationCandidateSecondary(r.mod,secondaryKey);
-    if(match)rows.push({...r,value:match.value});
-  }
-  rows.sort((a,b)=>b.speed-a.speed||b.value-a.value||String(a.character?.name||'').localeCompare(String(b.character?.name||''),'fr'));
+  const sourceRows=reallocationSourceRows(selected);
+  const rows=discipleSpeedSafeCandidates(selected,sourceRows,secondaryKey);
   const scope=['INCOMPLETS','TRÈS FAIBLES','FAIBLES'].filter(x=>x==='INCOMPLETS'?$('reallocationIncomplete')?.checked!==false:x==='TRÈS FAIBLES'?$('reallocationVeryLow')?.checked!==false:$('reallocationLow')?.checked!==false).join(' + ')||'AUCUNE SOURCE';
   const reference=`${selectedKeys.slot} · ${selectedKeys.set} · ${selectedKeys.primary}`;
   const topRows=rows.slice(0,5);

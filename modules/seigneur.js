@@ -158,10 +158,9 @@ function forgeCharacterAudit(character,profile){
   return {equipped,issues,primaryBySlot,setRules:rules};
 }
 function forgeAllSourceMods(){
-  const out=[];
+  const out=[],ownerResolver=buildRosterOwnerResolver(rosterCharacters);
   for(const raw of mods){
-    const m=normalizeModForDisplay(raw);
-    const ownerKey=modOwnerKey(m);
+    const m=normalizeModForDisplay(raw),ownerKey=resolveModOwnerKey(m,ownerResolver);
     const owner=rosterCharacters.find(c=>characterKey(c)===ownerKey);
     if(owner&&isGalacticLegendCharacter(owner))continue;
     const st=owner?v176ModStatus(getCharacterMods(owner)).status:'INVENTAIRE';
@@ -225,36 +224,30 @@ function forgeSpeedSetCount(modList){
 function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
   const modSpeed=list.reduce((sum,m)=>sum+numericValue(modTotalSpeed(m),0),0);
-  const stats=baseStatsForCharacter(character)||{};
-  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??stats.Speed??stats.speed,0);
+  // Do not mistake a displayed/current stat block for a base stat: that could
+  // overestimate the 4-piece Speed-set bonus and let a real speed loss through.
+  const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
+    character?.raw?.baseStats||character?.data?.base_stats||optimizerProfileForCharacter(character)?.base_stats||{};
+  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,0);
   const hasFourPieceSpeedSet=forgeSpeedSetCount(list)>=4;
-  // A complete Speed set grants 10% of base Speed. Include it in the
-  // comparison; counting only the candidate mod can hide a real character loss.
-  const setBonus=hasFourPieceSpeedSet&&Number.isFinite(baseSpeed)&&baseSpeed>0?baseSpeed*0.1:0;
-  return {total:modSpeed+setBonus,modSpeed,setBonus,hasFourPieceSpeedSet};
+  const setBonus=hasFourPieceSpeedSet&&baseSpeed>0?baseSpeed*0.1:0;
+  return {total:modSpeed+setBonus,modSpeed,setBonus,hasFourPieceSpeedSet,baseSpeed};
+}
+function forgeCandidatePreservesSpeed(character,profile,equipped,current,candidate){
+  if(!current)return true;
+  const currentId=String(current.game_id||current.id||''),currentSlot=optimizerSlotKey(current.slot);
+  const after=(Array.isArray(equipped)?equipped:[]).filter(m=>currentId?String(m.game_id||m.id||'')!==currentId:optimizerSlotKey(m.slot)!==currentSlot);
+  after.push(candidate);
+  const beforeProjection=forgeProjectedModSpeed(character,profile,equipped),afterProjection=forgeProjectedModSpeed(character,profile,after);
+  if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return false;
+  return afterProjection.total+1e-9>=beforeProjection.total;
 }
 function forgeSearchCandidates(character,profile,slot,secA,secB){
-  const equipped=getCharacterMods(character);
-  const current=equipped.find(m=>forgeSlotCompatible(m,slot));
+  const equipped=getCharacterMods(character),current=equipped.find(m=>forgeSlotCompatible(m,slot));
   const source=forgeAllSourceMods().filter(m=>forgeSourceAllowedForSearch(m)&&forgeSlotCompatible(m,slot));
-  const currentSpeed=current?numericValue(modTotalSpeed(current),0):0;
-  const currentProjection=forgeProjectedModSpeed(character,profile,equipped);
-  // Hard guard: compare the whole target configuration, including a complete
-  // 4-piece Speed-set bonus, before a candidate is eligible for ranking.
   const candidates=source.filter(m=>{
     if(String(m.game_id||m.id||'')===String(current?.game_id||current?.id||''))return false;
-    const candidateSpeed=Number(modTotalSpeed(m));
-    if(current&&(!Number.isFinite(candidateSpeed)||candidateSpeed<currentSpeed))return false;
-    if(current){
-      const after=equipped.filter(x=>String(x.game_id||x.id||'')!==String(current.game_id||current.id||''));
-      after.push(m);
-      const afterProjection=forgeProjectedModSpeed(character,profile,after);
-      // Sans base Speed fiable, conserver intégralement un set Speed déjà complet :
-      // on ne peut pas chiffrer la perte du bonus de set autrement.
-      if(currentProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return false;
-      if(afterProjection.total+1e-9<currentProjection.total)return false;
-    }
-    return true;
+    return forgeCandidatePreservesSpeed(character,profile,equipped,current,m);
   });
   const ranked=candidates.map(m=>({...m,_rank:forgeCandidateScore(m,profile,secA,secB)})).sort((x,y)=>{
     if(Number(y._rank.both)-Number(x._rank.both))return Number(y._rank.both)-Number(x._rank.both);
@@ -361,12 +354,8 @@ function renderForgeSearchResults(character,profile){
   const result=forgeSearchCandidates(character,profile,slot,a,b);
   // Seconde barrière au rendu : un candidat plus lent que le mod actuel
   // ne doit jamais parvenir jusqu'à une carte de proposition.
-  const currentSpeed=result.current?Number(modTotalSpeed(result.current)):null;
-  const rows=result.candidates.filter(m=>!result.current||(
-    Number.isFinite(Number(modTotalSpeed(m))) &&
-    Number(modTotalSpeed(m))>=currentSpeed &&
-    forgeProjectedModSpeed(character,profile,[...getCharacterMods(character).filter(x=>String(x.game_id||x.id||'')!==String(result.current.game_id||result.current.id||'')),m]).total+1e-9>=forgeProjectedModSpeed(character,profile,getCharacterMods(character)).total
-  ));
+  const equipped=getCharacterMods(character);
+  const rows=result.candidates.filter(m=>forgeCandidatePreservesSpeed(character,profile,equipped,result.current,m));
   if(!rows.length){box.innerHTML=`<div class="forge-no-result"><b>AUCUN CANDIDAT SANS PERTE DE VITESSE</b><span>Aucun mod du périmètre <strong>${esc(forgeSearchSourceSummary())}</strong> ne respecte les secondaires recherchées tout en conservant la vitesse du personnage et ses bonus de set Speed. Active MOYENS ou TOUT LE ROSTER pour élargir le choix, sans assouplir cette règle.</span></div>`;return;}
   box.innerHTML=`<div class="forge-search-header"><div><span>ARSENAL DISPONIBLE</span><b>${result.sourceCount} mods · ${rows.length} choix affichés</b></div><strong>${result.usedBoth?'✓ DEUX SECONDAIRES':'→ UNE SECONDAIRE · MEILLEUR APPORT'}</strong></div><div class="forge-candidate-grid">${rows.map((m,i)=>{const r=m._rank;const secs=forgeSecondaryStats(m);const hit=secs.filter(x=>compactKey(x.stat)===compactKey(a)||compactKey(x.stat)===compactKey(b));return `<article class="forge-candidate ${r.both?'both':''}"><div class="forge-candidate-rank"><span>${String(i+1).padStart(2,'0')}</span><b>${r.both?'✓✓':'✓'}</b></div><div class="forge-candidate-icon">${modIconHtml(m,'58')}</div><div class="forge-candidate-main"><div class="forge-candidate-owner">${forgeSourcePortrait(m._sourceOwner)}<span>${esc(m._sourceOwner||'Libre')}</span></div><strong>${esc(m.slot)} · ${esc(m.set_name||'—')}</strong><small>${esc(m._sourceStatus||'—')}</small><div class="forge-candidate-primary"><span>PRIMAIRE</span><b>${esc(m.primary_stat||'—')}</b>${r.primary?'✓ KYBER':''}</div><div class="forge-candidate-seconds">${secs.map(x=>`<span class="${hit.some(h=>compactKey(h.stat)===compactKey(x.stat))?'hit':''}">${esc(x.stat)} <b>${num(x.value,1)}</b></span>`).join('')}</div></div>${forgeModDeltaMarkup(result.current,m,character?.name)}<div class="forge-candidate-speed"><span>VITESSE</span><b>${num(modTotalSpeed(m),0)}</b><small>${r.set?'SET KYBER':'SET différent'}</small></div></article>`;}).join('')}</div>`;
 }
