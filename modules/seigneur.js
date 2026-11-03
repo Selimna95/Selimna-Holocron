@@ -288,30 +288,63 @@ function forgeCharacterAudit(character,profile){
   });
   return {equipped,issues,primaryBySlot,setRules:rules};
 }
-function forgeAllSourceMods(){
+function forgeAllSourceMods(targetCharacter=null){
   const out=[],ownerResolver=buildRosterOwnerResolver(rosterCharacters);
   const season=seigneurLatestGacUsageSeason();
+  const targetKey=targetCharacter?characterKey(targetCharacter):'';
   const priorities=new Map((rosterCharacters||[]).map(character=>[
     characterKey(character),seigneurDonorPriority(character,season)
   ]));
   for(const raw of mods){
     const m=normalizeModForDisplay(raw),ownerKey=resolveModOwnerKey(m,ownerResolver);
     const owner=rosterCharacters.find(c=>characterKey(c)===ownerKey);
-    if(owner&&isGalacticLegendCharacter(owner))continue;
+    if(owner&&isGalacticLegendCharacter(owner)&&ownerKey!==targetKey)continue;
     const st=owner?v176ModStatus(getCharacterMods(owner)).status:'INVENTAIRE';
-    const priority=owner?priorities.get(ownerKey):{known:true,uses:-1,characterUses:0,fleetUses:0,shipCount:0,reason:'Mod libre'};
-    out.push({...m,_sourceStatus:st,_sourceOwner:owner?.name||m.character||'Libre',
-      _sourcePriorityKnown:priority?.known===true,_sourceUsage:priority?.uses??Number.POSITIVE_INFINITY,
-      _sourceCharacterUses:priority?.characterUses??null,_sourceFleetUses:priority?.fleetUses??null,
-      _sourceShipCount:priority?.shipCount??0,_sourcePriorityReason:priority?.reason||'Usage GAC inconnue'});
+    const isTarget=!!owner&&ownerKey===targetKey;
+    const priority=owner?priorities.get(ownerKey):{known:true,uses:0,characterUses:0,fleetUses:0,shipCount:0,reason:'Mod libre'};
+    out.push({...m,_sourceStatus:st,_sourceOwner:owner?.name||m.character||'Libre',_sourceOwnerKey:ownerKey,
+      _sourcePriorityKnown:isTarget||priority?.known===true,_sourceUsage:isTarget?0:(priority?.uses??Number.POSITIVE_INFINITY),
+      _sourceCharacterUses:isTarget?0:(priority?.characterUses??null),_sourceFleetUses:isTarget?0:(priority?.fleetUses??null),
+      _sourceShipCount:priority?.shipCount??0,_sourcePriorityReason:isTarget?'Mod déjà équipé sur la cible':priority?.reason||'Usage GAC inconnue',
+      _source_usage:isTarget?0:(priority?.uses??Number.POSITIVE_INFINITY),
+      _source_character_uses:isTarget?0:(priority?.characterUses??null),_source_fleet_uses:isTarget?0:(priority?.fleetUses??null)});
   }
   return out;
 }
-function forgeSourceAllowedForSearch(m){
+function forgeSourceAllowedForSearch(m,targetCharacter=null){
+  const targetKey=targetCharacter?characterKey(targetCharacter):'';
+  if(targetKey&&m?._sourceOwnerKey===targetKey)return true;
   // Un mod libre est disponible. Un mod équipé n'est récupérable que si les
   // usages terrestre ET flotte du donneur sont connus : aucune protection
   // implicite ne peut être levée sur une donnée manquante.
-  return !m?._sourceOwner||m._sourceOwner==='Libre'||m._sourcePriorityKnown===true;
+  return !m?._sourceOwnerKey||m._sourcePriorityKnown===true;
+}
+function forgeScopedModsForCharacter(character){
+  return forgeAllSourceMods(character).filter(mod=>forgeSourceAllowedForSearch(mod,character));
+}
+function forgeDonorSummary(character){
+  const scoped=forgeScopedModsForCharacter(character),groups=new Map();
+  for(const mod of scoped){
+    const key=mod._sourceOwnerKey||'INVENTORY';
+    if(!groups.has(key))groups.set(key,{key,name:mod._sourceOwner||'Inventaire libre',mods:0,uses:mod._sourceUsage??0,characterUses:mod._sourceCharacterUses??0,fleetUses:mod._sourceFleetUses??0,free:key==='INVENTORY'});
+    groups.get(key).mods++;
+  }
+  const donors=[...groups.values()].sort((a,b)=>a.uses-b.uses||b.mods-a.mods);
+  return {mods:scoped,donors,freeMods:donors.find(x=>x.free)?.mods||0};
+}
+function renderSeigneurTargetAudit(character,profile){
+  const audit=forgeCharacterAudit(character,profile);
+  const mismatches=audit.issues.filter(x=>x._mismatch).length;
+  const unknown=audit.issues.filter(x=>x._unknown).length;
+  const cards=audit.issues.map(m=>`<div class="forge-current-mod ${m._mismatch?'is-mismatch':m._unknown?'is-unknown':'is-match'}"><span>${modIconHtml(m,'48')}</span><b>${esc(m.slot||'—')}</b><small>${m._mismatch?'ÉCART':m._unknown?'À VÉRIFIER':'CONFORME'}</small><em>${esc(m.set_name||'—')}</em></div>`).join('');
+  $('forgeCharacterAudit').innerHTML=`<div class="forge-audit-character"><div class="forge-audit-character-portrait">${essentialPortraitHtml(character)}</div><div><span>PERSONNAGE CIBLE</span><strong>${esc(character?.name||'Personnage')}</strong><small>Optimisation simultanée des six emplacements</small></div></div><div class="forge-audit-summary"><div><span>MODS ÉQUIPÉS</span><b>${audit.equipped.length}/6</b></div><div><span>ÉCARTS KYBER</span><b>${mismatches}</b></div><div><span>À VÉRIFIER</span><b>${unknown}</b></div><div><span>RÉFÉRENCE</span><b>${forgeKyberSetDistribution(profile).length?'CHARGÉE':'PARTIELLE'}</b></div></div><div class="forge-current-mods">${cards}</div><div class="forge-mismatch-list"><div class="forge-audit-empty">Le moteur va rechercher une configuration complète de six mods. Les sources sont classées selon l'utilisation GAC terrestre et celle des vaisseaux associés aux pilotes. La qualité actuelle des mods ne détermine pas la disponibilité du donneur.</div></div>`;
+}
+function renderSeigneurDonorPanel(character){
+  const summary=forgeDonorSummary(character);
+  const donors=summary.donors.filter(x=>!x.free).slice(0,12);
+  const donorRows=donors.map((d,i)=>`<div class="forge-ref-row"><span>${String(i+1).padStart(2,'0')}</span><b>${esc(d.name)}</b><em>${num(d.mods)} mods · GAC ${num(d.characterUses)} terrestre + ${num(d.fleetUses)} flotte</em></div>`).join('');
+  const known=donors.length;
+  $('forgeSearchPanel').innerHTML=`<div class="forge-reference-panel is-live"><div class="forge-reference-head"><div class="forge-reference-identity"><span class="forge-kicker">ARSENAL GLOBAL</span><strong>${summary.mods.length} mods candidats</strong><small>${known} donneurs avec usages GAC vérifiés · ${summary.freeMods} mods libres</small></div><div class="forge-reference-status"><i></i><span>CLASSEMENT GAC ACTIF</span></div></div><div class="forge-reference-columns"><section class="forge-reference-column"><header><span>DONNEURS PRIORITAIRES</span><small>moins utilisés d'abord</small></header>${donorRows||'<div class="forge-ref-empty">Aucun donneur vérifiable. Les données GAC personnages/flottes ou les associations pilotes-vaisseaux sont absentes.</div>'}</section><section class="forge-reference-column"><header><span>RÈGLES DE PROTECTION</span><small>appliquées au vivier</small></header><div class="forge-ref-row"><span>01</span><b>Usage terrestre</b><em>personnages</em></div><div class="forge-ref-row"><span>02</span><b>Usage flotte</b><em>pilotes protégés</em></div><div class="forge-ref-row"><span>03</span><b>GL</b><em>exclues comme donneurs</em></div><div class="forge-ref-row"><span>04</span><b>Données absentes</b><em>donneur non retenu</em></div></section></div></div>`;
 }
 function forgeSearchSourceSummary(){
   if($('optimizerAllRoster')?.checked===true)return 'TOUT LE ROSTER · GL EXCLUES';
@@ -378,7 +411,7 @@ function forgeCandidatePreservesSpeed(character,profile,equipped,current,candida
 }
 function forgeSearchCandidates(character,profile,slot,secA,secB){
   const equipped=getCharacterMods(character),current=equipped.find(m=>forgeSlotCompatible(m,slot));
-  const source=forgeAllSourceMods().filter(m=>forgeSourceAllowedForSearch(m)&&forgeSlotCompatible(m,slot));
+  const source=forgeAllSourceMods(character).filter(m=>forgeSourceAllowedForSearch(m,character)&&forgeSlotCompatible(m,slot));
   const candidates=source.filter(m=>{
     if(String(m.game_id||m.id||'')===String(current?.game_id||current?.id||''))return false;
     return forgeCandidatePreservesSpeed(character,profile,equipped,current,m);
@@ -502,15 +535,24 @@ $('runOptimizer').addEventListener('click',async()=>{
   $('optimizerError').textContent='';
   const character=selectedCharacter();
   if(!character){$('optimizerError').textContent='Sélectionnez un personnage.';return;}
-  $('runOptimizer').disabled=true;$('runOptimizer').textContent='ANALYSE EN COURS…';
-  $('results').innerHTML='<div class="calculating">Analyse du personnage et de sa référence Kyber…</div>';
+  $('runOptimizer').disabled=true;$('runOptimizer').textContent='OPTIMISATION DES 6 MODS…';
+  $('results').innerHTML='<div class="calculating">Construction du vivier GAC et recherche des meilleures combinaisons de six mods…</div>';
   try{
     const profile=await ensureSelectedKyberProfile();
     if(!profile || !kyberProfileValid(profile))throw new Error(`Référence Kyber indisponible pour « ${character.name||character.baseId} ».`);
-    renderForgeCharacterPanel(character,profile);
-    $('results').innerHTML='<div class="forge-results-ready">Référence Kyber identifiée. Sélectionne un mod en écart, deux secondaires, puis lance la recherche ciblée.</div>';
+    renderSeigneurTargetAudit(character,profile);
+    const summary=forgeDonorSummary(character);
+    const scopedMods=summary.mods;
+    const slotCounts=Object.fromEntries(['Square','Arrow','Diamond','Triangle','Circle','Cross'].map(slot=>[slot,scopedMods.filter(m=>forgeSlotCompatible(m,slot)).length]));
+    const missing=Object.entries(slotCounts).filter(([,count])=>count===0).map(([slot])=>slot);
+    if(missing.length)throw new Error(`Recherche impossible : aucun mod candidat pour ${missing.join(', ')}. Les usages GAC terrestres/flottes ou les associations pilotes-vaisseaux sont incomplets. Aucun donneur non vérifié ne sera utilisé.`);
+    renderSeigneurDonorPanel(character);
+    $('results').innerHTML='<div class="calculating">Optimisation complète en cours : comparaison des sets, primaires, secondaires, vitesse et statistiques finales…</div>';
+    const builds=await runOptimizationInWorker(character,profile,5,180,{mode:'seigneur-six-mods',donor_priority:'gac-terrestrial-plus-fleet'},scopedMods);
+    if(!Array.isArray(builds)||!builds.length)throw new Error('Le moteur n’a retourné aucune configuration complète.');
+    renderResults(builds);
   }catch(e){$('optimizerError').textContent=String(e?.message||e);$('results').innerHTML='';}
-  finally{$('runOptimizer').disabled=false;$('runOptimizer').textContent='ANALYSER LE PERSONNAGE';}
+  finally{$('runOptimizer').disabled=false;$('runOptimizer').textContent='OPTIMISER LES 6 MODS';}
 });
 function optimizerStatLabel(key){
   const labels={
@@ -588,7 +630,7 @@ function renderResults(data){
   if(!data.length){$('results').textContent='Aucun build.';return;}
   const character=selectedCharacter();
   const profile=profileForCharacter(character);
-  const scope=optimizerSourceScopeSummary()[0];
+  const scope='DONNEURS CLASSÉS PAR USAGE GAC · TERRESTRE + FLOTTE';
   const rec=optimizerRecommendationSummary(profile);
   const refSets=rec.sets.slice(0,3).map(x=>`${x.label}${x.weight!=null?' · '+(x.weight*100).toFixed(1)+' %':''}`).join(' · ')||'Référence Kyber non détaillée';
   const refSecondaries=rec.secondaries.slice(0,4).map(x=>x.name).join(' · ')||'Secondaires Kyber non détaillées';
