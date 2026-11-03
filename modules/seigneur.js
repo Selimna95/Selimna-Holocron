@@ -123,7 +123,7 @@ function seigneurUsageCount(record){
 function seigneurLatestGacUsageSeason(){
   const seasons=window.__SWGOH_GAC_USAGE__?.seasons;
   if(!Array.isArray(seasons))return null;
-  return seasons.filter(s=>s&&s.season!=null&&(s.characters||s.ships||s.fleets))
+  return seasons.filter(s=>s&&s.season!=null&&((s.characters&&Object.keys(s.characters).length)||(s.ships&&Object.keys(s.ships).length)||(Array.isArray(s.fleets)&&s.fleets.length)))
     .sort((a,b)=>Number(b.season)-Number(a.season))[0]||null;
 }
 function seigneurCharacterGacUsage(character,season=seigneurLatestGacUsageSeason()){
@@ -132,7 +132,7 @@ function seigneurCharacterGacUsage(character,season=seigneurLatestGacUsageSeason
   return seigneurUsageCount(seigneurUsageRecord(season.characters,aliases));
 }
 function seigneurShipCrewAliases(ship){
-  const raw=ship?.raw||ship?.data||ship||{};
+  const raw=ship?.raw?.data||ship?.data||ship?.raw||ship||{};
   const fields=['crew','crewMembers','crew_members','crewIds','crew_ids','crewUnit','crew_unit','crewUnits','crew_units','pilots','crewMember'];
   const out=new Set();
   const add=value=>{
