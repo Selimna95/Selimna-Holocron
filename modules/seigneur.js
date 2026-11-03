@@ -243,7 +243,6 @@ function forgeCandidatePreservesSpeed(character,profile,equipped,current,candida
   if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return false;
   return afterProjection.total+1e-9>=beforeProjection.total;
 }
-}
 function forgeSearchCandidates(character,profile,slot,secA,secB){
   const equipped=getCharacterMods(character),current=equipped.find(m=>forgeSlotCompatible(m,slot));
   const source=forgeAllSourceMods().filter(m=>forgeSourceAllowedForSearch(m)&&forgeSlotCompatible(m,slot));

@@ -61,7 +61,7 @@ function holocronTopChangeCandidates(){
   // Un mod individuellement rapide reste éligible s'il appartient à un donneur
   // globalement faible : c'est précisément le stock intéressant à redistribuer.
   const donorWeakness=unit=>{
-    const speeds=unit.mods.map(secondarySpeedValue).sort((a,b)=>a-b);
+    const speeds=unit.mods.map(holocronModSecondarySpeed).sort((a,b)=>a-b);
     const count=speeds.length||1;
     const noSpeed=speeds.filter(v=>v===0).length;
     const veryLow=speeds.filter(v=>v>0&&v<=5).length;
