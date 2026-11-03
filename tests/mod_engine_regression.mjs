@@ -76,7 +76,7 @@ assert.notEqual(glStart, -1, 'Production GL baseId set exists');
 const glEnd = core.indexOf(']);', glStart) + 3;
 vm.runInContext(core.slice(glStart, glEnd), glContext);
 load(read('../modules/acolyte.js'), ['holocronIsGalacticLegend'], glContext);
-for (const baseId of ['GLREY', 'GLAHSOKATANO', 'GLLEIA', 'JEDIMASTERKENOBI', 'JEDIMASTERLUKE', 'SITHPALPATINE', 'JABBATHEHUTT', 'LORDVADER', 'SUPREMELEADERKYLOREN']) {
+for (const baseId of ['GLREY', 'GLAHSOKATANO', 'GLLEIA', 'JEDIMASTERKENOBI', 'GRANDMASTERLUKE', 'SITHPALPATINE', 'JABBATHEHUTT', 'LORDVADER', 'SUPREMELEADERKYLOREN', 'GLHONDO', 'GLMANDOGROGU']) {
   assert.equal(glContext.holocronIsGalacticLegend({ baseId }), true, 'GL ' + baseId);
 }
 for (const baseId of ['REY', 'GRANDMASTERYODA', 'JEDIKNIGHTLUKE', 'STARKILLER', 'EXECUTOR']) {

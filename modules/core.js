@@ -1171,7 +1171,10 @@ function holocronModScoreForCharacter(mod, character){return holocronModScore(mo
 // Canonical game baseIds for Galactic Legends, plus known historical aliases.
 // Similar-looking non-GL units must not be classified as Galactic Legends.
 const HOLOCRON_GALACTIC_LEGENDS = new Set([
-  'JEDIMASTERKENOBI','JEDIMASTERLUKE','SITHPALPATINE','JABBA','JABBATHEHUTT',
+  // Canonical SWGOH.GG baseIds for all 11 current Galactic Legends.
+  'JEDIMASTERKENOBI','GRANDMASTERLUKE','SITHPALPATINE','JABBATHEHUTT',
   'LORDVADER','SUPREMELEADERKYLOREN','GLREY','GLLEIA','GLAHSOKATANO',
-  'GLAHSOKA','AHSOKATANOGL','JML','SLKR','SEE','JMK','LV'
+  'GLHONDO','GLMANDOGROGU',
+  // Historical aliases retained for older exports.
+  'JEDIMASTERLUKE','JABBA','GLAHSOKA','AHSOKATANOGL','JML','SLKR','SEE','JMK','LV'
 ]);
