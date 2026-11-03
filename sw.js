@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.1.9-seigneur-gac-donors';
+const CACHE_NAME = 'holocron-static-v4.2.0-seigneur-six-mod-optimizer';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -20,7 +20,7 @@ const STATIC_ASSETS = [
   './modules/core.js?v=4.1.8-acolyte-score',
   './modules/acolyte.js?v=3.4.5-candidate-score',
   './modules/disciple.js?v=3.5.2-ranked-candidates',
-  './modules/seigneur.js?v=3.6.0-gac-donor-priority',
+  './modules/seigneur.js?v=3.7.0-six-mod-gac-optimizer',
   './modules/sithari.js?v=4.1.6-owner-resolver',
   './modules/runtime.js?v=3.7.0-sith-portraits',
   './optimizer-worker.mjs?v=3.4.4-cache-sync',
