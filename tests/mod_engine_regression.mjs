@@ -62,13 +62,13 @@ for (const [raw, expected] of [
   ['MAUL', 'MAUL'], ['MAULS7', 'MAULS7'],
   ['SITHTROOPER', 'SITHTROOPER'], ['FOSITHTROOPER', 'FOSITHTROOPER'],
   ['REY', 'REY'], ['GLREY', 'GLREY']
-]) assert.equal(resolver.resolve(raw), expected, \`Owner \${raw}\`);
+]) assert.equal(resolver.resolve(raw), expected, 'Owner ' + raw);
 
 // 2) Run the production Sith'ari cache against the four real collision pairs.
 const sithari = read('../modules/sithari.js');
 const slots = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'];
 const fixtureMods = collisionRoster.flatMap((c, ci) => slots.map((slot, si) => ({
-  id: \`\${c.baseId}-\${slot}\`, game_id: \`\${c.baseId}-\${slot}\`,
+  id: c.baseId + '-' + slot, game_id: c.baseId + '-' + slot,
   character: c.baseId, slot, set_name: 'Speed', primary_stat: 'Health',
   secondary_1_stat: 'Speed', secondary_1_value: 8 + ci + si, level: 15
 })));
@@ -89,8 +89,8 @@ load(sithari, ['sithariEnsureModCache', 'sithariCharacterMods', 'sithariEquipped
 const cache = cacheContext.sithariEnsureModCache();
 for (const c of collisionRoster) {
   const key = cacheContext.characterKey(c);
-  assert.equal(cache.byOwner.get(key)?.length, 6, \`Sith'ari cache ownership for \${c.name}\`);
-  assert.equal(cacheContext.sithariCharacterMods(c).length, 6, \`Sith'ari equipped slots for \${c.name}\`);
+  assert.equal(cache.byOwner.get(key)?.length, 6, 'Sith\'ari cache ownership for ' + c.name);
+  assert.equal(cacheContext.sithariCharacterMods(c).length, 6, 'Sith\'ari equipped slots for ' + c.name);
   assert.equal(cache.statusByOwner.get(key), 'BONS');
 }
 assert.equal(cacheContext.sithariEquippedOwner({ character: 'SITHTROOPER' }), 'SITHTROOPER');
