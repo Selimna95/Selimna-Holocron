@@ -4,25 +4,25 @@ import vm from 'node:vm';
 
 const read = (path) => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
 function extractFunction(source, name) {
-  const marker = \`function \${name}(\`;
+  const marker = 'function ' + name + '(';
   const start = source.indexOf(marker);
-  assert.notEqual(start, -1, \`Missing production function: \${name}\`);
+  assert.notEqual(start, -1, 'Missing production function: ' + name);
   const open = source.indexOf('{', start + marker.length);
   let depth = 0;
   for (let i = open; i < source.length; i++) {
     const ch = source[i], next = source[i + 1];
     if (ch === '/' && next === '/') {
-      i += 2; while (i < source.length && source[i] !== '\n') i++;
+      i += 2; while (i < source.length && source[i] !== String.fromCharCode(10)) i++;
       continue;
     }
     if (ch === '/' && next === '*') {
       i += 2; while (i < source.length - 1 && !(source[i] === '*' && source[i + 1] === '/')) i++;
       i++; continue;
     }
-    if (ch === "'" || ch === '"' || ch === '\`') {
+    if (ch === "'" || ch === '"' || ch === String.fromCharCode(96)) {
       const quote = ch;
       for (i++; i < source.length; i++) {
-        if (source[i] === '\\\\') { i++; continue; }
+        if (source[i] === String.fromCharCode(92)) { i++; continue; }
         if (source[i] === quote) break;
       }
       continue;
@@ -30,12 +30,12 @@ function extractFunction(source, name) {
     if (ch === '{') depth++;
     else if (ch === '}' && --depth === 0) return source.slice(start, i + 1);
   }
-  throw new Error(\`Unclosed function: \${name}\`);
+  throw new Error('Unclosed function: ' + name);
 }
 function load(source, names, context) {
   vm.runInContext(names.map(name => extractFunction(source, name)).join('\n'), context);
 }
-const compactKey = (value) => String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+const compactKey = (value) => String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const numericValue = (value, fallback = 0) => {
   const n = Number(String(value ?? '').replace(',', '.'));
   return Number.isFinite(n) ? n : fallback;
