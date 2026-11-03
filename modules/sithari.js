@@ -118,11 +118,12 @@ function sithariOwnerRaw(value){
   return '';
 }
 function sithariEquippedOwner(m){
-  const raw=sithariOwnerRaw(m?.character) || sithariOwnerRaw(m?.characterName) || sithariOwnerRaw(m?.equippedTo) || sithariOwnerRaw(m?.equipped_to) || sithariOwnerRaw(m?.unit_equiped) || sithariOwnerRaw(m?.unitEquiped) || sithariOwnerRaw(m?.location) || sithariOwnerRaw(m?.usingIn) || sithariOwnerRaw(m?.baseId) || sithariOwnerRaw(m?.base_id) || sithariOwnerRaw(m?.characterId) || sithariOwnerRaw(m?.character_id);
-  if(!raw)return '';
-  const key=compactKey(raw);
-  const hit=rosterCharacters.find(c=>[c?.name,c?.character,c?.baseId,c?.base_id,c?.unitId,c?.unit_id].some(v=>compactKey(v)===key));
-  return hit?characterKey(hit):key;
+  if(!m)return '';
+  const resolver=sithariEnsureModCache().ownerResolver||buildRosterOwnerResolver(rosterCharacters);
+  const candidates=[m?.characterId,m?.character_id,m?.equippedToId,m?.equipped_to_id,m?.ownerId,m?.owner_id,
+    m?.unit_equiped,m?.unitEquiped,m?.equippedTo,m?.equipped_to,m?.characterName,m?.character,m?.location,m?.usingIn,m?.baseId,m?.base_id];
+  for(const value of candidates){const owner=resolver.resolve(value);if(owner)return owner;}
+  return '';
 }
 function sithariSecondaryScore(m,p){
   const focus=p?.secondary_focus||{}; const sec=sithariModSecondaryMap(m); let score=0,count=0;
@@ -177,70 +178,45 @@ function sithariScopeLabel(){
   const scope=sithariScopeState();
   return scope==='ALL'?'TOUT LE ROSTER':(scope.length?scope.join(' + '):'AUCUNE SOURCE');
 }
-let sithariModCache={signature:'',items:[],byOwner:new Map(),statusByOwner:new Map()};
+let sithariModCache={signature:'',items:[],byOwner:new Map(),statusByOwner:new Map(),ownerResolver:null};
 function sithariEnsureModCache(){
-  // Fingerprint every mod's owner/slot/set/primary plus roster identities.
-  // Length and first/last ID alone left stale owners when two profiles had the
-  // same inventory size or when the export omitted mod IDs.
   const modFingerprint=(mods||[]).map(m=>[
-    m?.game_id??m?.id??'',m?.character??m?.characterName??m?.equippedTo??m?.equipped_to??'',
-    m?.unit_equiped??m?.unitEquiped??m?.characterId??m?.character_id??m?.equippedToId??m?.equipped_to_id??m?.ownerId??m?.owner_id??'',
+    m?.game_id??m?.id??'',m?.character??'',m?.characterName??'',m?.equippedTo??'',m?.equipped_to??'',
+    m?.characterId??'',m?.character_id??'',m?.equippedToId??'',m?.equipped_to_id??'',
+    m?.unit_equiped??'',m?.unitEquiped??'',m?.location??'',m?.usingIn??'',m?.ownerId??'',m?.owner_id??'',m?.baseId??'',m?.base_id??'',
     m?.slot??m?.slot_id??m?.slotId??m?.modSlot??'',m?.set_name??m?.set??m?.setId??'',
     m?.primary_stat??m?.primaryStat??'',m?.primary_value??m?.primaryValue??'',m?.level??'',
     m?.secondary_1_stat??'',m?.secondary_1_value??'',m?.secondary_2_stat??'',m?.secondary_2_value??'',
     m?.secondary_3_stat??'',m?.secondary_3_value??'',m?.secondary_4_stat??'',m?.secondary_4_value??''
   ].join('~')).join('|');
   const rosterFingerprint=(rosterCharacters||[]).map(c=>[
-    characterKey(c),c?.characterId??'',c?.character_id??'',c?.unitId??'',c?.unit_id??'',c?.id??''
+    characterKey(c),c?.name??'',c?.character??'',c?.baseId??'',c?.base_id??'',c?.characterId??'',c?.character_id??'',c?.unitId??'',c?.unit_id??'',c?.id??''
   ].join('~')).join('|');
-  const signature=`${modFingerprint}||${rosterFingerprint}`;
+  const signature=String(modFingerprint)+'||'+String(rosterFingerprint);
   if(sithariModCache.signature===signature)return sithariModCache;
-  const aliases=new Map();
-  for(const c of rosterCharacters||[]){
-    const key=characterKey(c);
-    // Ally exports can identify the equipped owner by characterId rather than
-    // baseId/name. Register every identity alias so those mods are not silently
-    // treated as unequipped in Sith'ari.
-    for(const v of [key,c?.name,c?.character,c?.baseId,c?.base_id,c?.unitId,c?.unit_id,c?.characterId,c?.character_id,c?.id]){
-      const a=compactKey(v); if(a)aliases.set(a,key);
-    }
-  }
-  const items=[]; const byOwner=new Map();
+  const ownerResolver=buildRosterOwnerResolver(rosterCharacters),items=[],byOwner=new Map();
   for(let i=0;i<(mods||[]).length;i++){
     const m={...normalizeModForDisplay(mods[i]),_index:i};
-    const raw=sithariOwnerRaw(m.character)||sithariOwnerRaw(m.characterName)||sithariOwnerRaw(m.equippedTo)||sithariOwnerRaw(m.equipped_to)||sithariOwnerRaw(m.unit_equiped)||sithariOwnerRaw(m.unitEquiped)||sithariOwnerRaw(m.location)||sithariOwnerRaw(m.usingIn)||sithariOwnerRaw(m.baseId)||sithariOwnerRaw(m.base_id)||sithariOwnerRaw(m.characterId)||sithariOwnerRaw(m.character_id);
-    const owner=aliases.get(compactKey(raw))||'';
-    m._sithariOwner=owner;
-    items.push(m);
+    const candidates=[m?.characterId,m?.character_id,m?.equippedToId,m?.equipped_to_id,m?.ownerId,m?.owner_id,
+      m?.unit_equiped,m?.unitEquiped,m?.equippedTo,m?.equipped_to,m?.characterName,m?.character,m?.location,m?.usingIn,m?.baseId,m?.base_id];
+    let owner='';for(const value of candidates){owner=ownerResolver.resolve(value);if(owner)break;}
+    m._sithariOwner=owner;items.push(m);
     if(owner){if(!byOwner.has(owner))byOwner.set(owner,[]);byOwner.get(owner).push(m);}
   }
   const statusByOwner=new Map();
-  for(const [owner,arr] of byOwner){
-    const unique=[...new Map(arr.map(m=>[String(m.game_id||m.id||m._index),m])).values()];
-    statusByOwner.set(owner,v176ModStatus(unique.sort((a,b)=>SITHARI_SLOT_ORDER.indexOf(a.slot)-SITHARI_SLOT_ORDER.indexOf(b.slot))).status);
+  for(const owner of byOwner.keys()){
+    const character=rosterCharacters.find(c=>characterKey(c)===owner);
+    const equipped=character&&typeof getCharacterMods==='function'?getCharacterMods(character):byOwner.get(owner);
+    statusByOwner.set(owner,v176ModStatus(equipped).status);
   }
-  sithariModCache={signature,items,byOwner,statusByOwner};
+  sithariModCache={signature,items,byOwner,statusByOwner,ownerResolver};
   return sithariModCache;
 }
 function sithariCharacterMods(c){
   if(!c)return [];
-  const owner=characterKey(c); const cache=sithariEnsureModCache();
-  const arr=cache.byOwner.get(owner)||[]; const bySlot=new Map();
-  const score=x=>Number(Boolean(x?.primary_stat))*4+Number(Boolean(x?.secondary_1_stat))*2+Number(x?.level||0)/100;
-  for(const m of arr){
-    const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);
-    if(!SITHARI_SLOT_ORDER.includes(slot))continue;
-    const prev=bySlot.get(slot);
-    if(!prev||score(m)>score(prev))bySlot.set(slot,m);
-  }
-  // Keep the display consistent with the main roster inventory matcher if an
-  // export uses an owner alias that Sith'ari's cache cannot resolve yet.
-  if(!bySlot.size && typeof getCharacterMods==='function'){
-    for(const m of getCharacterMods(c)||[]){
-      const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);
-      if(SITHARI_SLOT_ORDER.includes(slot)&&!bySlot.has(slot))bySlot.set(slot,m);
-    }
-  }
+  if(typeof getCharacterMods==='function')return getCharacterMods(c)||[];
+  const owner=characterKey(c),cache=sithariEnsureModCache(),arr=cache.byOwner.get(owner)||[],bySlot=new Map();
+  for(const m of arr){const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);if(SITHARI_SLOT_ORDER.includes(slot)&&!bySlot.has(slot))bySlot.set(slot,m);}
   return SITHARI_SLOT_ORDER.map(slot=>bySlot.get(slot)).filter(Boolean);
 }
 function sithariSourceStatus(mod){
@@ -285,7 +261,7 @@ function sithariReplacementPreservesSpeed(character,current,candidate){
   const afterMods=equipped.filter(m=>modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot)!==slot);
   afterMods.push(candidate);
   const after=sithariProjectedSpeed(character,afterMods);
-  if(before.speedSetPieces>=4&&after.speedSetPieces<4)return false;
+  if(before.baseSpeed<=0&&before.speedSetPieces>=4&&after.speedSetPieces<4)return false;
   if(before.baseSpeed>0&&after.total+1e-9<before.total)return false;
   if(before.baseSpeed<=0&&after.modSpeed+1e-9<before.modSpeed)return false;
   return true;

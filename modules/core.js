@@ -921,6 +921,24 @@ const V176_FACTION_RULES = {
 
 function compactKey(v){ return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
 function characterKey(c){ return compactKey(c?.baseId??c?.base_id??c?.name??c?.character??''); }
+function buildRosterOwnerResolver(characters=rosterCharacters){
+  const aliasOwners=new Map(),baseIdOwners=new Map();
+  const add=(map,key,owner)=>{if(!key)return;if(!map.has(key))map.set(key,new Set());map.get(key).add(owner);};
+  for(const c of Array.isArray(characters)?characters:[]){
+    const owner=characterKey(c);if(!owner)continue;
+    const baseValues=[c?.baseId,c?.base_id,c?.characterId,c?.character_id];
+    for(const value of baseValues)add(baseIdOwners,compactKey(value),owner);
+    for(const value of [...baseValues,c?.name,c?.character,c?.unitId,c?.unit_id,c?.id,owner])add(aliasOwners,compactKey(value),owner);
+  }
+  const resolve=value=>{
+    const raw=typeof value==='object'&&value!==null?(value.baseId??value.base_id??value.characterId??value.character_id??value.unitId??value.unit_id??value.name??value.displayName??value.id??''):value;
+    const key=compactKey(raw);if(!key)return '';
+    if(baseIdOwners.has(key)){const owners=baseIdOwners.get(key);return owners.size===1?[...owners][0]:'';}
+    const owners=aliasOwners.get(key);return owners?.size===1?[...owners][0]:'';
+  };
+  return {resolve,aliasOwners,baseIdOwners};
+}
+function resolveRosterOwnerKey(value,resolver){return (resolver||buildRosterOwnerResolver(rosterCharacters)).resolve(value);}
 function modOwnerKey(m){
   if(!m)return '';
   const candidates=[m.ownerKey,m.character,m.characterName,m.equippedTo,m.equipped_to,m.baseId,m.base_id,m.characterId,m.character_id];
