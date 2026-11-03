@@ -202,6 +202,37 @@ assert.deepEqual(
   'Disciple must use total mod speed as the tie-breaker and still reject speed losses'
 );
 
+// 4b) Seigneur: donor priority comes from terrestrial + fleet GAC use, never mod quality.
+const donorContext = vm.createContext({
+  compactKey,
+  window: { __SWGOH_GAC_USAGE__: { seasons: [{
+    season: 84,
+    characters: { LOWLAND: { uses: 10 }, HIGHLAND: { uses: 100 }, PILOTLOW: { uses: 2 }, PILOTHIGH: { uses: 2 } },
+    ships: { LOWSHIP: { uses: 3 }, HIGHSHIP: { uses: 90 } }
+  }] } },
+  rosterShips: [
+    { baseId: 'LOWSHIP', crew: [{ baseId: 'PILOTLOW' }] },
+    { baseId: 'HIGHSHIP', crew: [{ baseId: 'PILOTHIGH' }] }
+  ]
+});
+load(seigneur, [
+  'seigneurUsageKey','seigneurUsageRecord','seigneurUsageCount','seigneurLatestGacUsageSeason',
+  'seigneurCharacterGacUsage','seigneurShipCrewAliases','seigneurShipUsageMap',
+  'seigneurCharacterFleetUsage','seigneurDonorPriority'
+], donorContext);
+const donorSeason = donorContext.seigneurLatestGacUsageSeason();
+assert.equal(donorContext.seigneurCharacterGacUsage({baseId:'LOWLAND'}, donorSeason), 10);
+assert.equal(donorContext.seigneurCharacterFleetUsage({baseId:'PILOTLOW'}, donorSeason).uses, 3);
+assert.equal(donorContext.seigneurDonorPriority({baseId:'PILOTLOW'}, donorSeason).uses, 5);
+assert.equal(donorContext.seigneurDonorPriority({baseId:'PILOTHIGH'}, donorSeason).uses, 92,
+  'A pilot with a heavily used ship is protected despite low terrestrial usage');
+assert.equal(donorContext.seigneurDonorPriority({baseId:'LOWLAND'}, donorSeason).uses, 10);
+const unknownFleetSeason = { season: 85, characters: { PILOTLOW: { uses: 0 } }, ships: {} };
+assert.equal(donorContext.seigneurDonorPriority({baseId:'PILOTLOW'}, unknownFleetSeason).known, false,
+  'Missing fleet usage must not be mistaken for zero fleet usage');
+assert.equal(donorContext.seigneurCharacterGacUsage({baseId:'ABSENT'}, donorSeason), null,
+  'Missing terrestrial usage must remain unknown');
+
 // 5) Seigneur: allow a set change only when known base speed proves the net is safe.
 const seigneur = read('../modules/seigneur.js');
 const forgeContext = vm.createContext({
