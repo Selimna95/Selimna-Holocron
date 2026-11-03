@@ -2,7 +2,7 @@ import unittest
 
 from python.optimizer import (
     normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
-    _partial_matches_set_plan,
+    _partial_matches_set_plan, _mod_score, build_score,
 )
 
 
@@ -85,6 +85,27 @@ class OptimizerNormalizationTests(unittest.TestCase):
         builds = optimize_kyber(mods, base_stats={"Speed": 100}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
         self.assertEqual(len(builds), 1)
         self.assertEqual(builds[0]["set_plan"], {"Speed": 6})
+
+    def test_lower_gac_usage_donor_is_preferred_after_mod_fit(self):
+        low_use = {
+            "id": "low-use", "slot": "Square", "set": "Speed",
+            "primary_stat": "Offense", "primary_value": 5.88,
+            "secondary_1_stat": "Speed", "secondary_1_value": 10,
+            "_source_usage": 5,
+        }
+        high_use = {**low_use, "id": "high-use", "_source_usage": 900}
+        weights = {"Speed": 1.0}
+        self.assertGreater(
+            _mod_score(low_use, {}, weights),
+            _mod_score(high_use, {}, weights),
+            "A less-used GAC donor should rank ahead when mod fit is otherwise equal",
+        )
+        build_low = [low_use]
+        build_high = [high_use]
+        self.assertGreater(
+            build_score(build_low, {}, weights, {}),
+            build_score(build_high, {}, weights, {}),
+        )
 
     def test_speed_set_bonus_is_ten_percent_of_base_speed(self):
         build = [{"set": "Speed"} for _ in range(4)]
