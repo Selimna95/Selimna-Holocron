@@ -114,8 +114,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.1.6-owner-resolver", self.html)
-        self.assertIn("modules/core.js?v=4.1.6-owner-resolver", self.sw)
+        self.assertIn("modules/core.js?v=4.1.7-gl-identities", self.html)
+        self.assertIn("modules/core.js?v=4.1.7-gl-identities", self.sw)
         self.assertIn("holocron-static-v4.1.7-gl-identities", self.sw)
 
 if __name__ == "__main__":
