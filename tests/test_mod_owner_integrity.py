@@ -26,7 +26,7 @@ class ModOwnerIntegrityTests(unittest.TestCase):
         start = self.disciple.index("function reallocationSourceRows(selected){")
         end = self.disciple.index("\nfunction renderReallocationResults()", start)
         body = self.disciple[start:end]
-        self.assertIn("ownerResolver.resolve(owner)", body)
+        self.assertIn("resolveModOwnerKey(m,ownerResolver)", body)
         self.assertIn("buildRosterOwnerResolver(rosterCharacters)", body)
         self.assertNotIn("owner.includes(", body)
         self.assertNotIn("k.includes(owner)", body)
