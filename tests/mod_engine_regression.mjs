@@ -232,6 +232,46 @@ const threeSpeedSets = [
 assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, threeSpeedSets, threeSpeedSets[0], { id: 'fourth-speed', slot: 'Square', set_name: 'Speed', speed: 5 }), true);
 assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'unknown', slot: 'Square', set_name: 'Offense', speed: 25 }), false);
 
+
+// 5b) Seigneur: a Kyber set distribution is not an exact six-mod composition.
+const seigneurCoreContext = vm.createContext({ compactKey });
+load(core, ['optimizerRecommendationSummary', 'optimizerSlotKey', 'optimizerPrimaryReference'], seigneurCoreContext);
+const forgeReferenceContext = vm.createContext({
+  compactKey, optimizerRecommendationSummary: seigneurCoreContext.optimizerRecommendationSummary,
+  optimizerSlotKey: seigneurCoreContext.optimizerSlotKey,
+  optimizerPrimaryReference: seigneurCoreContext.optimizerPrimaryReference
+});
+load(seigneur, ['forgeKyberSetDistribution', 'forgeKyberSetRules', 'forgeModSetConformity', 'forgeSetCompatible', 'forgeModPrimaryConformity'], forgeReferenceContext);
+const distributionOnlyProfile = {
+  sets: [{ name: 'Health', weight: 0.9017 }, { name: 'Offense', weight: 0.0404 }],
+  slots: { Arrow: { primaries: { Health: 0.8769, Speed: 0.1038 } } },
+  secondary_focus: { Speed: 21.3 }
+};
+assert.equal(forgeReferenceContext.forgeKyberSetRules(distributionOnlyProfile).length, 0,
+  'A set distribution must not be converted into an invented six-piece plan');
+assert.equal(forgeReferenceContext.forgeModSetConformity({ set_name: 'Health' }, distributionOnlyProfile).ok, true,
+  'A set observed in Kyber distribution is recognized');
+assert.equal(forgeReferenceContext.forgeModSetConformity({ set_name: 'Critical Damage' }, distributionOnlyProfile).ok, false,
+  'A set absent from the available distribution is not marked Kyber');
+assert.equal(forgeReferenceContext.forgeSetCompatible({ set_name: 'Health' }, distributionOnlyProfile), true);
+assert.equal(forgeReferenceContext.forgeModPrimaryConformity({ slot: 'Arrow', primary_stat: 'Health %' }, distributionOnlyProfile).ok, true,
+  'Percentage formatting must not hide an equivalent primary stat');
+const exactCompositionProfile = {
+  sets: [{ name: 'Health', weight: 0.9 }],
+  specific_sets: [{ name: '4 Health + 2 Speed', counts: { Health: 4, Speed: 2 }, weight: 0.8 }]
+};
+assert.equal(forgeReferenceContext.forgeKyberSetRules(exactCompositionProfile).length, 1,
+  'Only an explicit six-piece composition becomes an exact set plan');
+
+// 5c) Seigneur: neutral verdicts must not call an unrelated Sith’ari UI binder.
+const verdictContext = vm.createContext({});
+load(seigneur, ['optimizerVerdictForBuild'], verdictContext);
+assert.equal(verdictContext.optimizerVerdictForBuild({
+  compliance: 80, setPct: 100, primaryKnown: 6, primaryPct: 100,
+  primaryHits: 6, secondaryTotal: 6, secondaryPct: 100,
+  setHits: 6, secondaryHits: 6
+}, 'MOYENS', 0).kind, 'neutral');
+
 // 6) Sith'ari: same net-speed logic, with a conservative fallback when base speed is unknown.
 const sithariSpeedContext = vm.createContext({
   numericValue, modTotalSpeed: speed, modSlotLabel: (v) => v,
