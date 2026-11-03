@@ -32,6 +32,7 @@ jobs:
       - run: node --check optimizer-worker.mjs
       - run: node --check blue-gac/blue-gac.js
       - run: node --check tests/browser_smoke.mjs
+      - run: node tests/mod_engine_regression.mjs
 
   browser-smoke:
     runs-on: ubuntu-latest
