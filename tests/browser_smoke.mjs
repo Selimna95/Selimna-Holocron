@@ -146,6 +146,69 @@ try {
   assert.notEqual(modMath.offenseFlat, modMath.offensePercent, "Offense and Offense % are distinct secondary stats");
   assert.notEqual(modMath.healthFlat, modMath.healthPercent, "Health and Health % are distinct secondary stats");
 
+  // Disciple: consecutive searches must refresh the visible candidates every
+  // time, including when the user changes the secondary and then clicks search.
+  const discipleRepeatSearch = await page.evaluate(() => {
+    const target = {
+      game_id: "target-mod", character: "Target", slot: "Square",
+      set_name: "Speed", primary_stat: "Offense", primary_value: 5, speed: 10,
+    };
+    const rowsBySearch = {
+      POTENCY: [{
+        character: { name: "Potency donor", baseId: "POTENCYDONOR" },
+        mod: { game_id: "potency-mod", slot: "Square", set_name: "Speed", primary_stat: "Offense", primary_value: 5, secondary_1_stat: "Potency", secondary_1_value: 18, speed: 12 },
+        status: "FAIBLES", class: "weak", speed: 12,
+      }],
+      OFFENSE: [{
+        character: { name: "Offense donor", baseId: "OFFENSEDONOR" },
+        mod: { game_id: "offense-mod", slot: "Square", set_name: "Speed", primary_stat: "Offense", primary_value: 5, secondary_1_stat: "Offense", secondary_1_value: 900, speed: 15 },
+        status: "FAIBLES", class: "weak", speed: 15,
+      }],
+    };
+    const original = {
+      selected: selectedReallocationMod,
+      sources: reallocationSourceRows,
+      speed: modTotalSpeed,
+      portrait: disciplePortraitHtml,
+      icon: modIconHtml,
+    };
+    try {
+      selectedReallocationMod = () => target;
+      reallocationSourceRows = () => rowsBySearch[$('reallocationSecondary').value] || [];
+      modTotalSpeed = mod => Number(mod?.speed || 0);
+      disciplePortraitHtml = () => '<span></span>';
+      modIconHtml = () => '<span></span>';
+      const select = $('reallocationSecondary');
+      select.innerHTML = '<option value="POTENCY">Potency</option><option value="OFFENSE">Offense</option>';
+      const button = $('runReallocation');
+      const snapshots = [];
+      select.value = "POTENCY";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      snapshots.push({ search: select.value, text: $('reallocationResults').textContent });
+      select.value = "OFFENSE";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      snapshots.push({ search: select.value, text: $('reallocationResults').textContent });
+      select.value = "POTENCY";
+      button.click();
+      snapshots.push({ search: select.value, text: $('reallocationResults').textContent });
+      return snapshots;
+    } finally {
+      selectedReallocationMod = original.selected;
+      reallocationSourceRows = original.sources;
+      modTotalSpeed = original.speed;
+      disciplePortraitHtml = original.portrait;
+      modIconHtml = original.icon;
+      renderReallocationSecondaryOptions("");
+      renderReallocationResults();
+    }
+  });
+  assert.match(discipleRepeatSearch[0].text, /Potency donor/);
+  assert.doesNotMatch(discipleRepeatSearch[0].text, /Offense donor/);
+  assert.match(discipleRepeatSearch[1].text, /Offense donor/);
+  assert.doesNotMatch(discipleRepeatSearch[1].text, /Potency donor/);
+  assert.match(discipleRepeatSearch[2].text, /Potency donor/);
+  assert.doesNotMatch(discipleRepeatSearch[2].text, /Offense donor/);
+
   // Profile sync: a valid API payload replaces the snapshot atomically.
   let failProfileSync = false;
   await page.route("**/swgoh-optimizer-relay.lorg75017.workers.dev/**", async route => {
