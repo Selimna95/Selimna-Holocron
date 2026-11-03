@@ -1168,9 +1168,13 @@ function holocronKyberFit(mod, character){
 function holocronModScoreForCharacter(mod, character){return holocronModScore(mod)+holocronKyberFit(mod,character);}
 // Priorités GAC : la dernière saison comportant des données est la référence.
 // Le jeu de données est volontairement séparé du profil joueur (gac-usage.js).
+// Canonical game baseIds for Galactic Legends, plus known historical aliases.
+// Similar-looking non-GL units must not be classified as Galactic Legends.
 const HOLOCRON_GALACTIC_LEGENDS = new Set([
-  'GRANDMASTERYODA','JEDIMASTERKENOBI','JEDIMASTERLUKE','SITHPALPATINE',
-  'JABBA','JABBATHEHUTT','LORDVADER','EXECUTOR','SUPREMELEADERKYLOREN',
-  'REY','STARKILLER','LEIAORGANA','GLLEIA','GLAHSOKA','AHSOKATANOGL',
-  'JEDIKNIGHTLUKE','JML','SLKR','SEE','JMK','LV','JABBA'
+  // Canonical SWGOH.GG baseIds for all 11 current Galactic Legends.
+  'JEDIMASTERKENOBI','GRANDMASTERLUKE','SITHPALPATINE','JABBATHEHUTT',
+  'LORDVADER','SUPREMELEADERKYLOREN','GLREY','GLLEIA','GLAHSOKATANO',
+  'GLHONDO','GLMANDOGROGU',
+  // Historical aliases retained for older exports.
+  'JEDIMASTERLUKE','JABBA','GLAHSOKA','AHSOKATANOGL','JML','SLKR','SEE','JMK','LV'
 ]);

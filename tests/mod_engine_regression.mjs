@@ -68,7 +68,22 @@ const explicitOwner = ownerContext.resolveModOwnerKey(
 );
 assert.equal(explicitOwner, 'GLAHSOKATANO', 'Explicit characterId must beat a colliding display name');
 
-// 2) Run the production Sith'ari cache against the four real collision pairs.
+// GL classification: canonical roster baseIds must win over stale aliases.
+const glContext = vm.createContext({ compactKey });
+load(core, ['characterKey'], glContext);
+const glStart = core.indexOf('const HOLOCRON_GALACTIC_LEGENDS = new Set([');
+assert.notEqual(glStart, -1, 'Production GL baseId set exists');
+const glEnd = core.indexOf(']);', glStart) + 3;
+vm.runInContext(core.slice(glStart, glEnd), glContext);
+load(read('../modules/acolyte.js'), ['holocronIsGalacticLegend'], glContext);
+for (const baseId of ['GLREY', 'GLAHSOKATANO', 'GLLEIA', 'JEDIMASTERKENOBI', 'GRANDMASTERLUKE', 'SITHPALPATINE', 'JABBATHEHUTT', 'LORDVADER', 'SUPREMELEADERKYLOREN', 'GLHONDO', 'GLMANDOGROGU']) {
+  assert.equal(glContext.holocronIsGalacticLegend({ baseId }), true, 'GL ' + baseId);
+}
+for (const baseId of ['REY', 'GRANDMASTERYODA', 'JEDIKNIGHTLUKE', 'STARKILLER', 'EXECUTOR']) {
+  assert.equal(glContext.holocronIsGalacticLegend({ baseId }), false, 'Non-GL ' + baseId);
+}
+
+// 3) Run the production Sith'ari cache against the four real collision pairs.
 const sithari = read('../modules/sithari.js');
 const slots = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'];
 const fixtureMods = collisionRoster.flatMap((c, ci) => slots.map((slot, si) => ({
