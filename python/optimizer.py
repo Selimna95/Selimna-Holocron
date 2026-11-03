@@ -334,6 +334,11 @@ def _mod_score(mod, kyber, weights):
 
     # Speed secondary is always useful, but remains below Kyber primary.
     score += stats.get("Speed", 0.0) * 8.0
+
+    # Prefer mods from less-used GAC donors after preserving the target build fit.
+    # Missing usage is never encoded as zero by the browser-side donor selector.
+    donor_uses = to_float(mod.get("_source_usage"), 0.0)
+    score += max(0.0, 1000.0 - min(1000.0, donor_uses)) * 0.15
     return score
 
 
@@ -381,6 +386,13 @@ def build_score(build, kyber, weights, base_stats):
             continue
         ratio = to_float(stats.get(stat)) / ref
         score += min(ratio, 1.20) * 1800.0
+
+    # Aggregate donor-use preference across the complete six-mod build.
+    donor_priority = 0.0
+    for mod in build:
+        donor_uses = to_float(mod.get("_source_usage"), 0.0)
+        donor_priority += max(0.0, 1000.0 - min(1000.0, donor_uses)) * 0.15
+    score += donor_priority
 
     return score
 
