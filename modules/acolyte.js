@@ -165,6 +165,12 @@ function holocronTopChangeCandidates(){
           const newSpeed=numericValue(modTotalSpeed(donorMod),0);
           if(!holocronAcolyteTransferPreservesSpeed(currentMod,donorMod,r.mods))continue;
 
+          // Calculer explicitement l'amélioration de la cible avant de classer
+          // l'échange. Ces valeurs alimentent le score et la fiche de proposition.
+          const after=holocronModScoreForCharacter(donorMod,r.c);
+          const gain=after-before;
+          const gainPct=(gain/Math.max(Math.abs(before),1))*100;
+          const kyberGain=holocronKyberFit(donorMod,r.c)-kyberBefore;
           const donorBefore=holocronModScoreForCharacter(donorMod,d.c);
           const donorAfter=holocronModScoreForCharacter(currentMod,d.c);
           const donorGain=donorAfter-donorBefore;
