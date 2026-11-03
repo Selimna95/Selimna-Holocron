@@ -543,6 +543,8 @@ $('runOptimizer').addEventListener('click',async()=>{
     renderSeigneurTargetAudit(character,profile);
     const summary=forgeDonorSummary(character);
     const scopedMods=summary.mods;
+    const donorModCount=scopedMods.filter(mod=>mod._sourceOwnerKey&&mod._sourceOwnerKey!==characterKey(character)).length;
+    if(donorModCount===0&&summary.freeMods===0)throw new Error('Aucun mod donneur vérifiable : la base GAC personnages/flottes est vide ou les associations pilotes-vaisseaux ne sont pas disponibles. Le moteur ne dépouillera pas un personnage sur une supposition.');
     const slotCounts=Object.fromEntries(['Square','Arrow','Diamond','Triangle','Circle','Cross'].map(slot=>[slot,scopedMods.filter(m=>forgeSlotCompatible(m,slot)).length]));
     const missing=Object.entries(slotCounts).filter(([,count])=>count===0).map(([slot])=>slot);
     if(missing.length)throw new Error(`Recherche impossible : aucun mod candidat pour ${missing.join(', ')}. Les usages GAC terrestres/flottes ou les associations pilotes-vaisseaux sont incomplets. Aucun donneur non vérifié ne sera utilisé.`);
@@ -619,7 +621,7 @@ function optimizerVerdictForBuild(audit, scope, index){
   if(audit.setPct<100)gaps.push(`Fréquence des sets : ${audit.setPct}% du poids du set Kyber le plus utilisé en moyenne`);
   if(audit.primaryKnown && audit.primaryPct<100)gaps.push(`Primaires : ${audit.primaryHits}/${audit.primaryKnown} conformes à Kyber`);
   if(audit.secondaryTotal && audit.secondaryPct<70)gaps.push(`Secondaires : ${audit.secondaryHits}/${audit.secondaryTotal} mods portent un focus Kyber`);
-  const canBroaden=!/MOYENS|TOUT LE ROSTER/.test(scope);
+  const canBroaden=false;
   if(canBroaden && audit.compliance<75) return {kind:'action',title:'Élargir le périmètre',text:'Le meilleur candidat reste éloigné de la doctrine Kyber dans le périmètre actuel. Active MOYENS pour donner à la Forge davantage de choix.'};
   if(audit.compliance>=90) return {kind:'strong',title:'Configuration proche de la doctrine',text:'Le candidat respecte fortement la référence Kyber tout en restant dans l’arsenal disponible.'};
   if(gaps.length) return {kind:'warn',title:'Compromis identifié',text:`La Forge retient ce candidat avec ${audit.compliance}% d’adéquation. ${gaps.slice(0,2).join(' · ')}.`};
