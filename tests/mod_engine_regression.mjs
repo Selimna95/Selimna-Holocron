@@ -125,11 +125,11 @@ assert.deepEqual(Array.from(discipleSafe, x => x.speed), [10, 14]);
 const seigneur = read('../modules/seigneur.js');
 const forgeContext = vm.createContext({
   numericValue, modTotalSpeed: speed, optimizerSlotKey: (v) => String(v ?? ''),
-  baseStatsForCharacter: () => ({ Speed: forgeContext.testBaseSpeed }),
-  forgeSpeedSetCount: (list) => list.filter(m => m.set_name === 'Speed').length,
-  testBaseSpeed: 100
+  optimizerProfileForCharacter: () => ({}),
+  forgeSpeedSetCount: (list) => list.filter(m => m.set_name === 'Speed').length
 });
 load(seigneur, ['forgeProjectedModSpeed', 'forgeCandidatePreservesSpeed'], forgeContext);
+const baseSpeedCharacter = { base_stats: { Speed: 100 } };
 const equipped = [
   { id: 'cur', slot: 'Square', set_name: 'Speed', speed: 5 },
   { id: 'a', slot: 'Arrow', set_name: 'Speed', speed: 5 },
@@ -138,9 +138,8 @@ const equipped = [
   { id: 'c', slot: 'Circle', set_name: 'Offense', speed: 5 },
   { id: 'x', slot: 'Cross', set_name: 'Offense', speed: 5 }
 ];
-assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'gain', slot: 'Square', set_name: 'Offense', speed: 25 }), true);
-assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'loss', slot: 'Square', set_name: 'Offense', speed: 10 }), false);
-forgeContext.testBaseSpeed = 0;
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'gain', slot: 'Square', set_name: 'Offense', speed: 25 }), true);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'loss', slot: 'Square', set_name: 'Offense', speed: 10 }), false);
 assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'unknown', slot: 'Square', set_name: 'Offense', speed: 25 }), false);
 
 // 6) Sith'ari: same net-speed logic, with a conservative fallback when base speed is unknown.
