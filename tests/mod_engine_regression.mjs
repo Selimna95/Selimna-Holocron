@@ -125,6 +125,51 @@ const slower = { speed: 3, secondary_1_stat: 'Speed', secondary_1_value: 3 };
 assert.equal(acContext.holocronAcolyteTransferPreservesSpeed(current, faster, [current, { speed: 20 }]), true);
 assert.equal(acContext.holocronAcolyteTransferPreservesSpeed(current, slower, [current, { speed: 20 }]), false);
 
+// 3b) Execute the complete production Acolyte candidate engine with a valid
+// target/donor pair. This catches missing score variables at proposal time.
+const acolyteFixture = [
+  { baseId: 'TARGET', name: 'Target' },
+  { baseId: 'DONOR', name: 'Donor' }
+];
+const fixtureMod = (owner, index, slot, value) => ({
+  owner, _index: index, slot, set_name: 'Speed',
+  primary_stat: 'Offense %', primary_value: 5.88,
+  secondary_1_stat: 'Speed', secondary_1_value: value,
+  speed: value, level: 15
+});
+const acolyteFixtureMods = [
+  fixtureMod('TARGET', 0, 'Square', 4),
+  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,10)),
+  fixtureMod('DONOR', 6, 'Square', 12),
+  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('DONOR',i+7,slot,0))
+];
+Object.assign(acContext, {
+  rosterCharacters: acolyteFixture,
+  window: { __SWGOH_GAC_USAGE__: { seasons: [] } },
+  HOLOCRON_GALACTIC_LEGENDS: new Set(),
+  characterKey: c => String(c?.baseId || ''),
+  rosterUnitType: () => 'character',
+  getCharacterMods: c => acolyteFixtureMods.filter(m => m.owner === c.baseId),
+  v176ModStatus: list => {
+    const totalSpeed = list.reduce((sum,m)=>sum+Number(m.speed||0),0);
+    return { totalSpeed, status: list.length < 6 ? 'INCOMPLETS' : totalSpeed < 30 ? 'TRÈS FAIBLES' : totalSpeed < 50 ? 'FAIBLES' : totalSpeed < 70 ? 'MOYENS' : 'BONS' };
+  },
+  holocronModScoreForCharacter: m => Number(m.speed||0),
+  holocronKyberFit: () => 0,
+  profileForCharacter: () => null
+});
+load(acolyte, ['holocronIsGalacticLegend','holocronLatestGacSeason','holocronGacUsage','holocronTopChangeCandidates'], acContext);
+const acolyteRows = acContext.holocronTopChangeCandidates();
+assert.equal(acolyteRows.length, 1, 'Acolyte must produce the valid fixture exchange');
+assert.equal(acolyteRows[0].recipient.baseId, 'TARGET');
+assert.equal(acolyteRows[0].donor.baseId, 'DONOR');
+assert.equal(acolyteRows[0].gain, 8, 'Recipient score gain is calculated');
+assert.equal(acolyteRows[0].gainPct, 200, 'Recipient score percentage is calculated');
+assert.equal(acolyteRows[0].kyberGain, 0, 'Kyber fit delta is calculated');
+assert.equal(acolyteRows[0].speedGain, 8, 'Target mod speed must increase');
+assert.equal(acolyteRows[0].recipientAfter, 12, 'Recipient after-score is populated');
+
+
 // 4) Disciple: no candidate with less speed than the selected mod can pass.
 const disciple = read('../modules/disciple.js');
 const discipleContext = vm.createContext({
