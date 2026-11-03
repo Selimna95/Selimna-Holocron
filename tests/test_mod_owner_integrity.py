@@ -49,13 +49,13 @@ class ModOwnerIntegrityTests(unittest.TestCase):
 
     def test_sithari_uses_shared_base_id_first_owner_resolution(self):
         self.assertIn("buildRosterOwnerResolver(rosterCharacters)", self.sithari)
-        self.assertIn("ownerResolver.resolve(value)", self.sithari)
+        self.assertIn("resolveModOwnerKey(m,ownerResolver)", self.sithari)
         self.assertNotIn("aliases.set(a,key)", self.sithari)
         self.assertIn("return getCharacterMods(c)||[]", self.sithari)
 
     def test_disciple_selection_uses_the_same_base_id_first_resolver(self):
-        self.assertIn("resolveRosterOwnerKey(ownerKey)", self.disciple)
-        self.assertIn("ownerResolver.resolve(owner)", self.disciple)
+        self.assertIn("resolveModOwnerKey(mod)", self.disciple)
+        self.assertIn("resolveModOwnerKey(m,ownerResolver)", self.disciple)
         self.assertIn("ownerKey===selectedOwnerKey", self.disciple)
 
     def test_speed_set_bonus_is_counted_when_base_speed_is_known(self):

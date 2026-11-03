@@ -55,7 +55,7 @@ const collisionRoster = [
   { name: 'Rey', baseId: 'GLREY' }
 ];
 const ownerContext = vm.createContext({ compactKey, rosterCharacters: collisionRoster });
-load(core, ['characterKey', 'buildRosterOwnerResolver'], ownerContext);
+load(core, ['characterKey', 'buildRosterOwnerResolver', 'modOwnerKey', 'resolveModOwnerKey'], ownerContext);
 const resolver = ownerContext.buildRosterOwnerResolver(collisionRoster);
 for (const [raw, expected] of [
   ['AHSOKATANO', 'AHSOKATANO'], ['GLAHSOKATANO', 'GLAHSOKATANO'],
@@ -63,6 +63,10 @@ for (const [raw, expected] of [
   ['SITHTROOPER', 'SITHTROOPER'], ['FOSITHTROOPER', 'FOSITHTROOPER'],
   ['REY', 'REY'], ['GLREY', 'GLREY']
 ]) assert.equal(resolver.resolve(raw), expected, 'Owner ' + raw);
+const explicitOwner = ownerContext.resolveModOwnerKey(
+  { characterName: 'Ahsoka Tano', characterId: 'GLAHSOKATANO' }, resolver
+);
+assert.equal(explicitOwner, 'GLAHSOKATANO', 'Explicit characterId must beat a colliding display name');
 
 // 2) Run the production Sith'ari cache against the four real collision pairs.
 const sithari = read('../modules/sithari.js');
@@ -80,7 +84,7 @@ const cacheContext = vm.createContext({
   modSlotLabel: (v) => v,
   v176ModStatus: (arr) => ({ status: arr.length === 6 ? 'BONS' : arr.length ? 'FAIBLES' : 'SANS MODS' })
 });
-load(core, ['characterKey', 'buildRosterOwnerResolver'], cacheContext);
+load(core, ['characterKey', 'buildRosterOwnerResolver', 'modOwnerKey', 'resolveModOwnerKey'], cacheContext);
 cacheContext.getCharacterMods = (c) => {
   const r = cacheContext.buildRosterOwnerResolver(cacheContext.rosterCharacters);
   return cacheContext.mods.filter(m => r.resolve(m.character) === cacheContext.characterKey(c)).map(cacheContext.normalizeModForDisplay);

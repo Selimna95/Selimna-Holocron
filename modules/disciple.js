@@ -439,7 +439,7 @@ function reallocationSecondaryOptions(){
   }
   return [...names.values()].sort((a,b)=>a.localeCompare(b,'fr'));
 }
-function reallocationModOwnerKey(mod){const ownerKey=modOwnerKey(mod);return ownerKey?resolveRosterOwnerKey(ownerKey):'';}
+function reallocationModOwnerKey(mod){return resolveModOwnerKey(mod);}
 function reallocationModBelongsToSelection(mod){
   if(reallocationSpeedTier===null || !reallocationCharacterKey || !mod)return false;
   return reallocationSpeedTierMatch(mod,reallocationSpeedTier) && reallocationModOwnerKey(mod)===reallocationCharacterKey;
@@ -553,11 +553,10 @@ function reallocationCandidateSecondary(candidate,secondaryKey){
 function reallocationSourceRows(selected){
   const rows=[];
   const selectedId=String(selected?.game_id||selected?.id||'');
-  const selectedOwner=modOwnerKey(selected);
   const selectedKeys=discipleModKeys(selected);
   if(!selectedKeys.slot||!selectedKeys.set||!selectedKeys.primary)return rows;
 
-  const ownerResolver=buildRosterOwnerResolver(rosterCharacters),characterByKey=new Map();
+  const ownerResolver=buildRosterOwnerResolver(rosterCharacters),selectedOwnerKey=resolveModOwnerKey(selected,ownerResolver),characterByKey=new Map();
   for(const c of rosterCharacters){if(rosterUnitType(c)!=='ship')characterByKey.set(characterKey(c),c);}
   const normalizedMods=mods.map(raw=>normalizeModForDisplay(raw)),modsByCharacter=new Map();
   for(const m of normalizedMods){
@@ -576,7 +575,7 @@ function reallocationSourceRows(selected){
     if(selectedId&&id===selectedId)continue;
     const keys=discipleModKeys(m);
     if(keys.slot!==selectedKeys.slot||keys.set!==selectedKeys.set||keys.primary!==selectedKeys.primary)continue;
-    const owner=modOwnerKey(m),ownerKey=ownerResolver.resolve(owner),selectedOwnerKey=ownerResolver.resolve(selectedOwner);
+    const ownerKey=resolveModOwnerKey(m,ownerResolver);
     if(!ownerKey||ownerKey===selectedOwnerKey)continue;
     const st=allowedOwners.get(ownerKey);
     if(!st)continue;

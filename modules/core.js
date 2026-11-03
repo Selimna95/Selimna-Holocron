@@ -939,6 +939,15 @@ function buildRosterOwnerResolver(characters=rosterCharacters){
   return {resolve,aliasOwners,baseIdOwners};
 }
 function resolveRosterOwnerKey(value,resolver){return (resolver||buildRosterOwnerResolver(rosterCharacters)).resolve(value);}
+function resolveModOwnerKey(mod,resolver){
+  const active=resolver||buildRosterOwnerResolver(rosterCharacters);
+  const rawFields=Array.isArray(mod?._rawOwnerFields)?mod._rawOwnerFields:[];
+  const candidates=[...rawFields,mod?.characterId,mod?.character_id,mod?.equippedToId,mod?.equipped_to_id,
+    mod?.ownerId,mod?.owner_id,mod?.unit_equiped,mod?.unitEquiped,mod?.equippedTo,mod?.equipped_to,
+    mod?.characterName,mod?.character,mod?.location,mod?.usingIn,mod?.baseId,mod?.base_id];
+  for(const value of candidates){const owner=active.resolve(value);if(owner)return owner;}
+  return active.resolve(modOwnerKey(mod));
+}
 function modOwnerKey(m){
   if(!m)return '';
   const candidates=[m.ownerKey,m.character,m.characterName,m.equippedTo,m.equipped_to,m.baseId,m.base_id,m.characterId,m.character_id];

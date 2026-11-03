@@ -120,10 +120,7 @@ function sithariOwnerRaw(value){
 function sithariEquippedOwner(m){
   if(!m)return '';
   const resolver=sithariEnsureModCache().ownerResolver||buildRosterOwnerResolver(rosterCharacters);
-  const candidates=[m?.characterId,m?.character_id,m?.equippedToId,m?.equipped_to_id,m?.ownerId,m?.owner_id,
-    m?.unit_equiped,m?.unitEquiped,m?.equippedTo,m?.equipped_to,m?.characterName,m?.character,m?.location,m?.usingIn,m?.baseId,m?.base_id];
-  for(const value of candidates){const owner=resolver.resolve(value);if(owner)return owner;}
-  return '';
+  return resolveModOwnerKey(m,resolver);
 }
 function sithariSecondaryScore(m,p){
   const focus=p?.secondary_focus||{}; const sec=sithariModSecondaryMap(m); let score=0,count=0;
@@ -197,9 +194,7 @@ function sithariEnsureModCache(){
   const ownerResolver=buildRosterOwnerResolver(rosterCharacters),items=[],byOwner=new Map();
   for(let i=0;i<(mods||[]).length;i++){
     const m={...normalizeModForDisplay(mods[i]),_index:i};
-    const candidates=[m?.characterId,m?.character_id,m?.equippedToId,m?.equipped_to_id,m?.ownerId,m?.owner_id,
-      m?.unit_equiped,m?.unitEquiped,m?.equippedTo,m?.equipped_to,m?.characterName,m?.character,m?.location,m?.usingIn,m?.baseId,m?.base_id];
-    let owner='';for(const value of candidates){owner=ownerResolver.resolve(value);if(owner)break;}
+    const owner=resolveModOwnerKey(m,ownerResolver);
     m._sithariOwner=owner;items.push(m);
     if(owner){if(!byOwner.has(owner))byOwner.set(owner,[]);byOwner.get(owner).push(m);}
   }

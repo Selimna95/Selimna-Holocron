@@ -160,7 +160,7 @@ function forgeCharacterAudit(character,profile){
 function forgeAllSourceMods(){
   const out=[],ownerResolver=buildRosterOwnerResolver(rosterCharacters);
   for(const raw of mods){
-    const m=normalizeModForDisplay(raw),ownerKey=ownerResolver.resolve(modOwnerKey(m));
+    const m=normalizeModForDisplay(raw),ownerKey=resolveModOwnerKey(m,ownerResolver);
     const owner=rosterCharacters.find(c=>characterKey(c)===ownerKey);
     if(owner&&isGalacticLegendCharacter(owner))continue;
     const st=owner?v176ModStatus(getCharacterMods(owner)).status:'INVENTAIRE';
