@@ -301,8 +301,10 @@ function forgeAllSourceMods(targetCharacter=null){
     if(owner&&isGalacticLegendCharacter(owner)&&ownerKey!==targetKey)continue;
     const st=owner?v176ModStatus(getCharacterMods(owner)).status:'INVENTAIRE';
     const isTarget=!!owner&&ownerKey===targetKey;
-    const priority=owner?priorities.get(ownerKey):{known:true,uses:0,characterUses:0,fleetUses:0,shipCount:0,reason:'Mod libre'};
-    out.push({...m,_sourceStatus:st,_sourceOwner:owner?.name||m.character||'Libre',_sourceOwnerKey:ownerKey,
+    const ownerLabel=owner?.name||m.character||'Libre';
+    const isFree=!owner&&!String(m.character||'').trim();
+    const priority=owner?priorities.get(ownerKey):isFree?{known:true,uses:0,characterUses:0,fleetUses:0,shipCount:0,reason:'Mod libre'}:{known:false,uses:null,characterUses:null,fleetUses:null,shipCount:0,reason:'Propriétaire non résolu'};
+    out.push({...m,_sourceStatus:st,_sourceOwner:ownerLabel,_sourceOwnerKey:ownerKey,
       _sourcePriorityKnown:isTarget||priority?.known===true,_sourceUsage:isTarget?0:(priority?.uses??Number.POSITIVE_INFINITY),
       _sourceCharacterUses:isTarget?0:(priority?.characterUses??null),_sourceFleetUses:isTarget?0:(priority?.fleetUses??null),
       _sourceShipCount:priority?.shipCount??0,_sourcePriorityReason:isTarget?'Mod déjà équipé sur la cible':priority?.reason||'Usage GAC inconnue',
@@ -317,19 +319,20 @@ function forgeSourceAllowedForSearch(m,targetCharacter=null){
   // Un mod libre est disponible. Un mod équipé n'est récupérable que si les
   // usages terrestre ET flotte du donneur sont connus : aucune protection
   // implicite ne peut être levée sur une donnée manquante.
-  return !m?._sourceOwnerKey||m._sourcePriorityKnown===true;
+  const isFree=!m?._sourceOwnerKey&&(!m?._sourceOwner||m._sourceOwner==='Libre');
+  return isFree||m?._sourcePriorityKnown===true;
 }
 function forgeScopedModsForCharacter(character){
   return forgeAllSourceMods(character).filter(mod=>forgeSourceAllowedForSearch(mod,character));
 }
 function forgeDonorSummary(character){
-  const scoped=forgeScopedModsForCharacter(character),groups=new Map();
+  const scoped=forgeScopedModsForCharacter(character),groups=new Map(),targetKey=characterKey(character);
   for(const mod of scoped){
-    const key=mod._sourceOwnerKey||'INVENTORY';
+    const key=mod._sourceOwnerKey||(mod._sourceOwner==='Libre'?'INVENTORY':'UNRESOLVED:'+compactKey(mod._sourceOwner));
     if(!groups.has(key))groups.set(key,{key,name:mod._sourceOwner||'Inventaire libre',mods:0,uses:mod._sourceUsage??0,characterUses:mod._sourceCharacterUses??0,fleetUses:mod._sourceFleetUses??0,free:key==='INVENTORY'});
     groups.get(key).mods++;
   }
-  const donors=[...groups.values()].sort((a,b)=>a.uses-b.uses||b.mods-a.mods);
+  const donors=[...groups.values()].filter(x=>x.free||x.key!==targetKey).sort((a,b)=>a.uses-b.uses||b.mods-a.mods);
   return {mods:scoped,donors,freeMods:donors.find(x=>x.free)?.mods||0};
 }
 function renderSeigneurTargetAudit(character,profile){
