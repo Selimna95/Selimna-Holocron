@@ -86,13 +86,13 @@ for (const baseId of ['REY', 'GRANDMASTERYODA', 'JEDIKNIGHTLUKE', 'STARKILLER', 
 // 3) Run the production Sith'ari cache against the four real collision pairs.
 const sithari = read('../modules/sithari.js');
 const slots = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'];
-const fixtureMods = collisionRoster.flatMap((c, ci) => slots.map((slot, si) => ({
+const acolyteFixtureMods = collisionRoster.flatMap((c, ci) => slots.map((slot, si) => ({
   id: c.baseId + '-' + slot, game_id: c.baseId + '-' + slot,
   character: c.baseId, slot, set_name: 'Speed', primary_stat: 'Health',
   secondary_1_stat: 'Speed', secondary_1_value: 8 + ci + si, level: 15
 })));
 const cacheContext = vm.createContext({
-  compactKey, rosterCharacters: collisionRoster, mods: fixtureMods,
+  compactKey, rosterCharacters: collisionRoster, mods: acolyteFixtureMods,
   SITHARI_SLOT_ORDER: slots,
   sithariModCache: { signature: '', items: [], byOwner: new Map(), statusByOwner: new Map(), ownerResolver: null },
   normalizeModForDisplay: (m) => ({ ...m, game_id: m.game_id || m.id }),
@@ -137,7 +137,7 @@ const fixtureMod = (owner, index, slot, value) => ({
   secondary_1_stat: 'Speed', secondary_1_value: value,
   speed: value, level: 15
 });
-const fixtureMods = [
+const acolyteFixtureMods = [
   fixtureMod('TARGET', 0, 'Square', 4),
   ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,10)),
   fixtureMod('DONOR', 6, 'Square', 12),
@@ -149,7 +149,7 @@ Object.assign(acContext, {
   HOLOCRON_GALACTIC_LEGENDS: new Set(),
   characterKey: c => String(c?.baseId || ''),
   rosterUnitType: () => 'character',
-  getCharacterMods: c => fixtureMods.filter(m => m.owner === c.baseId),
+  getCharacterMods: c => acolyteFixtureMods.filter(m => m.owner === c.baseId),
   v176ModStatus: list => {
     const totalSpeed = list.reduce((sum,m)=>sum+Number(m.speed||0),0);
     return { totalSpeed, status: list.length < 6 ? 'INCOMPLETS' : totalSpeed < 30 ? 'TRÈS FAIBLES' : totalSpeed < 50 ? 'FAIBLES' : totalSpeed < 70 ? 'MOYENS' : 'BONS' };
