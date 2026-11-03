@@ -95,6 +95,121 @@ function isGalacticLegendCharacter(c){
   const text=compactKey(values.join(' '));
   return text.includes('GALACTICLEGEND');
 }
+// Classement des donneurs : l'utilisation GAC terrestre et l'utilisation des vaisseaux
+// sont indépendantes de la qualité des mods. Une donnée absente reste inconnue,
+// jamais assimilée à zéro utilisation.
+function seigneurUsageKey(value){
+  return compactKey(typeof value==='object'&&value
+    ? value.baseId??value.base_id??value.characterId??value.character_id??value.unitId??value.unit_id??value.shipId??value.ship_id??value.id??value.name??''
+    : value);
+}
+function seigneurUsageRecord(collection,aliases){
+  if(!collection||typeof collection!=='object')return null;
+  const keys=Object.keys(collection);
+  for(const alias of aliases){
+    const key=seigneurUsageKey(alias);
+    if(!key)continue;
+    const found=keys.find(candidate=>seigneurUsageKey(candidate)===key);
+    if(found)return collection[found];
+  }
+  return null;
+}
+function seigneurUsageCount(record){
+  if(record==null)return null;
+  const raw=typeof record==='number'?record:record.uses??record.usage??record.count??record.seen??record.battles;
+  const value=Number(raw);
+  return Number.isFinite(value)&&value>=0?value:null;
+}
+function seigneurLatestGacUsageSeason(){
+  const seasons=window.__SWGOH_GAC_USAGE__?.seasons;
+  if(!Array.isArray(seasons))return null;
+  return seasons.filter(s=>s&&s.season!=null&&(s.characters||s.ships||s.fleets))
+    .sort((a,b)=>Number(b.season)-Number(a.season))[0]||null;
+}
+function seigneurCharacterGacUsage(character,season=seigneurLatestGacUsageSeason()){
+  if(!season)return null;
+  const aliases=[character?.baseId,character?.base_id,character?.characterId,character?.character_id,character?.id,character?.name];
+  return seigneurUsageCount(seigneurUsageRecord(season.characters,aliases));
+}
+function seigneurShipCrewAliases(ship){
+  const raw=ship?.raw||ship?.data||ship||{};
+  const fields=['crew','crewMembers','crew_members','crewIds','crew_ids','crewUnit','crew_unit','crewUnits','crew_units','pilots','crewMember'];
+  const out=new Set();
+  const add=value=>{
+    if(value==null)return;
+    if(Array.isArray(value)){value.forEach(add);return;}
+    if(typeof value==='object'){
+      const key=seigneurUsageKey(value);
+      if(key)out.add(key);
+      return;
+    }
+    const key=seigneurUsageKey(value);
+    if(key)out.add(key);
+  };
+  for(const field of fields)add(raw[field]);
+  return [...out];
+}
+function seigneurShipUsageMap(season){
+  const source=season?.ships||season?.shipUsage||season?.ship_usage||{};
+  const out=new Map();
+  if(Array.isArray(source)){
+    for(const entry of source){
+      const key=seigneurUsageKey(entry);
+      const uses=seigneurUsageCount(entry);
+      if(key&&uses!==null)out.set(key,uses);
+    }
+  }else if(source&&typeof source==='object'){
+    for(const [id,record] of Object.entries(source)){
+      const key=seigneurUsageKey(id),uses=seigneurUsageCount(record);
+      if(key&&uses!==null)out.set(key,uses);
+    }
+  }
+  // Accepte aussi une source par compositions de flottes : chaque vaisseau
+  // reçoit le nombre d'apparitions des compositions dans lesquelles il figure.
+  const fleets=season?.fleets;
+  if(Array.isArray(fleets)){
+    for(const fleet of fleets){
+      const uses=seigneurUsageCount(fleet);
+      const ships=fleet?.ships||fleet?.units||[];
+      if(uses===null||!Array.isArray(ships))continue;
+      for(const ship of ships){
+        const key=seigneurUsageKey(ship);
+        if(key)out.set(key,(out.get(key)||0)+uses);
+      }
+    }
+  }
+  return out;
+}
+function seigneurCharacterFleetUsage(character,season=seigneurLatestGacUsageSeason()){
+  if(!season)return {uses:null,known:false,shipCount:0,reason:'Saison GAC indisponible'};
+  const ships=Array.isArray(rosterShips)?rosterShips:[];
+  const crewRows=ships.map(ship=>({ship,crew:seigneurShipCrewAliases(ship)}));
+  if(!crewRows.some(row=>row.crew.length))return {uses:null,known:false,shipCount:0,reason:'Correspondance pilotes/vaisseaux indisponible'};
+  const aliases=new Set([character?.baseId,character?.base_id,character?.characterId,character?.character_id,character?.id,character?.name].map(seigneurUsageKey).filter(Boolean));
+  const assigned=crewRows.filter(row=>row.crew.some(key=>aliases.has(key)));
+  if(!assigned.length)return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau associé'};
+  const usage=seigneurShipUsageMap(season);
+  let total=0;
+  for(const row of assigned){
+    const shipAliases=[row.ship?.baseId,row.ship?.base_id,row.ship?.shipId,row.ship?.ship_id,row.ship?.id,row.ship?.name];
+    const key=shipAliases.map(seigneurUsageKey).find(value=>value&&usage.has(value));
+    if(!key)return {uses:null,known:false,shipCount:assigned.length,reason:'Utilisation GAC du vaisseau indisponible'};
+    total+=usage.get(key);
+  }
+  return {uses:total,known:true,shipCount:assigned.length,reason:'Utilisation GAC des vaisseaux vérifiée'};
+}
+function seigneurDonorPriority(character,season=seigneurLatestGacUsageSeason()){
+  const characterUses=seigneurCharacterGacUsage(character,season);
+  const fleet=seigneurCharacterFleetUsage(character,season);
+  if(characterUses===null||!fleet.known)return {
+    known:false,uses:null,characterUses,fleetUses:fleet.uses,shipCount:fleet.shipCount,
+    reason:characterUses===null?'Utilisation GAC terrestre indisponible':fleet.reason
+  };
+  return {
+    known:true,uses:characterUses+fleet.uses,characterUses,fleetUses:fleet.uses,
+    shipCount:fleet.shipCount,reason:'Classement GAC terrestre + flotte'
+  };
+}
 function forgeSourceStatusAllowed(status){
   if($('optimizerAllRoster')?.checked===true)return true;
   if(status==='TRÈS FAIBLES')return $('optimizerVeryLow')?.checked!==false;
@@ -175,23 +290,28 @@ function forgeCharacterAudit(character,profile){
 }
 function forgeAllSourceMods(){
   const out=[],ownerResolver=buildRosterOwnerResolver(rosterCharacters);
+  const season=seigneurLatestGacUsageSeason();
+  const priorities=new Map((rosterCharacters||[]).map(character=>[
+    characterKey(character),seigneurDonorPriority(character,season)
+  ]));
   for(const raw of mods){
     const m=normalizeModForDisplay(raw),ownerKey=resolveModOwnerKey(m,ownerResolver);
     const owner=rosterCharacters.find(c=>characterKey(c)===ownerKey);
     if(owner&&isGalacticLegendCharacter(owner))continue;
     const st=owner?v176ModStatus(getCharacterMods(owner)).status:'INVENTAIRE';
-    out.push({...m,_sourceStatus:st,_sourceOwner:owner?.name||m.character||'Libre'});
+    const priority=owner?priorities.get(ownerKey):{known:true,uses:-1,characterUses:0,fleetUses:0,shipCount:0,reason:'Mod libre'};
+    out.push({...m,_sourceStatus:st,_sourceOwner:owner?.name||m.character||'Libre',
+      _sourcePriorityKnown:priority?.known===true,_sourceUsage:priority?.uses??Number.POSITIVE_INFINITY,
+      _sourceCharacterUses:priority?.characterUses??null,_sourceFleetUses:priority?.fleetUses??null,
+      _sourceShipCount:priority?.shipCount??0,_sourcePriorityReason:priority?.reason||'Usage GAC inconnue'});
   }
   return out;
 }
 function forgeSourceAllowedForSearch(m){
-  if($('optimizerAllRoster')?.checked===true)return true;
-  const st=String(m?._sourceStatus||'');
-  if(st==='INCOMPLETS')return $('optimizerIncomplete')?.checked!==false;
-  if(st==='TRÈS FAIBLES')return $('optimizerVeryLow')?.checked!==false;
-  if(st==='FAIBLES')return $('optimizerLow')?.checked!==false;
-  if(st==='MOYENS')return $('optimizerMedium')?.checked===true;
-  return false;
+  // Un mod libre est disponible. Un mod équipé n'est récupérable que si les
+  // usages terrestre ET flotte du donneur sont connus : aucune protection
+  // implicite ne peut être levée sur une donnée manquante.
+  return !m?._sourceOwner||m._sourceOwner==='Libre'||m._sourcePriorityKnown===true;
 }
 function forgeSearchSourceSummary(){
   if($('optimizerAllRoster')?.checked===true)return 'TOUT LE ROSTER · GL EXCLUES';
@@ -268,6 +388,7 @@ function forgeSearchCandidates(character,profile,slot,secA,secB){
     if(Number(y._rank.one)-Number(x._rank.one))return Number(y._rank.one)-Number(x._rank.one);
     if(Number(y._rank.primary)-Number(x._rank.primary))return Number(y._rank.primary)-Number(x._rank.primary);
     if(Number(y._rank.set)-Number(x._rank.set))return Number(y._rank.set)-Number(x._rank.set);
+    if(Number(x._sourceUsage??Number.POSITIVE_INFINITY)!==Number(y._sourceUsage??Number.POSITIVE_INFINITY))return Number(x._sourceUsage??Number.POSITIVE_INFINITY)-Number(y._sourceUsage??Number.POSITIVE_INFINITY);
     if(Number(y._rank.contribution)-Number(x._rank.contribution))return Number(y._rank.contribution)-Number(x._rank.contribution);
     return Number(y._rank.speed)-Number(x._rank.speed);
   });
@@ -370,8 +491,11 @@ function renderForgeSearchResults(character,profile){
   // ne doit jamais parvenir jusqu'à une carte de proposition.
   const equipped=getCharacterMods(character);
   const rows=result.candidates.filter(m=>forgeCandidatePreservesSpeed(character,profile,equipped,result.current,m));
-  if(!rows.length){box.innerHTML=`<div class="forge-no-result"><b>AUCUN CANDIDAT SANS PERTE DE VITESSE</b><span>Aucun mod du périmètre <strong>${esc(forgeSearchSourceSummary())}</strong> ne respecte les secondaires recherchées tout en conservant la vitesse du personnage et ses bonus de set Speed. Active MOYENS ou TOUT LE ROSTER pour élargir le choix, sans assouplir cette règle.</span></div>`;return;}
-  box.innerHTML=`<div class="forge-search-header"><div><span>ARSENAL DISPONIBLE</span><b>${result.sourceCount} mods · ${rows.length} choix affichés</b></div><strong>${result.usedBoth?'✓ DEUX SECONDAIRES':'→ UNE SECONDAIRE · MEILLEUR APPORT'}</strong></div><div class="forge-candidate-grid">${rows.map((m,i)=>{const r=m._rank;const secs=forgeSecondaryStats(m);const hit=secs.filter(x=>compactKey(x.stat)===compactKey(a)||compactKey(x.stat)===compactKey(b));return `<article class="forge-candidate ${r.both?'both':''}"><div class="forge-candidate-rank"><span>${String(i+1).padStart(2,'0')}</span><b>${r.both?'✓✓':'✓'}</b></div><div class="forge-candidate-icon">${modIconHtml(m,'58')}</div><div class="forge-candidate-main"><div class="forge-candidate-owner">${forgeSourcePortrait(m._sourceOwner)}<span>${esc(m._sourceOwner||'Libre')}</span></div><strong>${esc(m.slot)} · ${esc(m.set_name||'—')}</strong><small>${esc(m._sourceStatus||'—')}</small><div class="forge-candidate-primary"><span>PRIMAIRE</span><b>${esc(m.primary_stat||'—')}</b>${r.primary?'✓ KYBER':''}</div><div class="forge-candidate-seconds">${secs.map(x=>`<span class="${hit.some(h=>compactKey(h.stat)===compactKey(x.stat))?'hit':''}">${esc(x.stat)} <b>${num(x.value,1)}</b></span>`).join('')}</div></div>${forgeModDeltaMarkup(result.current,m,character?.name)}<div class="forge-candidate-speed"><span>VITESSE</span><b>${num(modTotalSpeed(m),0)}</b><small>${r.set?'SET KYBER':'SET différent'}</small></div></article>`;}).join('')}</div>`;
+  if(!rows.length){
+    const noUsage=result.sourceCount===0;
+    box.innerHTML=`<div class="forge-no-result"><b>${noUsage?'DONNÉES GAC INSUFFISANTES POUR SÉCURISER LES DONNEURS':'AUCUN CANDIDAT SANS PERTE DE VITESSE'}</b><span>${noUsage?'Les usages GAC terrestres et les usages des vaisseaux ne sont pas tous disponibles ou reliés aux pilotes. Aucun mod équipé ne sera considéré récupérable tant que ces protections ne peuvent pas être vérifiées.':'Aucun mod du roster dont les usages GAC sont vérifiés ne respecte les secondaires recherchées tout en conservant la vitesse du personnage et ses bonus de set Speed.'}</span></div>`;return;
+  }
+  box.innerHTML=`<div class="forge-search-header"><div><span>ARSENAL DISPONIBLE</span><b>${result.sourceCount} mods · ${rows.length} choix affichés</b></div><strong>${result.usedBoth?'✓ DEUX SECONDAIRES':'→ UNE SECONDAIRE · MEILLEUR APPORT'}</strong></div><div class="forge-candidate-grid">${rows.map((m,i)=>{const r=m._rank;const secs=forgeSecondaryStats(m);const hit=secs.filter(x=>compactKey(x.stat)===compactKey(a)||compactKey(x.stat)===compactKey(b));return `<article class="forge-candidate ${r.both?'both':''}"><div class="forge-candidate-rank"><span>${String(i+1).padStart(2,'0')}</span><b>${r.both?'✓✓':'✓'}</b></div><div class="forge-candidate-icon">${modIconHtml(m,'58')}</div><div class="forge-candidate-main"><div class="forge-candidate-owner">${forgeSourcePortrait(m._sourceOwner)}<span>${esc(m._sourceOwner||'Libre')}</span></div><strong>${esc(m.slot)} · ${esc(m.set_name||'—')}</strong><small>${m._sourceOwner==='Libre'?'INVENTAIRE LIBRE':m._sourcePriorityKnown?`GAC ${num(m._sourceCharacterUses,0)} terrestre · ${num(m._sourceFleetUses,0)} flotte`:'USAGE GAC NON VÉRIFIÉ'}</small><div class="forge-candidate-primary"><span>PRIMAIRE</span><b>${esc(m.primary_stat||'—')}</b>${r.primary?'✓ KYBER':''}</div><div class="forge-candidate-seconds">${secs.map(x=>`<span class="${hit.some(h=>compactKey(h.stat)===compactKey(x.stat))?'hit':''}">${esc(x.stat)} <b>${num(x.value,1)}</b></span>`).join('')}</div></div>${forgeModDeltaMarkup(result.current,m,character?.name)}<div class="forge-candidate-speed"><span>VITESSE</span><b>${num(modTotalSpeed(m),0)}</b><small>${r.set?'SET KYBER':'SET différent'}</small></div></article>`;}).join('')}</div>`;
 }
 
 $('runOptimizer').addEventListener('click',async()=>{
