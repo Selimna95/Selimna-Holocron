@@ -114,25 +114,41 @@ function forgeScopedMods(){
   return allowed;
 }
 
+function forgeKyberSetDistribution(profile){
+  const raw=profile?.sets;
+  const entries=Array.isArray(raw)
+    ? raw.map(item=>[item?.name,item?.weight])
+    : raw&&typeof raw==='object' ? Object.entries(raw) : [];
+  return entries.map(([name,weight])=>({name:String(name||'').trim(),key:compactKey(name),weight:Number(weight||0)}))
+    .filter(item=>item.name&&item.key&&item.weight>0);
+}
 function forgeKyberSetRules(profile){
-  const rec=optimizerRecommendationSummary(profile);
+  // Seules les compositions explicites de six mods sont des plans exacts.
+  // `sets` contient une distribution de sets observés, pas une composition.
+  const entries=Array.isArray(profile?.specific_sets)?profile.specific_sets:[];
   const rules=[];
-  for(const s of rec.sets){
-    const label=String(s.label||'').replace(/^Triple\s+/i,'').replace(/^Double\s+/i,'');
-    const parts=label.split(/\s*\+\s*/).map(x=>x.trim()).filter(Boolean);
+  for(const entry of entries){
+    const raw=entry?.counts;
+    if(!raw||typeof raw!=='object')continue;
     const counts={};
-    if(parts.length===1) counts[parts[0]]=6;
-    else if(parts.length>=2){counts[parts[0]]=4;counts[parts[1]]=2;}
-    if(Object.keys(counts).length) rules.push({label,counts,weight:Number(s.weight||0)});
+    for(const [name,value] of Object.entries(raw)){
+      const count=Number(value),key=String(name||'').trim();
+      if(key&&Number.isInteger(count)&&count>0)counts[key]=count;
+    }
+    if(Object.values(counts).reduce((sum,n)=>sum+n,0)!==6)continue;
+    rules.push({label:String(entry.name||Object.entries(counts).map(([name,n])=>`${name} ×${n}`).join(' + ')),counts,weight:Number(entry.weight||0)});
   }
   return rules;
 }
 function forgeModSetConformity(mod,profile){
-  const actual=String(mod?.set_name||mod?.set||'').trim().toLowerCase();
+  const actual=compactKey(mod?.set_name||mod?.set||'');
+  const distribution=forgeKyberSetDistribution(profile);
   const rules=forgeKyberSetRules(profile);
-  if(!actual||!rules.length)return {ok:null,reason:'Référence de set indisponible'};
-  const best=rules.some(rule=>Object.keys(rule.counts).some(set=>set.toLowerCase()===actual));
-  return {ok:best,reason:best?'Set présent dans la référence Kyber':'Set hors référence Kyber'};
+  if(!actual||(!distribution.length&&!rules.length))return {ok:null,reason:'Référence de set indisponible'};
+  const observed=distribution.some(item=>item.key===actual) ||
+    rules.some(rule=>Object.keys(rule.counts).some(name=>compactKey(name)===actual));
+  const weight=distribution.find(item=>item.key===actual)?.weight||0;
+  return {ok:observed,weight,reason:observed?'Set observé dans les données Kyber':'Set absent de la référence Kyber'};
 }
 function forgeModPrimaryConformity(mod,profile){
   const slot=optimizerSlotKey(mod?.slot);
@@ -201,9 +217,7 @@ function forgeHasSecondary(m,wanted){
 }
 function forgeSlotCompatible(m,slot){return optimizerSlotKey(m?.slot)===optimizerSlotKey(slot);}
 function forgeSetCompatible(m,profile){
-  const rules=forgeKyberSetRules(profile); const actual=String(m?.set_name||'').toLowerCase();
-  if(!rules.length)return false;
-  return rules.some(r=>Object.keys(r.counts).some(s=>String(s).toLowerCase()===actual));
+  return forgeModSetConformity(m,profile).ok===true;
 }
 function forgePrimaryCompatible(m,profile){return forgeModPrimaryConformity(m,profile).ok===true;}
 function forgeCandidateScore(m,profile,secA,secB){
@@ -407,12 +421,10 @@ function optimizerModSecondaries(m){
 function optimizerBuildReferenceAudit(build, profile){
   const rec=optimizerRecommendationSummary(profile);
   const topSet=rec.sets[0]?.label||'';
-  const topSetNames=String(topSet).replace(/^triple\s+/i,'').split(/\s*\+\s*/).map(x=>x.trim().toLowerCase()).filter(Boolean);
-  const buildSets={};
-  build.forEach(m=>{const set=String(m.set_name||m.set||'').trim().toLowerCase();if(set)buildSets[set]=(buildSets[set]||0)+1;});
-  let setHits=0;
-  if(topSetNames.length===1) setHits=Math.min(buildSets[topSetNames[0]]||0,6);
-  else if(topSetNames.length===2) setHits=Math.min(buildSets[topSetNames[0]]||0,4)+Math.min(buildSets[topSetNames[1]]||0,2);
+  // Une distribution (Health 90 %, Offense 4 %) n'est pas un plan de six mods.
+  // On mesure seulement la présence de sets observés, sans inventer 6/6.
+  const hasSetReference=forgeKyberSetDistribution(profile).length>0||forgeKyberSetRules(profile).length>0;
+  const setHits=hasSetReference?build.filter(mod=>forgeModSetConformity(mod,profile).ok===true).length:0;
   const primary=optimizerPrimaryConformity(build,profile);
   const focus=rec.secondaries.map(x=>String(x.name||'').toLowerCase().replace(/[^a-z0-9%]/g,''));
   let secondaryHits=0;
@@ -423,7 +435,7 @@ function optimizerBuildReferenceAudit(build, profile){
     }
   });
   const secondaryTotal=build.length;
-  const setPct=topSetNames.length?Math.round((setHits/6)*100):0;
+  const setPct=hasSetReference?Math.round((setHits/Math.max(1,build.length))*100):0;
   const primaryPct=primary.known?Math.round((primary.hits/primary.known)*100):0;
   const secondaryPct=secondaryTotal?Math.round((secondaryHits/secondaryTotal)*100):0;
   const compliance=Math.round(setPct*.4+primaryPct*.4+secondaryPct*.2);
@@ -431,14 +443,13 @@ function optimizerBuildReferenceAudit(build, profile){
 }
 function optimizerVerdictForBuild(audit, scope, index){
   const gaps=[];
-  if(audit.setPct<100)gaps.push(`Set dominant : ${audit.setHits}/6 emplacements conformes`);
+  if(audit.setPct<100)gaps.push(`Sets observés : ${audit.setHits}/${audit.secondaryTotal} mods utilisent un set présent dans les données Kyber`);
   if(audit.primaryKnown && audit.primaryPct<100)gaps.push(`Primaires : ${audit.primaryHits}/${audit.primaryKnown} conformes à Kyber`);
   if(audit.secondaryTotal && audit.secondaryPct<70)gaps.push(`Secondaires : ${audit.secondaryHits}/${audit.secondaryTotal} mods portent un focus Kyber`);
   const canBroaden=!/MOYENS|TOUT LE ROSTER/.test(scope);
   if(canBroaden && audit.compliance<75) return {kind:'action',title:'Élargir le périmètre',text:'Le meilleur candidat reste éloigné de la doctrine Kyber dans le périmètre actuel. Active MOYENS pour donner à la Forge davantage de choix.'};
   if(audit.compliance>=90) return {kind:'strong',title:'Configuration proche de la doctrine',text:'Le candidat respecte fortement la référence Kyber tout en restant dans l’arsenal disponible.'};
   if(gaps.length) return {kind:'warn',title:'Compromis identifié',text:`La Forge retient ce candidat avec ${audit.compliance}% d’adéquation. ${gaps.slice(0,2).join(' · ')}.`};
-  sithariBindActionControls(box);
   return {kind:'neutral',title:`Candidat ${index+1} analysé`,text:'La configuration est évaluée par rapport aux sets, primaires et secondaires de référence Kyber.'};
 }
 
@@ -489,7 +500,7 @@ function renderResults(data){
         <div class="forge-section-title"><span>VERDICT DE L’HOLOCRON</span><small>${pareto?'FRONT DE PARETO':'CANDIDAT RETENU'}</small></div>
         <div class="forge-verdict-main ${verdict.kind}"><div class="forge-verdict-mark">${verdict.kind==='strong'?'✓':verdict.kind==='action'?'→':'!'}</div><div><strong>${esc(verdict.title)}</strong><p>${esc(verdict.text)}</p></div></div>
         <div class="forge-verdict-list">
-          <span class="${audit.setPct===100?'ok':'warn'}"><b>${audit.setPct===100?'✓':'!'}</b> Set dominant : ${audit.setHits}/6 emplacements conformes</span>
+          <span class="${audit.setPct===100?'ok':'warn'}"><b>${audit.setPct===100?'✓':'!'}</b> Sets observés : ${audit.setHits}/6 mods présents dans les données Kyber</span>
           <span class="${audit.primaryKnown&&audit.primaryHits===audit.primaryKnown?'ok':'warn'}"><b>${audit.primaryKnown&&audit.primaryHits===audit.primaryKnown?'✓':'!'}</b> Primaires : ${audit.primaryKnown?`${audit.primaryHits}/${audit.primaryKnown} conformes à la référence`:'données Kyber non disponibles'}</span>
           <span class="${audit.secondaryHits?'ok':'warn'}"><b>${audit.secondaryHits?'✓':'!'}</b> Secondaires : ${audit.secondaryHits}/${audit.secondaryTotal} mods avec focus Kyber</span>
           <span class="ok"><b>✓</b> Mods recherchés sur : ${esc(scope)}</span>
