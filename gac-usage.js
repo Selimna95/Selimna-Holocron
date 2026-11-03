@@ -1,5 +1,13 @@
-/* Données GAC locales. Remplir avec les occurrences individuelles de SWGOH.GG.
-   Le moteur sélectionne automatiquement la saison la plus récente non vide.
-   Format : {season: 83, characters: {JABBATHEHUTT: {uses: 12345}}}
-   Ne pas mélanger les saisons ni les formats dans une même entrée. */
+/* Données GAC agrégées. Le moteur choisit la saison la plus récente non vide.
+   Format attendu :
+   {
+     season: 84,
+     characters: { BASE_ID: { uses: 12345 } },
+     ships: { SHIP_BASE_ID: { uses: 6789 } }
+   }
+   `ships` compte les apparitions des vaisseaux dans les flottes GAC ;
+   le roster doit fournir les associations vaisseau -> pilote pour protéger les
+   mods des pilotes en fonction de l'utilisation réelle de leurs flottes.
+   Une donnée absente reste inconnue et ne vaut jamais zéro.
+*/
 window.__SWGOH_GAC_USAGE__ = { seasons: [] };
