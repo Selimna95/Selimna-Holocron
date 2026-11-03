@@ -220,6 +220,24 @@ load(seigneur, [
   'seigneurCharacterGacUsage','seigneurShipCrewAliases','seigneurShipUsageMap',
   'seigneurCharacterFleetUsage','seigneurDonorPriority'
 ], donorContext);
+const donorGateContext = vm.createContext({
+  characterKey: character => String(character?.baseId || character?.name || ''),
+  compactKey
+});
+load(seigneur, ['forgeSourceAllowedForSearch'], donorGateContext);
+assert.equal(donorGateContext.forgeSourceAllowedForSearch({
+  _sourceOwner: 'Libre', _sourceOwnerKey: null, _sourcePriorityKnown: true
+}), true, 'Free inventory mods remain available');
+assert.equal(donorGateContext.forgeSourceAllowedForSearch({
+  _sourceOwner: 'Unknown Pilot', _sourceOwnerKey: null, _sourcePriorityKnown: false
+}), false, 'Unresolved owners must not be mistaken for free mods');
+assert.equal(donorGateContext.forgeSourceAllowedForSearch({
+  _sourceOwner: 'Pilot', _sourceOwnerKey: 'PILOT', _sourcePriorityKnown: true
+}), true, 'Verified GAC donors remain available');
+assert.equal(donorGateContext.forgeSourceAllowedForSearch({
+  _sourceOwner: 'Target', _sourceOwnerKey: 'TARGET', _sourcePriorityKnown: false
+}, {baseId:'TARGET'}), true, 'The selected target keeps its own equipped mods');
+
 const donorSeason = donorContext.seigneurLatestGacUsageSeason();
 assert.equal(donorContext.seigneurCharacterGacUsage({baseId:'LOWLAND'}, donorSeason), 10);
 assert.equal(donorContext.seigneurCharacterFleetUsage({baseId:'PILOTLOW'}, donorSeason).uses, 3);
