@@ -144,6 +144,15 @@ const equipped = [
 ];
 assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'gain', slot: 'Square', set_name: 'Offense', speed: 25 }), true);
 assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'loss', slot: 'Square', set_name: 'Offense', speed: 10 }), false);
+const threeSpeedSets = [
+  { id: 'cur-offense', slot: 'Square', set_name: 'Offense', speed: 10 },
+  { id: 'a', slot: 'Arrow', set_name: 'Speed', speed: 5 },
+  { id: 'd', slot: 'Diamond', set_name: 'Speed', speed: 5 },
+  { id: 't', slot: 'Triangle', set_name: 'Speed', speed: 5 },
+  { id: 'c', slot: 'Circle', set_name: 'Offense', speed: 5 },
+  { id: 'x', slot: 'Cross', set_name: 'Offense', speed: 5 }
+];
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, threeSpeedSets, threeSpeedSets[0], { id: 'fourth-speed', slot: 'Square', set_name: 'Speed', speed: 5 }), true);
 assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'unknown', slot: 'Square', set_name: 'Offense', speed: 25 }), false);
 
 // 6) Sith'ari: same net-speed logic, with a conservative fallback when base speed is unknown.

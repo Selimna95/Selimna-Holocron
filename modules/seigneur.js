@@ -235,8 +235,6 @@ function forgeProjectedModSpeed(character,profile,modList){
 }
 function forgeCandidatePreservesSpeed(character,profile,equipped,current,candidate){
   if(!current)return true;
-  const currentSpeed=numericValue(modTotalSpeed(current),0),candidateSpeed=Number(modTotalSpeed(candidate));
-  if(!Number.isFinite(candidateSpeed)||candidateSpeed+1e-9<currentSpeed)return false;
   const currentId=String(current.game_id||current.id||''),currentSlot=optimizerSlotKey(current.slot);
   const after=(Array.isArray(equipped)?equipped:[]).filter(m=>currentId?String(m.game_id||m.id||'')!==currentId:optimizerSlotKey(m.slot)!==currentSlot);
   after.push(candidate);
