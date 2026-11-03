@@ -60,7 +60,7 @@ self.addEventListener('fetch', event => {
       }
       return response;
     }).catch(async () => (await caches.match(request)) ||
-      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
+      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope)))));
     return;
   }
 
@@ -74,7 +74,7 @@ self.addEventListener('fetch', event => {
       }
       return response;
     }).catch(async () => (await caches.match(request)) ||
-      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope))));
+      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope)))));
     return;
   }
   if (request.mode === 'navigate') {
