@@ -86,13 +86,13 @@ for (const baseId of ['REY', 'GRANDMASTERYODA', 'JEDIKNIGHTLUKE', 'STARKILLER', 
 // 3) Run the production Sith'ari cache against the four real collision pairs.
 const sithari = read('../modules/sithari.js');
 const slots = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'];
-const acolyteFixtureMods = collisionRoster.flatMap((c, ci) => slots.map((slot, si) => ({
+const fixtureMods = collisionRoster.flatMap((c, ci) => slots.map((slot, si) => ({
   id: c.baseId + '-' + slot, game_id: c.baseId + '-' + slot,
   character: c.baseId, slot, set_name: 'Speed', primary_stat: 'Health',
   secondary_1_stat: 'Speed', secondary_1_value: 8 + ci + si, level: 15
 })));
 const cacheContext = vm.createContext({
-  compactKey, rosterCharacters: collisionRoster, mods: acolyteFixtureMods,
+  compactKey, rosterCharacters: collisionRoster, mods: fixtureMods,
   SITHARI_SLOT_ORDER: slots,
   sithariModCache: { signature: '', items: [], byOwner: new Map(), statusByOwner: new Map(), ownerResolver: null },
   normalizeModForDisplay: (m) => ({ ...m, game_id: m.game_id || m.id }),
