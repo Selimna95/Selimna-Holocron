@@ -287,13 +287,13 @@
 
 <section id="optimizer" class="page">
   <div class="panel controls">
-    <div class="panel-title">SEIGNEUR SITH // FORGE PERSONNAGE</div><p class="module-intro">Choisis un personnage, lance son diagnostic, puis définis les sources de mods à examiner. La recherche et le verdict apparaissent dans les étapes suivantes.</p>
+    <div class="panel-title">SEIGNEUR SITH // OPTIMISATION COMPLÈTE</div><p class="module-intro">Recherche les meilleures combinaisons de six mods pour un personnage. Les donneurs sont classés par utilisation GAC terrestre et par utilisation de leurs vaisseaux ; la qualité actuelle de leurs mods ne détermine pas leur disponibilité.</p>
     <div class="forge-control-group forge-character-group">
       <div class="forge-control-title"><span>01 // PERSONNAGE</span><small>Choisir un personnage. La référence Kyber est construite avant toute recherche.</small></div>
       <div class="forge-character-select-row">
         <label>Personnage<select id="character"></select></label>
         <div class="forge-reference-stamp"><span>RÉFÉRENCE ACTIVE</span><strong>KYBER // SWGOH.GG</strong><small>Sets + primaires par slot</small></div>
-        <button id="runOptimizer" class="primary" type="button">ANALYSER LE PERSONNAGE</button>
+        <button id="runOptimizer" class="primary" type="button">OPTIMISER LES 6 MODS</button>
       </div>
     </div>
     <div id="characterInfo" class="character-info">Aucun personnage sélectionné.</div>
@@ -306,7 +306,7 @@
   </div>
 
   <div class="panel forge-search-panel-wrap">
-    <div class="panel-title">03 // RECHERCHE CIBLÉE</div>
+    <div class="panel-title">03 // ARSENAL ET DONNEURS GAC</div>
     <div class="forge-scope-grid forge-scope-grid-main">
       <label class="scope-choice"><input type="checkbox" id="optimizerIncomplete" checked><b>INCOMPLETS</b><small>source par défaut</small></label>
       <label class="scope-choice"><input type="checkbox" id="optimizerVeryLow" checked><b>TRÈS FAIBLES</b><small>source par défaut</small></label>
@@ -554,7 +554,7 @@
 <script src="modules/core.js?v=4.1.8-acolyte-score"></script>
 <script src="modules/acolyte.js?v=3.4.5-candidate-score"></script>
 <script src="modules/disciple.js?v=3.5.2-ranked-candidates"></script>
-<script src="modules/seigneur.js?v=3.6.0-gac-donor-priority"></script>
+<script src="modules/seigneur.js?v=3.7.0-six-mod-gac-optimizer"></script>
 <script src="modules/sithari.js?v=4.1.6-owner-resolver"></script>
 <script src="modules/runtime.js?v=3.7.0-sith-portraits"></script>
 <script>
