@@ -590,6 +590,14 @@ function discipleSpeedSafeCandidates(selected,sourceRows,secondaryKey){
     const match=reallocationCandidateSecondary(row.mod,secondaryKey);
     if(match)rows.push({...row,value:match.value});
   }
+  // Priorité à la secondaire recherchée, puis à la vitesse totale du mod.
+  // Le nom du propriétaire sert uniquement à rendre les égalités parfaitement stables.
+  rows.sort((a,b)=>
+    numericValue(b.value,0)-numericValue(a.value,0) ||
+    numericValue(b.speed,0)-numericValue(a.speed,0) ||
+    String(a.character?.name||a.character?.baseId||a.mod?.character||'')
+      .localeCompare(String(b.character?.name||b.character?.baseId||b.mod?.character||''),'fr')
+  );
   return rows;
 }
 function renderReallocationResults(){
