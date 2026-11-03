@@ -184,6 +184,23 @@ const discipleRows = [
 ];
 const discipleSafe = discipleContext.discipleSpeedSafeCandidates({ speed: 10 }, discipleRows, 'Potency');
 assert.deepEqual(Array.from(discipleSafe, x => x.speed), [10, 14]);
+assert.deepEqual(
+  Array.from(discipleSafe, x => x.value),
+  [8, 5],
+  'Disciple must rank the requested secondary before total mod speed'
+);
+const discipleTieRows = [
+  { speed: 12, character: { name: 'Zulu' }, mod: { stat: 'Potency', value: 8 } },
+  { speed: 16, character: { name: 'Beta' }, mod: { stat: 'Potency', value: 8 } },
+  { speed: 14, character: { name: 'Alpha' }, mod: { stat: 'Potency', value: 9 } },
+  { speed: 9, character: { name: 'Fast but unsafe' }, mod: { stat: 'Potency', value: 99 } }
+];
+const discipleRanked = discipleContext.discipleSpeedSafeCandidates({ speed: 10 }, discipleTieRows, 'Potency');
+assert.deepEqual(
+  Array.from(discipleRanked, x => [x.value, x.speed]),
+  [[9, 14], [8, 16], [8, 12]],
+  'Disciple must use total mod speed as the tie-breaker and still reject speed losses'
+);
 
 // 5) Seigneur: allow a set change only when known base speed proves the net is safe.
 const seigneur = read('../modules/seigneur.js');
