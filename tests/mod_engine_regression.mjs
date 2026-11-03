@@ -211,8 +211,8 @@ const donorContext = vm.createContext({
     ships: { LOWSHIP: { uses: 3 }, HIGHSHIP: { uses: 90 } }
   }] } },
   rosterShips: [
-    { baseId: 'LOWSHIP', crew: [{ baseId: 'PILOTLOW' }] },
-    { baseId: 'HIGHSHIP', crew: [{ baseId: 'PILOTHIGH' }] }
+    { baseId: 'LOWSHIP', raw: { data: { crew: [{ baseId: 'PILOTLOW' }] } } },
+    { baseId: 'HIGHSHIP', raw: { data: { crew: [{ baseId: 'PILOTHIGH' }] } } }
   ]
 });
 load(seigneur, [
