@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.2.0-seigneur-six-mod-optimizer';
+const CACHE_NAME = 'holocron-static-v4.2.1-gac-donor-weight';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -17,14 +17,14 @@ const STATIC_ASSETS = [
   './holocron-static.css?v=4.0.45',
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.3.0-gac-usage-schema',
-  './modules/core.js?v=4.1.8-acolyte-score',
+  './modules/core.js?v=4.1.9-seigneur-worker-link',
   './modules/acolyte.js?v=3.4.5-candidate-score',
   './modules/disciple.js?v=3.5.2-ranked-candidates',
-  './modules/seigneur.js?v=3.7.0-six-mod-gac-optimizer',
+  './modules/seigneur.js?v=3.7.1-six-mod-gac-optimizer',
   './modules/sithari.js?v=4.1.6-owner-resolver',
   './modules/runtime.js?v=3.7.0-sith-portraits',
-  './optimizer-worker.mjs?v=3.4.4-cache-sync',
-  './python/optimizer.py?v=3.4.4-cache-sync',
+  './optimizer-worker.mjs?v=3.5.0-gac-donor-weight',
+  './python/optimizer.py?v=3.5.0-gac-donor-weight',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
