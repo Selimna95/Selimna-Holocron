@@ -294,7 +294,7 @@ function renderForgeCharacterPanel(character,profile){
     : unknownCount
       ? `<div class="forge-audit-empty">Référence Kyber incomplète : ${unknownCount} emplacement(s) ne peuvent pas être déclarés conformes. Leur statut reste « à vérifier ».</div>`
       : `<div class="forge-audit-empty">Les mods équipés sont conformes aux critères disponibles. Aucun remplacement prioritaire détecté.</div>`;
-  $('forgeCharacterAudit').innerHTML=`<div class="forge-audit-character"><div class="forge-audit-character-portrait">${characterPortrait}</div><div><span>PERSONNAGE ANALYSÉ</span><strong>${esc(character?.name||'Personnage')}</strong><small>Référence Kyber vérifiée selon les données disponibles.</small></div></div><div class="forge-audit-summary"><div><span>MODS DU PERSONNAGE</span><b>${audit.equipped.length}/6</b></div><div><span>ÉCARTS DÉTECTÉS</span><b>${mismatches.length}</b></div><div><span>À VÉRIFIER</span><b>${unknownCount}</b></div><div><span>SETS KYBER</span><b>${audit.setRules.length?'IDENTIFIÉS':'À RÉCUPÉRER'}</b></div></div><div class="forge-current-mods">${currentSlots}</div><div class="forge-mismatch-list">${mismatchHtml}</div>`;
+  $('forgeCharacterAudit').innerHTML=`<div class="forge-audit-character"><div class="forge-audit-character-portrait">${characterPortrait}</div><div><span>PERSONNAGE ANALYSÉ</span><strong>${esc(character?.name||'Personnage')}</strong><small>Référence Kyber vérifiée selon les données disponibles.</small></div></div><div class="forge-audit-summary"><div><span>MODS DU PERSONNAGE</span><b>${audit.equipped.length}/6</b></div><div><span>ÉCARTS DÉTECTÉS</span><b>${mismatches.length}</b></div><div><span>À VÉRIFIER</span><b>${unknownCount}</b></div><div><span>SETS KYBER</span><b>${forgeKyberSetDistribution(profile).length?'DISTRIBUTION':audit.setRules.length?'COMPOSITIONS':'INDISPONIBLE'}</b></div></div><div class="forge-current-mods">${currentSlots}</div><div class="forge-mismatch-list">${mismatchHtml}</div>`;
   const selects=(id,val)=>`<select id="${id}">${secondaries.map(n=>`<option value="${esc(n)}" ${n===val?'selected':''}>${esc(n)}</option>`).join('')}</select>`;
   $('forgeSearchPanel').innerHTML=`<div class="forge-search-grid"><label>MOD À REMPLACER<select id="forgeTargetSlot">${audit.issues.map(m=>`<option value="${esc(m.slot)}" ${m._mismatch?'selected':''}>${esc(m.slot)} · ${m._mismatch?'ÉCART':m._unknown?'À VÉRIFIER':'conforme'}</option>`).join('')}</select></label><label>SECONDAIRE 1 ${selects('forgeSecondaryA',first)}</label><label>SECONDAIRE 2 ${selects('forgeSecondaryB',second)}</label><button type="button" id="forgeSearchBtn" class="primary">RECHERCHER 5 OPTIONS</button></div><div class="forge-search-note">La vitesse n'est pas une secondaire recherchée. Elle sert uniquement à départager les candidats.</div><div id="forgeSearchResults"></div>`;
   $('forgeSearchBtn')?.addEventListener('click',()=>renderForgeSearchResults(character,profile));
@@ -435,7 +435,14 @@ function optimizerBuildReferenceAudit(build, profile){
     }
   });
   const secondaryTotal=build.length;
-  const setPct=hasSetReference?Math.round((setHits/Math.max(1,build.length))*100):0;
+  const setDistribution=forgeKyberSetDistribution(profile);
+  const maxSetWeight=Math.max(0,...setDistribution.map(item=>item.weight));
+  const setFitValues=build.map(mod=>{
+    const conformity=forgeModSetConformity(mod,profile);
+    if(conformity.ok!==true)return 0;
+    return maxSetWeight>0?Math.min(1,conformity.weight/maxSetWeight)*100:100;
+  });
+  const setPct=hasSetReference&&setFitValues.length?Math.round(setFitValues.reduce((sum,value)=>sum+value,0)/setFitValues.length):0;
   const primaryPct=primary.known?Math.round((primary.hits/primary.known)*100):0;
   const secondaryPct=secondaryTotal?Math.round((secondaryHits/secondaryTotal)*100):0;
   const compliance=Math.round(setPct*.4+primaryPct*.4+secondaryPct*.2);
@@ -443,7 +450,7 @@ function optimizerBuildReferenceAudit(build, profile){
 }
 function optimizerVerdictForBuild(audit, scope, index){
   const gaps=[];
-  if(audit.setPct<100)gaps.push(`Sets observés : ${audit.setHits}/${audit.secondaryTotal} mods utilisent un set présent dans les données Kyber`);
+  if(audit.setPct<100)gaps.push(`Fréquence des sets : ${audit.setPct}% du poids du set Kyber le plus utilisé en moyenne`);
   if(audit.primaryKnown && audit.primaryPct<100)gaps.push(`Primaires : ${audit.primaryHits}/${audit.primaryKnown} conformes à Kyber`);
   if(audit.secondaryTotal && audit.secondaryPct<70)gaps.push(`Secondaires : ${audit.secondaryHits}/${audit.secondaryTotal} mods portent un focus Kyber`);
   const canBroaden=!/MOYENS|TOUT LE ROSTER/.test(scope);
@@ -492,7 +499,7 @@ function renderResults(data){
         <div class="forge-score"><span>ADÉQUATION À LA RÉFÉRENCE</span><b>${compliance}%</b><small>${esc(complianceLabel)} · Kyber ${esc(score)}</small></div>
       </header>
       <div class="forge-build-meta forge-build-doctrine">
-        <div><span>DOCTRINE</span><strong>${audit.topSet?`✓ Set dominant : ${esc(audit.topSet)}`:'Référence de set non détaillée'}</strong></div>
+        <div><span>DOCTRINE</span><strong>${audit.topSet?`Set le plus fréquent : ${esc(audit.topSet)}`:'Référence de set non détaillée'}</strong></div>
         <div><span>PRIMAIRES</span><strong>${audit.primaryKnown?`${audit.primaryHits}/${audit.primaryKnown} conformes`:'Référence indisponible'}</strong></div>
         <div><span>SECONDAIRES</span><strong>${audit.secondaryHits} slot${audit.secondaryHits>1?'s':''} avec focus Kyber</strong></div>
       </div>
@@ -500,7 +507,7 @@ function renderResults(data){
         <div class="forge-section-title"><span>VERDICT DE L’HOLOCRON</span><small>${pareto?'FRONT DE PARETO':'CANDIDAT RETENU'}</small></div>
         <div class="forge-verdict-main ${verdict.kind}"><div class="forge-verdict-mark">${verdict.kind==='strong'?'✓':verdict.kind==='action'?'→':'!'}</div><div><strong>${esc(verdict.title)}</strong><p>${esc(verdict.text)}</p></div></div>
         <div class="forge-verdict-list">
-          <span class="${audit.setPct===100?'ok':'warn'}"><b>${audit.setPct===100?'✓':'!'}</b> Sets observés : ${audit.setHits}/6 mods présents dans les données Kyber</span>
+          <span class="${audit.setPct===100?'ok':'warn'}"><b>${audit.setPct===100?'✓':'!'}</b> Sets observés : ${audit.setHits}/6 · fréquence moyenne ${audit.setPct}%</span>
           <span class="${audit.primaryKnown&&audit.primaryHits===audit.primaryKnown?'ok':'warn'}"><b>${audit.primaryKnown&&audit.primaryHits===audit.primaryKnown?'✓':'!'}</b> Primaires : ${audit.primaryKnown?`${audit.primaryHits}/${audit.primaryKnown} conformes à la référence`:'données Kyber non disponibles'}</span>
           <span class="${audit.secondaryHits?'ok':'warn'}"><b>${audit.secondaryHits?'✓':'!'}</b> Secondaires : ${audit.secondaryHits}/${audit.secondaryTotal} mods avec focus Kyber</span>
           <span class="ok"><b>✓</b> Mods recherchés sur : ${esc(scope)}</span>
