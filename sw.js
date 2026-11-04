@@ -1,7 +1,7 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
-const CACHE_NAME = 'holocron-static-v4.3.7-sithari-cumulative';
+const CACHE_NAME = 'holocron-static-v4.3.8-sithari-roster-synthesis';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -14,7 +14,7 @@ const STATIC_ASSETS = [
   './assets/image/jpeg.jpg',
   './app.css?v=4.1.2-seigneur-slot-comparison',
   './sithari.css?v=4.2.0-adaptive-mod-board',
-  './sithari-strategy.css?v=1.0.0-cumulative-pipeline',
+  './sithari-strategy.css?v=1.0.1-roster-synthesis',
   './holocron-system.css?v=4.0.0-disciple-clarity',
   './entrance.css?v=4.0.46-crawl-restart',
   './holocron-static.css?v=4.0.45',
