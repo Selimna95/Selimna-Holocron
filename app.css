@@ -2866,3 +2866,36 @@ textarea:disabled{
 .forge-global-impact-empty{font-size:12px;color:var(--muted,#aaa);padding:10px}
 .forge-global-impact-note{display:block}
 
+
+
+/* V4.1.1 — Seigneur Sith : comparaison lisible des six slots et vitesse totale. */
+#optimizer .forge-speed-comparison{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:3px 14px;
+  margin:12px 14px 0;padding:12px 14px;border:1px solid rgba(255,105,92,.28);
+  border-radius:7px;background:linear-gradient(100deg,rgba(65,15,11,.72),rgba(25,5,3,.78));
+}
+#optimizer .forge-speed-comparison>div span{display:block;color:#a9817c;font-size:9px;letter-spacing:.14em}
+#optimizer .forge-speed-comparison>div strong{display:block;color:#fff0ed;font-size:20px;margin-top:3px;font-variant-numeric:tabular-nums}
+#optimizer .forge-speed-comparison>b{font-size:17px;font-variant-numeric:tabular-nums}
+#optimizer .forge-speed-comparison>b.gain{color:#70d991}
+#optimizer .forge-speed-comparison>b.loss{color:#ff7777}
+#optimizer .forge-speed-comparison>small{grid-column:1/-1;color:#a27d78;font-size:9px}
+#optimizer .forge-slot-comparison{padding:13px 14px 14px;border-bottom:1px solid rgba(194,74,63,.14)}
+#optimizer .forge-slot-compare-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#optimizer .forge-slot-compare{
+  display:grid;grid-template-columns:48px minmax(0,1fr) minmax(0,1fr);gap:7px;align-items:start;
+  min-width:0;padding:8px;border:1px solid rgba(194,74,63,.15);border-radius:6px;background:rgba(20,5,3,.58)
+}
+#optimizer .forge-slot-compare-name{align-self:center;color:#ff8a7f;font-size:10px}
+#optimizer .forge-slot-compare>div{min-width:0}
+#optimizer .forge-slot-compare>div small{display:block;color:#9d7772;font-size:8px;letter-spacing:.1em;margin-bottom:3px}
+#optimizer .forge-slot-compare>div span{display:block;color:#e6c9c5;font-size:9px;line-height:1.4;overflow-wrap:anywhere}
+#optimizer .forge-slot-compare>strong{grid-column:2/-1;justify-self:end;font-size:9px;font-variant-numeric:tabular-nums}
+#optimizer .forge-slot-compare>strong.gain{color:#70d991}
+#optimizer .forge-slot-compare>strong.neutral{color:#f0cf72}
+#optimizer .forge-slot-compare>strong.same{color:#a9a09e}
+@media(max-width:760px){
+  #optimizer .forge-slot-compare-grid{grid-template-columns:1fr}
+  #optimizer .forge-slot-compare{grid-template-columns:42px minmax(0,1fr) minmax(0,1fr);gap:5px}
+  #optimizer .forge-speed-comparison{margin-left:8px;margin-right:8px}
+}
