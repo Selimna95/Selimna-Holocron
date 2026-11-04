@@ -28,7 +28,7 @@ Comlink expose les profils joueurs, événements, classements GAC et groupes de 
 - Chaque classement journalise le nombre d'entrées, le nombre d'identifiants et les noms de champs reçus (sans publier de données personnelles), afin de diagnostiquer les changements de schéma Comlink.
 - Les fichiers générés sont explicitement ajoutés à l'index Git avant le contrôle des différences ; les nouveaux fichiers non suivis ne peuvent donc plus être ignorés.
 - Les erreurs sur un bracket ne sont pas interprétées comme une fin de liste.
-- L'événement GAC est sélectionné à partir de sa fenêtre start/end lorsqu'elle est fournie ; un événement simplement planifié n'est pas considéré comme actif.
+- L'événement GAC est sélectionné à partir de sa fenêtre start/end lorsqu'elle est fournie ; si ces champs sont absents, l'horodatage contenu dans l'identifiant d'instance est utilisé pour écarter les saisons futures.
 - Les classements globaux et les brackets sont examinés avant de conclure à une absence de données. Si les deux sources ne contiennent aucun joueur, le workflow échoue explicitement et ne publie pas de snapshot vide.
 - Si aucune saison GAC n'est active, les classements top 50 sont conservés et les brackets sont explicitement marqués comme non collectés pour cette exécution.
 - Le résultat conserve les réponses officielles brutes afin de ne pas perdre de champs si le jeu fait évoluer son schéma.
