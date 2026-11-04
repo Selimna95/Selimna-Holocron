@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icons/holocron-192.png" type="image/png">
 <link rel="stylesheet" href="app.css?v=4.1.2-seigneur-slot-comparison">
-<link rel="stylesheet" href="sithari.css?v=4.2.0-adaptive-mod-board">
+<link rel="stylesheet" href="sithari.css?v=4.3.0-cumulative-strategy">
 <link rel="stylesheet" href="holocron-system.css?v=4.0.0-disciple-clarity">
 <link rel="stylesheet" href="entrance.css?v=4.0.46-crawl-restart">
 <link rel="stylesheet" href="holocron-static.css?v=4.0.45">
@@ -180,11 +180,13 @@
   <header class="sithari-header">
     <div class="sithari-kicker">HOLOCRON // SITH’ARI</div>
     <div class="sithari-title-row">
-      <div><h2>SITH’ARI</h2><p>CHOISIR UNE ÉQUIPE. COMPARER AU KYBER. RENFORCER OU CALIBRER.</p></div>
+      <div><h2>SITH’ARI</h2><p>SYNTHÉTISER LE ROSTER. TROUVER LES PERMUTATIONS. VISER KYBER.</p></div>
       <div class="sithari-state"><span class="status-dot"></span><span id="sithariState">EN ATTENTE DU SCAN</span></div>
     </div>
-    <div class="sithari-thesis"><strong>SÉLECTIONNER</strong><i>→</i><strong>COMPARER</strong><i>→</i><strong>RENFORCER</strong><i>→</i><strong>CALIBRER</strong></div>
+    <div class="sithari-thesis"><strong>SETS</strong><i>→</i><strong>PRIMAIRES</strong><i>→</i><strong>SECONDAIRES</strong><i>→</i><strong>RÉFÉRENCES KYBER</strong></div>
   </header>
+
+  <section id="sithariStrategy" class="sithari-strategy panel" aria-live="polite"></section>
 
   <section class="sithari-selector panel">
     <div class="sithari-selector-head">
@@ -551,7 +553,7 @@
 <script src="modules/disciple.js?v=3.5.2-ranked-candidates"></script>
 <script src="modules/seigneur.js?v=3.9.4-slot-comparison"></script>
 <script src="modules/seigneur-impact.js?v=1.0.0-roster-impact"></script>
-<script src="modules/sithari.js?v=4.1.6-owner-resolver"></script>
+<script src="modules/sithari.js?v=4.1.7-strategy-hook"></script>
 <script src="modules/runtime.js?v=3.7.0-sith-portraits"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
