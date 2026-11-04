@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10141d">
+<title>Collecteur GAC — Selimna’s Holocron</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#090b10;color:#e9edf4}body{max-width:860px;margin:0 auto;padding:36px 22px;line-height:1.6}h1{font-size:clamp(1.8rem,4vw,2.8rem);letter-spacing:.08em}p{color:#b7c1d0}.panel{border:1px solid #344052;border-radius:14px;padding:22px;margin:22px 0;background:#121823}.bookmark{display:inline-block;background:#d7e6f8;color:#10141d;text-decoration:none;font-weight:800;padding:12px 18px;border-radius:9px}.bookmark:hover{background:#fff}code,textarea{font-family:ui-monospace,monospace}textarea{width:100%;min-height:84px;box-sizing:border-box;background:#080b11;color:#d9e7fa;border:1px solid #344052;border-radius:8px;padding:12px;overflow-wrap:anywhere}li{margin:.6rem 0}.muted{font-size:.9rem;color:#92a1b5}.warning{border-left:3px solid #d8a35a;padding-left:14px}
+</style>
+</head>
+<body>
+<p class="muted">SELIMNA’S HOLOCRON · OUTIL DE COLLECTE</p>
+<h1>COLLECTEUR DE DONNÉES GAC</h1>
+<p>Ce petit outil lit les classements publics depuis ton navigateur, directement sur le domaine SWGOH.GG. Il évite le blocage Cloudflare rencontré par les collecteurs GitHub Actions.</p>
+<section class="panel">
+<h2>1. Installer le favori</h2>
+<p>Fais glisser ce lien dans la barre des favoris de ton navigateur :</p>
+<p><a class="bookmark" href="javascript:(()=>{if(!/^(www\\.)?swgoh\\.gg$/i.test(location.hostname)){alert("Ouvre d’abord SWGOH.GG.");return;}const s=document.createElement("script");s.src="https://selimna95.github.io/Selimna-Holocron/tools/gac-collector.js?v=1.1.0";s.onload=()=>console.info("Holocron GAC collector loaded");s.onerror=()=>alert("Impossible de charger le collecteur Holocron.");document.head.appendChild(s);})()">COLLECTER LES DONNÉES GAC</a></p>
+<p class="muted">Si le glisser-déposer ne fonctionne pas, crée un favori manuellement et colle le code ci-dessous dans son champ URL.</p>
+<textarea readonly>javascript:(()=>{if(!/^(www\\.)?swgoh\\.gg$/i.test(location.hostname)){alert("Ouvre d’abord SWGOH.GG.");return;}const s=document.createElement("script");s.src="https://selimna95.github.io/Selimna-Holocron/tools/gac-collector.js?v=1.1.0";s.onload=()=>console.info("Holocron GAC collector loaded");s.onerror=()=>alert("Impossible de charger le collecteur Holocron.");document.head.appendChild(s);})()</textarea>
+</section>
+<section class="panel">
+<h2>2. Lancer la collecte</h2>
+<ol>
+<li>Ouvre <a href="https://swgoh.gg/tier-list/units/" target="_blank" rel="noopener">SWGOH.GG — Unit Tier List</a>.</li>
+<li>Vérifie que les classements s’affichent normalement.</li>
+<li>Clique sur le favori « Collecter les données GAC ».</li>
+<li>Attends la fin des 30 vues. Le fichier <code>gac-browser-export.json</code> sera téléchargé.</li>
+</ol>
+</section>
+<section class="panel">
+<h2>3. Envoyer la base à Holocron</h2>
+<ol>
+<li>Ouvre le dépôt <a href="https://github.com/Selimna95/Selimna-Holocron" target="_blank" rel="noopener">Selimna95/Selimna-Holocron</a>.</li>
+<li>Ajoute le fichier téléchargé à la racine sous le nom exact <code>gac-browser-export.json</code>.</li>
+<li>Committe le fichier sur <code>main</code>. L’action GitHub validera les 20 vues personnages et 10 vues flottes, puis mettra à jour la base utilisée par Holocron.</li>
+</ol>
+<p class="warning">Les absences ne sont jamais converties en zéro. Les flottes ne couvrent que les compositions publiées par SWGOH.GG ; un vaisseau non observé reste inconnu.</p>
+</section>
+<p class="muted">Source : statistiques publiques de batailles GAC de première tentative, escouades complètes. L’outil n’accède à aucun compte privé et ne demande aucun identifiant.</p>
+</body>
+</html>
