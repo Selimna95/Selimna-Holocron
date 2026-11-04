@@ -54,23 +54,21 @@ profile = json.loads(profile_json)
 base_stats = json.loads(base_stats_json)
 context = json.loads(context_json)
 
-# Resolve base stats inside the Worker when the browser did not provide them.
-if not base_stats:
-    wanted_base = character_base_id.upper().strip()
-    wanted_name = character_name.casefold().strip()
-    selected = None
-    if wanted_base:
-        selected = _optimizer_profiles.get(wanted_base)
-    if selected is None:
-        for _p in _optimizer_profiles.values():
-            if str(_p.get('base_id','')).upper() == wanted_base or str(_p.get('name','')).casefold() == wanted_name:
-                selected = _p
-                break
-    if selected:
-        base_stats = selected.get('base_stats') or {}
+# Resolve real base stats from canonical profile data when the UI has no
+# populated base_stats. Never substitute current roster stats here.
+if not isinstance(base_stats, dict) or not base_stats:
+    base_stats = optimizer.resolve_character_base_stats(
+        _optimizer_profiles, character_base_id, character_name
+    )
 
-if not base_stats:
-    raise RuntimeError('Statistiques de base du personnage introuvables dans optimizer_profiles.json.')
+if not isinstance(base_stats, dict) or not base_stats:
+    raise RuntimeError(
+        "Profil de statistiques de base introuvable pour "
+        f"{character_name or 'personnage inconnu'} "
+        f"(base_id={character_base_id or 'absent'}). "
+        f"Aucun profil exploitable parmi {len(_optimizer_profiles)} références ; "
+        "aucune statistique courante ou inventée ne sera utilisée."
+    )
 
 # An empty local Kyber reference is valid: optimizer.py then uses its generic
 # stat weights while still optimizing the real six equipped mod slots.
