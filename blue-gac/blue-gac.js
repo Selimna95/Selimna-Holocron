@@ -30,7 +30,7 @@ var catalogMeta=null;
 var catalogReady=false;
 var catalogError='';
 function loadCatalog(){
- var catalogUrl=location.hostname==='selimna95.github.io'?'https://raw.githubusercontent.com/Selimna95/Selimna-Holocron/main/blue-gac/gac-catalog.json?v=4.1.2':'gac-catalog.json?v=4.1.2';
+ var catalogUrl=location.hostname==='selimna95.github.io'?'https://raw.githubusercontent.com/Selimna95/Selimna-Holocron/main/blue-gac/gac-catalog.json?v=4.1.3':'gac-catalog.json?v=4.1.3';
  return fetch(catalogUrl,{cache:'no-store'}).then(function(response){
   if(!response.ok)throw new Error('HTTP '+response.status);
   return response.json();
@@ -101,6 +101,22 @@ var link=document.createElement('a');link.href=t.source;link.target='_blank';lin
 });
 for(var missingIndex=candidates.length+1;missingIndex<=required;missingIndex++)addUnavailableTeamCard(missingIndex);
 }
+
+
+function renderCatalogAudit(){
+ var panel=document.getElementById('catalogAuditPanel'),summary=document.getElementById('auditSummary'),checks=document.getElementById('auditChecks'),coverage=document.getElementById('auditCoverage');
+ panel.hidden=false;checks.innerHTML='';coverage.innerHTML='';
+ if(!catalogReady||catalogError||!catalogMeta){summary.textContent='Audit impossible';checks.textContent='Le catalogue doit être chargé avant de lancer l’audit.';return;}
+ var report=window.GACAudit.auditCatalog(catalogMeta,parseRoster());
+ summary.textContent=report.errors+' anomalie(s) · '+report.warnings+' avertissement(s) · '+report.teamCount+' compositions';
+ report.checks.forEach(function(item){var row=document.createElement('div');row.className='audit-check '+item.level;var mark=document.createElement('strong');mark.textContent=item.level==='error'?'ANOMALIE':item.level==='warning'?'À SURVEILLER':'OK';var body=document.createElement('div');var title=document.createElement('b');title.textContent=item.title;var detail=document.createElement('p');detail.textContent=item.detail;body.appendChild(title);body.appendChild(detail);row.appendChild(mark);row.appendChild(body);checks.appendChild(row);});
+ if(report.selections.length){
+  report.selections.forEach(function(item){var row=document.createElement('div');row.className='audit-coverage-row';var title=document.createElement('strong');title.textContent=item.format+' · '+item.league;var count=document.createElement('span');count.textContent=item.selected+' / '+item.required+' équipes';var meta=document.createElement('small');meta.textContent='Saisons retenues : '+(item.seasons.length?item.seasons.map(function(s){return 'S'+s;}).join(', '):'aucune')+' · '+item.missing+' incomplète(s) pour le roster · '+item.overlap+' doublon(s) de personnages évité(s)'+(item.priorityOk?' · priorité saison OK':' · priorité saison incorrecte');row.appendChild(title);row.appendChild(count);row.appendChild(meta);coverage.appendChild(row);});
+ }else{
+  ['3v3','5v5'].forEach(function(fmt){['Kyber','Aurodium','Chromium','Bronzium','Carbonite'].forEach(function(league){var row=document.createElement('div');row.className='audit-coverage-row';var count=(catalogMeta.coverage&&catalogMeta.coverage[fmt]&&catalogMeta.coverage[fmt][league.toLowerCase()])||0;row.textContent=fmt+' · '+league+' : '+count+' composition(s) dans le catalogue · simulation roster indisponible';coverage.appendChild(row);});});
+ }
+}
+document.getElementById('runCatalogAudit').addEventListener('click',function(){var panel=document.getElementById('catalogAuditPanel');var opening=panel.hidden;if(opening)renderCatalogAudit();else panel.hidden=true;this.setAttribute('aria-expanded',String(opening));});
 
 function updateSourceLinks(){var league={Kyber:'kyber',Aurodium:'aurodium',Chromium:'chromium',Bronzium:'bronzium',Carbonite:'carbonite'}[state.tier]||'kyber';var mode=state.mode==='3v3'?'3v3':'gac';document.querySelectorAll('.padawan-actions a[href*="swgoh.gg/tier-list/"]').forEach(function(a){a.href='https://swgoh.gg/tier-list/'+mode+'/?league='+league+'&side=defense';});}
 
