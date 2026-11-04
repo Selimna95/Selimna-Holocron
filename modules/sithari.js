@@ -477,6 +477,7 @@ function sithariToggleCharacter(key){
   if(sithariSelectedKeys.includes(key)){sithariSelectedKeys=sithariSelectedKeys.filter(x=>x!==key);if(sithariActiveKey===key)sithariActiveKey=sithariSelectedKeys[0]||'';}
   else if(sithariSelectedKeys.length<5){sithariSelectedKeys.push(key);sithariActiveKey=key;}
   sithariRenderAll();
+  if(typeof renderSithariStrategy==='function')renderSithariStrategy();
 }
 function sithariCharacterByKey(key){return rosterCharacters.find(c=>characterKey(c)===key)||null;}
 function sithariRenderTeam(){
