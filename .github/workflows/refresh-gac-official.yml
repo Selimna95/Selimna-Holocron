@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: refresh-official-gac-\${{ github.ref }}
+  group: refresh-official-gac-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -50,6 +50,6 @@ jobs:
           else
             git add gac-official-leaderboards.json gac-official-leaderboards.js
             git commit -m "chore(gac): refresh official leaderboard snapshot"
-            git pull --rebase origin "\${GITHUB_REF_NAME}"
-            git push origin "HEAD:\${GITHUB_REF_NAME}"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
