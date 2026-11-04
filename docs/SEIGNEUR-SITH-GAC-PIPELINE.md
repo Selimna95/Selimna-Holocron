@@ -22,7 +22,7 @@ Le sélecteur de personnage place en tête les personnages avec des observations
 
 Seigneur Sith conserve les mods de la cible dans le vivier et exclut les GL comme donneurs. Pour les autres personnages, seuls les statuts incomplets, très faibles et faibles sont autorisés par défaut ; les statuts moyens et bons sont protégés.
 
-Les donneurs équipés sont classés par usage GAC terrestre et par usage des vaisseaux pilotés lorsque les associations et observations de flotte existent. Si une utilisation terrestre ou une exposition flotte ne peut pas être vérifiée, le personnage reste protégé. Les mods libres restent disponibles.
+Les donneurs équipés sont classés d'abord par usage GAC terrestre. Lorsque les associations pilotes-vaisseaux et les observations de flotte existent, l'usage flotte complète ce classement. Si l'usage terrestre est connu mais que les associations ou statistiques de flotte sont absentes, le donneur reste classable sur son seul usage terrestre et l'exposition flotte est signalée comme non vérifiée. Si l'usage terrestre lui-même est absent, le personnage reste protégé. Les pilotes identifiés dont l'usage flotte est inconnu restent protégés. Les mods libres restent disponibles.
 
 ## 4. Sécurité du bénéficiaire et bilan global
 
