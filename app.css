@@ -2151,7 +2151,7 @@ button,a,input,select,textarea{touch-action:manipulation}img,svg,canvas,video{ma
 @media(max-width:560px){#mods-analysis .disciple-scope-grid{grid-template-columns:1fr}}
 
 /* DISCIPLE V2.2.9 — speed tier is the entry point.  Scoped to Disciple only. */
-#mods-analysis .disciple-speed-tier-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#mods-analysis .disciple-speed-tier-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px}
 #mods-analysis .disciple-speed-tier{appearance:none;border:1px solid rgba(215, 85, 73, .24);border-radius:8px;background:linear-gradient(145deg,rgba(45, 9, 6, .92),rgba(22, 4, 2, .96));padding:12px 14px;text-align:left;cursor:pointer;color:#c99e9a;display:grid;gap:3px;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
 #mods-analysis .disciple-speed-tier:hover{border-color:rgba(252, 94, 81, .52);transform:translateY(-1px)}
 #mods-analysis .disciple-speed-tier.is-active{border-color:rgba(255, 211, 90, .72);box-shadow:0 0 0 1px rgba(255, 211, 90, .18),inset 0 0 20px rgba(255, 211, 90, .05)}
@@ -2858,11 +2858,11 @@ textarea:disabled{
 .forge-global-impact-metrics b.gain{color:#8bd6a2}
 .forge-global-impact-metrics small,.forge-global-impact-donor small,.forge-global-impact-note{font-size:11px;line-height:1.45;color:var(--muted,#aaa)}
 .forge-global-impact-donors{display:grid;gap:7px}
-.forge-global-impact-donor{display:grid;grid-template-columns:minmax(130px,1fr) auto auto;gap:8px 14px;align-items:center;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(0,0,0,.13)}
+.forge-global-impact-donor{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:8px 14px;align-items:center;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(0,0,0,.13)}
 .forge-global-impact-donor b{font-size:12px}
 .forge-global-impact-donor em{font-size:12px;font-style:normal;color:var(--text,#eee)}
 .forge-global-impact-donor small{grid-column:1/-1}
 .forge-global-impact-donor.is-warning{border-color:rgba(239,68,68,.48);background:rgba(127,29,29,.10)}
 .forge-global-impact-empty{font-size:12px;color:var(--muted,#aaa);padding:10px}
 .forge-global-impact-note{display:block}
-@media(max-width:760px){.forge-global-impact-metrics{grid-template-columns:1fr}.forge-global-impact-donor{grid-template-columns:1fr;gap:5px}.forge-global-impact-donor small{grid-column:auto}}
+
