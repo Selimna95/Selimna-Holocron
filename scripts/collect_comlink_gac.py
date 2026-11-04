@@ -176,6 +176,7 @@ def collect_competitive_roster_meta(boards: list[dict]) -> dict:
             "division": board["division"],
             "leaderboardEntries": len(board["response"]["player"]),
             "profilesRequested": 0,
+            "profilesMissingPlayerId": 0,
             "profilesFetched": 0,
             "profilesFailed": 0,
             "units": {},
@@ -184,6 +185,8 @@ def collect_competitive_roster_meta(boards: list[dict]) -> dict:
             player_id = player.get("playerId")
             if player_id:
                 requests.setdefault(player_id, set()).add(key)
+            else:
+                cohorts[key]["profilesMissingPlayerId"] += 1
 
     def fetch_profile(player_id: str) -> tuple[str, dict]:
         profile = request_json("player", {"payload": {"playerId": player_id}, "enums": False})
@@ -255,7 +258,9 @@ def collect_competitive_roster_meta(boards: list[dict]) -> dict:
             )
         ]
         cohort["status"] = (
-            "complete" if cohort["profilesFetched"] == cohort["profilesRequested"]
+            "complete"
+            if cohort["profilesFetched"] == cohort["profilesRequested"]
+            and cohort["profilesMissingPlayerId"] == 0
             else "partial" if cohort["profilesFetched"] else "unavailable"
         )
 
