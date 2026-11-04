@@ -19,14 +19,14 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Start temporary SWGOH Comlink service
         run: |
           docker run -d --name swgoh-comlink -p 3000:3000 -e APP_NAME="SelimnasHolocron" ghcr.io/swgoh-utils/swgoh-comlink:latest
           for attempt in $(seq 1 40); do
-            if curl --silent --fail http://127.0.0.1:3000/api-docs >/dev/null; then
+            if curl --silent --fail http://127.0.0.1:3000/ >/dev/null; then
               echo "Comlink is ready."
               exit 0
             fi
