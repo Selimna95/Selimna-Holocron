@@ -113,14 +113,14 @@ def parse_fleet_page(text: str, side: str) -> list[dict]:
     pending_battles = None
     fleets = []
     for line in text.splitlines():
-        for name in re.findall(r"(?:Image:\\s*|!\\[(?:Image:\\s*)?)([^\\]\\n]+)", line):
+        for name in re.findall(r"(?:Image:\s*|!\[(?:Image:\s*)?)([^\]\n]+)", line):
             name = name.strip()
             if name and name not in pending:
                 pending.append(name)
-        stats = re.search(r"Battles\\s+([\\d,.]+\\s*[KMB]?)", line, re.I)
+        stats = re.search(r"Battles\s+([\d,.]+\s*[KMB]?)", line, re.I)
         if stats:
             pending_battles = number_value(stats.group(1))
-        rank = re.search(r"#\\s*(\\d+)", line)
+        rank = re.search(r"#\s*(\d+)", line)
         if rank and pending_battles is not None and 3 <= len(pending) <= 8:
             fleets.append({
                 "rank": int(rank.group(1)), "side": side,
