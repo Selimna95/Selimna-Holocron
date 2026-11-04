@@ -192,6 +192,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithariPrimaryMatch(source.mod,target.profile,target.slot)", strategy)
         self.assertIn("sithariSecondaryScore(source.mod,target.profile)", strategy)
         self.assertIn("ssFindCycles", strategy)
+        self.assertIn("peopleSummary", strategy)
+        self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
         self.assertIn("lecture seule", strategy)
         self.assertIn("modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.0-cumulative-pipeline", self.html)
