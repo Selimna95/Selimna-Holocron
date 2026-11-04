@@ -500,6 +500,7 @@ def optimize_kyber(
     limit_per_slot=80,
     beam_width=1200,
     progress_callback=None,
+    minimum_speed=None,
     **kwargs,
 ):
     """
@@ -618,12 +619,38 @@ def optimize_kyber(
     if set_plan and applied_set_plan is None:
         beam = search_builds(None)
 
+    def speed_safe(build):
+        if minimum_speed is None:
+            return True
+        return to_float(final_stats(build, base_stats).get("Speed")) + 1e-9 >= to_float(minimum_speed)
+
+    safe_beam = [build for build in beam if speed_safe(build)]
+    # A Kyber set plan is a preference, never a reason to violate the target's
+    # absolute speed floor. If its builds all lose speed, retry without it.
+    if applied_set_plan and not safe_beam:
+        beam = search_builds(None)
+        applied_set_plan = None
+        safe_beam = [build for build in beam if speed_safe(build)]
+
+    if minimum_speed is not None and not safe_beam:
+        best_speed = max(
+            (to_float(final_stats(build, base_stats).get("Speed")) for build in beam),
+            default=0.0,
+        )
+        raise RuntimeError(
+            "Aucune configuration ne respecte la vitesse minimale du personnage cible. "
+            f"Vitesse actuelle : {to_float(minimum_speed):.1f} ; "
+            f"meilleure configuration examinée : {best_speed:.1f}. "
+            "Aucun transfert entraînant une perte de vitesse n'est proposé."
+        )
+
     results = []
-    for build in beam:
+    for build in safe_beam:
+        stats = final_stats(build, base_stats)
         results.append({
             "build": list(build),
             "score": build_score(build, kyber, weights, base_stats),
-            "stats": final_stats(build, base_stats),
+            "stats": stats,
             "set_plan": applied_set_plan or {},
         })
 
