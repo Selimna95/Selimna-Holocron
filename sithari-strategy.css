@@ -1,5 +1,5 @@
 /* Sith'ari cumulative strategy prototype */
-.sithari-strategy{position:relative;z-index:1;margin:18px 0 24px;padding:clamp(16px,2vw,26px);border:1px solid rgba(191,155,104,.25);background:linear-gradient(145deg,rgba(20,18,19,.97),rgba(8,9,12,.97));}
+.sithari-strategy{position:relative;z-index:1;margin:18px 0 24px;padding:clamp(16px,2vw,26px);border:1px solid rgba(191,155,104,.25);background:linear-gradient(145deg,rgba(20,18,19,.97),rgba(8,9,12,.97))}
 .sithari-strategy .ss-head{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
 .sithari-strategy .ss-head small{color:#c69a62;letter-spacing:.18em;font-size:10px}
 .sithari-strategy .ss-head h3{margin:6px 0;font-size:clamp(19px,2.2vw,27px);letter-spacing:.06em}
