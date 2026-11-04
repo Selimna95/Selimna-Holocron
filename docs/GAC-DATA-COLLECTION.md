@@ -4,11 +4,10 @@ Le collecteur utilise la session du navigateur sur SWGOH.GG pour lire les pages 
 
 ## Installation / lancement
 
-1. Ouvrir [SWGOH.GG — Unit Tier List](https://swgoh.gg/tier-list/units/) dans le navigateur habituel.
-2. Vérifier que la page affiche bien les classements (et non une page Cloudflare).
-3. Ouvrir les outils de développement du navigateur, onglet Console.
-4. Copier le contenu de `tools/gac-collector.js` dans la console et valider.
-5. Attendre le téléchargement de `gac-browser-export.json`.
+1. Ouvrir la page [Collecteur GAC Holocron](https://selimna95.github.io/Selimna-Holocron/tools/gac-collector.html).
+2. Faire glisser le favori « Collecter les données GAC » dans la barre des favoris (ou copier son URL dans un favori).
+3. Ouvrir [SWGOH.GG — Unit Tier List](https://swgoh.gg/tier-list/units/) dans le navigateur habituel et vérifier que les classements s'affichent.
+4. Cliquer sur le favori. Le collecteur lit les 30 vues dans la session du navigateur et télécharge `gac-browser-export.json`.
 
 Le collecteur interroge les 20 vues personnages (5 ligues × 2 formats × 2 côtés), puis les 10 vues flottes (5 ligues × 2 côtés). Il attend entre les requêtes pour limiter la charge. Il annule l'export complet si une vue personnage n'est pas correctement lue.
 
