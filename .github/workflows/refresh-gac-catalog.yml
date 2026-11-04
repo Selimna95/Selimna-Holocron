@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Test GAC usage parser
-        run: python -m pytest -q tests/test_gac_usage.py
+        run: python -m unittest tests/test_gac_usage.py -v
       - name: Fetch and validate defensive catalogue
         run: python scripts/update_gac_catalog.py
       - name: Build character and fleet usage database
