@@ -4,7 +4,7 @@
   "collectionStatus": "partial",
   "collectionMethod": "Initial real-data snapshot extracted from SWGOH.GG's publicly indexed 5v5/3v3 defense tier-list pages. Each row is a complete squad with source rank, hold rate and battle count.",
   "collectionNote": "Relevé partiel : 5v5 S84 et 3v3 S83 uniquement. Les pages serveur sont bloquées par Cloudflare (403) : 5v5 Chromium et 3v3 Aurodium restent absents. Aucune composition ni statistique n'a été inventée pour ces vues. Les saisons précédentes restent à collecter.",
-  "updatedAt": "2026-11-04T09:42:15.207Z",
+  "updatedAt": "2026-11-04T09:42:24.508Z",
   "seasons": {
     "5v5": {
       "kyber": [
@@ -50,7 +50,7 @@
       "aurodium": 0,
       "chromium": 10,
       "bronzium": 7,
-      "carbonite": 0
+      "carbonite": 8
     }
   },
   "teams": [
@@ -931,6 +931,134 @@
       "battles": 2020,
       "source": "https://swgoh.gg/tier-list/3v3/?league=bronzium&rank=best&side=defense",
       "note": "S83 · Bronzium · rang source #80 · 2 020 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Carbonite",
+      "season": 83,
+      "rank": 1,
+      "name": "Lord Vader · CC-1119 \"Appo\" · CX-2",
+      "members": [
+        "Lord Vader",
+        "CC-1119 \"Appo\"",
+        "CX-2"
+      ],
+      "hold": 80.9,
+      "battles": 1231,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
+      "note": "S83 · Carbonite · rang source #1 · 1 231 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Carbonite",
+      "season": 83,
+      "rank": 2,
+      "name": "Leia Organa · Captain Drogan · R2-D2",
+      "members": [
+        "Leia Organa",
+        "Captain Drogan",
+        "R2-D2"
+      ],
+      "hold": 80.6,
+      "battles": 6330,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
+      "note": "S83 · Carbonite · rang source #2 · 6 330 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Carbonite",
+      "season": 83,
+      "rank": 3,
+      "name": "Supreme Leader Kylo Ren · Rey (Dark Side Vision) · General Hux",
+      "members": [
+        "Supreme Leader Kylo Ren",
+        "Rey (Dark Side Vision)",
+        "General Hux"
+      ],
+      "hold": 85.1,
+      "battles": 116,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
+      "note": "S83 · Carbonite · rang source #3 · 116 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Carbonite",
+      "season": 83,
+      "rank": 4,
+      "name": "Rey · Ben Solo · Cal Kestis",
+      "members": [
+        "Rey",
+        "Ben Solo",
+        "Cal Kestis"
+      ],
+      "hold": 77.8,
+      "battles": 336,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
+      "note": "S83 · Carbonite · rang source #4 · 336 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Carbonite",
+      "season": 83,
+      "rank": 5,
+      "name": "Jedi Master Kenobi · Commander Ahsoka Tano · General Kenobi",
+      "members": [
+        "Jedi Master Kenobi",
+        "Commander Ahsoka Tano",
+        "General Kenobi"
+      ],
+      "hold": 78.4,
+      "battles": 2046,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
+      "note": "S83 · Carbonite · rang source #5 · 2 046 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Carbonite",
+      "season": 83,
+      "rank": 22,
+      "name": "Darth Revan · Bastila Shan (Fallen) · Darth Malak",
+      "members": [
+        "Darth Revan",
+        "Bastila Shan (Fallen)",
+        "Darth Malak"
+      ],
+      "hold": 50.4,
+      "battles": 12200,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
+      "note": "S83 · Carbonite · rang source #22 · 12 200 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Carbonite",
+      "season": 83,
+      "rank": 23,
+      "name": "Maul · Gar Saxon · Imperial Super Commando",
+      "members": [
+        "Maul",
+        "Gar Saxon",
+        "Imperial Super Commando"
+      ],
+      "hold": 48.6,
+      "battles": 290,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
+      "note": "S83 · Carbonite · rang source #23 · 290 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Carbonite",
+      "season": 83,
+      "rank": 24,
+      "name": "Rotta the Hutt · Gamorrean Guard · Mob Enforcer",
+      "members": [
+        "Rotta the Hutt",
+        "Gamorrean Guard",
+        "Mob Enforcer"
+      ],
+      "hold": 48.4,
+      "battles": 78,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
+      "note": "S83 · Carbonite · rang source #24 · 78 combats observés"
     }
   ]
 }
