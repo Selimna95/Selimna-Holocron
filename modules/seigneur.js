@@ -627,8 +627,8 @@ $('runOptimizer').addEventListener('click',async()=>{
   $('optimizerError').textContent='';
   const character=selectedCharacter();
   if(!character){$('optimizerError').textContent='Sélectionnez un personnage.';return;}
-  $('runOptimizer').disabled=true;$('runOptimizer').textContent='OPTIMISATION DES 6 MODS…';
-  $('results').innerHTML='<div class="calculating">Construction du vivier GAC et recherche des meilleures combinaisons de six mods…</div>';
+  $('runOptimizer').disabled=true;$('runOptimizer').textContent='CHARGEMENT PUIS OPTIMISATION…';
+  $('results').innerHTML='<div class="calculating">Préparation du moteur et du vivier GAC… L’optimisation démarre automatiquement, sans second clic.</div>';
   try{
     const profile=await ensureSelectedKyberProfile();
     if(!profile || !kyberProfileValid(profile))throw new Error(`Référence Kyber indisponible pour « ${character.name||character.baseId} ».`);
