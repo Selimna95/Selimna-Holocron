@@ -108,6 +108,8 @@ def fetch_bracket(event_instance_id: str, league: str, index: int) -> dict:
         },
         "enums": False,
     })
+    if response.get("error") or response.get("errorMessage"):
+        raise RuntimeError(f"Comlink rejected bracket {group_id}: {response}")
     players = response.get("player", [])
     if not isinstance(players, list):
         raise ValueError(f"Unexpected bracket response for {group_id}")
