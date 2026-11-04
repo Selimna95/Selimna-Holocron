@@ -248,10 +248,8 @@ assert.equal(donorContext.seigneurDonorPriority({baseId:'PILOTHIGH'}, donorSeaso
 assert.equal(donorContext.seigneurDonorPriority({baseId:'LOWLAND'}, donorSeason).uses, 10);
 const unknownFleetSeason = { season: 85, characters: { PILOTLOW: { uses: 0 } }, ships: {} };
 const unknownFleetPriority=donorContext.seigneurDonorPriority({baseId:'PILOTLOW'}, unknownFleetSeason);
-assert.equal(unknownFleetPriority.known, true,
-  'Verified terrestrial usage remains usable when fleet metadata is unavailable');
-assert.equal(unknownFleetPriority.uses, 0,
-  'With no fleet observation, rank on the observed terrestrial value only');
+assert.equal(unknownFleetPriority.known, false,
+  'A pilot identified through a ship association must remain protected if that ship usage is missing');
 assert.equal(unknownFleetPriority.fleetKnown, false);
 assert.equal(unknownFleetPriority.fleetUses, null,
   'Missing fleet usage must remain explicitly unknown, never be converted to zero');
