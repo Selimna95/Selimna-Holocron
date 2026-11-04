@@ -35,7 +35,7 @@ function ssKyberSecondaryFit(mod,profile){
   return sum+(target>0?Math.min(1,Math.max(0,actual)/target):0);
  },0)/entries.length;
 }
-function ssCyclePreservesSpeed(items){
+function ssCyclePreservesSpeed(items,openTerminal=false){
  const replacements=new Map();
  for(const edge of items){
   const key=edge.target.owner;
@@ -43,6 +43,13 @@ function ssCyclePreservesSpeed(items){
   const entry=replacements.get(key),slot=edge.target.slot;
   entry.mods=entry.mods.filter(mod=>ssSlot(mod)!==slot);
   entry.mods.push(edge.source.mod);
+ }
+ if(openTerminal&&items.length){
+  const terminal=items[items.length-1].source;
+  if(!replacements.has(terminal.owner)){
+   const remaining=sithariCharacterMods(terminal.character).filter(mod=>ssSlot(mod)!==terminal.slot);
+   replacements.set(terminal.owner,{character:terminal.character,mods:remaining});
+  }
  }
  for(const entry of replacements.values()){
   const before=sithariProjectedSpeed(entry.character,sithariCharacterMods(entry.character));
@@ -92,9 +99,14 @@ async function ssFindCycles(edges){
     const next=edge.source.key;
     if(next===start&&path.length>=1){
      closedCycles++;
-     const cycle=[...path,edge],sig=cycle.map(x=>x.target.key).sort().join('|');
-     if(closedCycles<=MAX_CLOSED_CYCLES&& !found.has(sig) && ssCyclePreservesSpeed(cycle))found.set(sig,cycle);
+     const chain=[...path,edge],sig='CYCLE:'+chain.map(x=>x.target.key).sort().join('|');
+     if(closedCycles<=MAX_CLOSED_CYCLES&& !found.has(sig) && ssCyclePreservesSpeed(chain))found.set(sig,{items:chain,open:false});
      if(closedCycles>=MAX_CLOSED_CYCLES){exhausted=true;return;}
+     continue;
+    }
+    if(!edges.has(next)){
+     const chain=[...path,edge],sig='OPEN:'+chain.map(x=>x.target.key).sort().join('|');
+     if(!found.has(sig)&&ssCyclePreservesSpeed(chain,true))found.set(sig,{items:chain,open:true});
      continue;
     }
     if(used.has(next)||next<start)continue;
@@ -104,10 +116,10 @@ async function ssFindCycles(edges){
   };
   await walk(start,[],new Set([start]));
  }
- const cycles=[...found.values()].map(items=>({items,length:items.length,
-  secondary:items.reduce((s,x)=>s+x.secondary,0)/items.length,
-  kyberFit:items.reduce((s,x)=>s+x.kyber,0)/items.length,
-  speed:items.reduce((s,x)=>s+x.speed,0)
+ const cycles=[...found.values()].map(candidate=>({items:candidate.items,open:candidate.open,length:candidate.items.length,
+  secondary:candidate.items.reduce((s,x)=>s+x.secondary,0)/candidate.items.length,
+  kyberFit:candidate.items.reduce((s,x)=>s+x.kyber,0)/candidate.items.length,
+  speed:candidate.items.reduce((s,x)=>s+x.speed,0)
  })).filter(cycle=>cycle.items.some(edge=>edge.target.needsWork)).sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed).slice(0,30);
  return {cycles,expansions,closedCycles,exhausted};
 }
