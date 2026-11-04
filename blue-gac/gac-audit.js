@@ -50,5 +50,29 @@ function auditCatalog(catalog,rosterNames){
  }else add('warning','Simulation roster','Aucun roster détecté : l’intégrité du catalogue est contrôlée, mais la disponibilité réelle des équipes ne peut pas être simulée.');
  return {checks:checks,errors:errors,warnings:warnings,teamCount:teams.length,selections:selections};
 }
-root.GACAudit={auditCatalog:auditCatalog,requiredCounts:required};
+
+function wilsonInterval(rate,total){
+ var n=Number(total),p=Number(rate)/100,z=1.96;
+ if(!Number.isFinite(n)||n<=0||!Number.isFinite(p)||p<0||p>1)return null;
+ var z2=z*z,den=1+z2/n,center=(p+z2/(2*n))/den;
+ var half=z*Math.sqrt((p*(1-p)+z2/(4*n))/n)/den;
+ return {low:Math.max(0,center-half)*100,high:Math.min(1,center+half)*100,margin:half*100};
+}
+function analyzePerformance(catalog){
+ var teams=catalog&&Array.isArray(catalog.teams)?catalog.teams:[];
+ var groups={};
+ teams.forEach(function(t){var key=[t.format,t.league,t.season].join('::');(groups[key]||(groups[key]=[])).push(t);});
+ var items=teams.map(function(t){
+  var key=[t.format,t.league,t.season].join('::'),peers=groups[key].filter(function(other){return other!==t;});
+  var peerBattles=peers.reduce(function(sum,x){return sum+Number(x.battles||0);},0);
+  var baseline=peerBattles?peers.reduce(function(sum,x){return sum+Number(x.hold||0)*Number(x.battles||0);},0)/peerBattles:null;
+  var interval=wilsonInterval(t.hold,t.battles),delta=baseline===null?null:Number(t.hold)-baseline;
+  var confidence=!interval?'indisponible':interval.margin<=2.5?'élevée':interval.margin<=5?'moyenne':'limitée';
+  var signal=delta===null?'non comparable':delta>=5?'au-dessus des pairs':delta<=-5?'en dessous des pairs':'proche des pairs';
+  return {format:t.format,league:t.league,season:Number(t.season),name:t.name,members:t.members,hold:Number(t.hold),battles:Number(t.battles),rank:Number(t.rank),source:t.source,baseline:baseline,delta:delta,interval:interval,confidence:confidence,signal:signal};
+ });
+ return {items:items,comparable:items.filter(function(x){return x.delta!==null;}).length};
+}
+
+root.GACAudit={auditCatalog:auditCatalog,analyzePerformance:analyzePerformance,wilsonInterval:wilsonInterval,requiredCounts:required};
 })(typeof window!=='undefined'?window:globalThis);
