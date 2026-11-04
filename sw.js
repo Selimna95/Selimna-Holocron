@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.3.0-seigneur-season-fallback';
+const CACHE_NAME = 'holocron-static-v4.3.1-seigneur-terrestrial-donors';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -22,7 +22,7 @@ const STATIC_ASSETS = [
   './modules/core.js?v=4.2.1-defense-evidence-label',
   './modules/acolyte.js?v=3.4.5-candidate-score',
   './modules/disciple.js?v=3.5.2-ranked-candidates',
-  './modules/seigneur.js?v=3.9.0-global-impact',
+  './modules/seigneur.js?v=3.9.1-terrestrial-fallback',
   './modules/seigneur-impact.js?v=1.0.0-roster-impact',
   './modules/sithari.js?v=4.1.6-owner-resolver',
   './modules/runtime.js?v=3.7.0-sith-portraits',
