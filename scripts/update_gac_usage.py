@@ -26,6 +26,9 @@ SIDES = ("offense", "defense")
 FORMATS = ("5v5", "3v3")
 USER_AGENT = "SelimnasHolocron-GAC-Usage/1.0 (+https://github.com/Selimna95/Selimna-Holocron)"
 MIN_UNITS_PER_VIEW = 8
+# Current SWGOH.GG tier-list snapshot seasons. Update at each game-season rollover
+# if Reader omits the season label from its text projection.
+FALLBACK_SEASONS = {"5v5": 84, "3v3": 83, "fleet": 84}
 
 def number_value(value: str) -> int:
     value = value.strip().replace(",", "").replace(" ", "")
@@ -57,9 +60,15 @@ def page_season(text: str, fmt: str | None = None) -> int:
     if not match and fmt in ("5v5", "3v3"):
         token = "5s" if fmt == "5v5" else "3s"
         match = re.search(rf"{token}\s*\(S(\d+)\)", text, re.I)
-    if not match:
-        raise ValueError("Season number absent from source page")
-    return int(match.group(1))
+    if match:
+        return int(match.group(1))
+    if fmt in FALLBACK_SEASONS:
+        print(f"Source omitted season label; using configured {fmt} S{FALLBACK_SEASONS[fmt]}")
+        return FALLBACK_SEASONS[fmt]
+    if fmt is None:
+        print(f"Source omitted fleet season label; using configured S{FALLBACK_SEASONS['fleet']}")
+        return FALLBACK_SEASONS["fleet"]
+    raise ValueError("Season number absent from source page")
 
 def clean_name(raw: str) -> str:
     name = re.sub(r"^\s*#?\d+\s*(?:[▲▼—]\s*\d+|NEW)?\s*", "", raw).strip()
