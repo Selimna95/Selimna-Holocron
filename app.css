@@ -2846,3 +2846,23 @@ textarea:disabled{
   #optimizer .forge-delta-changes,#optimizer .forge-delta-stats{grid-template-columns:minmax(0,1fr)}
   #optimizer .forge-delta-stat{grid-template-columns:minmax(0,1fr) auto auto;gap:5px;padding:6px}
 }
+
+
+/* Seigneur Sith — global impact of a six-mod reallocation. */
+.forge-global-impact{margin:18px 0;padding:16px;border:1px solid rgba(220,38,38,.24);border-radius:14px;background:rgba(255,255,255,.025);display:grid;gap:12px}
+.forge-global-impact .forge-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.forge-global-impact-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.forge-global-impact-metrics>div{min-width:0;padding:11px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(0,0,0,.16);display:grid;gap:5px}
+.forge-global-impact-metrics span,.forge-global-impact-donor span{font-size:10px;letter-spacing:.08em;color:var(--muted,#aaa)}
+.forge-global-impact-metrics b{font-size:20px;color:var(--text,#f5f5f5)}
+.forge-global-impact-metrics b.gain{color:#8bd6a2}
+.forge-global-impact-metrics small,.forge-global-impact-donor small,.forge-global-impact-note{font-size:11px;line-height:1.45;color:var(--muted,#aaa)}
+.forge-global-impact-donors{display:grid;gap:7px}
+.forge-global-impact-donor{display:grid;grid-template-columns:minmax(130px,1fr) auto auto;gap:8px 14px;align-items:center;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(0,0,0,.13)}
+.forge-global-impact-donor b{font-size:12px}
+.forge-global-impact-donor em{font-size:12px;font-style:normal;color:var(--text,#eee)}
+.forge-global-impact-donor small{grid-column:1/-1}
+.forge-global-impact-donor.is-warning{border-color:rgba(239,68,68,.48);background:rgba(127,29,29,.10)}
+.forge-global-impact-empty{font-size:12px;color:var(--muted,#aaa);padding:10px}
+.forge-global-impact-note{display:block}
+@media(max-width:760px){.forge-global-impact-metrics{grid-template-columns:1fr}.forge-global-impact-donor{grid-template-columns:1fr;gap:5px}.forge-global-impact-donor small{grid-column:auto}}
