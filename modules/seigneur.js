@@ -263,10 +263,16 @@ function seigneurDonorPriority(character,season=seigneurLatestGacUsageSeason()){
     shipCount:fleet.shipCount,reason:'Utilisation GAC terrestre indisponible',
     sourceStatus,formatSeasons
   };
+  if(!fleet.known&&Number(fleet.shipCount)>0)return {
+    known:false,uses:null,characterUses,fleetUses:null,fleetKnown:false,
+    shipCount:fleet.shipCount,
+    reason:'Pilote identifié · utilisation GAC du vaisseau indisponible',
+    sourceStatus,formatSeasons
+  };
   if(!fleet.known)return {
     known:true,uses:characterUses,characterUses,fleetUses:null,fleetKnown:false,
     shipCount:fleet.shipCount,
-    reason:'Classement terrestre uniquement · exposition flotte non vérifiée',
+    reason:'Classement terrestre uniquement · associations pilotes-vaisseaux indisponibles',
     sourceStatus,formatSeasons
   };
   return {
