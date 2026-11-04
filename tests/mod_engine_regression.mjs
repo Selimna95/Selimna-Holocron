@@ -252,6 +252,82 @@ assert.equal(donorContext.seigneurDonorPriority({baseId:'PILOTLOW'}, unknownFlee
 assert.equal(donorContext.seigneurCharacterGacUsage({baseId:'ABSENT'}, donorSeason), null,
   'Missing terrestrial usage must remain unknown');
 
+// Current 5v5 and 3v3 seasons are combined independently; an older season
+// fills a missing format observation but never overrides a current one.
+const seasonalContext=vm.createContext({
+  compactKey,
+  window:{__SWGOH_GAC_USAGE__:{
+    currentSeasons:{'5v5':84,'3v3':83},
+    sourceStatus:'partial',
+    seasons:[
+      {season:84,coverage:[{format:'5v5'}],characters:{
+        TARGET:{uses:100,byFormat:{'5v5':100}},
+        CURRENTONLY:{uses:50,byFormat:{'5v5':50}}
+      },ships:{},fleets:[]},
+      {season:83,coverage:[{format:'3v3'}],characters:{
+        TARGET:{uses:70,byFormat:{'3v3':70}},
+        CURRENTONLY:{uses:30,byFormat:{'3v3':30}}
+      },ships:{},fleets:[]},
+      {season:82,coverage:[{format:'5v5'}],characters:{
+        TARGET:{uses:999,byFormat:{'5v5':999}},
+        HISTORICAL:{uses:25,byFormat:{'5v5':25}}
+      },ships:{},fleets:[]}
+    ]
+  }}
+});
+load(seigneur,['seigneurLatestGacUsageSeason','seigneurCharacterGacUsage'],seasonalContext);
+const mergedSeason=seasonalContext.seigneurLatestGacUsageSeason();
+assert.deepEqual(JSON.parse(JSON.stringify(mergedSeason.formatSeasons)),{'5v5':84,'3v3':83});
+assert.equal(seasonalContext.seigneurCharacterGacUsage({baseId:'TARGET'},mergedSeason),170,
+  'Current 5v5 S84 and 3v3 S83 observations are both included');
+assert.equal(seasonalContext.seigneurCharacterGacUsage({baseId:'HISTORICAL'},mergedSeason),25,
+  'Historical evidence fills a missing current observation');
+assert.equal(seasonalContext.seigneurCharacterGacUsage({baseId:'CURRENTONLY'},mergedSeason),80);
+
+// Incomplete/weak donors are in scope by default; medium/good characters are not.
+const sourceStatusContext=vm.createContext({$:()=>null});
+load(seigneur,['forgeSourceStatusAllowed'],sourceStatusContext);
+assert.equal(sourceStatusContext.forgeSourceStatusAllowed('INCOMPLETS'),true);
+assert.equal(sourceStatusContext.forgeSourceStatusAllowed('TRÈS FAIBLES'),true);
+assert.equal(sourceStatusContext.forgeSourceStatusAllowed('FAIBLES'),true);
+assert.equal(sourceStatusContext.forgeSourceStatusAllowed('MOYENS'),false);
+assert.equal(sourceStatusContext.forgeSourceStatusAllowed('BONS'),false);
+
+// Seigneur must retain the selected recipient, but harvest only weak,
+// incomplete, non-GL donors and genuinely free mods.
+const donorRoster=[
+  {baseId:'TARGET',name:'Target'},
+  {baseId:'WEAK',name:'Weak donor'},
+  {baseId:'INCOMPLETE',name:'Incomplete donor'},
+  {baseId:'GOOD',name:'Good donor'},
+  {baseId:'GLDONOR',name:'GL donor',isGL:true}
+];
+const statusById={TARGET:'BONS',WEAK:'FAIBLES',INCOMPLETE:'INCOMPLETS',GOOD:'BONS',GLDONOR:'FAIBLES'};
+const scopedContext=vm.createContext({
+  compactKey,rosterCharacters:donorRoster,
+  mods:[
+    {id:'target-mod',character:'TARGET'},
+    {id:'weak-mod',character:'WEAK'},
+    {id:'incomplete-mod',character:'INCOMPLETE'},
+    {id:'good-mod',character:'GOOD'},
+    {id:'gl-mod',character:'GLDONOR'},
+    {id:'free-mod'}
+  ],
+  $:()=>null,
+  normalizeModForDisplay:m=>({...m,game_id:m.id}),
+  getCharacterMods:c=>scopedContext.mods.filter(m=>m.character===c.baseId),
+  v176ModStatus:list=>({status:statusById[list[0]?.character]||'SANS MODS'}),
+  isGalacticLegendCharacter:c=>c.isGL===true,
+  seigneurLatestGacUsageSeason:()=>({season:84,formatSeasons:{'5v5':84},sourceStatus:'partial',evidenceType:'defense-composition'}),
+  seigneurDonorPriority:()=>({known:true,uses:10,characterUses:10,fleetUses:0,fleetKnown:true,sourceStatus:'partial'})
+});
+load(core,['characterKey','buildRosterOwnerResolver','resolveModOwnerKey'],scopedContext);
+load(seigneur,['forgeSourceStatusAllowed','forgeAllSourceMods'],scopedContext);
+const scoped=scopedContext.forgeAllSourceMods(donorRoster[0]);
+assert.deepEqual(Array.from(scoped,x=>x.id).sort(),['free-mod','incomplete-mod','target-mod','weak-mod'].sort(),
+  'Strong and GL donors must be excluded while target/free/incomplete/weak mods remain');
+
+
 // 5) Seigneur: allow a set change only when known base speed proves the net is safe.
 const forgeContext = vm.createContext({
   numericValue, modTotalSpeed: speed, optimizerSlotKey: (v) => String(v ?? ''),
