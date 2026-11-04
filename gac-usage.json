@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "status": "awaiting-source-access",
+  "source": "SWGOH.GG public GAC tier lists",
+  "updatedAt": null,
+  "note": "Base schema created. No usage values are published until the upstream source can be retrieved and validated. Missing values are unknown, never zero.",
+  "seasons": [],
+  "coverage": []
+}
