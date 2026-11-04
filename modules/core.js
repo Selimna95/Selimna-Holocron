@@ -882,7 +882,7 @@ function getOptimizerWorker() {
   return optimizerWorker;
 }
 
-function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context, scopedMods) {
+function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context, scopedMods, currentTargetMods=[]) {
   const worker = getOptimizerWorker();
   const id = ++optimizerRequestId;
   return new Promise((resolve, reject) => {
@@ -902,7 +902,7 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
       }
     };
     worker.addEventListener('message', onMessage);
-    worker.postMessage({ id, mods: scopedMods, profile, base_stats: baseStatsForCharacter(character), n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
+    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
   });
 }
 
