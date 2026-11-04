@@ -29,7 +29,7 @@
       const league=String(team?.league||'');
       const battles=Number(team?.battles);
       const members=Array.isArray(team?.members)?team.members:[];
-      if(!['5v5','3v3'].includes(format) || !season || season!==latest[format] ||
+      if(!['5v5','3v3'].includes(format) || !season || season>latest[format] ||
          !league || !Number.isFinite(battles) || battles<=0 ||
          members.length!==(format==='5v5'?5:3)) continue;
       const seasonMap=records.get(season)||new Map();
