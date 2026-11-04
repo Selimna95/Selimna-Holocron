@@ -76,14 +76,55 @@ def validate_board(response: dict, league: str, division: str) -> None:
         )
 
 
+def _event_time_ms(value):
+    if value is None:
+        return None
+    try:
+        numeric = int(float(value))
+        return numeric * 1000 if abs(numeric) < 100_000_000_000 else numeric
+    except (TypeError, ValueError):
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            return int(parsed.timestamp() * 1000)
+        except ValueError:
+            return None
+
+
 def current_gac_event(events_response: dict) -> dict | None:
+    """Select the GAC event whose advertised time window contains now."""
     events = events_response.get("gameEvent", [])
     if not isinstance(events, list):
         raise ValueError("Comlink getEvents response has no gameEvent list")
-    active = [event for event in events if isinstance(event, dict) and event.get("type") == 10]
-    if not active:
+    candidates = [event for event in events if isinstance(event, dict) and event.get("type") == 10]
+    if not candidates:
         return None
-    event = active[0]
+
+    now_ms = int(time.time() * 1000)
+    timed = []
+    for event in candidates:
+        start_ms = _event_time_ms(event.get("startTime"))
+        end_ms = _event_time_ms(event.get("endTime"))
+        print(
+            "GAC event candidate: "
+            f"id={event.get('id')}, start={event.get('startTime')}, end={event.get('endTime')}, "
+            f"instances={[item.get('id') for item in event.get('instance', []) if isinstance(item, dict)]}"
+        )
+        if start_ms is not None and end_ms is not None:
+            timed.append((event, start_ms, end_ms))
+
+    active = [item for item in timed if item[1] <= now_ms <= item[2]]
+    if active:
+        event = max(active, key=lambda item: item[1])[0]
+        selection_reason = "inside_advertised_event_window"
+    elif timed:
+        print("No GAC event is currently inside its advertised start/end window.")
+        return None
+    else:
+        # Some Comlink builds omit event timestamps. Keep the documented first
+        # instance fallback, but expose that its activity could not be verified.
+        event = candidates[0]
+        selection_reason = "timestamps_unavailable_fallback"
+
     instances = event.get("instance", [])
     if not isinstance(instances, list) or not instances or not isinstance(instances[0], dict):
         raise ValueError("GAC event has no usable instance identifier")
@@ -98,6 +139,7 @@ def current_gac_event(events_response: dict) -> dict | None:
         "nameKey": event.get("nameKey"),
         "startTime": event.get("startTime"),
         "endTime": event.get("endTime"),
+        "selectionReason": selection_reason,
     }
 
 
@@ -320,33 +362,22 @@ def build() -> dict:
         if isinstance(entry, dict) and (entry.get("playerId") or entry.get("PlayerId"))
     )
     print(f"Top-50 diagnostic: {total_entries} total entries; {total_player_ids} entries with player IDs.")
-    if total_entries == 0:
-        raise RuntimeError(
-            "Comlink returned 25 valid leaderboard responses but zero player entries. "
-            "Refusing to publish an empty snapshot; inspect the per-board response diagnostics above."
-        )
-    if total_player_ids == 0:
-        raise RuntimeError(
-            "Comlink returned leaderboard entries but none exposed playerId/PlayerId. "
-            "Refusing to publish profiles with zero identifiers; inspect entry field diagnostics above."
-        )
 
-    competitive_roster_meta = collect_competitive_roster_meta(boards)
-    print(
-        "Collected public profiles for "
-        f"{competitive_roster_meta['uniqueProfilesFetched']}/"
-        f"{competitive_roster_meta['uniqueLeaderboardPlayers']} unique top-50 players."
-    )
-
+    # Fetch events/brackets even when global top-50 boards are empty. Brackets
+    # are a separate official source and may still be available during GAC.
     events_response = request_json("getEvents", {"enums": False})
     event = current_gac_event(events_response)
     brackets = []
     if event:
+        print(
+            f"Selected GAC event {event['eventInstanceId']} "
+            f"({event['selectionReason']}); scanning brackets."
+        )
         for league in BRACKET_LEAGUES.values():
             print(f"Scanning active GAC brackets: {league}")
             brackets.append(collect_brackets(event["eventInstanceId"], league))
     else:
-        print("No active GAC season found; bracket collection skipped.")
+        print("No verifiably active GAC season found; bracket collection skipped.")
 
     bracket_players = sum(item.get("playerCount", 0) for item in brackets)
     for bracket_set in brackets:
@@ -356,6 +387,26 @@ def build() -> dict:
             f"brackets={bracket_set.get('bracketCount', 0)}, "
             f"players={bracket_set.get('playerCount', 0)}"
         )
+
+    if total_entries == 0 and bracket_players == 0:
+        raise RuntimeError(
+            "Comlink returned zero players from all 25 top-50 boards and all scanned active GAC brackets. "
+            "Refusing to publish an empty snapshot; verify whether GAC is active and whether Capital Games "
+            "currently exposes these leaderboards."
+        )
+    if total_entries and total_player_ids == 0:
+        print(
+            "Warning: leaderboard entries contain no playerId/PlayerId fields; "
+            "official rankings can be retained, but player roster profiles cannot be collected."
+        )
+
+    competitive_roster_meta = collect_competitive_roster_meta(boards)
+    print(
+        "Collected public profiles for "
+        f"{competitive_roster_meta['uniqueProfilesFetched']}/"
+        f"{competitive_roster_meta['uniqueLeaderboardPlayers']} unique top-50 players."
+    )
+
     return {
         "schemaVersion": 2,
         "status": "collected",
