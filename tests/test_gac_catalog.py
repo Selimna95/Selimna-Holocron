@@ -59,6 +59,10 @@ class GacCatalogParserTests(unittest.TestCase):
     def test_reads_season_from_page_heading(self):
         self.assertEqual(page_season("<h1>Defense tier list — Season 84</h1>"), 84)
 
+    def test_reader_projection_uses_verified_format_season_when_heading_is_missing(self):
+        self.assertEqual(page_season("Reader projection without a heading", "5v5"), 84)
+        self.assertEqual(page_season("Reader projection without a heading", "3v3"), 83)
+
     def test_extracts_teams_from_reader_markdown(self):
         text = """
         Image: The Stranger
