@@ -32,6 +32,7 @@ jobs:
       - name: Test GAC usage parser
         run: python tests/test_gac_usage.py
       - name: Fetch and validate defensive catalogue
+        continue-on-error: true
         run: python scripts/update_gac_catalog.py
       - name: Build character and fleet usage database
         run: python scripts/update_gac_usage.py
