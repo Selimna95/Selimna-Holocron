@@ -233,6 +233,7 @@ function seigneurShipUsageMap(season){
 function seigneurCharacterFleetUsage(character,season=seigneurLatestGacUsageSeason()){
   if(!season)return {uses:null,known:false,shipCount:0,reason:'Saison GAC indisponible'};
   const ships=Array.isArray(rosterShips)?rosterShips:[];
+  if(!ships.length)return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau dans le roster'};
   const crewRows=ships.map(ship=>({ship,crew:seigneurShipCrewAliases(ship)}));
   if(!crewRows.some(row=>row.crew.length))return {uses:null,known:false,shipCount:0,reason:'Correspondance pilotes/vaisseaux indisponible'};
   const aliases=new Set([character?.baseId,character?.base_id,character?.characterId,character?.character_id,character?.id,character?.name].map(seigneurUsageKey).filter(Boolean));
