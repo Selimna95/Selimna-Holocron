@@ -6,23 +6,34 @@ const ssEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':
 const ssId=m=>String(m?.game_id??m?.id??m?._index??'');
 const ssSlot=m=>modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);
 function ssBuildSnapshot(){
- const nodes=[],people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
+ const nodes=[],sources=[],people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
  for(const c of people){
-  const p=sithariProfileForCharacter(c);if(!p)continue;
   const key=characterKey(c),equipped=sithariCharacterMods(c);
   for(const slot of SITHARI_SLOT_ORDER){
    const mod=equipped.find(m=>ssSlot(m)===slot);if(!mod)continue;
+   const source={key:key+'::'+slot,owner:key,name:c.name||c.baseId||key,character:c,slot,mod};
+   sources.push(source);
+   const p=sithariProfileForCharacter(c);if(!p)continue;
    const setOk=sithariSetMatch(mod,p,c),primaryOk=sithariPrimaryMatch(mod,p,slot);
-   nodes.push({key:key+'::'+slot,owner:key,name:c.name||c.baseId||key,character:c,profile:p,slot,mod,setOk,primaryOk,needsWork:!setOk||!primaryOk});
+   nodes.push({...source,profile:p,setOk,primaryOk,needsWork:!setOk||!primaryOk});
   }
  }
- return {nodes,inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:new Set(nodes.map(n=>n.owner)).size};
+ return {nodes,sources,inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:new Set(nodes.map(n=>n.owner)).size};
 }
 function ssSecondaryCoverage(mod,profile){
  const priorities=Object.keys(profile?.secondary_focus||{});
  if(!priorities.length)return 0;
  const values=sithariModSecondaryMap(mod);
  return priorities.reduce((count,stat)=>count+(Number(values[sithariStatKey(stat)]||0)>0?1:0),0)/priorities.length;
+}
+function ssKyberSecondaryFit(mod,profile){
+ const focus=profile?.secondary_focus||{},entries=Object.entries(focus);
+ if(!entries.length)return 0;
+ const values=sithariModSecondaryMap(mod);
+ return entries.reduce((sum,[stat,reference])=>{
+  const target=Number(reference)||0,actual=Number(values[sithariStatKey(stat)]||0);
+  return sum+(target>0?Math.min(1,Math.max(0,actual)/target):0);
+ },0)/entries.length;
 }
 function ssCyclePreservesSpeed(items){
  const replacements=new Map();
@@ -43,25 +54,29 @@ function ssCyclePreservesSpeed(items){
  return true;
 }
 function ssBuildEdges(snapshot){
- const bySlot=new Map();for(const n of snapshot.nodes){if(!bySlot.has(n.slot))bySlot.set(n.slot,[]);bySlot.get(n.slot).push(n);}
- const edges=new Map();let setCandidates=0,primaryCandidates=0;
+ const bySlot=new Map();for(const source of (snapshot.sources||snapshot.nodes)){if(!bySlot.has(source.slot))bySlot.set(source.slot,[]);bySlot.get(source.slot).push(source);}
+ const edges=new Map();let setCandidates=0,primaryCandidates=0,secondaryCandidates=0;
  for(const target of snapshot.nodes){
-  // Keep already-conforming slots in the graph: they may receive a safe replacement in a closed cycle.
+  // Donors come from the entire equipped roster, including characters without a Kyber profile.
   const setPool=(bySlot.get(target.slot)||[]).filter(source=>source.owner!==target.owner&&sithariSetMatch(source.mod,target.profile,target.character));
   setCandidates+=setPool.length;
   const primaryPool=setPool.filter(source=>sithariPrimaryMatch(source.mod,target.profile,target.slot));
   primaryCandidates+=primaryPool.length;
-  const ranked=primaryPool.map(source=>({target,source,secondary:ssSecondaryCoverage(source.mod,target.profile),kyber:sithariSecondaryScore(source.mod,target.profile),speed:modTotalSpeed(source.mod)}))
-   .sort((a,b)=>b.secondary-a.secondary||b.kyber-a.kyber||b.speed-a.speed);
-  edges.set(target.key,ranked);
+  const scored=primaryPool.map(source=>({target,source,secondary:ssSecondaryCoverage(source.mod,target.profile),kyber:ssKyberSecondaryFit(source.mod,target.profile),speed:modTotalSpeed(source.mod)}));
+  // Stage 3 is a real cumulative filter: retain the best available coverage tier for this target.
+  const bestCoverage=scored.reduce((best,edge)=>Math.max(best,edge.secondary),0);
+  const secondaryPool=bestCoverage>0?scored.filter(edge=>Math.abs(edge.secondary-bestCoverage)<1e-9):scored;
+  secondaryCandidates+=secondaryPool.length;
+  secondaryPool.sort((a,b)=>b.kyber-a.kyber||b.speed-a.speed);
+  edges.set(target.key,secondaryPool);
  }
- return {edges,setCandidates,primaryCandidates};
+ return {edges,setCandidates,primaryCandidates,secondaryCandidates};
 }
 async function ssFindCycles(edges){
  // Exploration volontairement bornée : le graphe d'un grand roster est dense.
  // On garde les meilleurs donneurs par slot et on cède régulièrement la main au navigateur.
  const found=new Map(),starts=[...edges.keys()].sort(),maxLength=4;
- const MAX_EDGES_PER_SLOT=10,MAX_EXPANSIONS=24000,MAX_CLOSED_CYCLES=1800,YIELD_EVERY=240;
+ const MAX_EDGES_PER_SLOT=16,MAX_EXPANSIONS=48000,MAX_CLOSED_CYCLES=2400,YIELD_EVERY=160;
  let expansions=0,closedCycles=0,exhausted=false;
  const yieldToBrowser=()=>new Promise(resolve=>setTimeout(resolve,0));
  for(const start of starts){
@@ -126,7 +141,7 @@ async function ssRun(){
   }
  }));
  const snapshot=ssBuildSnapshot(),built=ssBuildEdges(snapshot),search=await ssFindCycles(built.edges),cycles=search.cycles;
- const secondaryCandidates=[...built.edges.values()].reduce((n,a)=>n+a.length,0);
+ const secondaryCandidates=built.secondaryCandidates;
  sithariStrategySnapshot=snapshot;sithariStrategyBusy=false;
  ssRender(snapshot,{...built,secondaryCandidates,cycles},'Analyse terminée : '+snapshot.profiledCount+' personnages avec référence Kyber exploitable sur '+snapshot.rosterCount+'. '+(search.exhausted?'Exploration plafonnée pour préserver le navigateur. ':'')+search.expansions+' étapes examinées.');
  }catch(error){
