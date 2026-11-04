@@ -20,6 +20,12 @@ Le fichier `gac-usage.json` est une base distincte. Son importeur accepte deux m
 
 Les statistiques d'unités sont des observations de combats de première tentative en escouades complètes. Les vues distinguent format, côté et ligue. Les flottes sont des apparitions dans les compositions publiées, pas un recensement exhaustif.
 
+## Lecture statistique dans l'audit Padawan
+
+L'audit calcule, pour chaque composition, un intervalle de confiance de Wilson à 95 % autour du taux de tenue publié, à partir du nombre de combats observés. Il compare ensuite ce taux à une moyenne pondérée par les combats des autres compositions du même format, de la même ligue et de la même saison. Les saisons, formats et ligues ne sont jamais mélangés dans cette comparaison.
+
+Les écarts sont présentés comme des signaux statistiques, pas comme une note de synergie ni comme une prédiction de victoire. Une marge d'incertitude étroite indique une mesure plus précise ; elle ne prouve pas que l'équipe est meilleure dans toutes les conditions. Le rapport affiche les cinq signaux positifs et les cinq signaux négatifs les plus marqués parmi les compositions dont l'incertitude est au plus moyenne.
+
 ## Limites à respecter
 
 - Une composition fréquemment observée ou un taux de tenue n'est pas une garantie de victoire.
