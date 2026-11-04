@@ -109,22 +109,25 @@ def merge_counts(target: dict, incoming: dict) -> None:
 
 def parse_fleet_page(text: str, side: str) -> list[dict]:
     """Read ship names grouped around each ranked fleet's battle-count line."""
-    lines = text.splitlines()
     pending = []
+    pending_battles = None
     fleets = []
-    for line in lines:
-        for name in re.findall(r"(?:Image:\s*|!\[(?:Image:\s*)?)([^\]\n]+)", line):
+    for line in text.splitlines():
+        for name in re.findall(r"(?:Image:\\s*|!\\[(?:Image:\\s*)?)([^\\]\\n]+)", line):
             name = name.strip()
             if name and name not in pending:
                 pending.append(name)
-        stats = re.search(r"Battles\s+([\d,.]+\s*[KMB]?)", line, re.I)
-        rank = re.search(r"#\s*(\d+)", line)
-        if stats and rank and 3 <= len(pending) <= 8:
+        stats = re.search(r"Battles\\s+([\\d,.]+\\s*[KMB]?)", line, re.I)
+        if stats:
+            pending_battles = number_value(stats.group(1))
+        rank = re.search(r"#\\s*(\\d+)", line)
+        if rank and pending_battles is not None and 3 <= len(pending) <= 8:
             fleets.append({
                 "rank": int(rank.group(1)), "side": side,
-                "uses": number_value(stats.group(1)), "ships": pending[:],
+                "uses": pending_battles, "ships": pending[:],
             })
             pending = []
+            pending_battles = None
     return fleets
 
 def build() -> dict:
