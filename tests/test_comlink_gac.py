@@ -28,7 +28,7 @@ class ComlinkGacCollectorTests(unittest.TestCase):
             *[{"player": []} for _ in range(25)],
             {"gameEvent": []},
         ]), patch.object(MODULE.time, "sleep"):
-            with self.assertRaisesRegex(RuntimeError, "zero player entries"):
+            with self.assertRaisesRegex(RuntimeError, "zero players"):
                 MODULE.build()
 
     def test_empty_leaderboard_is_rejected(self):
