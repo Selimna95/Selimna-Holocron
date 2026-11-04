@@ -5,6 +5,8 @@ import vm from "node:vm";
 vm.runInThisContext(fs.readFileSync(new URL("../blue-gac/gac-audit.js", import.meta.url), "utf8"));
 const api = globalThis.GACAudit;
 assert.ok(api && typeof api.auditCatalog === "function");
+assert.equal(typeof api.analyzePerformance, "function");
+assert.equal(typeof api.wilsonInterval, "function");
 
 const valid = {
   schemaVersion: 1, collectionStatus: "partial", currentSeasons: {"3v3":83,"5v5":84},
@@ -38,4 +40,21 @@ noCurrentSeason.currentSeasons["3v3"] = 0;
 result = api.auditCatalog(noCurrentSeason, []);
 assert.ok(result.checks.some(x => x.level === "error" && x.title === "Saison actuelle 3v3"));
 
-console.log("GAC audit regression tests: OK");
+
+const performanceCatalog = {
+  teams: [
+    {format:"5v5",league:"Kyber",season:84,name:"Alpha squad",members:["A","B","C","D","E"],hold:60,battles:10000,rank:1,source:"https://swgoh.gg/a"},
+    {format:"5v5",league:"Kyber",season:84,name:"Beta squad",members:["F","G","H","I","J"],hold:40,battles:10000,rank:2,source:"https://swgoh.gg/b"},
+    {format:"5v5",league:"Kyber",season:83,name:"Old squad",members:["K","L","M","N","O"],hold:90,battles:10000,rank:1,source:"https://swgoh.gg/c"}
+  ]
+};
+const performance = api.analyzePerformance(performanceCatalog);
+assert.equal(performance.items.length, 3);
+assert.equal(performance.items[0].baseline, 40);
+assert.equal(performance.items[0].delta, 20);
+assert.equal(performance.items[1].delta, -20);
+assert.equal(performance.items[2].baseline, null, "Different seasons must never be compared.");
+assert.equal(performance.items[0].confidence, "élevée");
+assert.ok(performance.items[0].interval.low < 60 && performance.items[0].interval.high > 60);
+assert.ok(api.wilsonInterval(50, 10000).margin < api.wilsonInterval(50, 100).margin, "Larger samples must reduce uncertainty.");
+console.log("GAC audit and statistical analysis tests: OK");
