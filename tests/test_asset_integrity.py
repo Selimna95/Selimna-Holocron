@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.2.7-seigneur-gac-priority", self.sw)
+        self.assertIn("holocron-static-v4.2.8-seigneur-global-impact", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -92,7 +92,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("_sourceFleetKnown", seigneur)
         self.assertIn("modules/seigneur-gac.js?v=1.0.0-catalog-bridge", self.html)
         self.assertIn("modules/seigneur-gac.js?v=1.0.0-catalog-bridge", self.sw)
-        self.assertIn("modules/seigneur.js?v=3.8.0-gac-donor-scope", self.html)
+        self.assertIn("modules/seigneur.js?v=3.9.0-global-impact", self.html)
         self.assertIn("modules/seigneur.js?v=3.8.0-gac-donor-scope", self.sw)
         self.assertIn("PRIORITÉ GAC", (ROOT / "modules" / "core.js").read_text(encoding="utf-8"))
 
