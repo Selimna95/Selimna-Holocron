@@ -641,14 +641,20 @@ $('runOptimizer').addEventListener('click',async()=>{
     const missing=Object.entries(slotCounts).filter(([,count])=>count===0).map(([slot])=>slot);
     if(missing.length)throw new Error(`Recherche impossible : aucun mod candidat pour ${missing.join(', ')}. Les usages GAC terrestres/flottes ou les associations pilotes-vaisseaux sont incomplets. Aucun donneur non vérifié ne sera utilisé.`);
     renderSeigneurDonorPanel(character);
-    $('results').innerHTML='<div class="calculating">Optimisation complète en cours : comparaison des sets, primaires, secondaires, vitesse et statistiques finales…</div>';
-    const builds=await runOptimizationInWorker(character,profile,5,180,{mode:'seigneur-six-mods',donor_priority:'gac-terrestrial-plus-fleet'},scopedMods);
-    if(!Array.isArray(builds)||!builds.length)throw new Error('Le moteur n’a retourné aucune configuration complète.');
+    $('results').innerHTML='<div class="calculating">Recherche des meilleures configurations complètes, avec conservation obligatoire de la vitesse actuelle…</div>';
     const currentTargetMods=getCharacterMods(character);
+    const currentSpeed=forgeProjectedModSpeed(character,profile,currentTargetMods).total;
+    const builds=await runOptimizationInWorker(character,profile,5,180,{mode:'seigneur-six-mods',donor_priority:'gac-terrestrial-plus-fleet'},scopedMods,currentTargetMods);
+    if(!Array.isArray(builds)||!builds.length)throw new Error('Le moteur n’a retourné aucune configuration complète respectant la vitesse actuelle.');
     const safeBuilds=builds.filter(row=>forgeBuildPreservesSpeed(character,profile,currentTargetMods,row?.build));
-    if(!safeBuilds.length)throw new Error('Aucune configuration complète ne respecte la règle absolue : la vitesse totale du personnage cible ne peut pas diminuer, bonus de set Speed compris.');
+    if(!safeBuilds.length)throw new Error('Contrôle final : les configurations reçues ne respectent pas la vitesse actuelle. Aucune proposition n’est affichée.');
     renderResults(safeBuilds,profile);
-  }catch(e){$('optimizerError').textContent=String(e?.message||e);$('results').innerHTML='';}
+    log(`Seigneur Sith : ${safeBuilds.length} configurations sûres · vitesse cible maintenue à ${num(currentSpeed,1)} minimum.`);
+  }catch(e){
+    const message=String(e?.message||e);
+    $('optimizerError').textContent=message;
+    $('results').innerHTML=`<section class="forge-no-result"><b>ANALYSE SANS PROPOSITION</b><span>${esc(message)}</span><small>La vitesse actuelle du personnage reste la limite absolue. Aucun mod n’a été transféré ni proposé en perte de vitesse.</small></section>`;
+  }
   finally{$('runOptimizer').disabled=false;$('runOptimizer').textContent='OPTIMISER LES 6 MODS';}
 });
 function optimizerStatLabel(key){
