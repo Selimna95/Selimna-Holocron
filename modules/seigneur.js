@@ -121,10 +121,60 @@ function seigneurUsageCount(record){
   return Number.isFinite(value)&&value>=0?value:null;
 }
 function seigneurLatestGacUsageSeason(){
-  const seasons=window.__SWGOH_GAC_USAGE__?.seasons;
-  if(!Array.isArray(seasons))return null;
-  return seasons.filter(s=>s&&s.season!=null&&((s.characters&&Object.keys(s.characters).length)||(s.ships&&Object.keys(s.ships).length)||(Array.isArray(s.fleets)&&s.fleets.length)))
-    .sort((a,b)=>Number(b.season)-Number(a.season))[0]||null;
+  const data=window.__SWGOH_GAC_USAGE__||{};
+  const seasons=Array.isArray(data.seasons)?data.seasons.filter(s=>s&&Number(s.season)>0):[];
+  if(!seasons.length)return null;
+  const hasFormatBreakdown=seasons.some(s=>Object.values(s.characters||{}).some(record=>
+    record&&record.byFormat&&Object.keys(record.byFormat).length
+  ));
+  if(!hasFormatBreakdown){
+    return seasons.filter(s=>(s.characters&&Object.keys(s.characters).length)||(s.ships&&Object.keys(s.ships).length)||(Array.isArray(s.fleets)&&s.fleets.length))
+      .sort((a,b)=>Number(b.season)-Number(a.season))[0]||null;
+  }
+  const combined={season:0,characters:{},ships:{},fleets:[],coverage:[],
+    formatSeasons:{},sourceStatus:data.sourceStatus||'observed',
+    source:data.source||'SWGOH.GG GAC usage',evidenceType:data.evidenceType||'unit-usage'};
+  for(const format of ['5v5','3v3']){
+    const matching=seasons.filter(s=>
+      (s.coverage||[]).some(c=>c?.format===format) ||
+      Object.values(s.characters||{}).some(r=>Number(r?.byFormat?.[format])>0)
+    ).sort((a,b)=>Number(b.season)-Number(a.season));
+    const ceiling=Number(data.currentSeasons?.[format])||Number(matching[0]?.season)||0;
+    if(!ceiling)continue;
+    const eligible=matching.filter(s=>Number(s.season)<=ceiling);
+    if(!eligible.length)continue;
+    combined.formatSeasons[format]=Number(eligible[0].season);
+    const names=new Set(eligible.flatMap(s=>Object.keys(s.characters||{})));
+    for(const name of names){
+      for(const season of eligible){
+        const record=season.characters?.[name];
+        const count=Number(record?.byFormat?.[format]);
+        if(!Number.isFinite(count)||count<=0)continue;
+        const target=combined.characters[name]||(combined.characters[name]={uses:0,byFormat:{},bySide:{},seasonsByFormat:{}});
+        target.uses+=count;
+        target.byFormat[format]=count;
+        target.seasonsByFormat[format]=Number(season.season);
+        for(const [side,value] of Object.entries(record.bySide||{})){
+          target.bySide[side]=(target.bySide[side]||0)+Number(value||0);
+        }
+        break;
+      }
+    }
+    combined.coverage.push(...eligible.flatMap(s=>(s.coverage||[]).filter(c=>c?.format===format)));
+  }
+  const fleetSeasons=seasons.filter(s=>(s.ships&&Object.keys(s.ships).length)||Array.isArray(s.fleets)&&s.fleets.length)
+    .sort((a,b)=>Number(b.season)-Number(a.season));
+  const seenShips=new Set();
+  for(const season of fleetSeasons){
+    for(const [name,record] of Object.entries(season.ships||{})){
+      if(seenShips.has(name))continue;
+      combined.ships[name]=record;seenShips.add(name);
+    }
+    if(!combined.fleets.length&&Array.isArray(season.fleets))combined.fleets=season.fleets;
+    combined.coverage.push(...(season.coverage||[]).filter(c=>c?.format==='fleet'));
+  }
+  combined.season=Math.max(0,...Object.values(combined.formatSeasons),...fleetSeasons.map(s=>Number(s.season)||0));
+  return Object.keys(combined.characters).length||Object.keys(combined.ships).length||combined.fleets.length?combined:null;
 }
 function seigneurCharacterGacUsage(character,season=seigneurLatestGacUsageSeason()){
   if(!season)return null;
@@ -202,19 +252,23 @@ function seigneurDonorPriority(character,season=seigneurLatestGacUsageSeason()){
   const characterUses=seigneurCharacterGacUsage(character,season);
   const fleet=seigneurCharacterFleetUsage(character,season);
   if(characterUses===null||!fleet.known)return {
-    known:false,uses:null,characterUses,fleetUses:fleet.uses,shipCount:fleet.shipCount,
-    reason:characterUses===null?'Utilisation GAC terrestre indisponible':fleet.reason
+    known:false,uses:null,characterUses,fleetUses:fleet.uses,fleetKnown:fleet.known,
+    shipCount:fleet.shipCount,reason:characterUses===null?'Utilisation GAC terrestre indisponible':fleet.reason,
+    sourceStatus:season?.sourceStatus||'unavailable',formatSeasons:season?.formatSeasons||{}
   };
   return {
-    known:true,uses:characterUses+fleet.uses,characterUses,fleetUses:fleet.uses,
-    shipCount:fleet.shipCount,reason:'Classement GAC terrestre + flotte'
+    known:true,uses:characterUses+fleet.uses,characterUses,fleetUses:fleet.uses,fleetKnown:true,
+    shipCount:fleet.shipCount,reason:'Classement GAC terrestre + flotte',
+    sourceStatus:season?.sourceStatus||'observed',formatSeasons:season?.formatSeasons||{}
   };
 }
 function forgeSourceStatusAllowed(status){
   if($('optimizerAllRoster')?.checked===true)return true;
-  if(status==='TRÈS FAIBLES')return $('optimizerVeryLow')?.checked!==false;
-  if(status==='FAIBLES')return $('optimizerLow')?.checked!==false;
-  if(status==='MOYENS')return $('optimizerMedium')?.checked===true;
+  const enabled=(id,fallback)=>$(id)?$(id).checked:fallback;
+  if(status==='INCOMPLETS')return enabled('optimizerIncomplete',true);
+  if(status==='TRÈS FAIBLES')return enabled('optimizerVeryLow',true);
+  if(status==='FAIBLES')return enabled('optimizerLow',true);
+  if(status==='MOYENS')return enabled('optimizerMedium',false);
   return false;
 }
 function forgeScopedMods(){
@@ -301,12 +355,15 @@ function forgeAllSourceMods(targetCharacter=null){
     if(owner&&isGalacticLegendCharacter(owner)&&ownerKey!==targetKey)continue;
     const st=owner?v176ModStatus(getCharacterMods(owner)).status:'INVENTAIRE';
     const isTarget=!!owner&&ownerKey===targetKey;
+    if(owner&&!isTarget&&!forgeSourceStatusAllowed(st))continue;
     const ownerLabel=owner?.name||m.character||'Libre';
     const isFree=!owner&&!String(m.character||'').trim();
     const priority=owner?priorities.get(ownerKey):isFree?{known:true,uses:0,characterUses:0,fleetUses:0,shipCount:0,reason:'Mod libre'}:{known:false,uses:null,characterUses:null,fleetUses:null,shipCount:0,reason:'Propriétaire non résolu'};
     out.push({...m,_sourceStatus:st,_sourceOwner:ownerLabel,_sourceOwnerKey:ownerKey,
       _sourcePriorityKnown:isTarget||priority?.known===true,_sourceUsage:isTarget?0:(priority?.uses??Number.POSITIVE_INFINITY),
       _sourceCharacterUses:isTarget?0:(priority?.characterUses??null),_sourceFleetUses:isTarget?0:(priority?.fleetUses??null),
+      _sourceFleetKnown:isTarget||priority?.fleetKnown===true,_sourceFormatSeasons:priority?.formatSeasons||{},
+      _sourceEvidenceType:season?.evidenceType||'unit-usage',_sourceDataStatus:priority?.sourceStatus||season?.sourceStatus||'unavailable',
       _sourceShipCount:priority?.shipCount??0,_sourcePriorityReason:isTarget?'Mod déjà équipé sur la cible':priority?.reason||'Usage GAC inconnue',
       _source_usage:isTarget?0:(priority?.uses??Number.POSITIVE_INFINITY),
       _source_character_uses:isTarget?0:(priority?.characterUses??null),_source_fleet_uses:isTarget?0:(priority?.fleetUses??null)});
@@ -329,11 +386,21 @@ function forgeDonorSummary(character){
   const scoped=forgeScopedModsForCharacter(character),groups=new Map(),targetKey=characterKey(character);
   for(const mod of scoped){
     const key=mod._sourceOwnerKey||(mod._sourceOwner==='Libre'?'INVENTORY':'UNRESOLVED:'+compactKey(mod._sourceOwner));
-    if(!groups.has(key))groups.set(key,{key,name:mod._sourceOwner||'Inventaire libre',mods:0,uses:mod._sourceUsage??0,characterUses:mod._sourceCharacterUses??0,fleetUses:mod._sourceFleetUses??0,free:key==='INVENTORY'});
+    if(!groups.has(key))groups.set(key,{key,name:mod._sourceOwner||'Inventaire libre',mods:0,
+      uses:mod._sourceUsage??0,characterUses:mod._sourceCharacterUses??0,
+      fleetUses:mod._sourceFleetUses??null,fleetKnown:mod._sourceFleetKnown===true,
+      formatSeasons:mod._sourceFormatSeasons||{},sourceStatus:mod._sourceDataStatus||'unavailable',
+      evidenceType:mod._sourceEvidenceType||'unit-usage',free:key==='INVENTORY'});
     groups.get(key).mods++;
   }
   const donors=[...groups.values()].filter(x=>x.free||x.key!==targetKey).sort((a,b)=>a.uses-b.uses||b.mods-a.mods);
-  return {mods:scoped,donors,freeMods:donors.find(x=>x.free)?.mods||0};
+  const usage=window.__SWGOH_GAC_USAGE__||{};
+  const season=seigneurLatestGacUsageSeason();
+  return {mods:scoped,donors,freeMods:donors.find(x=>x.free)?.mods||0,
+    source:usage.source||season?.source||'Données GAC',
+    sourceStatus:usage.sourceStatus||season?.sourceStatus||'unavailable',
+    evidenceType:usage.evidenceType||season?.evidenceType||'unit-usage',
+    formatSeasons:season?.formatSeasons||{}};
 }
 function renderSeigneurTargetAudit(character,profile){
   const audit=forgeCharacterAudit(character,profile);
@@ -345,9 +412,12 @@ function renderSeigneurTargetAudit(character,profile){
 function renderSeigneurDonorPanel(character){
   const summary=forgeDonorSummary(character);
   const donors=summary.donors.filter(x=>!x.free).slice(0,12);
-  const donorRows=donors.map((d,i)=>`<div class="forge-ref-row"><span>${String(i+1).padStart(2,'0')}</span><b>${esc(d.name)}</b><em>${num(d.mods)} mods · GAC ${num(d.characterUses)} terrestre + ${num(d.fleetUses)} flotte</em></div>`).join('');
+  const donorRows=donors.map((d,i)=>`<div class="forge-ref-row"><span>${String(i+1).padStart(2,'0')}</span><b>${esc(d.name)}</b><em>${num(d.mods)} mods · GAC ${num(d.characterUses)} terrestre · ${d.fleetKnown?num(d.fleetUses)+' flotte':'flotte non mesurée'}</em></div>`).join('');
   const known=donors.length;
-  $('forgeSearchPanel').innerHTML=`<div class="forge-reference-panel is-live"><div class="forge-reference-head"><div class="forge-reference-identity"><span class="forge-kicker">ARSENAL GLOBAL</span><strong>${summary.mods.length} mods candidats</strong><small>${known} donneurs avec usages GAC vérifiés · ${summary.freeMods} mods libres</small></div><div class="forge-reference-status"><i></i><span>CLASSEMENT GAC ACTIF</span></div></div><div class="forge-reference-columns"><section class="forge-reference-column"><header><span>DONNEURS PRIORITAIRES</span><small>moins utilisés d'abord</small></header>${donorRows||'<div class="forge-ref-empty">Aucun donneur vérifiable. Les données GAC personnages/flottes ou les associations pilotes-vaisseaux sont absentes.</div>'}</section><section class="forge-reference-column"><header><span>RÈGLES DE PROTECTION</span><small>appliquées au vivier</small></header><div class="forge-ref-row"><span>01</span><b>Usage terrestre</b><em>personnages</em></div><div class="forge-ref-row"><span>02</span><b>Usage flotte</b><em>pilotes protégés</em></div><div class="forge-ref-row"><span>03</span><b>GL</b><em>exclues comme donneurs</em></div><div class="forge-ref-row"><span>04</span><b>Données absentes</b><em>donneur non retenu</em></div></section></div></div>`;
+  const seasonsLabel=Object.entries(summary.formatSeasons||{}).map(([format,season])=>format+' S'+season).join(' · ')||'saison non identifiée';
+  const evidenceLabel=summary.evidenceType==='defense-composition'?'Défense uniquement':'Unités GAC';
+  const completenessLabel=summary.sourceStatus==='partial'?' · catalogue partiel':'';
+  $('forgeSearchPanel').innerHTML=`<div class="forge-reference-panel is-live"><div class="forge-reference-head"><div class="forge-reference-identity"><span class="forge-kicker">ARSENAL GLOBAL</span><strong>${summary.mods.length} mods candidats</strong><small>${known} donneurs avec usages GAC vérifiés · ${summary.freeMods} mods libres · ${evidenceLabel}${completenessLabel} · ${seasonsLabel}</small></div><div class="forge-reference-status"><i></i><span>CLASSEMENT GAC ACTIF</span></div></div><div class="forge-reference-columns"><section class="forge-reference-column"><header><span>DONNEURS PRIORITAIRES</span><small>moins utilisés d'abord</small></header>${donorRows||'<div class="forge-ref-empty">Aucun donneur vérifiable. Les données GAC personnages/flottes ou les associations pilotes-vaisseaux sont absentes.</div>'}</section><section class="forge-reference-column"><header><span>RÈGLES DE PROTECTION</span><small>appliquées au vivier</small></header><div class="forge-ref-row"><span>01</span><b>Usage terrestre</b><em>personnages</em></div><div class="forge-ref-row"><span>02</span><b>Usage flotte</b><em>pilotes protégés</em></div><div class="forge-ref-row"><span>03</span><b>GL</b><em>exclues comme donneurs</em></div><div class="forge-ref-row"><span>04</span><b>Données absentes</b><em>donneur non retenu</em></div></section></div></div>`;
 }
 function forgeSearchSourceSummary(){
   if($('optimizerAllRoster')?.checked===true)return 'TOUT LE ROSTER · GL EXCLUES';
