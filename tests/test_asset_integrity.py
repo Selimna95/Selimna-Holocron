@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.3.9-sithari-render-fix", self.sw)
+        self.assertIn("holocron-static-v4.4.0-sithari-bounded-search", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -193,14 +193,17 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithariSecondaryScore(source.mod,target.profile)", strategy)
         self.assertIn("ssFindCycles", strategy)
         self.assertIn("ssCyclePreservesSpeed", strategy)
+        self.assertIn("MAX_EXPANSIONS=24000", strategy)
+        self.assertIn("MAX_EDGES_PER_SLOT=10", strategy)
+        self.assertIn("await ssFindCycles(built.edges)", strategy)
         self.assertIn("ssSecondaryCoverage", strategy)
         self.assertIn("peopleSummary", strategy)
         self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
         self.assertIn("lecture seule", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.0.1-bounded-search", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.1-roster-synthesis", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.1-roster-synthesis", self.sw)
-        self.assertIn("modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.0.1-bounded-search", self.sw)
         self.assertIn("holocron-static-v4.3.9-sithari-render-fix", self.sw)
 
 if __name__ == "__main__":
