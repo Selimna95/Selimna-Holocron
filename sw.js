@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.3.6-seigneur-slot-comparison';
+const CACHE_NAME = 'holocron-static-v4.3.7-sithari-cumulative';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
   './assets/image/padawan.png',
   './assets/image/jpeg.jpg',
   './app.css?v=4.1.2-seigneur-slot-comparison',
-  './sithari.css?v=4.2.0-adaptive-mod-board',
+  './sithari.css?v=4.3.0-cumulative-strategy',
   './holocron-system.css?v=4.0.0-disciple-clarity',
   './entrance.css?v=4.0.46-crawl-restart',
   './holocron-static.css?v=4.0.45',
@@ -24,7 +24,8 @@ const STATIC_ASSETS = [
   './modules/disciple.js?v=3.5.2-ranked-candidates',
   './modules/seigneur.js?v=3.9.4-slot-comparison',
   './modules/seigneur-impact.js?v=1.0.0-roster-impact',
-  './modules/sithari.js?v=4.1.6-owner-resolver',
+  './modules/sithari.js?v=4.1.7-strategy-hook',
+  './modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline',
   './modules/runtime.js?v=3.7.0-sith-portraits',
   './optimizer-worker.mjs?v=3.5.3-seigneur-speed-floor',
   './python/optimizer.py?v=3.5.1-seigneur-speed-floor',
