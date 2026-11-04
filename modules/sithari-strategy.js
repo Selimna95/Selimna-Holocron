@@ -95,6 +95,7 @@ function ssRender(snapshot,result,message){
 }
 async function ssRun(){
  if(sithariStrategyBusy)return;sithariStrategyBusy=true;
+ try{
  const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
  const empty={nodes:[],inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:0};
  ssRender(empty,{setCandidates:0,primaryCandidates:0,secondaryCandidates:0,cycles:[]},'Récupération des références Kyber…');
