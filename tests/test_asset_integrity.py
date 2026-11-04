@@ -83,7 +83,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("holocronGacPriorityForCharacter", bridge)
         self.assertIn("buildDefenseUsage", bridge)
         self.assertIn("defense-composition", bridge)
-        self.assertIn("Une absence n’est jamais assimilée à zéro", bridge)
+        self.assertIn("une absence n’est jamais assimilée à zéro", bridge)
         self.assertIn("holocron:gac-usage-ready", bridge)
         self.assertIn("byFormat", seigneur)
         self.assertIn("current season first", seigneur.lower())
@@ -162,8 +162,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.0-gac-recipient-priority", self.html)
-        self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.sw)
-        self.assertIn("holocron-static-v4.2.6-gac-strategic-audit", self.sw)
+        self.assertIn("modules/core.js?v=4.2.0-gac-recipient-priority", self.sw)
+        self.assertIn("holocron-static-v4.2.7-seigneur-gac-priority", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
