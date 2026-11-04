@@ -14,14 +14,21 @@ SPEC.loader.exec_module(MODULE)
 class ComlinkGacCollectorTests(unittest.TestCase):
     def test_coverage_is_25_league_division_combinations(self):
         with patch.object(MODULE, "request_json", side_effect=[
-            {"player": []}
+            {"player": [{"playerId": "test-player"}]}
             for _ in range(25)
-        ] + [{"gameEvent": []}]), patch.object(MODULE.time, "sleep"):
+        ] + [{"rosterUnit": []}, {"gameEvent": []}]), patch.object(MODULE.time, "sleep"):
             snapshot = MODULE.build()
         self.assertEqual(snapshot["coverage"]["top50BoardsExpected"], 25)
         self.assertEqual(snapshot["coverage"]["top50BoardsCollected"], 25)
         self.assertEqual(len(snapshot["top50Boards"]), 25)
         self.assertFalse(snapshot["coverage"]["activeGacEventFound"])
+
+    def test_all_empty_leaderboards_are_rejected_before_publication(self):
+        with patch.object(MODULE, "request_json", side_effect=[
+            {"player": []} for _ in range(25)
+        ]), patch.object(MODULE.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "zero player entries"):
+                MODULE.build()
 
     def test_empty_leaderboard_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Empty GAC leaderboard"):
@@ -59,9 +66,9 @@ class ComlinkGacCollectorTests(unittest.TestCase):
 
     def test_dataset_disclaims_battle_usage_statistics(self):
         with patch.object(MODULE, "request_json", side_effect=[
-            {"player": []}
+            {"player": [{"playerId": "test-player"}]}
             for _ in range(25)
-        ] + [{"gameEvent": []}]), patch.object(MODULE.time, "sleep"):
+        ] + [{"rosterUnit": []}, {"gameEvent": []}]), patch.object(MODULE.time, "sleep"):
             snapshot = MODULE.build()
         self.assertTrue(any("do not expose battle history" in item for item in snapshot["limitations"]))
         self.assertEqual(snapshot["dataset"], "official_gac_leaderboards_and_brackets")
