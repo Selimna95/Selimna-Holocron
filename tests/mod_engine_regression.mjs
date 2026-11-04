@@ -275,7 +275,7 @@ const seasonalContext=vm.createContext({
     ]
   }}
 });
-load(seigneur,['seigneurLatestGacUsageSeason','seigneurCharacterGacUsage'],seasonalContext);
+load(seigneur,['seigneurUsageKey','seigneurUsageRecord','seigneurUsageCount','seigneurLatestGacUsageSeason','seigneurCharacterGacUsage'],seasonalContext);
 const mergedSeason=seasonalContext.seigneurLatestGacUsageSeason();
 assert.deepEqual(JSON.parse(JSON.stringify(mergedSeason.formatSeasons)),{'5v5':84,'3v3':83});
 assert.equal(seasonalContext.seigneurCharacterGacUsage({baseId:'TARGET'},mergedSeason),170,
