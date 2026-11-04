@@ -339,11 +339,20 @@ async function ensureSelectedKyberProfile(){
 function fillCharacters(names) {
   rosterCharacters = Array.isArray(names) ? names : [];
   const select=$('character'); select.innerHTML='';
-  const sorted=[...rosterCharacters].sort((a,b)=>String(a.name||a.baseId||'').localeCompare(String(b.name||b.baseId||''),'fr'));
+  const priorityFor=c=>window.holocronGacPriorityForCharacter?.(c)||{known:false,uses:null};
+  const sorted=[...rosterCharacters].sort((a,b)=>{
+    const pa=priorityFor(a),pb=priorityFor(b);
+    if(pa.known!==pb.known)return pa.known?-1:1;
+    if(pa.known&&pb.known&&Number(pa.uses)!==Number(pb.uses))return Number(pb.uses)-Number(pa.uses);
+    return String(a.name||a.baseId||'').localeCompare(String(b.name||b.baseId||''),'fr');
+  });
   for(const c of sorted) {
     const name=c.name||c.character||c.baseId||'Inconnu';
-    const p=profileForCharacter(c);
-    const o=document.createElement('option'); o.value=name; o.dataset.baseId=c.baseId||c.base_id||''; o.textContent=p ? `${name}  ★ Profil Kyber` : name; select.appendChild(o);
+    const p=profileForCharacter(c),gac=priorityFor(c);
+    const suffix=gac.known?` · GAC ${num(gac.uses)} combats`:'';
+    const o=document.createElement('option'); o.value=name; o.dataset.baseId=c.baseId||c.base_id||'';
+    o.dataset.gacUses=gac.known?String(gac.uses):'';
+    o.textContent=(p ? `${name}  ★ Profil Kyber` : name)+suffix; select.appendChild(o);
   }
   if(!sorted.length){const o=document.createElement('option');o.textContent='Aucun personnage chargé';o.disabled=true;o.selected=true;select.appendChild(o);}
   updateCharacterInfo();
@@ -352,6 +361,13 @@ function selectedCharacter() {
   const value=String($('character')?.value||'');
   return rosterCharacters.find(c=>String(c.name||c.character||c.baseId||'')===value) || null;
 }
+window.addEventListener('holocron:gac-usage-ready',()=>{
+  if(!rosterCharacters.length)return;
+  const selected=$('character')?.value||'';
+  fillCharacters(rosterCharacters);
+  if(selected)$('character').value=selected;
+  updateCharacterInfo();
+});
 function optimizerRecommendationSummary(profile){
   const out={sets:[],primaries:[],secondaries:[],source:'Référence Kyber détaillée indisponible'};
   if(!profile || typeof profile!=='object') return out;
@@ -481,7 +497,11 @@ function updateCharacterInfo() {
   const local=optimizerProfileForCharacter(c);
   const ref=p || null;
   const fallback=local&&!p;
-  $('characterInfo').innerHTML=optimizerReferenceMarkup(ref,c)+`<div class="forge-active-rulebar"><span><b>PERSONNAGE</b> ${esc(c.name||c.character||c.baseId||'—')}</span><span><b>SOURCE MODS</b> ${esc(optimizerSourceScopeSummary()[0])}</span><span><b>GL</b> EXCLUES</span><span><b>LOGIQUE</b> KYBER → FILTRE → ARSENAL → BUILDS</span></div>`;
+  const gacPriority=window.holocronGacPriorityForCharacter?.(c)||{known:false};
+  const gacLabel=gacPriority.known
+    ? `${gacPriority.label||('GAC · '+num(gacPriority.uses)+' combats')} ${gacPriority.evidence?.length?'· '+gacPriority.evidence.join(' / '):''}`
+    : 'Aucune observation exploitable';
+  $('characterInfo').innerHTML=optimizerReferenceMarkup(ref,c)+`<div class="forge-active-rulebar"><span><b>PERSONNAGE</b> ${esc(c.name||c.character||c.baseId||'—')}</span><span><b>PRIORITÉ GAC</b> ${esc(gacLabel)}</span><span><b>SOURCE MODS</b> ${esc(optimizerSourceScopeSummary()[0])}</span><span><b>GL</b> EXCLUES</span><span><b>LOGIQUE</b> KYBER → GAC → DONNEURS → BUILDS</span></div>`;
   if(fallback) log(`Profil local disponible pour ${c.name||c.baseId}, mais les critères Kyber détaillés restent à récupérer.`);
 }
 
