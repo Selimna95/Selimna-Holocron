@@ -31,8 +31,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.2.3-gac-partial-catalog", self.sw)
-        self.assertIn("blue-gac/gac-catalog.json?v=4.1.1", self.sw)
+        self.assertIn("holocron-static-v4.2.4-gac-season-priority", self.sw)
+        self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
@@ -49,11 +49,13 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("t.league===state.tier", self.blue_js)
         self.assertIn("t.members.map(canonicalName)", self.blue_js)
         self.assertIn("members.some(function(m){return used.has(m);})", self.blue_js)
-        self.assertIn("Number(b.battles||0)-Number(a.battles||0)", self.blue_js)
+        self.assertIn("Number(b.season||0)-Number(a.season||0)", self.blue_js)
+        self.assertIn("catalogMeta.currentSeasons", self.blue_js)
+        self.assertIn("Saison prioritaire", self.blue_js)
         self.assertIn("var publicTeams=[];", self.blue_js)
         self.assertNotIn("sourceLeague:(Number(t.season)", self.blue_js)
         self.assertIn("font-size:max(13px", self.blue_css)
-        self.assertIn("V4.1.1", self.blue_html)
+        self.assertIn("V4.1.2", self.blue_html)
 
 
     def test_profile_sync_is_staged_and_rejects_incomplete_mod_inventory(self):
@@ -88,6 +90,7 @@ class AssetIntegrityTests(unittest.TestCase):
         data = json.loads(self.catalog)
         self.assertTrue(data["updatedAt"])
         self.assertEqual(data["collectionStatus"], "partial")
+        self.assertEqual(data["currentSeasons"], {"5v5": 84, "3v3": 83})
         self.assertEqual(len(data["teams"]), 60)
         expected = {
             "5v5": {"kyber": 8, "aurodium": 4, "chromium": 0, "bronzium": 8, "carbonite": 3},
@@ -109,6 +112,13 @@ class AssetIntegrityTests(unittest.TestCase):
                     self.assertGreaterEqual(team["hold"], 0)
                     self.assertLessEqual(team["hold"], 100)
         self.assertIn("Cloudflare", data["collectionNote"])
+
+    def test_gac_collector_accepts_empty_or_partial_current_season_views(self):
+        collector = (ROOT / "scripts" / "update_gac_catalog.py").read_text(encoding="utf-8")
+        self.assertIn("MIN_TEAMS_PER_VIEW = 0", collector)
+        self.assertIn('"currentSeasons": current_seasons', collector)
+        self.assertNotIn("coverage[fmt][league] < MIN_TEAMS_PER_VIEW", collector)
+        self.assertIn("Inconsistent current seasons detected", collector)
 
     def test_relay_sync_uses_one_timeout_json_reader_and_preserves_direct_fallback(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
