@@ -4,7 +4,7 @@
   "collectionStatus": "partial",
   "collectionMethod": "Initial real-data snapshot extracted from SWGOH.GG's publicly indexed 5v5/3v3 defense tier-list pages. Each row is a complete squad with source rank, hold rate and battle count.",
   "collectionNote": "Relevé partiel : 5v5 S84 et 3v3 S83 uniquement. Les pages serveur sont bloquées par Cloudflare (403) : 5v5 Chromium et 3v3 Aurodium restent absents. Aucune composition ni statistique n'a été inventée pour ces vues. Les saisons précédentes restent à collecter.",
-  "updatedAt": "2026-11-04T09:41:28.407Z",
+  "updatedAt": "2026-11-04T09:41:37.515Z",
   "seasons": {
     "5v5": {
       "kyber": [
@@ -42,8 +42,8 @@
       "kyber": 8,
       "aurodium": 4,
       "chromium": 0,
-      "bronzium": 0,
-      "carbonite": 0
+      "bronzium": 8,
+      "carbonite": 3
     },
     "3v3": {
       "kyber": 0,
@@ -269,6 +269,204 @@
       "battles": 1668,
       "source": "https://swgoh.gg/tier-list/gac/?league=aurodium&side=defense",
       "note": "S84 · Aurodium · rang source #15 · 1 668 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Bronzium",
+      "season": 84,
+      "rank": 1,
+      "name": "Leia Organa · Threepio & Chewie · Captain Drogan · Captain Rex · R2-D2",
+      "members": [
+        "Leia Organa",
+        "Threepio & Chewie",
+        "Captain Drogan",
+        "Captain Rex",
+        "R2-D2"
+      ],
+      "hold": 64.6,
+      "battles": 3848,
+      "source": "https://swgoh.gg/tier-list/gac/?league=bronzium&rank=best&side=defense",
+      "note": "S84 · Bronzium · rang source #1 · 3 848 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Bronzium",
+      "season": 84,
+      "rank": 2,
+      "name": "Supreme Leader Kylo Ren · Rey (Dark Side Vision) · Sith Trooper · General Hux · Kylo Ren (Unmasked)",
+      "members": [
+        "Supreme Leader Kylo Ren",
+        "Rey (Dark Side Vision)",
+        "Sith Trooper",
+        "General Hux",
+        "Kylo Ren (Unmasked)"
+      ],
+      "hold": 65.5,
+      "battles": 3721,
+      "source": "https://swgoh.gg/tier-list/gac/?league=bronzium&rank=best&side=defense",
+      "note": "S84 · Bronzium · rang source #2 · 3 721 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Bronzium",
+      "season": 84,
+      "rank": 3,
+      "name": "The Stranger · Barriss Offee · Maul (Hate-Fueled) · Starkiller · Visas Marr",
+      "members": [
+        "The Stranger",
+        "Barriss Offee",
+        "Maul (Hate-Fueled)",
+        "Starkiller",
+        "Visas Marr"
+      ],
+      "hold": 71.5,
+      "battles": 194,
+      "source": "https://swgoh.gg/tier-list/gac/?league=bronzium&rank=best&side=defense",
+      "note": "S84 · Bronzium · rang source #3 · 194 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Bronzium",
+      "season": 84,
+      "rank": 7,
+      "name": "Lord Vader · CC-1119 \"Appo\" · Disguised Clone Trooper · CX-2 · RC-1262 \"Scorch\"",
+      "members": [
+        "Lord Vader",
+        "CC-1119 \"Appo\"",
+        "Disguised Clone Trooper",
+        "CX-2",
+        "RC-1262 \"Scorch\""
+      ],
+      "hold": 51.4,
+      "battles": 11600,
+      "source": "https://swgoh.gg/tier-list/gac/?league=bronzium&rank=best&side=defense",
+      "note": "S84 · Bronzium · rang source #7 · 11 600 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Bronzium",
+      "season": 84,
+      "rank": 8,
+      "name": "Rey · Barriss Offee · Ben Solo · Cal Kestis · Rey (Jedi Training)",
+      "members": [
+        "Rey",
+        "Barriss Offee",
+        "Ben Solo",
+        "Cal Kestis",
+        "Rey (Jedi Training)"
+      ],
+      "hold": 44,
+      "battles": 291,
+      "source": "https://swgoh.gg/tier-list/gac/?league=bronzium&rank=best&side=defense",
+      "note": "S84 · Bronzium · rang source #8 · 291 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Bronzium",
+      "season": 84,
+      "rank": 9,
+      "name": "Third Sister · Fifth Brother · Grand Inquisitor · Marrok · Seventh Sister",
+      "members": [
+        "Third Sister",
+        "Fifth Brother",
+        "Grand Inquisitor",
+        "Marrok",
+        "Seventh Sister"
+      ],
+      "hold": 49.6,
+      "battles": 321,
+      "source": "https://swgoh.gg/tier-list/gac/?league=bronzium&rank=best&side=defense",
+      "note": "S84 · Bronzium · rang source #9 · 321 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Bronzium",
+      "season": 84,
+      "rank": 10,
+      "name": "Jabba the Hutt · Boba Fett · Boushh (Leia Organa) · Krrsantan · Skiff Guard (Lando Calrissian)",
+      "members": [
+        "Jabba the Hutt",
+        "Boba Fett",
+        "Boushh (Leia Organa)",
+        "Krrsantan",
+        "Skiff Guard (Lando Calrissian)"
+      ],
+      "hold": 42.1,
+      "battles": 19200,
+      "source": "https://swgoh.gg/tier-list/gac/?league=bronzium&rank=best&side=defense",
+      "note": "S84 · Bronzium · rang source #10 · 19 200 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Bronzium",
+      "season": 84,
+      "rank": 14,
+      "name": "Sith Eternal Emperor · Darth Bane · Darth Malak · Darth Malgus · Darth Revan",
+      "members": [
+        "Sith Eternal Emperor",
+        "Darth Bane",
+        "Darth Malak",
+        "Darth Malgus",
+        "Darth Revan"
+      ],
+      "hold": 32.3,
+      "battles": 111,
+      "source": "https://swgoh.gg/tier-list/gac/?league=bronzium&rank=best&side=defense",
+      "note": "S84 · Bronzium · rang source #14 · 111 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Carbonite",
+      "season": 84,
+      "rank": 1,
+      "name": "Ahsoka Tano · Ezra Bridger (Exile) · General Syndulla · Huyang · Padawan Sabine Wren",
+      "members": [
+        "Ahsoka Tano",
+        "Ezra Bridger (Exile)",
+        "General Syndulla",
+        "Huyang",
+        "Padawan Sabine Wren"
+      ],
+      "hold": 83.9,
+      "battles": 676,
+      "source": "https://swgoh.gg/tier-list/gac/?league=carbonite&rank=best&side=defense",
+      "note": "S84 · Carbonite · rang source #1 · 676 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Carbonite",
+      "season": 84,
+      "rank": 3,
+      "name": "Leia Organa · Threepio & Chewie · Captain Drogan · Captain Rex · R2-D2",
+      "members": [
+        "Leia Organa",
+        "Threepio & Chewie",
+        "Captain Drogan",
+        "Captain Rex",
+        "R2-D2"
+      ],
+      "hold": 78.9,
+      "battles": 1246,
+      "source": "https://swgoh.gg/tier-list/gac/?league=carbonite&rank=best&side=defense",
+      "note": "S84 · Carbonite · rang source #3 · 1 246 combats observés"
+    },
+    {
+      "format": "5v5",
+      "league": "Carbonite",
+      "season": 84,
+      "rank": 8,
+      "name": "Third Sister · Eighth Brother · Fifth Brother · Grand Inquisitor · Seventh Sister",
+      "members": [
+        "Third Sister",
+        "Eighth Brother",
+        "Fifth Brother",
+        "Grand Inquisitor",
+        "Seventh Sister"
+      ],
+      "hold": 67.3,
+      "battles": 759,
+      "source": "https://swgoh.gg/tier-list/gac/?league=carbonite&rank=best&side=defense",
+      "note": "S84 · Carbonite · rang source #8 · 759 combats observés"
     }
   ]
 }
