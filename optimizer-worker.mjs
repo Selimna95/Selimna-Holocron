@@ -39,6 +39,7 @@ self.onmessage = async (event) => {
     pyodide.globals.set("mods_json", JSON.stringify(data.mods || []));
     pyodide.globals.set("profile_json", JSON.stringify(data.profile || {}));
     pyodide.globals.set("base_stats_json", JSON.stringify(data.base_stats || {}));
+    pyodide.globals.set("current_target_mods_json", JSON.stringify(data.current_target_mods || []));
     pyodide.globals.set("n_builds", Number(data.n_builds || 5));
     pyodide.globals.set("limit_slot", Number(data.limit_slot || 80));
     pyodide.globals.set("character_name", String(data.character_name || ""));
@@ -52,6 +53,7 @@ import json
 mods = json.loads(mods_json)
 profile = json.loads(profile_json)
 base_stats = json.loads(base_stats_json)
+current_target_mods = json.loads(current_target_mods_json)
 context = json.loads(context_json)
 
 # Resolve real base stats from canonical profile data when the UI has no
@@ -75,6 +77,11 @@ if not isinstance(base_stats, dict) or not base_stats:
 if not isinstance(profile, dict):
     profile = {}
 
+minimum_speed = None
+if context.get("mode") == "seigneur-six-mods":
+    # The current six-mod speed is the hard floor for Seigneur Sith.
+    # final_stats includes arrow primary speed and the four-piece Speed-set bonus.
+    minimum_speed = optimizer.final_stats(current_target_mods, base_stats).get("Speed")
 r = optimizer.find_top_builds(
     mods,
     base_stats=base_stats,
@@ -83,6 +90,8 @@ r = optimizer.find_top_builds(
     kyber=profile,
     character=character_name,
     context=context,
+    minimum_speed=minimum_speed,
+    beam_width=2400 if context.get("mode") == "seigneur-six-mods" else 1200,
 )
 json.dumps(r)
 `);
