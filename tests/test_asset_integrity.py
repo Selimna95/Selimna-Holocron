@@ -31,8 +31,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.2.2-gac-browser-import", self.sw)
-        self.assertIn("blue-gac/gac-catalog.json?v=4.1.0", self.sw)
+        self.assertIn("holocron-static-v4.2.3-gac-partial-catalog", self.sw)
+        self.assertIn("blue-gac/gac-catalog.json?v=4.1.1", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
         self.assertIn("fetch(request).then(response =>", self.sw)
@@ -53,7 +53,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("var publicTeams=[];", self.blue_js)
         self.assertNotIn("sourceLeague:(Number(t.season)", self.blue_js)
         self.assertIn("font-size:max(13px", self.blue_css)
-        self.assertIn("V4.1.0", self.blue_html)
+        self.assertIn("V4.1.1", self.blue_html)
 
 
     def test_profile_sync_is_staged_and_rejects_incomplete_mod_inventory(self):
@@ -127,7 +127,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.html)
         self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.sw)
-        self.assertIn("holocron-static-v4.2.2-gac-browser-import", self.sw)
+        self.assertIn("holocron-static-v4.2.3-gac-partial-catalog", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
