@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.3.2-seigneur-base-stats", self.sw)
+        self.assertIn("holocron-static-v4.3.3-seigneur-speed-floor", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -92,13 +92,26 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("_sourceFleetKnown", seigneur)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.html)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.sw)
-        self.assertIn("modules/seigneur.js?v=3.9.1-terrestrial-fallback", self.html)
-        self.assertIn("modules/seigneur.js?v=3.9.1-terrestrial-fallback", self.sw)
+        self.assertIn("modules/seigneur.js?v=3.9.2-speed-safe-search", self.html)
+        self.assertIn("modules/seigneur.js?v=3.9.2-speed-safe-search", self.sw)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.sw)
         self.assertIn("app.css?v=4.1.0-seigneur-global-impact", self.html)
         self.assertIn("app.css?v=4.1.0-seigneur-global-impact", self.sw)
         self.assertIn("PRIORITÉ GAC", (ROOT / "modules" / "core.js").read_text(encoding="utf-8"))
+
+    def test_seigneur_worker_receives_current_mods_and_enforces_speed_floor(self):
+        core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        seigneur = (ROOT / "modules" / "seigneur.js").read_text(encoding="utf-8")
+        worker = (ROOT / "optimizer-worker.mjs").read_text(encoding="utf-8")
+        optimizer = (ROOT / "python" / "optimizer.py").read_text(encoding="utf-8")
+        self.assertIn("current_target_mods: currentTargetMods", core)
+        self.assertIn("currentTargetMods);", seigneur)
+        self.assertIn("minimum_speed = optimizer.final_stats(current_target_mods, base_stats).get(\"Speed\")", worker)
+        self.assertIn("minimum_speed=minimum_speed", worker)
+        self.assertIn("minimum_speed=None", optimizer)
+        self.assertIn("if not safe_beam:", optimizer)
+        self.assertIn("Aucun transfert entraînant une perte de vitesse", optimizer)
 
     def test_pwa_navigation_and_cross_origin_catalog_cache_are_route_aware(self):
         raw_handler = self.sw.index("url.hostname === 'raw.githubusercontent.com'")
@@ -165,9 +178,9 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.2-seigneur-base-stats", self.html)
-        self.assertIn("modules/core.js?v=4.2.2-seigneur-base-stats", self.sw)
-        self.assertIn("holocron-static-v4.3.2-seigneur-base-stats", self.sw)
+        self.assertIn("modules/core.js?v=4.2.3-seigneur-speed-floor", self.html)
+        self.assertIn("modules/core.js?v=4.2.3-seigneur-speed-floor", self.sw)
+        self.assertIn("holocron-static-v4.3.3-seigneur-speed-floor", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
