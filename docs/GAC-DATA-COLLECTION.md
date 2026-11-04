@@ -1,28 +1,28 @@
-# Collecteur GAC navigateur — Holocron
+# Collecte GAC — Holocron
 
-Le collecteur utilise la session du navigateur sur SWGOH.GG pour lire les pages de classement depuis leur propre domaine. Il évite le relais Reader qui renvoie HTTP 403 aux runners GitHub Actions.
+## Catalogue défensif Padawan
 
-## Installation / lancement
+Le catalogue des compositions défensives est collecté automatiquement depuis les pages publiques SWGOH.GG.
 
-1. Ouvrir la page [Collecteur GAC Holocron](https://selimna95.github.io/Selimna-Holocron/tools/gac-collector.html).
-2. Faire glisser le favori « Collecter les données GAC » dans la barre des favoris (ou copier son URL dans un favori).
-3. Ouvrir [SWGOH.GG — Unit Tier List](https://swgoh.gg/tier-list/units/) dans le navigateur habituel et vérifier que les classements s'affichent.
-4. Cliquer sur le favori. Le collecteur lit les 30 vues dans la session du navigateur et télécharge `gac-browser-export.json`.
+- Source : classements « GAC 5v5 Squad Defense » et « GAC 3v3 Squad Defense ».
+- Couverture visée : cinq ligues (Kyber, Aurodium, Chromium, Bronzium, Carbonite), deux formats et les deux dernières saisons disponibles de chaque format.
+- Données conservées par composition : cinq ou trois personnages complets, rang source, nombre de combats, taux de tenue, ligue, format, saison et lien source.
+- Validation : au moins huit compositions complètes par vue. Si une page est inaccessible, si le format/les personnages sont incomplets ou si le nombre minimal n'est pas atteint, le snapshot précédent est conservé et le workflow échoue.
+- Publication : GitHub Actions ajoute explicitement le fichier généré avant de vérifier les différences Git, puis le publie dans `blue-gac/gac-catalog.json`.
 
-Le collecteur interroge les 20 vues personnages (5 ligues × 2 formats × 2 côtés), puis les 10 vues flottes (5 ligues × 2 côtés). Il attend entre les requêtes pour limiter la charge. Il annule l'export complet si une vue personnage n'est pas correctement lue.
+Le workflow **Refresh public GAC defense catalogue** est déclenché par les changements du collecteur et s'exécute également chaque jour à 05 h 35 UTC. Il peut aussi être lancé manuellement depuis GitHub Actions.
 
-## Publication dans le dépôt
+## Collecte des statistiques d'unités et des flottes
 
-1. Dans GitHub, ouvrir le dépôt `Selimna95/Selimna-Holocron`.
-2. Ajouter le fichier téléchargé à la racine du dépôt sous le nom exact `gac-browser-export.json`.
-3. Committer sur `main`.
-4. L'action **Refresh GAC data** valide le fichier, génère `gac-usage.json` et `gac-usage.js`, puis publie les deux fichiers.
+Le fichier `gac-usage.json` est une base distincte. Son importeur accepte deux modes :
+1. une collecte depuis les pages publiques SWGOH.GG lorsqu'elles sont accessibles au collecteur ;
+2. un export de session navigateur `gac-browser-export.json`, utilisé lorsque le relais public bloque les requêtes automatisées.
 
-Ne pas ajouter manuellement de zéros pour les unités absentes. Les classements flottes SWGOH.GG sont des compositions les plus jouées, pas un recensement exhaustif : les vaisseaux non observés restent inconnus.
+Les statistiques d'unités sont des observations de combats de première tentative en escouades complètes. Les vues distinguent format, côté et ligue. Les flottes sont des apparitions dans les compositions publiées, pas un recensement exhaustif.
 
-## Limites de la source
+## Limites à respecter
 
-- Les statistiques personnages correspondent aux batailles de première tentative, en escouades complètes, exposées par les classements SWGOH.GG.
-- Les vues sont séparées par ligue, format et côté. Le générateur additionne les observations publiées dans ces vues.
-- Les statistiques de flottes sont des apparitions dans les compositions publiées. Elles ne représentent pas toutes les sorties de chaque vaisseau.
-- Si SWGOH.GG change son HTML ou bloque la session, le collecteur affiche une erreur et ne télécharge pas de fichier incomplet.
+- Une composition fréquemment observée ou un taux de tenue n'est pas une garantie de victoire.
+- Les classements de compositions ne prouvent pas que tous les personnages d'une équipe sont possédés par le joueur.
+- Padawan doit continuer à vérifier chaque composition contre le roster synchronisé et interdire les personnages manquants ou les doublons.
+- Les données Comlink (classements officiels et profils) ne contiennent pas l'historique des combats GAC, les équipes d'attaque, les défenses posées ou les taux de contre. Elles ne remplacent donc pas les statistiques de combat SWGOH.GG.
