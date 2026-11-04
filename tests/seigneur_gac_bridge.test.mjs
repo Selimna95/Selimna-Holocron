@@ -20,7 +20,7 @@ vm.runInContext(source,context);
 const built=await window.__SWGOH_GAC_USAGE_READY__;
 assert.equal(built.sourceStatus,'partial');
 assert.equal(built.evidenceType,'defense-composition');
-assert.deepEqual(built.currentSeasons,{'5v5':84,'3v3':83});
+assert.deepEqual(JSON.parse(JSON.stringify(built.currentSeasons)),{'5v5':84,'3v3':83});
 const current84=built.seasons.find(s=>s.season===84);
 assert.equal(current84.characters.Target.byFormat['5v5'],1500);
 assert.equal(current84.characters.Target.byFormat['3v3'],700);
@@ -30,7 +30,7 @@ const target=window.holocronGacPriorityForCharacter({baseId:'TARGET',name:'Targe
 assert.equal(target.known,true);
 assert.equal(target.uses,2200);
 assert.equal(target.defenseOnly,true);
-assert.deepEqual(target.evidence,['5v5 S84','3v3 S83']);
+assert.deepEqual(Array.from(target.evidence),['5v5 S84','3v3 S83']);
 const missing=window.holocronGacPriorityForCharacter({baseId:'NOTINCATALOG',name:'Not in catalog'});
 assert.equal(missing.known,false);
 assert.equal(missing.uses,null,'Missing characters remain unknown, never zero');
