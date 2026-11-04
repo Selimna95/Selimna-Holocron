@@ -310,7 +310,7 @@ try {
   assert.equal(rawCatalogAccessible, true, "The GitHub Raw catalogue must be readable cross-origin from the Pages app.");
   const blueResponse = await page.goto(origin + "/blue-gac/", { waitUntil: "domcontentloaded" });
   assert.equal(blueResponse?.status(), 200, "The blue GAC page must return HTTP 200");
-  assert.match(await page.title(), /V4\.1\.3/);
+  assert.match(await page.title(), /V4\.1\.4/);
   assert.equal(await page.locator("#modeView").isVisible(), true);
   await page.locator('[data-mode="5v5"]').click();
   await page.locator('[data-tier="Kyber"]').click();
