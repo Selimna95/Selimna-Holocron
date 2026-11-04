@@ -192,7 +192,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithariPrimaryMatch(source.mod, target.profile", strategy)
         self.assertIn("sithariSecondaryScore(source.mod, target.profile)", strategy)
         self.assertIn("ssFindCycles", strategy)
-        self.assertIn("read-only", strategy)
+        self.assertIn("lecture seule", strategy)
         self.assertIn("modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline", self.html)
         self.assertIn("modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline", self.sw)
         self.assertIn("holocron-static-v4.3.7-sithari-cumulative", self.sw)
