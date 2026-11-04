@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const source=fs.readFileSync(new URL('../modules/seigneur-gac.js',import.meta.url),'utf8');
+const teams=[
+  {format:'5v5',league:'Kyber',season:84,battles:1000,members:['Target','Donor','Third','Fourth','Fifth'],source:'https://swgoh.gg/a'},
+  {format:'5v5',league:'Aurodium',season:84,battles:500,members:['Target','Donor','Sixth','Seventh','Eighth'],source:'https://swgoh.gg/b'},
+  {format:'3v3',league:'Kyber',season:83,battles:700,members:['Target','Ninth','Tenth'],source:'https://swgoh.gg/c'},
+  {format:'5v5',league:'Kyber',season:83,battles:900,members:['Historical Only','Donor','A','B','C'],source:'https://swgoh.gg/d'}
+];
+const catalog={collectionStatus:'partial',updatedAt:'2026-11-04T10:00:00Z',currentSeasons:{'5v5':84,'3v3':83},teams};
+const window={__SWGOH_GAC_USAGE__:{seasons:[]},dispatchEvent(){}};
+const context=vm.createContext({
+  window,document:{baseURI:'https://example.test/'},
+  fetch:async()=>({ok:true,json:async()=>catalog}),
+  URL,CustomEvent:function CustomEvent(type,init){this.type=type;this.detail=init?.detail;}
+});
+vm.runInContext(source,context);
+const built=await window.__SWGOH_GAC_USAGE_READY__;
+assert.equal(built.sourceStatus,'partial');
+assert.equal(built.evidenceType,'defense-composition');
+assert.deepEqual(built.currentSeasons,{'5v5':84,'3v3':83});
+const current84=built.seasons.find(s=>s.season===84);
+assert.equal(current84.characters.Target.byFormat['5v5'],1500);
+assert.equal(current84.characters.Target.byFormat['3v3'],700);
+assert.equal(current84.characters.Target.uses,2200);
+assert.equal(current84.characters['Historical Only'],undefined,'Historical rows are not mixed into the current snapshot');
+const target=window.holocronGacPriorityForCharacter({baseId:'TARGET',name:'Target'});
+assert.equal(target.known,true);
+assert.equal(target.uses,2200);
+assert.equal(target.defenseOnly,true);
+assert.deepEqual(target.evidence,['5v5 S84','3v3 S83']);
+const missing=window.holocronGacPriorityForCharacter({baseId:'NOTINCATALOG',name:'Not in catalog'});
+assert.equal(missing.known,false);
+assert.equal(missing.uses,null,'Missing characters remain unknown, never zero');
+console.log('Seigneur GAC bridge tests passed.');
