@@ -4,7 +4,7 @@
   "collectionStatus": "partial",
   "collectionMethod": "Initial real-data snapshot extracted from SWGOH.GG's publicly indexed 5v5/3v3 defense tier-list pages. Each row is a complete squad with source rank, hold rate and battle count.",
   "collectionNote": "Relevé partiel : 5v5 S84 et 3v3 S83 uniquement. Les pages serveur sont bloquées par Cloudflare (403) : 5v5 Chromium et 3v3 Aurodium restent absents. Aucune composition ni statistique n'a été inventée pour ces vues. Les saisons précédentes restent à collecter.",
-  "updatedAt": "2026-11-04T09:41:51.322Z",
+  "updatedAt": "2026-11-04T09:42:15.207Z",
   "seasons": {
     "5v5": {
       "kyber": [
@@ -49,7 +49,7 @@
       "kyber": 12,
       "aurodium": 0,
       "chromium": 10,
-      "bronzium": 0,
+      "bronzium": 7,
       "carbonite": 0
     }
   },
@@ -819,6 +819,118 @@
       "battles": 1977,
       "source": "https://swgoh.gg/tier-list/3v3/?league=chromium&rank=best&side=defense",
       "note": "S83 · Chromium · rang source #19 · 1 977 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Bronzium",
+      "season": 83,
+      "rank": 1,
+      "name": "Leia Organa · Captain Drogan · R2-D2",
+      "members": [
+        "Leia Organa",
+        "Captain Drogan",
+        "R2-D2"
+      ],
+      "hold": 64.6,
+      "battles": 18500,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=bronzium&rank=best&side=defense",
+      "note": "S83 · Bronzium · rang source #1 · 18 500 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Bronzium",
+      "season": 83,
+      "rank": 4,
+      "name": "The Stranger · Maul (Hate-Fueled) · Starkiller",
+      "members": [
+        "The Stranger",
+        "Maul (Hate-Fueled)",
+        "Starkiller"
+      ],
+      "hold": 66.9,
+      "battles": 232,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=bronzium&rank=best&side=defense",
+      "note": "S83 · Bronzium · rang source #4 · 232 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Bronzium",
+      "season": 83,
+      "rank": 5,
+      "name": "Ahsoka Tano · Ezra Bridger (Exile) · Huyang",
+      "members": [
+        "Ahsoka Tano",
+        "Ezra Bridger (Exile)",
+        "Huyang"
+      ],
+      "hold": 58.3,
+      "battles": 813,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=bronzium&rank=best&side=defense",
+      "note": "S83 · Bronzium · rang source #5 · 813 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Bronzium",
+      "season": 83,
+      "rank": 63,
+      "name": "Captain Silvo · Hondo Ohnaka · Vane",
+      "members": [
+        "Captain Silvo",
+        "Hondo Ohnaka",
+        "Vane"
+      ],
+      "hold": 20.9,
+      "battles": 65,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=bronzium&rank=best&side=defense",
+      "note": "S83 · Bronzium · rang source #63 · 65 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Bronzium",
+      "season": 83,
+      "rank": 64,
+      "name": "Grand Admiral Thrawn · Admiral Piett · Darth Vader",
+      "members": [
+        "Grand Admiral Thrawn",
+        "Admiral Piett",
+        "Darth Vader"
+      ],
+      "hold": 17.4,
+      "battles": 352,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=bronzium&rank=best&side=defense",
+      "note": "S83 · Bronzium · rang source #64 · 352 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Bronzium",
+      "season": 83,
+      "rank": 65,
+      "name": "Sana Starros · Enfys Nest · Hondo Ohnaka",
+      "members": [
+        "Sana Starros",
+        "Enfys Nest",
+        "Hondo Ohnaka"
+      ],
+      "hold": 20,
+      "battles": 491,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=bronzium&rank=best&side=defense",
+      "note": "S83 · Bronzium · rang source #65 · 491 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Bronzium",
+      "season": 83,
+      "rank": 80,
+      "name": "Hunter · Echo · Tech",
+      "members": [
+        "Hunter",
+        "Echo",
+        "Tech"
+      ],
+      "hold": 18.8,
+      "battles": 2020,
+      "source": "https://swgoh.gg/tier-list/3v3/?league=bronzium&rank=best&side=defense",
+      "note": "S83 · Bronzium · rang source #80 · 2 020 combats observés"
     }
   ]
 }
