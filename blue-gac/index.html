@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061322"><meta name="description" content="Sanctuaire bleu — parcours GAC progressif.">
 <title>Sanctuaire bleu | Selimna’s Holocron V4.1.2</title>
-<link rel="stylesheet" href="blue-gac.css?v=4.1.2">
+<link rel="stylesheet" href="blue-gac.css?v=4.1.3">
 </head>
 <body><div class="shell">
 <header><div class="brand">SELIMNA’S HOLOCRON<strong>LE SANCTUAIRE BLEU</strong></div><a class="back" href="../index.html">← RETOUR AU TEMPLE</a></header>
@@ -51,11 +51,11 @@
 <div class="note" id="padawanConfig">Configuration : —</div>
 <div class="roster-help" id="rosterConnectionStatus" aria-live="polite">Recherche du roster déjà synchronisé dans cette session…</div>
 <div class="roster-help" id="padawanStatus" aria-live="polite">Le roster connecté sera utilisé automatiquement ; aucune équipe ne sera affichée sans vérification du roster.</div>
-<div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
-<div id="teamResults" class="team-list"></div>
+<div class="padawan-actions"><button id="showAllTeams" type="button">VOIR LES COMPOSITIONS OBSERVÉES</button><button id="runCatalogAudit" type="button" aria-expanded="false">AUDITER LE CATALOGUE GAC</button><button id="backToAccess" type="button">← RETOUR AUX NIVEAUX</button><a href="https://swgoh.gg/tier-list/3v3/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 3v3 ↗</a><a href="https://swgoh.gg/tier-list/gac/?side=defense" target="_blank" rel="noopener" class="back">SOURCE 5v5 ↗</a></div>
+<section id="catalogAuditPanel" class="audit-panel" hidden aria-live="polite"><div class="audit-heading"><h3>RAPPORT D’INTÉGRITÉ DU CATALOGUE</h3><span id="auditSummary"></span></div><div id="auditChecks" class="audit-checks"></div><h3 class="audit-subtitle">DISPONIBILITÉ PAR FORMAT ET LIGUE</h3><div id="auditCoverage" class="audit-coverage"></div><p class="audit-disclaimer">Cet audit contrôle la cohérence des données, les compositions complètes, les doublons et les règles de sélection. Il ne certifie pas à lui seul la qualité stratégique ou la synergie d’une équipe.</p></section><div id="teamResults" class="team-list"></div>
 <div class="note">V4.0.23 : Padawan est exclusivement défensif en 3v3 et 5v5, dans toutes les ligues. Les choix Attaque et Équilibrée ne sont pas disponibles. Les propositions respectent le roster et évitent les doublons de personnages.</div>
 </div>
 </section>
-</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.1.2</footer>
+</main><footer>SELIMNA’S HOLOCRON · VOIE BLEUE · GAC · V4.1.3</footer>
 </div>
-<script src="blue-gac.js?v=4.1.2"></script></body></html>
+<script src="gac-audit.js?v=4.1.3"></script><script src="blue-gac.js?v=4.1.3"></script></body></html>
