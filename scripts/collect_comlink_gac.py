@@ -258,7 +258,8 @@ def collect_competitive_roster_meta(boards: list[dict]) -> dict:
             )
         ]
         cohort["status"] = (
-            "complete"
+            "empty" if cohort["leaderboardEntries"] == 0
+            else "complete"
             if cohort["profilesFetched"] == cohort["profilesRequested"]
             and cohort["profilesMissingPlayerId"] == 0
             else "partial" if cohort["profilesFetched"] else "unavailable"
