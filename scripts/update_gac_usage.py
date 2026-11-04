@@ -18,7 +18,8 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 JSON_OUTPUT = ROOT / "gac-usage.json"
-JS_OUTPUT = ROOT / "gac-usage.js"\nBROWSER_EXPORT = ROOT / "gac-browser-export.json"
+JS_OUTPUT = ROOT / "gac-usage.js"
+BROWSER_EXPORT = ROOT / "gac-browser-export.json"
 BASE = "https://swgoh.gg/tier-list/units/"
 FLEET_BASE = "https://swgoh.gg/tier-list/fleet/"
 LEAGUES = ("kyber", "aurodium", "chromium", "bronzium", "carbonite")
@@ -142,7 +143,111 @@ def parse_fleet_page(text: str, side: str) -> list[dict]:
             pending_battles = None
     return fleets
 
+
+def build_from_browser_export() -> dict:
+    """Normalize a browser-session export collected on SWGOH.GG itself."""
+    raw = json.loads(BROWSER_EXPORT.read_text(encoding="utf-8"))
+    if raw.get("schemaVersion") != 1 or raw.get("source") != "SWGOH.GG browser session":
+        raise ValueError("Unsupported browser export schema/source")
+    views = raw.get("views")
+    fleet_views = raw.get("fleetViews")
+    if not isinstance(views, list) or not isinstance(fleet_views, list):
+        raise ValueError("Browser export must contain views and fleetViews arrays")
+    expected = {(fmt, side, league) for fmt in FORMATS for side in SIDES for league in LEAGUES}
+    seen = set()
+    seasons: dict[int, dict] = {}
+    coverage = []
+    for view in views:
+        fmt, side, league = view.get("format"), view.get("side"), view.get("league")
+        key = (fmt, side, league)
+        if key not in expected or key in seen:
+            raise ValueError(f"Unexpected or duplicate character view: {key}")
+        seen.add(key)
+        rows = view.get("rows")
+        if not isinstance(rows, list) or len(rows) < MIN_UNITS_PER_VIEW:
+            raise ValueError(f"Incomplete character view {key}: fewer than {MIN_UNITS_PER_VIEW} rows")
+        season = int(view.get("season") or 0)
+        if season <= 0:
+            raise ValueError(f"Invalid season for {key}")
+        record = seasons.setdefault(season, {
+            "season": season, "characters": {}, "ships": {},
+            "fleets": [], "coverage": [],
+        })
+        for row in rows:
+            name = str(row.get("name") or "").strip()
+            battles = int(row.get("battles") or 0)
+            if not name or battles <= 0:
+                raise ValueError(f"Invalid character row in {key}: {row!r}")
+            role = row.get("role") if row.get("role") in ("leader", "member") else "unknown"
+            incoming = {
+                "uses": battles,
+                "byFormat": {fmt: battles},
+                "bySide": {side: battles},
+                "roles": ({role: battles} if role != "unknown" else {}),
+            }
+            merge_counts(record["characters"], {name: incoming})
+        record["coverage"].append({
+            "format": fmt, "side": side, "league": league,
+            "units": len(rows), "source": view.get("url", ""),
+        })
+        coverage.append({
+            "season": season, "format": fmt, "side": side,
+            "league": league, "units": len(rows),
+        })
+    if seen != expected:
+        missing = sorted(expected - seen)
+        raise ValueError(f"Browser export is missing {len(missing)} character views: {missing}")
+    expected_fleets = {(side, league) for side in SIDES for league in LEAGUES}
+    seen_fleets = set()
+    for view in fleet_views:
+        side, league = view.get("side"), view.get("league")
+        key = (side, league)
+        if key not in expected_fleets or key in seen_fleets:
+            raise ValueError(f"Unexpected or duplicate fleet view: {key}")
+        seen_fleets.add(key)
+        season = int(view.get("season") or 0)
+        if season <= 0:
+            raise ValueError(f"Invalid fleet season for {key}")
+        record = seasons.setdefault(season, {
+            "season": season, "characters": {}, "ships": {},
+            "fleets": [], "coverage": [],
+        })
+        for fleet in view.get("fleets", []):
+            ships = list(dict.fromkeys(str(ship).strip() for ship in fleet.get("ships", []) if str(ship).strip()))
+            battles = int(fleet.get("battles") or 0)
+            if not (3 <= len(ships) <= 8) or battles <= 0:
+                raise ValueError(f"Invalid fleet composition in {key}: {fleet!r}")
+            normalized = {
+                "rank": int(fleet.get("rank") or 0), "side": side,
+                "uses": battles, "ships": ships, "league": league,
+                "source": view.get("url", ""),
+            }
+            record["fleets"].append(normalized)
+            for ship in ships:
+                item = record["ships"].setdefault(ship, {"uses": 0, "bySide": {}})
+                item["uses"] += battles
+                item["bySide"][side] = item["bySide"].get(side, 0) + battles
+        record["coverage"].append({
+            "format": "fleet", "side": side, "league": league,
+            "fleets": len(view.get("fleets", [])), "source": view.get("url", ""),
+        })
+    if seen_fleets != expected_fleets:
+        raise ValueError(f"Browser export is missing {len(expected_fleets - seen_fleets)} fleet views")
+    if not seasons or not any(item["characters"] for item in seasons.values()):
+        raise ValueError("Browser export contains no character observations")
+    return {
+        "schemaVersion": 1,
+        "source": "SWGOH.GG browser session",
+        "method": "First-attempt full-squad battles aggregated from 20 browser-collected views (format, side, league). Fleet ship uses are positive observations from published top fleet compositions only; absent units/ships remain unknown.",
+        "updatedAt": raw.get("collectedAt") or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "coverage": coverage,
+        "seasons": sorted(seasons.values(), key=lambda item: item["season"], reverse=True),
+    }
+
 def build() -> dict:
+    if BROWSER_EXPORT.exists():
+        print(f"Using browser-collected SWGOH.GG export: {BROWSER_EXPORT.name}")
+        return build_from_browser_export()
     seasons: dict[int, dict] = {}
     coverage = []
     for fmt in FORMATS:
