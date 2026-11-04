@@ -153,7 +153,7 @@ def build() -> dict:
                 season = page_season(text, fmt)
                 units = parse_unit_page(text, fmt, side)
                 if len(units) < MIN_UNITS_PER_VIEW:
-                    raise ValueError(f"{fmt}/{side}/{league}/S{season}: only {len(units)} units parsed")
+                    raise ValueError(f"{fmt}/{side}/{league}/S{season}: only {len(units)} units parsed; source excerpt={text[:1800]!r}")
                 record = seasons.setdefault(season, {
                     "season": season, "characters": {}, "ships": {},
                     "fleets": [], "coverage": [],
