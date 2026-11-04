@@ -153,11 +153,11 @@ function optimizerProfileForCharacter(character) {
 }
 function baseStatsForCharacter(character) {
   const direct=character?.base_stats || character?.baseStats;
-  if (direct && typeof direct === 'object') return direct;
+  if (direct && typeof direct === 'object' && Object.keys(direct).length) return direct;
   const p=optimizerProfileForCharacter(character);
-  if (p?.base_stats && typeof p.base_stats === 'object') return p.base_stats;
-  const stats=character?.stats;
-  if (stats && typeof stats === 'object') return stats;
+  if (p?.base_stats && typeof p.base_stats === 'object' && Object.keys(p.base_stats).length) return p.base_stats;
+  // character.stats is the equipped/current stat block, not guaranteed base stats.
+  // Leave it empty so the Worker resolves the canonical profile or fails safely.
   return {};
 }
 
