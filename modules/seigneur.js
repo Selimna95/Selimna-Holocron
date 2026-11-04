@@ -629,7 +629,7 @@ $('runOptimizer').addEventListener('click',async()=>{
     const currentTargetMods=getCharacterMods(character);
     const safeBuilds=builds.filter(row=>forgeBuildPreservesSpeed(character,profile,currentTargetMods,row?.build));
     if(!safeBuilds.length)throw new Error('Aucune configuration complète ne respecte la règle absolue : la vitesse totale du personnage cible ne peut pas diminuer, bonus de set Speed compris.');
-    renderResults(safeBuilds);
+    renderResults(safeBuilds,profile);
   }catch(e){$('optimizerError').textContent=String(e?.message||e);$('results').innerHTML='';}
   finally{$('runOptimizer').disabled=false;$('runOptimizer').textContent='OPTIMISER LES 6 MODS';}
 });
@@ -705,10 +705,10 @@ function optimizerVerdictForBuild(audit, scope, index){
   return {kind:'neutral',title:`Candidat ${index+1} analysé`,text:'La configuration est évaluée par rapport aux sets, primaires et secondaires de référence Kyber.'};
 }
 
-function renderResults(data){
+function renderResults(data,profileOverride=null){
   if(!data.length){$('results').textContent='Aucun build.';return;}
   const character=selectedCharacter();
-  const profile=profileForCharacter(character);
+  const profile=profileOverride||profileForCharacter(character);
   const scope='DONNEURS FAIBLES / TRÈS FAIBLES / INCOMPLETS · PRIORITÉ GAC';
   const rec=optimizerRecommendationSummary(profile);
   const refSets=rec.sets.slice(0,3).map(x=>`${x.label}${x.weight!=null?' · '+(x.weight*100).toFixed(1)+' %':''}`).join(' · ')||'Référence Kyber non détaillée';
