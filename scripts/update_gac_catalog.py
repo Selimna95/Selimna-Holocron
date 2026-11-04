@@ -25,6 +25,9 @@ BASES = {
 }
 LEAGUES = ("kyber", "aurodium", "chromium", "bronzium", "carbonite")
 LEAGUE_LABELS = {x: x.capitalize() for x in LEAGUES}
+# Live SWGOH.GG headings currently expose S84 (5v5) and S83 (3v3).
+# Reader projections sometimes strip headings; these are guarded fallbacks only.
+FALLBACK_SEASONS = {"5v5": 84, "3v3": 83}
 USER_AGENT = "SelimnasHolocron-GAC-Catalog/1.0 (+https://github.com/Selimna95/Selimna-Holocron)"
 MIN_TEAMS_PER_VIEW = 8
 
@@ -265,7 +268,9 @@ def fetch(url: str, response_format: str = "html") -> str:
                 if response.status != 200:
                     raise ValueError(f"HTTP {response.status} for {url}")
                 body = response.read().decode("utf-8", errors="replace")
-                print(f"Fetched SWGOH.GG projection for {url}")
+                print(f"Fetched SWGOH.GG projection for {url} ({len(body)} characters)")
+                if not re.search(r"Season\\s+\\d+", body, re.I):
+                    print(f"Reader projection has no season heading; preview={body[:500]!r}")
                 return body
         except (HTTPError, URLError, TimeoutError, ValueError) as exc:
             last_error = exc
@@ -291,9 +296,9 @@ def refresh() -> dict:
             discovery_url = build_url(base, league)
             discovery_html = fetch(discovery_url)
             try:
-                current = page_season(discovery_html)
+                current = page_season(discovery_html, fmt)
             except ValueError:
-                current = page_season(fetch(discovery_url, "markdown"))
+                current = page_season(fetch(discovery_url, "markdown"), fmt)
             previous = discover_previous_season(discovery_html, current)
             available_seasons = []
             candidates = []
@@ -304,10 +309,10 @@ def refresh() -> dict:
                 url = build_url(base, league, season if season != current else None)
                 html = discovery_html if season == current else fetch(url)
                 try:
-                    actual = page_season(html)
+                    actual = page_season(html, fmt)
                 except ValueError:
                     try:
-                        actual = page_season(fetch(url, "markdown"))
+                        actual = page_season(fetch(url, "markdown"), fmt)
                     except ValueError:
                         actual = season
                 if actual != season:
