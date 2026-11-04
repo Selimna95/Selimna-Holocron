@@ -1,12 +1,10 @@
-name: Refresh GAC data
+name: Import GAC data
 
 on:
-  schedule:
-    - cron: "17 */6 * * *"
   workflow_dispatch:
   push:
     paths:
-      - "scripts/update_gac_catalog.py"
+      - "gac-browser-export.json"
       - "scripts/update_gac_usage.py"
       - "tests/test_gac_usage.py"
       - ".github/workflows/refresh-gac-catalog.yml"
@@ -15,13 +13,13 @@ permissions:
   contents: write
 
 concurrency:
-  group: refresh-gac-data-${{ github.ref }}
+  group: import-gac-data-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  refresh:
+  import:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,22 +27,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Test GAC usage parser
+      - name: Test GAC parsers and importer
         run: python tests/test_gac_usage.py
-      - name: Fetch and validate defensive catalogue
-        continue-on-error: true
-        run: python scripts/update_gac_catalog.py
-      - name: Build character and fleet usage database
+      - name: Require a browser-collected export
+        run: |
+          test -s gac-browser-export.json || {
+            echo "::error::Add gac-browser-export.json from the SWGOH.GG browser collector to the repository root."
+            exit 1
+          }
+      - name: Build and validate GAC usage database
         run: python scripts/update_gac_usage.py
-      - name: Publish changed GAC snapshots
+      - name: Publish generated usage snapshots
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- blue-gac/gac-catalog.json gac-usage.json gac-usage.js; then
-            echo "GAC datasets are already up to date."
+          if git diff --quiet -- gac-usage.json gac-usage.js; then
+            echo "GAC usage snapshots are already up to date."
           else
-            git add blue-gac/gac-catalog.json gac-usage.json gac-usage.js
-            git commit -m "chore(gac): refresh defensive and usage datasets"
+            git add gac-usage.json gac-usage.js
+            git commit -m "chore(gac): import browser-collected usage data"
             git pull --rebase origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
