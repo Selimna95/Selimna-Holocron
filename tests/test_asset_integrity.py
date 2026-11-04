@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.2.5-gac-audit", self.sw)
+        self.assertIn("holocron-static-v4.2.6-gac-strategic-audit", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -55,11 +55,14 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("var publicTeams=[];", self.blue_js)
         self.assertNotIn("sourceLeague:(Number(t.season)", self.blue_js)
         self.assertIn("font-size:max(13px", self.blue_css)
-        self.assertIn("V4.1.3", self.blue_html)
-        self.assertIn("gac-audit.js?v=4.1.3", self.blue_html)
+        self.assertIn("V4.1.4", self.blue_html)
+        self.assertIn("gac-audit.js?v=4.1.4", self.blue_html)
         self.assertIn("AUDITER LE CATALOGUE GAC", self.blue_html)
         self.assertIn("GACAudit.auditCatalog", self.blue_js)
         self.assertIn("auditCoverage", self.blue_html)
+        self.assertIn("auditSignals", self.blue_html)
+        self.assertIn("analyzePerformance", self.blue_js)
+        self.assertIn("marge 95 %", self.blue_js)
 
 
     def test_profile_sync_is_staged_and_rejects_incomplete_mod_inventory(self):
@@ -141,7 +144,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.html)
         self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.sw)
-        self.assertIn("holocron-static-v4.2.5-gac-audit", self.sw)
+        self.assertIn("holocron-static-v4.2.6-gac-strategic-audit", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
