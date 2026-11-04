@@ -203,6 +203,7 @@ assert.deepEqual(
 );
 
 // 4b) Seigneur: donor priority comes from terrestrial + fleet GAC use, never mod quality.
+const seigneur = read('../modules/seigneur.js');
 const donorContext = vm.createContext({
   compactKey,
   window: { __SWGOH_GAC_USAGE__: { seasons: [{
@@ -252,7 +253,6 @@ assert.equal(donorContext.seigneurCharacterGacUsage({baseId:'ABSENT'}, donorSeas
   'Missing terrestrial usage must remain unknown');
 
 // 5) Seigneur: allow a set change only when known base speed proves the net is safe.
-const seigneur = read('../modules/seigneur.js');
 const forgeContext = vm.createContext({
   numericValue, modTotalSpeed: speed, optimizerSlotKey: (v) => String(v ?? ''),
   optimizerProfileForCharacter: () => ({}),
