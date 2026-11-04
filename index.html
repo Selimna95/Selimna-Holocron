@@ -15,7 +15,7 @@
 
 
 
-<title>Selimna’s Holocron — V4.1.2</title>
+<title>Selimna’s Holocron — V4.1.5</title>
 
 
 
@@ -89,7 +89,7 @@
 
 <div id="appShell" class="app-shell" hidden>
 <header class="topbar">
-  <button id="returnToHolocrons" class="return-to-holocrons" type="button" hidden aria-label="Retour au choix des holocrons">↶ <span>HOLOCRONS</span></button><div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V4.1.4</span></div>
+  <button id="returnToHolocrons" class="return-to-holocrons" type="button" hidden aria-label="Retour au choix des holocrons">↶ <span>HOLOCRONS</span></button><div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V4.1.5</span></div>
   <div class="guardian-context" id="guardianContext" data-state="idle" aria-live="polite" aria-label="Conseil du Gardien">
     <span class="guardian-context-seal" aria-hidden="true">✦</span><span class="guardian-context-copy"><small>LE GARDIEN</small><strong id="guardianContextText">Commence par synchroniser ton roster.</strong></span>
   </div>
@@ -287,7 +287,7 @@
 
 <section id="optimizer" class="page">
   <div class="panel controls">
-    <div class="panel-title">SEIGNEUR SITH // OPTIMISATION COMPLÈTE</div><p class="module-intro">Recherche les meilleures combinaisons de six mods pour un personnage. Les donneurs sont classés par utilisation GAC terrestre et par utilisation de leurs vaisseaux ; la qualité actuelle de leurs mods ne détermine pas leur disponibilité.</p>
+    <div class="panel-title">SEIGNEUR SITH // OPTIMISATION COMPLÈTE</div><p class="module-intro">Recherche les meilleures combinaisons de six mods pour un personnage. Les cibles sont classées selon leur usage GAC observé ; les donneurs faibles, très faibles ou incomplets sont ensuite classés selon leur usage terrestre et celui de leurs vaisseaux. Si le flux GAC complet manque, le catalogue de défense fournit un signal partiel clairement identifié.</p>
     <div class="forge-control-group forge-character-group">
       <div class="forge-control-title"><span>01 // PERSONNAGE</span><small>Choisir un personnage. La référence Kyber est construite avant toute recherche.</small></div>
       <div class="forge-character-select-row">
@@ -307,7 +307,7 @@
 
   <div class="panel forge-search-panel-wrap">
     <div class="panel-title">03 // ARSENAL ET DONNEURS GAC</div>
-    <div class="forge-donor-doctrine"><strong>CLASSEMENT DES SOURCES</strong><span>Usage GAC terrestre + usage GAC des vaisseaux associés aux pilotes.</span><span>Moins une unité est utilisée, plus ses mods remontent dans les sources candidates.</span><span>Les personnages très utilisés, les GL et les pilotes de flottes très utilisées sont protégés. Une donnée manquante ne vaut jamais zéro.</span></div>
+    <div class="forge-donor-doctrine"><strong>CLASSEMENT DES SOURCES</strong><span>Usage GAC terrestre + usage des vaisseaux associés aux pilotes, lorsque les données de flotte sont disponibles.</span><span>Moins une unité est utilisée, plus ses mods remontent dans les sources candidates.</span><span>Les personnages très utilisés, les GL et les pilotes de flottes très utilisées sont protégés. Le signal issu du catalogue bleu ne couvre que la défense et reste partiel. Une donnée manquante ne vaut jamais zéro.</span></div>
     <div id="forgeSearchPanel" class="forge-search-panel"><div class="forge-audit-empty">Le diagnostic du personnage ouvrira ici la recherche de deux secondaires.</div></div>
   </div>
 
@@ -543,12 +543,13 @@
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
 <!-- V100: interface nouvelle / moteur technique V90 conservé intégralement. -->
 <script src="gac-usage.js?v=3.5.0-browser-import"></script>
+<script src="modules/seigneur-gac.js?v=1.0.0-catalog-bridge"></script>
 
 <script src="interface-adapter.js?v=4.0.47-crawl-restart-v2"></script>
-<script src="modules/core.js?v=4.1.9-seigneur-worker-link"></script>
+<script src="modules/core.js?v=4.2.0-gac-recipient-priority"></script>
 <script src="modules/acolyte.js?v=3.4.5-candidate-score"></script>
 <script src="modules/disciple.js?v=3.5.2-ranked-candidates"></script>
-<script src="modules/seigneur.js?v=3.7.1-six-mod-gac-optimizer"></script>
+<script src="modules/seigneur.js?v=3.8.0-gac-donor-scope"></script>
 <script src="modules/sithari.js?v=4.1.6-owner-resolver"></script>
 <script src="modules/runtime.js?v=3.7.0-sith-portraits"></script>
 <script>
