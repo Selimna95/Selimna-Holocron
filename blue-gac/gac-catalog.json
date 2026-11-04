@@ -4,7 +4,7 @@
   "collectionStatus": "partial",
   "collectionMethod": "Initial real-data snapshot extracted from SWGOH.GG's publicly indexed 5v5/3v3 defense tier-list pages. Each row is a complete squad with source rank, hold rate and battle count.",
   "collectionNote": "Relevé partiel : 5v5 S84 et 3v3 S83 uniquement. Les pages serveur sont bloquées par Cloudflare (403) : 5v5 Chromium et 3v3 Aurodium restent absents. Aucune composition ni statistique n'a été inventée pour ces vues. Les saisons précédentes restent à collecter.",
-  "updatedAt": "2026-11-04T09:41:37.515Z",
+  "updatedAt": "2026-11-04T09:41:44.197Z",
   "seasons": {
     "5v5": {
       "kyber": [
@@ -46,7 +46,7 @@
       "carbonite": 3
     },
     "3v3": {
-      "kyber": 0,
+      "kyber": 12,
       "aurodium": 0,
       "chromium": 0,
       "bronzium": 0,
@@ -467,6 +467,198 @@
       "battles": 759,
       "source": "https://swgoh.gg/tier-list/gac/?league=carbonite&rank=best&side=defense",
       "note": "S84 · Carbonite · rang source #8 · 759 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 1,
+      "name": "Supreme Leader Kylo Ren · Rey (Dark Side Vision) · Kylo Ren (Unmasked)",
+      "members": [
+        "Supreme Leader Kylo Ren",
+        "Rey (Dark Side Vision)",
+        "Kylo Ren (Unmasked)"
+      ],
+      "hold": 37.2,
+      "battles": 12400,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #1 · 12 400 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 2,
+      "name": "Ahsoka Tano · Ezra Bridger (Exile) · Huyang",
+      "members": [
+        "Ahsoka Tano",
+        "Ezra Bridger (Exile)",
+        "Huyang"
+      ],
+      "hold": 28,
+      "battles": 79100,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #2 · 79 100 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 3,
+      "name": "Lord Vader · CC-1119 \"Appo\" · CX-2",
+      "members": [
+        "Lord Vader",
+        "CC-1119 \"Appo\"",
+        "CX-2"
+      ],
+      "hold": 31.6,
+      "battles": 140000,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #3 · 140 000 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 4,
+      "name": "Rey · Ben Solo · Cal Kestis",
+      "members": [
+        "Rey",
+        "Ben Solo",
+        "Cal Kestis"
+      ],
+      "hold": 28.4,
+      "battles": 93300,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #4 · 93 300 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 5,
+      "name": "General Syndulla · Ezra Bridger (Exile) · Ahsoka Tano",
+      "members": [
+        "General Syndulla",
+        "Ezra Bridger (Exile)",
+        "Ahsoka Tano"
+      ],
+      "hold": 19.9,
+      "battles": 23400,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #5 · 23 400 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 6,
+      "name": "Leia Organa · Captain Drogan · R2-D2",
+      "members": [
+        "Leia Organa",
+        "Captain Drogan",
+        "R2-D2"
+      ],
+      "hold": 24.5,
+      "battles": 33000,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #6 · 33 000 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 7,
+      "name": "The Stranger · Maul (Hate-Fueled) · Starkiller",
+      "members": [
+        "The Stranger",
+        "Maul (Hate-Fueled)",
+        "Starkiller"
+      ],
+      "hold": 32.8,
+      "battles": 83000,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #7 · 83 000 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 8,
+      "name": "Rotta the Hutt · Gamorrean Guard · Mob Enforcer",
+      "members": [
+        "Rotta the Hutt",
+        "Gamorrean Guard",
+        "Mob Enforcer"
+      ],
+      "hold": 30.7,
+      "battles": 30000,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #8 · 30 000 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 11,
+      "name": "Sith Eternal Emperor · Sith Empire Trooper · Wat Tambor",
+      "members": [
+        "Sith Eternal Emperor",
+        "Sith Empire Trooper",
+        "Wat Tambor"
+      ],
+      "hold": 29,
+      "battles": 446,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #11 · 446 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 12,
+      "name": "Jedi Master Luke Skywalker · Jedi Knight Cal Kestis · Leia (Jedi Training)",
+      "members": [
+        "Jedi Master Luke Skywalker",
+        "Jedi Knight Cal Kestis",
+        "Leia (Jedi Training)"
+      ],
+      "hold": 21,
+      "battles": 9022,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #12 · 9 022 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 13,
+      "name": "Kelleran Beq · Jocasta Nu · Temple Guard",
+      "members": [
+        "Kelleran Beq",
+        "Jocasta Nu",
+        "Temple Guard"
+      ],
+      "hold": 25.7,
+      "battles": 33100,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #13 · 33 100 combats observés"
+    },
+    {
+      "format": "3v3",
+      "league": "Kyber",
+      "season": 83,
+      "rank": 16,
+      "name": "Cassian Andor (Undercover) · Kleya Marki · Luthen Rael",
+      "members": [
+        "Cassian Andor (Undercover)",
+        "Kleya Marki",
+        "Luthen Rael"
+      ],
+      "hold": 21.6,
+      "battles": 47000,
+      "source": "https://swgoh.gg/tier-list/3v3/?side=defense",
+      "note": "S83 · Kyber · rang source #16 · 47 000 combats observés"
     }
   ]
 }
