@@ -3,7 +3,39 @@ import unittest
 from python.optimizer import (
     normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
     _partial_matches_set_plan, _mod_score, build_score,
+    resolve_character_base_stats,
 )
+
+
+class OptimizerProfileResolutionTests(unittest.TestCase):
+    def test_resolves_profile_by_base_id_even_when_name_differs(self):
+        profiles = {
+            "APPO": {"base_id": "APPO", "name": 'CC-1119 "Appo"',
+                     "base_stats": {"Speed": 150, "Health": 1000}}
+        }
+        self.assertEqual(
+            resolve_character_base_stats(profiles, "appo", "Appo"),
+            {"Speed": 150, "Health": 1000},
+        )
+
+    def test_resolves_name_after_unicode_and_punctuation_normalization(self):
+        profiles = {
+            "UNIT_A": {"base_id": "UNIT_A", "name": "Chirrut Îmwe",
+                       "base_stats": {"Speed": 120}}
+        }
+        self.assertEqual(
+            resolve_character_base_stats(profiles, "unknown_id", "Chirrut-Imwe"),
+            {"Speed": 120},
+        )
+
+    def test_ignores_empty_profile_and_refuses_ambiguous_name(self):
+        profiles = {
+            "EMPTY": {"base_id": "EMPTY", "name": "No Stats", "base_stats": {}},
+            "A": {"base_id": "A", "name": "Duplicate Hero", "base_stats": {"Speed": 100}},
+            "B": {"base_id": "B", "name": "Duplicate-Hero", "base_stats": {"Speed": 110}},
+        }
+        self.assertEqual(resolve_character_base_stats(profiles, "EMPTY", "No Stats"), {})
+        self.assertEqual(resolve_character_base_stats(profiles, "", "Duplicate Hero"), {})
 
 
 class OptimizerNormalizationTests(unittest.TestCase):
