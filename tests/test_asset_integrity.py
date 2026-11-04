@@ -83,21 +83,32 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("gac-catalog.json", self.blue_js)
 
 
-    def test_live_catalogue_covers_every_league_and_format(self):
+    def test_live_catalogue_records_partial_real_data_without_fabricating_missing_views(self):
         import json
         data = json.loads(self.catalog)
         self.assertTrue(data["updatedAt"])
-        self.assertGreater(len(data["teams"]), 1000)
+        self.assertEqual(data["collectionStatus"], "partial")
+        self.assertEqual(len(data["teams"]), 60)
+        expected = {
+            "5v5": {"kyber": 8, "aurodium": 4, "chromium": 0, "bronzium": 8, "carbonite": 3},
+            "3v3": {"kyber": 12, "aurodium": 0, "chromium": 10, "bronzium": 7, "carbonite": 8},
+        }
         leagues = {"Kyber", "Aurodium", "Chromium", "Bronzium", "Carbonite"}
         for fmt, size in (("5v5", 5), ("3v3", 3)):
             self.assertEqual(set(data["seasons"][fmt]), {x.lower() for x in leagues})
             for league in leagues:
                 entries = [t for t in data["teams"] if t["format"] == fmt and t["league"] == league]
-                self.assertGreaterEqual(len(entries), 8, f"Missing {fmt} {league} data")
-                self.assertGreaterEqual(len(data["seasons"][fmt][league.lower()]), 2)
+                self.assertEqual(len(entries), expected[fmt][league.lower()])
+                self.assertEqual(data["coverage"][fmt][league.lower()], len(entries))
+                seasons = data["seasons"][fmt][league.lower()]
+                self.assertEqual(seasons, [] if not entries else ([84] if fmt == "5v5" else [83]))
                 for team in entries:
                     self.assertEqual(len(team["members"]), size)
                     self.assertIn("swgoh.gg", team["source"])
+                    self.assertGreater(team["battles"], 0)
+                    self.assertGreaterEqual(team["hold"], 0)
+                    self.assertLessEqual(team["hold"], 100)
+        self.assertIn("Cloudflare", data["collectionNote"])
 
     def test_relay_sync_uses_one_timeout_json_reader_and_preserves_direct_fallback(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
