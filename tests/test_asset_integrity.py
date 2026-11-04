@@ -86,7 +86,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("une absence n’est jamais assimilée à zéro", bridge)
         self.assertIn("holocron:gac-usage-ready", bridge)
         self.assertIn("byFormat", seigneur)
-        self.assertIn("current season first", seigneur.lower())
+        self.assertIn("const eligible=matching.filter(s=>Number(s.season)<=ceiling)", seigneur)
         self.assertIn("status==='INCOMPLETS'", seigneur)
         self.assertIn("forgeSourceStatusAllowed(st)", seigneur)
         self.assertIn("_sourceFleetKnown", seigneur)
