@@ -137,7 +137,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.html)
         self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.sw)
-        self.assertIn("holocron-static-v4.2.3-gac-partial-catalog", self.sw)
+        self.assertIn("holocron-static-v4.2.4-gac-season-priority", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
