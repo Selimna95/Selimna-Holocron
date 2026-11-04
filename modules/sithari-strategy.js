@@ -53,7 +53,7 @@ function ssFindCycles(edges){
   secondary:items.reduce((s,x)=>s+x.secondary,0)/items.length,
   kyberFit:items.reduce((s,x)=>s+sithariSecondaryScore(x.source.mod,x.target.profile),0)/items.length,
   speed:items.reduce((s,x)=>s+x.speed,0)
- })).sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed).slice(0,30);
+ })).filter(cycle=>cycle.items.some(edge=>edge.target.needsWork)).sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed).slice(0,30);
 }
 function ssRender(snapshot,result,message){
  const root=document.getElementById('sithariStrategy');if(!root)return;
