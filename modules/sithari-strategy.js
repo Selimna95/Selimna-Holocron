@@ -22,7 +22,7 @@ function ssBuildEdges(snapshot){
  const bySlot=new Map();for(const n of snapshot.nodes){if(!bySlot.has(n.slot))bySlot.set(n.slot,[]);bySlot.get(n.slot).push(n);}
  const edges=new Map();let setCandidates=0,primaryCandidates=0;
  for(const target of snapshot.nodes){
-  if(!target.needsWork)continue;
+  // Keep already-conforming slots in the graph: they may receive a safe replacement in a closed cycle.
   const setPool=(bySlot.get(target.slot)||[]).filter(source=>source.owner!==target.owner&&sithariSetMatch(source.mod,target.profile,target.character));
   setCandidates+=setPool.length;
   const primaryPool=setPool.filter(source=>sithariPrimaryMatch(source.mod,target.profile,target.slot));
