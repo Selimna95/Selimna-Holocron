@@ -417,4 +417,57 @@ assert.equal(sithariSpeedContext.sithariReplacementPreservesSpeed({}, equipped[0
 sithariSpeedContext.testBaseSpeed = 0;
 assert.equal(sithariSpeedContext.sithariReplacementPreservesSpeed({}, equipped[0], { slot: 'Square', set_name: 'Offense', speed: 25 }), false);
 
+
+// 7) Sith'ari cumulative pipeline: donors include equipped characters without a Kyber target profile.
+const strategy = read('../modules/sithari-strategy.js');
+const targetChar = { baseId: 'TARGET' };
+const donorCharA = { baseId: 'DONOR_A' };
+const donorCharB = { baseId: 'DONOR_B' };
+const donorCharC = { baseId: 'DONOR_C' };
+const targetNode = { key: 'TARGET::Square', owner: 'TARGET', name: 'Target', character: targetChar, slot: 'Square', profile: {}, needsWork: true };
+const sourceNode = (owner, character, coverage, fit, speedValue) => ({
+  key: owner + '::Square', owner, name: owner, character, slot: 'Square',
+  mod: { slot: 'Square', coverage, fit, speed: speedValue }
+});
+const donorSources = [
+  sourceNode('DONOR_A', donorCharA, 0.5, 0.99, 10),
+  sourceNode('DONOR_B', donorCharB, 1, 0.4, 12),
+  sourceNode('DONOR_C', donorCharC, 1, 0.8, 9)
+];
+const strategyContext = vm.createContext({
+  sithariSetMatch: () => true,
+  sithariPrimaryMatch: () => true,
+  ssSecondaryCoverage: mod => mod.coverage,
+  ssKyberSecondaryFit: mod => mod.fit,
+  modTotalSpeed: mod => Number(mod.speed || 0)
+});
+load(strategy, ['ssBuildEdges'], strategyContext);
+const edgeResult = strategyContext.ssBuildEdges({ nodes: [targetNode], sources: donorSources });
+assert.equal(edgeResult.setCandidates, 3, 'All roster donors are considered at the set stage');
+assert.equal(edgeResult.primaryCandidates, 3, 'Primary stage narrows only after set compatibility');
+assert.equal(edgeResult.secondaryCandidates, 2, 'Secondary stage keeps only the best available coverage tier');
+assert.deepEqual(
+  Array.from(edgeResult.edges.get(targetNode.key), edge => edge.source.owner),
+  ['DONOR_C', 'DONOR_B'],
+  'Kyber secondary fit ranks candidates within the best secondary tier'
+);
+
+// Open donor chains are allowed only when the terminal donor also preserves total speed.
+const openTargetMods = [{ slot: 'Square', speed: 0 }, { slot: 'Arrow', speed: 12 }];
+const openDonorMods = [{ slot: 'Square', speed: 0 }, { slot: 'Arrow', speed: 8 }];
+const openSpeedContext = vm.createContext({
+  numericValue,
+  modTotalSpeed: speed,
+  ssSlot: mod => mod.slot,
+  sithariCharacterMods: character => character.baseId === 'TARGET' ? openTargetMods : openDonorMods,
+  sithariProjectedSpeed: (character, list) => ({ baseSpeed: 100, modSpeed: list.reduce((sum, mod) => sum + Number(mod.speed || 0), 0), total: 100 + list.reduce((sum, mod) => sum + Number(mod.speed || 0), 0), speedSetPieces: 0 }),
+  sithariIsSpeedSet: () => false
+});
+load(strategy, ['ssCyclePreservesSpeed'], openSpeedContext);
+const safeOpenEdge = { target: targetNode, source: { ...donorSources[0], mod: { slot: 'Square', speed: 0 } } };
+assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), true, 'Zero-speed terminal donor can safely become unequipped');
+openDonorMods[0] = { slot: 'Square', speed: 4 };
+assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), false, 'Terminal donor cannot lose total speed');
+assert.ok(strategy.includes("if(!edges.has(next))"), 'Search must recognize an open donor-chain endpoint');
+
 console.log('Mods engine regression tests passed.');
