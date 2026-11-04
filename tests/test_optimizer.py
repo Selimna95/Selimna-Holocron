@@ -139,6 +139,43 @@ class OptimizerNormalizationTests(unittest.TestCase):
             build_score(build_high, {}, weights, {}),
         )
 
+    def test_seigneur_speed_floor_filters_builds_and_retries_without_kyber_set_plan(self):
+        slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+        mods = []
+        for slot in slots:
+            mods.append({
+                "id": f"slow-{slot}", "slot": slot, "set": "Health",
+                "secondary_1_stat": "Speed", "secondary_1_value": 0,
+                "level": 15, "rarity": 5,
+            })
+            mods.append({
+                "id": f"fast-{slot}", "slot": slot, "set": "Speed",
+                "secondary_1_stat": "Speed", "secondary_1_value": 10,
+                "level": 15, "rarity": 5,
+            })
+        kyber = {"sets": {"Health": 1.0},
+                 "specific_sets": [{"name": "Health x6", "counts": {"Health": 6}, "weight": 1.0}]}
+        builds = optimize_kyber(
+            mods, base_stats={"Speed": 100}, kyber=kyber,
+            number_of_builds=3, limit_per_slot=2, minimum_speed=160,
+        )
+        self.assertTrue(builds)
+        self.assertTrue(all(item["stats"]["Speed"] >= 160 for item in builds))
+        self.assertTrue(all(item["set_plan"] == {} for item in builds))
+
+    def test_seigneur_speed_floor_reports_when_no_safe_build_exists(self):
+        slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+        mods = [{
+            "id": slot, "slot": slot, "set": "Health",
+            "secondary_1_stat": "Speed", "secondary_1_value": 2,
+            "level": 15, "rarity": 5,
+        } for slot in slots]
+        with self.assertRaisesRegex(RuntimeError, "Vitesse actuelle : 200.0"):
+            optimize_kyber(
+                mods, base_stats={"Speed": 100}, kyber={},
+                number_of_builds=3, limit_per_slot=1, minimum_speed=200,
+            )
+
     def test_speed_set_bonus_is_ten_percent_of_base_speed(self):
         build = [{"set": "Speed"} for _ in range(4)]
         stats = final_stats(build, {"Speed": 200})
