@@ -30,7 +30,7 @@ var catalogMeta=null;
 var catalogReady=false;
 var catalogError='';
 function loadCatalog(){
- var catalogUrl=location.hostname==='selimna95.github.io'?'https://raw.githubusercontent.com/Selimna95/Selimna-Holocron/main/blue-gac/gac-catalog.json?v=4.1.1':'gac-catalog.json?v=4.1.1';
+ var catalogUrl=location.hostname==='selimna95.github.io'?'https://raw.githubusercontent.com/Selimna95/Selimna-Holocron/main/blue-gac/gac-catalog.json?v=4.1.2':'gac-catalog.json?v=4.1.2';
  return fetch(catalogUrl,{cache:'no-store'}).then(function(response){
   if(!response.ok)throw new Error('HTTP '+response.status);
   return response.json();
@@ -64,7 +64,7 @@ function appendCatalogNotice(){if(catalogMeta&&catalogMeta.collectionStatus==='p
 var rosterSet=new Set(roster);
 var requiredCounts={'5v5':{Kyber:11,Aurodium:9,Chromium:7,Bronzium:5,Carbonite:3},'3v3':{Kyber:15,Aurodium:13,Chromium:10,Bronzium:7,Carbonite:3}};
 var required=(requiredCounts[fmt]&&requiredCounts[fmt][state.tier])||requiredCounts[fmt].Kyber;
-var seasons=(catalogMeta.seasons&&catalogMeta.seasons[fmt]&&catalogMeta.seasons[fmt][String(state.tier||'Kyber').toLowerCase()])||[];var ranked=publicTeams.filter(function(t){return t.format===fmt&&t.league===state.tier&&seasons.indexOf(Number(t.season))>=0&&Number.isFinite(t.rank);}).slice().sort(function(a,b){return Number(b.battles||0)-Number(a.battles||0)||Number(b.hold||0)-Number(a.hold||0)||b.season-a.season||a.rank-b.rank;});
+var currentSeason=Number(catalogMeta.currentSeasons&&catalogMeta.currentSeasons[fmt])||Math.max.apply(null,publicTeams.filter(function(t){return t.format===fmt;}).map(function(t){return Number(t.season)||0;}).concat([0]));var ranked=publicTeams.filter(function(t){return t.format===fmt&&t.league===state.tier&&Number.isFinite(t.rank);}).slice().sort(function(a,b){return Number(b.season||0)-Number(a.season||0)||Number(b.battles||0)-Number(a.battles||0)||Number(b.hold||0)-Number(a.hold||0)||a.rank-b.rank;});
 var used=new Set(),candidates=[],skippedMissing=0,skippedUsed=0;
 ranked.forEach(function(t){
  if(candidates.length>=required)return;
@@ -89,7 +89,7 @@ if(!candidates.length){
  for(var emptyIndex=1;emptyIndex<=required;emptyIndex++)addUnavailableTeamCard(emptyIndex);
  return;
 }
-var availableSeasons=Array.from(new Set(ranked.map(function(t){return Number(t.season);}))).sort(function(a,b){return b-a;});status.textContent=candidates.length+' / '+required+' équipes défensives retenues pour '+fmt+' '+state.tier+'. Saisons réellement disponibles : '+availableSeasons.map(function(s){return 'S'+s;}).join(' et ')+'. '+skippedMissing+' équipe(s) ignorée(s) faute de personnages ; '+skippedUsed+' ignorée(s) pour éviter les doublons. '+ranked.length+' compositions observées · actualisation : '+new Date(catalogMeta.updatedAt).toLocaleString('fr-FR')+'.';appendCatalogNotice();
+var availableSeasons=Array.from(new Set(ranked.map(function(t){return Number(t.season);}))).sort(function(a,b){return b-a;});var historicalUsed=ranked.some(function(t){return Number(t.season)!==currentSeason;});status.textContent=candidates.length+' / '+required+' équipes défensives retenues pour '+fmt+' '+state.tier+'. Saison prioritaire : S'+(currentSeason||'inconnue')+'. Les compositions de cette saison passent toujours avant les saisons précédentes ; '+(historicalUsed?'les saisons antérieures complètent uniquement les places restantes. ':'aucun complément historique nécessaire. ')+ 'Saisons avec données : '+availableSeasons.map(function(s){return 'S'+s;}).join(' et ')+'. '+skippedMissing+' équipe(s) ignorée(s) faute de personnages ; '+skippedUsed+' ignorée(s) pour éviter les doublons. '+ranked.length+' compositions observées · actualisation : '+new Date(catalogMeta.updatedAt).toLocaleString('fr-FR')+'.';appendCatalogNotice();
 
 candidates.forEach(function(t,i){
 var card=document.createElement('article');card.className='team-card';
