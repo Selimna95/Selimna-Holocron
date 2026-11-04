@@ -110,7 +110,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("minimum_speed = optimizer.final_stats(current_target_mods, base_stats).get(\"Speed\")", worker)
         self.assertIn("minimum_speed=minimum_speed", worker)
         self.assertIn("minimum_speed=None", optimizer)
-        self.assertIn("if not safe_beam:", optimizer)
+        self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
         self.assertIn("Aucun transfert entraînant une perte de vitesse", optimizer)
 
     def test_pwa_navigation_and_cross_origin_catalog_cache_are_route_aware(self):
