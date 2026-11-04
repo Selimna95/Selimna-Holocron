@@ -23,6 +23,14 @@ class GacCatalogParserTests(unittest.TestCase):
         """
         self.assertEqual(discover_previous_season(html, 84), 82)
 
+    def test_previous_season_skips_opposite_gac_format(self):
+        html = """
+        <a href="?league=kyber&amp;season=83">S83 3v3</a>
+        <a href="?league=kyber&amp;season=82">S82 5v5</a>
+        <a href="?league=kyber&amp;season=80">S80 5v5</a>
+        """
+        self.assertEqual(discover_previous_season(html, 84), 82)
+
     def test_extracts_complete_defense_team_and_statistics(self):
         members = ["The Stranger", "Barriss Offee", "Maul (Hate-Fueled)", "Starkiller", "Visas Marr"]
         images = "".join(f'<img alt="Image: {name}" src="https://game-assets.swgoh.gg/{i}.png">' for i, name in enumerate(members))
