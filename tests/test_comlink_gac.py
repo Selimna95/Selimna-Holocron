@@ -70,6 +70,15 @@ class ComlinkGacCollectorTests(unittest.TestCase):
         with patch.object(MODULE.time, "time", return_value=1800000000):
             self.assertIsNone(MODULE.current_gac_event({"gameEvent": [event]}))
 
+    def test_future_instance_timestamp_is_not_scanned_without_event_times(self):
+        event = {
+            "type": 10,
+            "id": "FUTURE_SEASON",
+            "instance": [{"id": "O1893456000000"}],
+        }
+        with patch.object(MODULE.time, "time", return_value=1800000000):
+            self.assertIsNone(MODULE.current_gac_event({"gameEvent": [event]}))
+
     def test_bracket_boundary_uses_exponential_then_binary_probe(self):
         def fake_fetch(event_id, league, index):
             return {"players": [{"name": "player"}] if index <= 5 else []}
