@@ -252,15 +252,27 @@ function seigneurCharacterFleetUsage(character,season=seigneurLatestGacUsageSeas
 function seigneurDonorPriority(character,season=seigneurLatestGacUsageSeason()){
   const characterUses=seigneurCharacterGacUsage(character,season);
   const fleet=seigneurCharacterFleetUsage(character,season);
-  if(characterUses===null||!fleet.known)return {
+  const sourceStatus=season?.sourceStatus||'unavailable';
+  const formatSeasons=season?.formatSeasons||{};
+  // Les données terrestres suffisent à classer un donneur. L'absence de
+  // métadonnées pilote/vaisseau ne doit pas neutraliser tout le vivier.
+  // En revanche, une association pilote connue sans statistique de flotte
+  // reste bloquante pour ce pilote : on ne suppose jamais une utilisation nulle.
+  if(characterUses===null)return {
     known:false,uses:null,characterUses,fleetUses:fleet.uses,fleetKnown:fleet.known,
-    shipCount:fleet.shipCount,reason:characterUses===null?'Utilisation GAC terrestre indisponible':fleet.reason,
-    sourceStatus:season?.sourceStatus||'unavailable',formatSeasons:season?.formatSeasons||{}
+    shipCount:fleet.shipCount,reason:'Utilisation GAC terrestre indisponible',
+    sourceStatus,formatSeasons
+  };
+  if(!fleet.known)return {
+    known:true,uses:characterUses,characterUses,fleetUses:null,fleetKnown:false,
+    shipCount:fleet.shipCount,
+    reason:'Classement terrestre uniquement · exposition flotte non vérifiée',
+    sourceStatus,formatSeasons
   };
   return {
     known:true,uses:characterUses+fleet.uses,characterUses,fleetUses:fleet.uses,fleetKnown:true,
     shipCount:fleet.shipCount,reason:'Classement GAC terrestre + flotte',
-    sourceStatus:season?.sourceStatus||'observed',formatSeasons:season?.formatSeasons||{}
+    sourceStatus,formatSeasons
   };
 }
 function forgeSourceStatusAllowed(status){
@@ -418,7 +430,7 @@ function renderSeigneurDonorPanel(character){
   const seasonsLabel=Object.entries(summary.formatSeasons||{}).map(([format,season])=>format+' S'+season).join(' · ')||'saison non identifiée';
   const evidenceLabel=summary.evidenceType==='defense-composition'?'Défense uniquement':'Unités GAC';
   const completenessLabel=summary.sourceStatus==='partial'?' · catalogue partiel':'';
-  $('forgeSearchPanel').innerHTML=`<div class="forge-reference-panel is-live"><div class="forge-reference-head"><div class="forge-reference-identity"><span class="forge-kicker">ARSENAL GLOBAL</span><strong>${summary.mods.length} mods candidats</strong><small>${known} donneurs avec usages GAC vérifiés · ${summary.freeMods} mods libres · ${evidenceLabel}${completenessLabel} · ${seasonsLabel}</small></div><div class="forge-reference-status"><i></i><span>CLASSEMENT GAC ACTIF</span></div></div><div class="forge-reference-columns"><section class="forge-reference-column"><header><span>DONNEURS PRIORITAIRES</span><small>moins utilisés d'abord</small></header>${donorRows||'<div class="forge-ref-empty">Aucun donneur vérifiable. Les données GAC personnages/flottes ou les associations pilotes-vaisseaux sont absentes.</div>'}</section><section class="forge-reference-column"><header><span>RÈGLES DE PROTECTION</span><small>appliquées au vivier</small></header><div class="forge-ref-row"><span>01</span><b>Usage terrestre</b><em>personnages</em></div><div class="forge-ref-row"><span>02</span><b>Usage flotte</b><em>pilotes protégés</em></div><div class="forge-ref-row"><span>03</span><b>GL</b><em>exclues comme donneurs</em></div><div class="forge-ref-row"><span>04</span><b>Données absentes</b><em>donneur non retenu</em></div></section></div></div>`;
+  $('forgeSearchPanel').innerHTML=`<div class="forge-reference-panel is-live"><div class="forge-reference-head"><div class="forge-reference-identity"><span class="forge-kicker">ARSENAL GLOBAL</span><strong>${summary.mods.length} mods candidats</strong><small>${known} donneurs classés par usage terrestre · ${summary.freeMods} mods libres · ${evidenceLabel}${completenessLabel} · ${seasonsLabel}</small></div><div class="forge-reference-status"><i></i><span>CLASSEMENT GAC ACTIF</span></div></div><div class="forge-reference-columns"><section class="forge-reference-column"><header><span>DONNEURS PRIORITAIRES</span><small>moins utilisés d'abord</small></header>${donorRows||'<div class="forge-ref-empty">Aucun donneur classable : vérifie les observations GAC terrestres et les filtres de statut des sources.</div>'}</section><section class="forge-reference-column"><header><span>RÈGLES DE PROTECTION</span><small>appliquées au vivier</small></header><div class="forge-ref-row"><span>01</span><b>Usage terrestre</b><em>personnages</em></div><div class="forge-ref-row"><span>02</span><b>Usage flotte</b><em>pilotes protégés</em></div><div class="forge-ref-row"><span>03</span><b>GL</b><em>exclues comme donneurs</em></div><div class="forge-ref-row"><span>04</span><b>Données absentes</b><em>donneur non retenu</em></div></section></div></div>`;
 }
 function forgeSearchSourceSummary(){
   if($('optimizerAllRoster')?.checked===true)return 'TOUT LE ROSTER · GL EXCLUES';
