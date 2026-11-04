@@ -15,7 +15,7 @@
 
 
 
-<title>Selimna’s Holocron — V4.1.7</title>
+<title>Selimna’s Holocron — V4.1.8</title>
 
 
 
@@ -89,7 +89,7 @@
 
 <div id="appShell" class="app-shell" hidden>
 <header class="topbar">
-  <button id="returnToHolocrons" class="return-to-holocrons" type="button" hidden aria-label="Retour au choix des holocrons">↶ <span>HOLOCRONS</span></button><div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V4.1.7</span></div>
+  <button id="returnToHolocrons" class="return-to-holocrons" type="button" hidden aria-label="Retour au choix des holocrons">↶ <span>HOLOCRONS</span></button><div class="top-brand"><span class="brand-mark">✦</span><div><span class="brand">SELIMNA’S</span><span class="accent">HOLOCRON</span></div><span class="version">HOLOCRON // V4.1.8</span></div>
   <div class="guardian-context" id="guardianContext" data-state="idle" aria-live="polite" aria-label="Conseil du Gardien">
     <span class="guardian-context-seal" aria-hidden="true">✦</span><span class="guardian-context-copy"><small>LE GARDIEN</small><strong id="guardianContextText">Commence par synchroniser ton roster.</strong></span>
   </div>
@@ -307,7 +307,7 @@
 
   <div class="panel forge-search-panel-wrap">
     <div class="panel-title">03 // ARSENAL ET DONNEURS GAC</div>
-    <div class="forge-donor-doctrine"><strong>CLASSEMENT DES SOURCES</strong><span>Usage GAC terrestre + usage des vaisseaux associés aux pilotes, lorsque les données de flotte sont disponibles.</span><span>Moins une unité est utilisée, plus ses mods remontent dans les sources candidates.</span><span>Les personnages très utilisés, les GL et les pilotes de flottes très utilisées sont protégés. Le signal issu du catalogue bleu ne couvre que la défense et reste partiel. Une donnée manquante ne vaut jamais zéro.</span></div>
+    <div class="forge-donor-doctrine"><strong>CLASSEMENT DES SOURCES</strong><span>Classement d'abord par usage GAC terrestre ; l'usage flotte complète le classement lorsqu'il est vérifiable.</span><span>Moins une unité est utilisée, plus ses mods remontent dans les sources candidates.</span><span>Les personnages très utilisés et les GL sont protégés. Les pilotes identifiés sont protégés si leurs données de flotte sont disponibles ; sinon le classement terrestre reste actif et l'exposition flotte est signalée comme non vérifiée. Le catalogue bleu ne couvre que la défense et reste partiel. Une donnée manquante ne vaut jamais zéro.</span></div>
     <div id="forgeSearchPanel" class="forge-search-panel"><div class="forge-audit-empty">Le diagnostic du personnage ouvrira ici la recherche de deux secondaires.</div></div>
   </div>
 
@@ -549,7 +549,7 @@
 <script src="modules/core.js?v=4.2.1-defense-evidence-label"></script>
 <script src="modules/acolyte.js?v=3.4.5-candidate-score"></script>
 <script src="modules/disciple.js?v=3.5.2-ranked-candidates"></script>
-<script src="modules/seigneur.js?v=3.9.0-global-impact"></script>
+<script src="modules/seigneur.js?v=3.9.1-terrestrial-fallback"></script>
 <script src="modules/seigneur-impact.js?v=1.0.0-roster-impact"></script>
 <script src="modules/sithari.js?v=4.1.6-owner-resolver"></script>
 <script src="modules/runtime.js?v=3.7.0-sith-portraits"></script>
