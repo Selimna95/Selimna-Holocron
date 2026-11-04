@@ -188,12 +188,14 @@ class AssetIntegrityTests(unittest.TestCase):
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
         strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
         self.assertIn("SITH’ARI // STRATÈGE ULTIME", strategy)
-        self.assertIn("sithariSetMatch(source.mod, target.profile", strategy)
-        self.assertIn("sithariPrimaryMatch(source.mod, target.profile", strategy)
-        self.assertIn("sithariSecondaryScore(source.mod, target.profile)", strategy)
+        self.assertIn("sithariSetMatch(source.mod,target.profile,target.character)", strategy)
+        self.assertIn("sithariPrimaryMatch(source.mod,target.profile,target.slot)", strategy)
+        self.assertIn("sithariSecondaryScore(source.mod,target.profile)", strategy)
         self.assertIn("ssFindCycles", strategy)
         self.assertIn("lecture seule", strategy)
         self.assertIn("modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline", self.html)
+        self.assertIn("sithari-strategy.css?v=1.0.0-cumulative-pipeline", self.html)
+        self.assertIn("sithari-strategy.css?v=1.0.0-cumulative-pipeline", self.sw)
         self.assertIn("modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline", self.sw)
         self.assertIn("holocron-static-v4.3.7-sithari-cumulative", self.sw)
 
