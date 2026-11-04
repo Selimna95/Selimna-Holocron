@@ -70,7 +70,10 @@ def validate_board(response: dict, league: str, division: str) -> None:
     if response.get("error") or response.get("errorMessage"):
         raise ValueError(f"Comlink rejected {league}/{division}: {response}")
     if not isinstance(response.get("player"), list):
-        raise ValueError(f"Unexpected GAC leaderboard schema: {league}/{division}")
+        raise ValueError(
+            f"Unexpected GAC leaderboard schema: {league}/{division}; "
+            f"top-level fields={sorted(response.keys())}"
+        )
 
 
 def current_gac_event(events_response: dict) -> dict | None:
@@ -110,9 +113,12 @@ def fetch_bracket(event_instance_id: str, league: str, index: int) -> dict:
     })
     if response.get("error") or response.get("errorMessage"):
         raise RuntimeError(f"Comlink rejected bracket {group_id}: {response}")
-    players = response.get("player", [])
+    players = response.get("player")
     if not isinstance(players, list):
-        raise ValueError(f"Unexpected bracket response for {group_id}")
+        raise ValueError(
+            f"Unexpected bracket response for {group_id}; "
+            f"top-level fields={sorted(response.keys())}"
+        )
     return {"index": index, "groupId": group_id, "players": players}
 
 
@@ -182,7 +188,7 @@ def collect_competitive_roster_meta(boards: list[dict]) -> dict:
             "units": {},
         }
         for player in board["response"]["player"]:
-            player_id = player.get("playerId")
+            player_id = player.get("playerId") or player.get("PlayerId")
             if player_id:
                 requests.setdefault(player_id, set()).add(key)
             else:
@@ -288,6 +294,17 @@ def build() -> dict:
             payload = {"payload": {"leaderboardType": 6, "league": league_id, "division": division_id}, "enums": False}
             response = request_json("getLeaderboard", payload)
             validate_board(response, league, division)
+            entries = response["player"]
+            player_ids = sum(
+                1 for entry in entries
+                if isinstance(entry, dict) and (entry.get("playerId") or entry.get("PlayerId"))
+            )
+            print(
+                f"Collected official GAC top-50: {league}/{division}: "
+                f"{len(entries)} entries, {player_ids} player IDs; "
+                f"response fields={sorted(response.keys())}; "
+                f"entry fields={sorted(entries[0].keys()) if entries and isinstance(entries[0], dict) else []}"
+            )
             boards.append({
                 "league": league,
                 "leagueId": league_id,
@@ -295,8 +312,24 @@ def build() -> dict:
                 "divisionId": division_id,
                 "response": response,
             })
-            print(f"Collected official GAC top-50: {league}/{division}")
             time.sleep(0.2)
+
+    total_entries = sum(len(board["response"]["player"]) for board in boards)
+    total_player_ids = sum(
+        1 for board in boards for entry in board["response"]["player"]
+        if isinstance(entry, dict) and (entry.get("playerId") or entry.get("PlayerId"))
+    )
+    print(f"Top-50 diagnostic: {total_entries} total entries; {total_player_ids} entries with player IDs.")
+    if total_entries == 0:
+        raise RuntimeError(
+            "Comlink returned 25 valid leaderboard responses but zero player entries. "
+            "Refusing to publish an empty snapshot; inspect the per-board response diagnostics above."
+        )
+    if total_player_ids == 0:
+        raise RuntimeError(
+            "Comlink returned leaderboard entries but none exposed playerId/PlayerId. "
+            "Refusing to publish profiles with zero identifiers; inspect entry field diagnostics above."
+        )
 
     competitive_roster_meta = collect_competitive_roster_meta(boards)
     print(
@@ -316,6 +349,13 @@ def build() -> dict:
         print("No active GAC season found; bracket collection skipped.")
 
     bracket_players = sum(item.get("playerCount", 0) for item in brackets)
+    for bracket_set in brackets:
+        print(
+            f"Bracket diagnostic {bracket_set['league']}: "
+            f"status={bracket_set['status']}, "
+            f"brackets={bracket_set.get('bracketCount', 0)}, "
+            f"players={bracket_set.get('playerCount', 0)}"
+        )
     return {
         "schemaVersion": 2,
         "status": "collected",
