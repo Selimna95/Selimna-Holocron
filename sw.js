@@ -1,13 +1,13 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.2.2-gac-browser-import';
+const CACHE_NAME = 'holocron-static-v4.2.3-gac-partial-catalog';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './blue-gac/index.html',
-  './blue-gac/blue-gac.css?v=4.1.0',
-  './blue-gac/blue-gac.js?v=4.1.0',
-  './blue-gac/gac-catalog.json?v=4.1.0',
+  './blue-gac/blue-gac.css?v=4.1.1',
+  './blue-gac/blue-gac.js?v=4.1.1',
+  './blue-gac/gac-catalog.json?v=4.1.1',
   './assets/image/padawan.png',
   './assets/image/jpeg.jpg',
   './app.css?v=4.0.0-seigneur-card-layout',
@@ -60,7 +60,7 @@ self.addEventListener('fetch', event => {
       }
       return response;
     }).catch(async () => (await caches.match(request)) ||
-      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope)))));
+      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.1', self.registration.scope)))));
     return;
   }
 
@@ -74,7 +74,7 @@ self.addEventListener('fetch', event => {
       }
       return response;
     }).catch(async () => (await caches.match(request)) ||
-      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.0', self.registration.scope)))));
+      (await caches.match(new URL('./blue-gac/gac-catalog.json?v=4.1.1', self.registration.scope)))));
     return;
   }
   if (request.mode === 'navigate') {
