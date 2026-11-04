@@ -18,7 +18,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 JSON_OUTPUT = ROOT / "gac-usage.json"
-JS_OUTPUT = ROOT / "gac-usage.js"
+JS_OUTPUT = ROOT / "gac-usage.js"\nBROWSER_EXPORT = ROOT / "gac-browser-export.json"
 BASE = "https://swgoh.gg/tier-list/units/"
 FLEET_BASE = "https://swgoh.gg/tier-list/fleet/"
 LEAGUES = ("kyber", "aurodium", "chromium", "bronzium", "carbonite")
