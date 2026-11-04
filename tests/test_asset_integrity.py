@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.2.6-gac-strategic-audit", self.sw)
+        self.assertIn("holocron-static-v4.2.7-seigneur-gac-priority", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -76,6 +76,25 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("mods=nextMods;rosterCharacters=chars;rosterShips=ships;accountGalacticPower=nextGalacticPower", load_player)
         self.assertIn("currentData=previousSnapshot.currentData", load_player)
         self.assertNotIn("accountGalacticPower={total:0,characters:0,ships:0}", load_player)
+
+    def test_seigneur_uses_current_gac_evidence_for_targets_and_weak_donors(self):
+        bridge = (ROOT / "modules" / "seigneur-gac.js").read_text(encoding="utf-8")
+        seigneur = (ROOT / "modules" / "seigneur.js").read_text(encoding="utf-8")
+        self.assertIn("holocronGacPriorityForCharacter", bridge)
+        self.assertIn("buildDefenseUsage", bridge)
+        self.assertIn("defense-composition", bridge)
+        self.assertIn("Une absence n’est jamais assimilée à zéro", bridge)
+        self.assertIn("holocron:gac-usage-ready", bridge)
+        self.assertIn("byFormat", seigneur)
+        self.assertIn("current season first", seigneur.lower())
+        self.assertIn("status==='INCOMPLETS'", seigneur)
+        self.assertIn("forgeSourceStatusAllowed(st)", seigneur)
+        self.assertIn("_sourceFleetKnown", seigneur)
+        self.assertIn("modules/seigneur-gac.js?v=1.0.0-catalog-bridge", self.html)
+        self.assertIn("modules/seigneur-gac.js?v=1.0.0-catalog-bridge", self.sw)
+        self.assertIn("modules/seigneur.js?v=3.8.0-gac-donor-scope", self.html)
+        self.assertIn("modules/seigneur.js?v=3.8.0-gac-donor-scope", self.sw)
+        self.assertIn("PRIORITÉ GAC", (ROOT / "modules" / "core.js").read_text(encoding="utf-8"))
 
     def test_pwa_navigation_and_cross_origin_catalog_cache_are_route_aware(self):
         raw_handler = self.sw.index("url.hostname === 'raw.githubusercontent.com'")
@@ -142,7 +161,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.html)
+        self.assertIn("modules/core.js?v=4.2.0-gac-recipient-priority", self.html)
         self.assertIn("modules/core.js?v=4.1.9-seigneur-worker-link", self.sw)
         self.assertIn("holocron-static-v4.2.6-gac-strategic-audit", self.sw)
 
