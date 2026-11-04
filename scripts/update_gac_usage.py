@@ -52,8 +52,11 @@ def fetch(url: str) -> str:
                 time.sleep(2 ** attempt)
     raise RuntimeError(f"Cannot fetch {url}: {last_error}")
 
-def page_season(text: str) -> int:
+def page_season(text: str, fmt: str | None = None) -> int:
     match = re.search(r"Season\s+(\d+)", text, re.I)
+    if not match and fmt in ("5v5", "3v3"):
+        token = "5s" if fmt == "5v5" else "3s"
+        match = re.search(rf"{token}\s*\(S(\d+)\)", text, re.I)
     if not match:
         raise ValueError("Season number absent from source page")
     return int(match.group(1))
@@ -138,7 +141,7 @@ def build() -> dict:
             for league in LEAGUES:
                 url = BASE + "?" + urlencode({"fmt": fmt, "side": side, "league": league})
                 text = fetch(url)
-                season = page_season(text)
+                season = page_season(text, fmt)
                 units = parse_unit_page(text, fmt, side)
                 if len(units) < MIN_UNITS_PER_VIEW:
                     raise ValueError(f"{fmt}/{side}/{league}/S{season}: only {len(units)} units parsed")
