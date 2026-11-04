@@ -90,4 +90,30 @@ const markup=context.forgeBuildGlobalImpactMarkup(impactData);
 assert.match(markup,/BILAN GLOBAL DU TRANSFERT/);
 assert.match(markup,/DONNEUR\(S\) FRAGILISÉ\(S\)/);
 assert.match(markup,/Signal GAC issu des compositions défensives/);
+
+const donorPriority = extractFunction(seigneur,'seigneurDonorPriority');
+context.seigneurCharacterGacUsage=()=>80;
+context.seigneurCharacterFleetUsage=()=>({uses:null,known:false,shipCount:0,reason:'Correspondance pilotes/vaisseaux indisponible'});
+context.seigneurLatestGacUsageSeason=()=>({sourceStatus:'partial',formatSeasons:{'5v5':84,'3v3':83}});
+vm.runInContext(donorPriority,context);
+const terrestrialOnly=context.seigneurDonorPriority({baseId:'DONOR'});
+assert.equal(terrestrialOnly.known,true,
+  'Verified terrestrial GAC evidence must keep a donor eligible when fleet metadata is absent');
+assert.equal(terrestrialOnly.uses,80,
+  'When fleet usage is unknown, rank by observed terrestrial usage only');
+assert.equal(terrestrialOnly.fleetKnown,false);
+assert.equal(terrestrialOnly.fleetUses,null);
+assert.match(terrestrialOnly.reason,/terrestre uniquement/);
+
+context.seigneurCharacterFleetUsage=()=>({uses:null,known:false,shipCount:1,reason:'Utilisation GAC du vaisseau indisponible'});
+const mappedPilotButMissingFleet=context.seigneurDonorPriority({baseId:'DONOR'});
+assert.equal(mappedPilotButMissingFleet.known,true,
+  'Terrestrial ranking remains available while fleet exposure is explicitly unverified');
+assert.equal(mappedPilotButMissingFleet.fleetKnown,false);
+
+context.seigneurCharacterGacUsage=()=>null;
+const noLandEvidence=context.seigneurDonorPriority({baseId:'UNKNOWN'});
+assert.equal(noLandEvidence.known,false,
+  'Without terrestrial GAC evidence, a roster character must not be promoted as a verified donor');
+
 console.log('Seigneur global impact tests passed.');
