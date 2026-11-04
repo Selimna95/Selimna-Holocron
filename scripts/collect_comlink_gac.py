@@ -161,6 +161,120 @@ def collect_brackets(event_instance_id: str, league: str) -> dict:
     }
 
 
+def collect_competitive_roster_meta(boards: list[dict]) -> dict:
+    """Aggregate public roster progression for players on official top-50 boards.
+
+    Player identities and raw profiles are deliberately not written to disk.
+    This is roster prevalence, never proof that a unit was used in GAC battles.
+    """
+    cohorts = {}
+    requests = {}
+    for board in boards:
+        key = f"{board['league']}/{board['division']}"
+        cohorts[key] = {
+            "league": board["league"],
+            "division": board["division"],
+            "leaderboardEntries": len(board["response"]["player"]),
+            "profilesRequested": 0,
+            "profilesFetched": 0,
+            "profilesFailed": 0,
+            "units": {},
+        }
+        for player in board["response"]["player"]:
+            player_id = player.get("playerId")
+            if player_id:
+                requests.setdefault(player_id, set()).add(key)
+
+    def fetch_profile(player_id: str) -> tuple[str, dict]:
+        profile = request_json("player", {"payload": {"playerId": player_id}, "enums": False})
+        if profile.get("error") or profile.get("errorMessage"):
+            raise RuntimeError(f"Comlink rejected player profile {player_id}")
+        roster = profile.get("rosterUnit")
+        if not isinstance(roster, list):
+            raise ValueError(f"Player profile {player_id} has no rosterUnit list")
+        return player_id, profile
+
+    for context in cohorts.values():
+        context["profilesRequested"] = sum(
+            1 for contexts in requests.values()
+            if context["league"] + "/" + context["division"] in contexts
+        )
+
+    fetched = 0
+    failed = 0
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {pool.submit(fetch_profile, player_id): player_id for player_id in requests}
+        for future in as_completed(futures):
+            player_id = futures[future]
+            try:
+                _, profile = future.result()
+            except Exception as exc:
+                failed += 1
+                for key in requests[player_id]:
+                    cohorts[key]["profilesFailed"] += 1
+                print(f"Profile unavailable for one leaderboard entry: {exc}")
+                continue
+
+            fetched += 1
+            roster = profile["rosterUnit"]
+            for key in requests[player_id]:
+                cohort = cohorts[key]
+                cohort["profilesFetched"] += 1
+                for unit in roster:
+                    definition_id = unit.get("definitionId")
+                    if not definition_id:
+                        continue
+                    stats = cohort["units"].setdefault(definition_id, {
+                        "playerCount": 0,
+                        "gearTierCounts": {},
+                        "relicLevelCounts": {},
+                        "moddedUnitCount": 0,
+                    })
+                    stats["playerCount"] += 1
+                    gear_tier = unit.get("currentTier")
+                    if gear_tier is not None:
+                        tier_key = str(gear_tier)
+                        stats["gearTierCounts"][tier_key] = stats["gearTierCounts"].get(tier_key, 0) + 1
+                    relic = unit.get("relic")
+                    if isinstance(relic, dict) and isinstance(relic.get("currentTier"), int):
+                        relic_level = relic["currentTier"] - 2
+                        relic_key = str(relic_level)
+                        stats["relicLevelCounts"][relic_key] = stats["relicLevelCounts"].get(relic_key, 0) + 1
+                    mods = unit.get("equippedStatMod", [])
+                    if isinstance(mods, list) and mods:
+                        stats["moddedUnitCount"] += 1
+
+    for cohort in cohorts.values():
+        denominator = cohort["profilesFetched"]
+        for stats in cohort["units"].values():
+            stats["prevalencePercent"] = round(stats["playerCount"] * 100 / denominator, 2) if denominator else None
+        cohort["units"] = [
+            {"definitionId": unit_id, **stats}
+            for unit_id, stats in sorted(
+                cohort["units"].items(), key=lambda item: (-item[1]["playerCount"], item[0])
+            )
+        ]
+        cohort["status"] = (
+            "complete" if cohort["profilesFetched"] == cohort["profilesRequested"]
+            else "partial" if cohort["profilesFetched"] else "unavailable"
+        )
+
+    return {
+        "source": "Capital Games public player profiles via SWGOH Comlink",
+        "meaning": "Roster ownership and progression prevalence among top-50 leaderboard players; not GAC battle usage.",
+        "uniqueLeaderboardPlayers": len(requests),
+        "uniqueProfilesFetched": fetched,
+        "uniqueProfilesFailed": failed,
+        "cohorts": list(cohorts.values()),
+        "limitations": [
+            "A roster unit being unlocked or geared does not mean it was used in GAC.",
+            "This aggregate contains no defensive placement, attack selection, battle result, or counter success data.",
+            "Only players appearing on the official top-50 league/division boards are included.",
+            "Raw player profiles, player IDs, ally codes, and player names are not published in this aggregate.",
+        ],
+    }
+
+
 def build() -> dict:
     boards = []
     for league, league_id in LEAGUES.items():
@@ -177,6 +291,13 @@ def build() -> dict:
             })
             print(f"Collected official GAC top-50: {league}/{division}")
             time.sleep(0.2)
+
+    competitive_roster_meta = collect_competitive_roster_meta(boards)
+    print(
+        "Collected public profiles for "
+        f"{competitive_roster_meta['uniqueProfilesFetched']}/"
+        f"{competitive_roster_meta['uniqueLeaderboardPlayers']} unique top-50 players."
+    )
 
     events_response = request_json("getEvents", {"enums": False})
     event = current_gac_event(events_response)
@@ -205,6 +326,7 @@ def build() -> dict:
             "bracketPlayersCollected": bracket_players,
         },
         "activeEvent": event,
+        "competitiveRosterMeta": competitive_roster_meta,
         "limitations": [
             "Type 6 contains the official top-50 leaderboard for each league and division.",
             "Type 4 contains active-season bracket membership and leaderboard fields only.",
