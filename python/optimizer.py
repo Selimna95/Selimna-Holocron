@@ -12,6 +12,7 @@ Important:
 import json
 import re
 import os
+import unicodedata
 try:
     from importer import diagnostic_log
 except Exception:
@@ -44,6 +45,47 @@ def to_float(value, default=0.0):
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def _normalize_profile_identity(value):
+    """Normalize SWGOH unit ids/names for safe profile matching."""
+    text = unicodedata.normalize("NFKD", str(value or "").casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]", "", text)
+
+
+def resolve_character_base_stats(profiles, base_id="", name=""):
+    """Resolve base stats by base id first, then an unambiguous normalized name."""
+    if not isinstance(profiles, dict):
+        return {}
+    wanted_id = _normalize_profile_identity(base_id)
+    wanted_name = _normalize_profile_identity(name)
+
+    if wanted_id:
+        direct = profiles.get(str(base_id or "").strip().upper())
+        if isinstance(direct, dict) and isinstance(direct.get("base_stats"), dict) and direct["base_stats"]:
+            return direct["base_stats"]
+        id_matches = [
+            profile for profile in profiles.values()
+            if isinstance(profile, dict)
+            and _normalize_profile_identity(profile.get("base_id")) == wanted_id
+            and isinstance(profile.get("base_stats"), dict)
+            and profile["base_stats"]
+        ]
+        if len(id_matches) == 1:
+            return id_matches[0]["base_stats"]
+
+    if wanted_name:
+        name_matches = [
+            profile for profile in profiles.values()
+            if isinstance(profile, dict)
+            and _normalize_profile_identity(profile.get("name") or profile.get("character")) == wanted_name
+            and isinstance(profile.get("base_stats"), dict)
+            and profile["base_stats"]
+        ]
+        if len(name_matches) == 1:
+            return name_matches[0]["base_stats"]
+    return {}
 
 
 def normalize_slot(slot):
