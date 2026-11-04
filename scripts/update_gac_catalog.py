@@ -120,21 +120,6 @@ def discover_previous_season(html: str, current: int) -> int:
     return max(found) if found else current - 2
 
 
-def discover_previous_season(html: str, current: int) -> int:
-    parser = TreeParser()
-    parser.feed(html)
-    found = set()
-    for node in parser.root.walk():
-        href = node.attrs.get("href", "")
-        query = parse_qs(urlparse(href).query)
-        for value in query.get("season", []):
-            if value.isdigit() and int(value) < current:
-                found.add(int(value))
-    found.update(int(value) for value in re.findall(r"[?&]season=(\d+)", html) if int(value) < current)
-    # The game alternates 5v5 and 3v3 seasons; Reader can omit selector links.
-    return max(found) if found else current - 2
-
-
 def is_character_image(node: Node) -> bool:
     if node.tag != "img":
         return False
