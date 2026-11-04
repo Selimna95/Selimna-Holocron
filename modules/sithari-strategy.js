@@ -18,6 +18,30 @@ function ssBuildSnapshot(){
  }
  return {nodes,inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:new Set(nodes.map(n=>n.owner)).size};
 }
+function ssSecondaryCoverage(mod,profile){
+ const priorities=Object.keys(profile?.secondary_focus||{});
+ if(!priorities.length)return 0;
+ const values=sithariModSecondaryMap(mod);
+ return priorities.reduce((count,stat)=>count+(Number(values[sithariStatKey(stat)]||0)>0?1:0),0)/priorities.length;
+}
+function ssCyclePreservesSpeed(items){
+ const replacements=new Map();
+ for(const edge of items){
+  const key=edge.target.owner;
+  if(!replacements.has(key))replacements.set(key,{character:edge.target.character,mods:sithariCharacterMods(edge.target.character).slice()});
+  const entry=replacements.get(key),slot=edge.target.slot;
+  entry.mods=entry.mods.filter(mod=>ssSlot(mod)!==slot);
+  entry.mods.push(edge.source.mod);
+ }
+ for(const entry of replacements.values()){
+  const before=sithariProjectedSpeed(entry.character,sithariCharacterMods(entry.character));
+  const after=sithariProjectedSpeed(entry.character,entry.mods);
+  if(before.baseSpeed>0&&after.total+1e-9<before.total)return false;
+  if(before.baseSpeed<=0&&after.modSpeed+1e-9<before.modSpeed)return false;
+  if(before.baseSpeed<=0&&before.speedSetPieces>=4&&after.speedSetPieces<4)return false;
+ }
+ return true;
+}
 function ssBuildEdges(snapshot){
  const bySlot=new Map();for(const n of snapshot.nodes){if(!bySlot.has(n.slot))bySlot.set(n.slot,[]);bySlot.get(n.slot).push(n);}
  const edges=new Map();let setCandidates=0,primaryCandidates=0;
@@ -27,8 +51,8 @@ function ssBuildEdges(snapshot){
   setCandidates+=setPool.length;
   const primaryPool=setPool.filter(source=>sithariPrimaryMatch(source.mod,target.profile,target.slot));
   primaryCandidates+=primaryPool.length;
-  const ranked=primaryPool.map(source=>({target,source,secondary:sithariSecondaryScore(source.mod,target.profile),speed:modTotalSpeed(source.mod)}))
-   .sort((a,b)=>b.secondary-a.secondary||b.speed-a.speed).slice(0,8);
+  const ranked=primaryPool.map(source=>({target,source,secondary:ssSecondaryCoverage(source.mod,target.profile),kyber:sithariSecondaryScore(source.mod,target.profile),speed:modTotalSpeed(source.mod)}))
+   .sort((a,b)=>b.secondary-a.secondary||b.kyber-a.kyber||b.speed-a.speed);
   edges.set(target.key,ranked);
  }
  return {edges,setCandidates,primaryCandidates};
@@ -42,7 +66,7 @@ function ssFindCycles(edges){
     const next=edge.source.key;
     if(next===start&&path.length>=1){
      const cycle=[...path,edge],sig=cycle.map(x=>x.target.key).sort().join('|');
-     if(!found.has(sig))found.set(sig,cycle);continue;
+     if(ssCyclePreservesSpeed(cycle)&&!found.has(sig))found.set(sig,cycle);continue;
     }
     if(used.has(next)||next<start)continue;
     const nextUsed=new Set(used);nextUsed.add(next);walk(next,[...path,edge],nextUsed);
@@ -51,7 +75,7 @@ function ssFindCycles(edges){
  }
  return [...found.values()].map(items=>({items,length:items.length,
   secondary:items.reduce((s,x)=>s+x.secondary,0)/items.length,
-  kyberFit:items.reduce((s,x)=>s+sithariSecondaryScore(x.source.mod,x.target.profile),0)/items.length,
+  kyberFit:items.reduce((s,x)=>s+x.kyber,0)/items.length,
   speed:items.reduce((s,x)=>s+x.speed,0)
  })).filter(cycle=>cycle.items.some(edge=>edge.target.needsWork)).sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed).slice(0,30);
 }
@@ -60,7 +84,7 @@ function ssRender(snapshot,result,message){
  const needs=snapshot.nodes.filter(n=>n.needsWork),setBad=needs.filter(n=>!n.setOk).length,primaryBad=needs.filter(n=>!n.primaryOk).length;
  const rows=result.cycles.map((cycle,i)=>{
   const moves=cycle.items.map(e=>'<div class="ss-move"><span>'+ssEsc(e.source.name)+'</span><i>→</i><b>'+ssEsc(e.target.name)+'</b><small>'+ssEsc(e.source.mod.set_name||'Set ?')+' · '+ssEsc(e.source.mod.primary_stat||'Primaire ?')+' · '+num(modTotalSpeed(e.source.mod))+' vit.</small></div>').join('');
-  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(i+1).padStart(2,'0')+'</b><span>'+cycle.length+' personnages</span><strong>Kyber '+Math.round(cycle.kyberFit*100)+'%</strong></header>'+moves+'<footer>Secondaires : '+Math.round(cycle.secondary*100)+'% · Vitesse des mods transférés : '+num(cycle.speed)+'</footer></article>';
+  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(i+1).padStart(2,'0')+'</b><span>'+cycle.length+' personnages</span><strong>Kyber '+Math.round(cycle.kyberFit*100)+'%</strong></header>'+moves+'<footer>Couverture secondaires : '+Math.round(cycle.secondary*100)+'% · Référence Kyber : '+Math.round(cycle.kyberFit*100)+'% · Vitesse mods : '+num(cycle.speed)+'</footer></article>';
  }).join('');
  root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>ANALYSE CUMULATIVE DU ROSTER</h3><p>Un inventaire unique. Chaque filtre affine les possibilités conservées par le précédent.</p></div><button id="ss-run" type="button" '+(sithariStrategyBusy?'disabled':'')+'>'+(sithariStrategyBusy?'ANALYSE EN COURS…':'LANCER L’ANALYSE')+'</button></header>'+
  '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>PERSONNAGES</span></div><div><b>'+snapshot.inventory.length+'</b><span>MODS</span></div><div><b>'+needs.length+'</b><span>SLOTS À AMÉLIORER</span></div><div><b>'+result.cycles.length+'</b><span>PERMUTATIONS</span></div></div>'+
@@ -85,6 +109,12 @@ async function ssRun(){
  const secondaryCandidates=[...built.edges.values()].reduce((n,a)=>n+a.length,0);
  sithariStrategySnapshot=snapshot;sithariStrategyBusy=false;
  ssRender(snapshot,{...built,secondaryCandidates,cycles},'Analyse terminée : '+snapshot.profiledCount+' personnages avec référence Kyber exploitable sur '+snapshot.rosterCount+'.');
+ }catch(error){
+  sithariStrategyBusy=false;
+  const root=document.getElementById('sithariStrategy');
+  if(root){const status=root.querySelector('.ss-status');if(status)status.textContent='Analyse interrompue : '+String(error?.message||error);}
+  console.error('Sith’ari strategy:',error);
+ }
 }
 function renderSithariStrategy(){
  const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
