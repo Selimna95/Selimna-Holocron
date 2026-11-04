@@ -7,7 +7,7 @@ Le catalogue des compositions défensives est collecté automatiquement depuis l
 - Source : classements « GAC 5v5 Squad Defense » et « GAC 3v3 Squad Defense ».
 - Couverture visée : cinq ligues (Kyber, Aurodium, Chromium, Bronzium, Carbonite), deux formats et les deux dernières saisons disponibles de chaque format.
 - Données conservées par composition : cinq ou trois personnages complets, rang source, nombre de combats, taux de tenue, ligue, format, saison et lien source.
-- Validation : au moins huit compositions complètes par vue. Si une page est inaccessible, si le format/les personnages sont incomplets ou si le nombre minimal n'est pas atteint, le snapshot précédent est conservé et le workflow échoue.
+- Validation du collecteur automatisé : au moins huit compositions complètes par vue. Si une page est inaccessible, si le format/les personnages sont incomplets ou si le nombre minimal n'est pas atteint, le snapshot précédent est conservé et le workflow échoue. Le snapshot initial ci-dessus est un relevé partiel extrait des pages publiques indexées, chaque ligne conserve son URL source et ses statistiques publiées.
 - Publication : GitHub Actions ajoute explicitement le fichier généré avant de vérifier les différences Git, puis le publie dans `blue-gac/gac-catalog.json`.
 
 Le workflow **Refresh public GAC defense catalogue** est déclenché par les changements du collecteur et s'exécute également chaque jour à 05 h 35 UTC. Il peut aussi être lancé manuellement depuis GitHub Actions.
