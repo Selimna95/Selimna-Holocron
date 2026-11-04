@@ -4,10 +4,10 @@ Cette filière est indépendante de la collecte SWGOH.GG. Elle lance temporairem
 
 ## Automatisation
 
-Le workflow \`Refresh official GAC leaderboards\` s'exécute chaque jour à 05:20 UTC et peut aussi être lancé manuellement depuis GitHub Actions. Il démarre un conteneur Comlink éphémère, collecte les 25 combinaisons (5 ligues × 5 divisions), puis publie :
+Le workflow `Refresh official GAC leaderboards` s'exécute chaque jour à 05:20 UTC et peut aussi être lancé manuellement depuis GitHub Actions. Il démarre un conteneur Comlink éphémère, collecte les 25 combinaisons (5 ligues × 5 divisions), puis publie :
 
-- \`gac-official-leaderboards.json\`
-- \`gac-official-leaderboards.js\`
+- `gac-official-leaderboards.json`
+- `gac-official-leaderboards.js`
 
 Aucune clé SWGOH.GG ni manipulation du joueur n'est nécessaire.
 
