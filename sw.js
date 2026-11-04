@@ -1,6 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
-const CACHE_NAME = 'holocron-static-v4.3.2-seigneur-base-stats';
+const CACHE_NAME = 'holocron-static-v4.3.3-seigneur-speed-floor';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -19,15 +19,15 @@ const STATIC_ASSETS = [
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.5.0-browser-import',
   './modules/seigneur-gac.js?v=1.1.0-history-fallback',
-  './modules/core.js?v=4.2.2-seigneur-base-stats',
+  './modules/core.js?v=4.2.3-seigneur-speed-floor',
   './modules/acolyte.js?v=3.4.5-candidate-score',
   './modules/disciple.js?v=3.5.2-ranked-candidates',
-  './modules/seigneur.js?v=3.9.1-terrestrial-fallback',
+  './modules/seigneur.js?v=3.9.2-speed-safe-search',
   './modules/seigneur-impact.js?v=1.0.0-roster-impact',
   './modules/sithari.js?v=4.1.6-owner-resolver',
   './modules/runtime.js?v=3.7.0-sith-portraits',
-  './optimizer-worker.mjs?v=3.5.1-seigneur-base-stats',
-  './python/optimizer.py?v=3.5.1-seigneur-base-stats',
+  './optimizer-worker.mjs?v=3.5.2-seigneur-speed-floor',
+  './python/optimizer.py?v=3.5.1-seigneur-speed-floor',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
