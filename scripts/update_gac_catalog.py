@@ -340,7 +340,10 @@ def refresh() -> dict:
                         print(f"Skipping {fmt} {league} S{season}: HTML={html_error}; Reader text={markdown_error}")
                         continue
                 all_teams.extend(parsed)
-                available_seasons.append(season)
+                # An empty current-season view is still recorded in currentSeasons,
+                # but it must not consume one of the two historical data slots.
+                if parsed:
+                    available_seasons.append(season)
                 if len(available_seasons) >= 2:
                     break
             seasons_by_format[fmt][league] = available_seasons
