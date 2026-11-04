@@ -317,6 +317,10 @@ try {
   await page.locator('[data-access="Padawan"]').click();
   await page.locator("#padawanView").waitFor({ state: "visible" });
   assert.equal(await page.locator("#teamResults").count(), 1, "The Padawan result area must be present.");
+  await page.locator("#runCatalogAudit").click();
+  await page.locator("#catalogAuditPanel").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#auditSignals").count(), 1, "The strategic statistical audit must render.");
+  assert.match(await page.locator("#auditSignals").textContent(), /comparables|données/i);
   assert.match(await page.locator("#padawanStatus").textContent(), /catalogue dynamique|compositions observées|équipes défensives retenues|classement actuel/i);
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
