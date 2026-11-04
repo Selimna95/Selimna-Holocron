@@ -25,7 +25,8 @@ class ComlinkGacCollectorTests(unittest.TestCase):
 
     def test_all_empty_leaderboards_are_rejected_before_publication(self):
         with patch.object(MODULE, "request_json", side_effect=[
-            {"player": []} for _ in range(25)
+            *[{"player": []} for _ in range(25)],
+            {"gameEvent": []},
         ]), patch.object(MODULE.time, "sleep"):
             with self.assertRaisesRegex(RuntimeError, "zero player entries"):
                 MODULE.build()
@@ -57,6 +58,17 @@ class ComlinkGacCollectorTests(unittest.TestCase):
 
     def test_no_current_gac_event_is_explicit(self):
         self.assertIsNone(MODULE.current_gac_event({"gameEvent": [{"type": 1}]}))
+
+    def test_scheduled_but_not_active_gac_event_is_not_selected(self):
+        event = {
+            "type": 10,
+            "id": "FUTURE_SEASON",
+            "startTime": "1893456000000",
+            "endTime": "1893542400000",
+            "instance": [{"id": "O1893456000000"}],
+        }
+        with patch.object(MODULE.time, "time", return_value=1800000000):
+            self.assertIsNone(MODULE.current_gac_event({"gameEvent": [event]}))
 
     def test_bracket_boundary_uses_exponential_then_binary_probe(self):
         def fake_fetch(event_id, league, index):
