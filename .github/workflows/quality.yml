@@ -31,7 +31,8 @@ jobs:
       - run: node --check modules/runtime.js
       - run: node --check optimizer-worker.mjs
       - run: node --check blue-gac/blue-gac.js
-      - run: node --check tests/browser_smoke.mjs\n      - run: node --check tools/gac-collector.js
+      - run: node --check tests/browser_smoke.mjs
+      - run: node --check tools/gac-collector.js
       - run: node tests/mod_engine_regression.mjs
 
   browser-smoke:
