@@ -107,9 +107,10 @@ assert.match(terrestrialOnly.reason,/terrestre uniquement/);
 
 context.seigneurCharacterFleetUsage=()=>({uses:null,known:false,shipCount:1,reason:'Utilisation GAC du vaisseau indisponible'});
 const mappedPilotButMissingFleet=context.seigneurDonorPriority({baseId:'DONOR'});
-assert.equal(mappedPilotButMissingFleet.known,true,
-  'Terrestrial ranking remains available while fleet exposure is explicitly unverified');
+assert.equal(mappedPilotButMissingFleet.known,false,
+  'A pilot with a known ship association but missing ship usage must remain protected');
 assert.equal(mappedPilotButMissingFleet.fleetKnown,false);
+assert.match(mappedPilotButMissingFleet.reason,/Pilote identifié/);
 
 context.seigneurCharacterGacUsage=()=>null;
 const noLandEvidence=context.seigneurDonorPriority({baseId:'UNKNOWN'});
