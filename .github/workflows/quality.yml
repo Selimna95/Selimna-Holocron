@@ -28,6 +28,9 @@ jobs:
       - run: node --check modules/disciple.js
       - run: node --check modules/seigneur.js
       - run: node --check modules/seigneur-gac.js
+      - run: node --check modules/seigneur-impact.js
+      - run: node --check tests/seigneur_impact.test.mjs
+      - run: node tests/seigneur_impact.test.mjs
       - run: node tests/seigneur_gac_bridge.test.mjs
       - run: node --check modules/sithari.js
       - run: node --check modules/runtime.js
