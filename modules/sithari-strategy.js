@@ -57,27 +57,44 @@ function ssBuildEdges(snapshot){
  }
  return {edges,setCandidates,primaryCandidates};
 }
-function ssFindCycles(edges){
+async function ssFindCycles(edges){
+ // Exploration volontairement bornée : le graphe d'un grand roster est dense.
+ // On garde les meilleurs donneurs par slot et on cède régulièrement la main au navigateur.
  const found=new Map(),starts=[...edges.keys()].sort(),maxLength=4;
+ const MAX_EDGES_PER_SLOT=10,MAX_EXPANSIONS=24000,MAX_CLOSED_CYCLES=1800,YIELD_EVERY=240;
+ let expansions=0,closedCycles=0,exhausted=false;
+ const yieldToBrowser=()=>new Promise(resolve=>setTimeout(resolve,0));
  for(const start of starts){
-  const walk=(at,path,used)=>{
-   if(path.length>=maxLength)return;
-   for(const edge of edges.get(at)||[]){
+  if(exhausted)break;
+  const walk=async(at,path,used)=>{
+   if(exhausted||path.length>=maxLength)return;
+   const candidates=(edges.get(at)||[]).slice(0,MAX_EDGES_PER_SLOT);
+   for(const edge of candidates){
+    if(exhausted)return;
+    expansions++;
+    if(expansions>=MAX_EXPANSIONS){exhausted=true;return;}
+    if(expansions%YIELD_EVERY===0)await yieldToBrowser();
     const next=edge.source.key;
     if(next===start&&path.length>=1){
+     closedCycles++;
      const cycle=[...path,edge],sig=cycle.map(x=>x.target.key).sort().join('|');
-     if(ssCyclePreservesSpeed(cycle)&&!found.has(sig))found.set(sig,cycle);continue;
+     if(closedCycles<=MAX_CLOSED_CYCLES&& !found.has(sig) && ssCyclePreservesSpeed(cycle))found.set(sig,cycle);
+     if(closedCycles>=MAX_CLOSED_CYCLES){exhausted=true;return;}
+     continue;
     }
     if(used.has(next)||next<start)continue;
-    const nextUsed=new Set(used);nextUsed.add(next);walk(next,[...path,edge],nextUsed);
+    const nextUsed=new Set(used);nextUsed.add(next);
+    await walk(next,[...path,edge],nextUsed);
    }
-  };walk(start,[],new Set([start]));
+  };
+  await walk(start,[],new Set([start]));
  }
- return [...found.values()].map(items=>({items,length:items.length,
+ const cycles=[...found.values()].map(items=>({items,length:items.length,
   secondary:items.reduce((s,x)=>s+x.secondary,0)/items.length,
   kyberFit:items.reduce((s,x)=>s+x.kyber,0)/items.length,
   speed:items.reduce((s,x)=>s+x.speed,0)
  })).filter(cycle=>cycle.items.some(edge=>edge.target.needsWork)).sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed).slice(0,30);
+ return {cycles,expansions,closedCycles,exhausted};
 }
 function ssRender(snapshot,result,message){
  const root=document.getElementById('sithariStrategy');if(!root)return;
@@ -108,10 +125,10 @@ async function ssRun(){
    done++;const status=document.querySelector('#sithariStrategy .ss-status');if(status)status.textContent='Références examinées : '+done+' / '+people.length;
   }
  }));
- const snapshot=ssBuildSnapshot(),built=ssBuildEdges(snapshot),cycles=ssFindCycles(built.edges);
+ const snapshot=ssBuildSnapshot(),built=ssBuildEdges(snapshot),search=await ssFindCycles(built.edges),cycles=search.cycles;
  const secondaryCandidates=[...built.edges.values()].reduce((n,a)=>n+a.length,0);
  sithariStrategySnapshot=snapshot;sithariStrategyBusy=false;
- ssRender(snapshot,{...built,secondaryCandidates,cycles},'Analyse terminée : '+snapshot.profiledCount+' personnages avec référence Kyber exploitable sur '+snapshot.rosterCount+'.');
+ ssRender(snapshot,{...built,secondaryCandidates,cycles},'Analyse terminée : '+snapshot.profiledCount+' personnages avec référence Kyber exploitable sur '+snapshot.rosterCount+'. '+(search.exhausted?'Exploration plafonnée pour préserver le navigateur. ':'')+search.expansions+' étapes examinées.');
  }catch(error){
   sithariStrategyBusy=false;
   const root=document.getElementById('sithariStrategy');
