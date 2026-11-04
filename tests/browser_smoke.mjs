@@ -43,6 +43,23 @@ try {
   await page.locator("#gateActivate").waitFor({ state: "visible" });
   assert.match(await page.title(), /Selimna’s Holocron/);
 
+  // Seigneur's bridge must load the live blue-GAC catalog as a defence-only
+  // fallback when the full unit/fleet usage snapshot is empty.
+  const gacBridge = await page.evaluate(async () => {
+    const data = await window.__SWGOH_GAC_USAGE_READY__;
+    return {
+      sourceStatus: data?.sourceStatus,
+      evidenceType: data?.evidenceType,
+      seasons: data?.currentSeasons,
+      priorityHelper: typeof window.holocronGacPriorityForCharacter,
+    };
+  });
+  assert.equal(gacBridge.sourceStatus, "partial");
+  assert.equal(gacBridge.evidenceType, "defense-composition");
+  assert.deepEqual(gacBridge.seasons, { "5v5": 84, "3v3": 83 });
+  assert.equal(gacBridge.priorityHelper, "function");
+
+
   // Exercise the real navigation handler without requiring an account login.
   await page.evaluate(() => {
     document.querySelector("#holocronGate").style.display = "none";
