@@ -201,7 +201,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithari-strategy.css?v=1.0.1-roster-synthesis", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.1-roster-synthesis", self.sw)
         self.assertIn("modules/sithari-strategy.js?v=1.0.0-cumulative-pipeline", self.sw)
-        self.assertIn("holocron-static-v4.3.7-sithari-cumulative", self.sw)
+        self.assertIn("holocron-static-v4.3.8-sithari-roster-synthesis", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
