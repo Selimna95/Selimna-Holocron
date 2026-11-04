@@ -104,8 +104,8 @@ for(var missingIndex=candidates.length+1;missingIndex<=required;missingIndex++)a
 
 
 function renderCatalogAudit(){
- var panel=document.getElementById('catalogAuditPanel'),summary=document.getElementById('auditSummary'),checks=document.getElementById('auditChecks'),coverage=document.getElementById('auditCoverage');
- panel.hidden=false;checks.innerHTML='';coverage.innerHTML='';
+ var panel=document.getElementById('catalogAuditPanel'),summary=document.getElementById('auditSummary'),checks=document.getElementById('auditChecks'),coverage=document.getElementById('auditCoverage'),signals=document.getElementById('auditSignals');
+ panel.hidden=false;checks.innerHTML='';coverage.innerHTML='';signals.innerHTML='';
  if(!catalogReady||catalogError||!catalogMeta){summary.textContent='Audit impossible';checks.textContent='Le catalogue doit être chargé avant de lancer l’audit.';return;}
  var report=window.GACAudit.auditCatalog(catalogMeta,parseRoster());
  summary.textContent=report.errors+' anomalie(s) · '+report.warnings+' avertissement(s) · '+report.teamCount+' compositions';
@@ -115,6 +115,25 @@ function renderCatalogAudit(){
  }else{
   ['3v3','5v5'].forEach(function(fmt){['Kyber','Aurodium','Chromium','Bronzium','Carbonite'].forEach(function(league){var row=document.createElement('div');row.className='audit-coverage-row';var count=(catalogMeta.coverage&&catalogMeta.coverage[fmt]&&catalogMeta.coverage[fmt][league.toLowerCase()])||0;row.textContent=fmt+' · '+league+' : '+count+' composition(s) dans le catalogue · simulation roster indisponible';coverage.appendChild(row);});});
  }
+ var analysis=window.GACAudit.analyzePerformance(catalogMeta),ranked=analysis.items.filter(function(x){return x.delta!==null&&x.confidence!=='limitée';});
+ var positive=ranked.slice().sort(function(a,b){return b.delta-a.delta;}).slice(0,5);
+ var negative=ranked.slice().sort(function(a,b){return a.delta-b.delta;}).slice(0,5);
+ function appendSignal(title,items){
+  var block=document.createElement('div');block.className='audit-signal-group';
+  var heading=document.createElement('h4');heading.textContent=title;block.appendChild(heading);
+  if(!items.length){var empty=document.createElement('p');empty.textContent='Pas assez de données comparables avec une précision suffisante.';block.appendChild(empty);}
+  items.forEach(function(item){
+   var row=document.createElement('article');row.className='audit-signal';
+   var name=document.createElement('strong');name.textContent=item.name;row.appendChild(name);
+   var delta=document.createElement('span');delta.className=item.delta>=0?'positive':'negative';delta.textContent=(item.delta>0?'+':'')+item.delta.toFixed(1)+' pts vs pairs';row.appendChild(delta);
+   var detail=document.createElement('small');detail.textContent=item.format+' · '+item.league+' · S'+item.season+' · tenue '+item.hold.toFixed(1)+' % · '+item.battles.toLocaleString('fr-FR')+' combats · marge 95 % ±'+item.interval.margin.toFixed(1)+' pts · confiance '+item.confidence;row.appendChild(detail);
+   var source=document.createElement('a');source.href=item.source;source.target='_blank';source.rel='noopener';source.textContent='Source SWGOH.GG ↗';row.appendChild(source);block.appendChild(row);
+  });
+  signals.appendChild(block);
+ }
+ appendSignal('SIGNAUX POSITIFS · AU-DESSUS DES COMPOSITIONS COMPARABLES',positive);
+ appendSignal('SIGNAUX À SURVEILLER · EN DESSOUS DES COMPOSITIONS COMPARABLES',negative);
+ var limitation=document.createElement('p');limitation.className='audit-disclaimer';limitation.textContent='Comparaison pondérée par le nombre de combats, uniquement dans le même format, la même ligue et la même saison. La marge à 95 % estime l’incertitude du taux observé. Ce signal ne démontre pas une synergie, ne corrige pas les différences de datacrons ou de reliques et ne prédit pas une victoire.';signals.appendChild(limitation);
 }
 document.getElementById('runCatalogAudit').addEventListener('click',function(){var panel=document.getElementById('catalogAuditPanel');var opening=panel.hidden;if(opening)renderCatalogAudit();else panel.hidden=true;this.setAttribute('aria-expanded',String(opening));});
 
