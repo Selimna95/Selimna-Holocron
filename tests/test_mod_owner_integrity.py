@@ -12,6 +12,7 @@ class ModOwnerIntegrityTests(unittest.TestCase):
         cls.disciple = (ROOT / "modules/disciple.js").read_text(encoding="utf-8")
         cls.acolyte = (ROOT / "modules/acolyte.js").read_text(encoding="utf-8")
         cls.seigneur = (ROOT / "modules/seigneur.js").read_text(encoding="utf-8")
+        cls.seigneur_impact = (ROOT / "modules/seigneur-impact.js").read_text(encoding="utf-8")
         cls.sithari = (ROOT / "modules/sithari.js").read_text(encoding="utf-8")
 
     def test_core_prefers_unique_base_id_when_display_name_collides(self):
@@ -57,6 +58,15 @@ class ModOwnerIntegrityTests(unittest.TestCase):
         self.assertIn("resolveModOwnerKey(mod)", self.disciple)
         self.assertIn("resolveModOwnerKey(m,ownerResolver)", self.disciple)
         self.assertIn("ownerKey===selectedOwnerKey", self.disciple)
+
+    def test_seigneur_six_mod_builds_keep_target_speed_and_report_roster_impact(self):
+        self.assertIn("safeBuilds=builds.filter(row=>forgeBuildPreservesSpeed", self.seigneur)
+        self.assertIn("vitesse totale du personnage cible ne peut pas diminuer", self.seigneur)
+        self.assertIn("function forgeBuildPreservesSpeed", self.seigneur_impact)
+        self.assertIn("function forgeBuildGlobalImpact", self.seigneur_impact)
+        self.assertIn("statusWorsened", self.seigneur_impact)
+        self.assertIn("priorityGap", self.seigneur_impact)
+        self.assertIn("BILAN GLOBAL DU TRANSFERT", self.seigneur_impact)
 
     def test_speed_set_bonus_is_counted_when_base_speed_is_known(self):
         self.assertIn("beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet", self.seigneur)
