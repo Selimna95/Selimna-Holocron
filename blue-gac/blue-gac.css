@@ -82,7 +82,7 @@ body{font-size:14px;line-height:1.55}small{font-size:max(11px,.82em)}
 button,a{touch-action:manipulation}:focus-visible{outline:2px solid #dff6ff!important;outline-offset:3px}
 @media(max-width:640px){.brand,.back,.kicker,.progress,.view-title,.eyebrow,.team-stats{font-size:11px}.subtitle,.mode p,.team-members,.empty-state,.team-reason{font-size:13px}}
 
-/* V4.1.3 — audit lisible du catalogue et simulation roster. */
+/* V4.1.4 — audit statistique enrichi du catalogue et simulation roster. */
 .audit-panel{margin:22px 0;padding:20px;border:1px solid #315b79;background:linear-gradient(145deg,#0b2032,#07111d)}
 .audit-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .audit-heading h3,.audit-subtitle{margin:0;color:#e5f6ff;font:500 16px Georgia,serif;letter-spacing:.06em}
@@ -100,3 +100,14 @@ button,a{touch-action:manipulation}:focus-visible{outline:2px solid #dff6ff!impo
 .audit-coverage-row small{grid-column:1/-1;color:#8ca8bc;font-size:10px;line-height:1.5}
 .audit-disclaimer{margin:16px 0 0;color:#8ca8bc;font-size:10px;line-height:1.6}
 @media(max-width:640px){.audit-checks,.audit-coverage{grid-template-columns:1fr}.audit-panel{padding:13px}.audit-check>strong{min-width:68px}}
+
+.audit-signals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.audit-signal-group{padding:12px;background:#091827;border:1px solid #29465d;min-width:0}
+.audit-signal-group h4{margin:0 0 10px;color:#cfeeff;font-size:10px;letter-spacing:.08em;line-height:1.5}
+.audit-signal{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:9px 0;border-top:1px solid #1e3548}
+.audit-signal strong{font-size:11px;color:#e7f5ff;overflow-wrap:anywhere}
+.audit-signal>span{font-size:11px;font-weight:700;white-space:nowrap}
+.audit-signal .positive{color:#8ed6b1}.audit-signal .negative{color:#ffaaaa}
+.audit-signal small{grid-column:1/-1;color:#8ca8bc;font-size:10px;line-height:1.5}
+.audit-signal a{grid-column:1/-1;color:#9fdcff;font-size:10px;text-decoration:none}
+@media(max-width:640px){.audit-signals{grid-template-columns:1fr}}
