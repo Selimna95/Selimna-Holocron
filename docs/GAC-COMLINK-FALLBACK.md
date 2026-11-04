@@ -1,20 +1,31 @@
 # Collecte GAC officielle sans clé SWGOH.GG
 
-Cette filière est indépendante de la collecte SWGOH.GG. Elle lance temporairement SWGOH Comlink dans GitHub Actions, puis interroge l'API publique du jeu pour récupérer les classements GAC par ligue et division.
+Cette filière indépendante utilise SWGOH Comlink dans un conteneur temporaire GitHub Actions. Elle interroge les API officielles du jeu accessibles sans clé SWGOH.GG.
 
-## Automatisation
+## Données collectées
 
-Le workflow `Refresh official GAC leaderboards` s'exécute chaque jour à 05:20 UTC et peut aussi être lancé manuellement depuis GitHub Actions. Il démarre un conteneur Comlink éphémère, collecte les 25 combinaisons (5 ligues × 5 divisions), puis publie :
+1. **Classements top 50** : les 5 ligues × 5 divisions, via \`getLeaderboard\` avec \`leaderboardType: 6\`.
+2. **Groupes de la saison GAC active** : les joueurs de chaque bracket et leurs informations de classement, via \`getEvents\` puis \`getLeaderboard\` avec \`leaderboardType: 4\`.
+3. **Découverte des brackets** : recherche exponentielle puis dichotomique de la dernière position de bracket, selon l'algorithme du client Python Comlink maintenu par swgoh-utils. Les brackets ne sont accessibles que pendant un événement GAC actif et peuvent apparaître progressivement.
 
-- `gac-official-leaderboards.json`
-- `gac-official-leaderboards.js`
+Le workflow \`Refresh official GAC leaderboards\` s'exécute quotidiennement à 05:20 UTC et peut être déclenché manuellement dans GitHub Actions. Il génère :
 
-Aucune clé SWGOH.GG ni manipulation du joueur n'est nécessaire.
+- \`gac-official-leaderboards.json\`
+- \`gac-official-leaderboards.js\`
+
+Aucune clé API SWGOH.GG ni intervention des joueurs n'est requise.
 
 ## Limite fondamentale
 
-Comlink expose les classements GAC officiels et les brackets pendant les événements. Il ne fournit pas les statistiques de compositions d'équipes, les placements défensifs, les résultats de combats ni les taux de victoire des counters que SWGOH.GG calcule à partir des batailles observées.
+Comlink expose les profils joueurs, événements, classements GAC et groupes de compétition. Les classements/brackets ne contiennent pas l'historique des combats GAC, les équipes réellement posées en défense, les équipes utilisées en attaque ni les taux de victoire des counters.
 
-**Cette base ne doit donc jamais alimenter les scores d'utilisation d'équipes ou les taux de réussite du Padawan.** Elle constitue une source officielle complémentaire (classements et contexte de ligue), pas un remplacement des statistiques SWGOH.GG.
+**Cette base ne doit donc jamais alimenter directement les statistiques d'utilisation d'équipes ou les taux de réussite du Padawan.** Elle peut enrichir le contexte compétitif (ligue, division, rang, participation et profils publics), mais ne remplace pas les données de batailles SWGOH.GG.
 
-La collecte SWGOH.GG reste une filière séparée. Si l'accès API SWGOH.GG demandé est accordé, elle pourra être branchée sans mélanger les deux modèles de données.
+## Fiabilité et publication
+
+- Le collecteur refuse de publier si l'un des 25 classements top 50 est incomplet ou si l'API renvoie une erreur.
+- Les erreurs sur un bracket ne sont pas interprétées comme une fin de liste.
+- Si aucune saison GAC n'est active, les classements top 50 sont conservés et les brackets sont explicitement marqués comme non collectés pour cette exécution.
+- Le résultat conserve les réponses officielles brutes afin de ne pas perdre de champs si le jeu fait évoluer son schéma.
+
+La collecte SWGOH.GG reste séparée. Si l'accès API demandé est accordé, elle pourra compléter cette source sans mélanger les deux modèles de données.
