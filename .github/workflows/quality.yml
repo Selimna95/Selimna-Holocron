@@ -34,6 +34,9 @@ jobs:
       - run: node --check tests/browser_smoke.mjs
       - run: node --check tools/gac-collector.js
       - run: node tests/mod_engine_regression.mjs
+      - run: node --check blue-gac/gac-audit.js
+      - run: node --check tests/gac_audit.test.mjs
+      - run: node tests/gac_audit.test.mjs
 
   browser-smoke:
     runs-on: ubuntu-latest
