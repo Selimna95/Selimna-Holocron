@@ -120,10 +120,29 @@ def current_gac_event(events_response: dict) -> dict | None:
         print("No GAC event is currently inside its advertised start/end window.")
         return None
     else:
-        # Some Comlink builds omit event timestamps. Keep the documented first
-        # instance fallback, but expose that its activity could not be verified.
-        event = candidates[0]
-        selection_reason = "timestamps_unavailable_fallback"
+        # Comlink often omits event-level times. Its instance ID embeds the
+        # scheduled start timestamp (O + Unix milliseconds); never scan a
+        # bracket for a season that has not started yet.
+        eligible = []
+        for event in candidates:
+            instances = event.get("instance", [])
+            first = instances[0] if isinstance(instances, list) and instances else {}
+            instance_id = first.get("id") if isinstance(first, dict) else None
+            timestamp_ms = None
+            if isinstance(instance_id, str) and instance_id.startswith("O"):
+                timestamp_ms = _event_time_ms(instance_id[1:])
+            if timestamp_ms is not None and timestamp_ms > now_ms:
+                print(
+                    f"Skipping scheduled future GAC instance {event.get('id')}:"
+                    f"{instance_id}; starts after this collection."
+                )
+                continue
+            eligible.append(event)
+        if not eligible:
+            print("All advertised GAC instances are scheduled for the future.")
+            return None
+        event = eligible[0]
+        selection_reason = "instance_timestamp_not_in_future"
 
     instances = event.get("instance", [])
     if not isinstance(instances, list) or not instances or not isinstance(instances[0], dict):
