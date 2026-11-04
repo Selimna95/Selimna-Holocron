@@ -102,7 +102,7 @@ json.dumps(r)
     self.postMessage({
       id,
       type: "error",
-      error: error?.stack || error?.message || String(error),
+      error: error?.message || String(error),
     });
   }
 };
