@@ -271,6 +271,12 @@ def fetch(url: str, response_format: str = "html") -> str:
                 if response.status != 200:
                     raise ValueError(f"HTTP {response.status} for {url}")
                 body = response.read().decode("utf-8", errors="replace")
+                if ("Attention Required! | Cloudflare" in body
+                        or "Sorry, you have been blocked" in body
+                        or "Target URL returned error 403: Forbidden" in body):
+                    raise RuntimeError(
+                        f"SWGOH.GG blocked the server-side Reader request with Cloudflare HTTP 403: {url}"
+                    )
                 print(f"Fetched SWGOH.GG projection for {url} ({len(body)} characters)")
                 if not re.search(r"Season\\s+\\d+", body, re.I):
                     print(f"Reader projection has no season heading; preview={body[:500]!r}")
