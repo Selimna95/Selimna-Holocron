@@ -81,3 +81,22 @@ body{font-size:14px;line-height:1.55}small{font-size:max(11px,.82em)}
 .subtitle,.mode p,.team-members,.empty-state,.team-reason{font-size:max(13px,.94em);line-height:1.6}
 button,a{touch-action:manipulation}:focus-visible{outline:2px solid #dff6ff!important;outline-offset:3px}
 @media(max-width:640px){.brand,.back,.kicker,.progress,.view-title,.eyebrow,.team-stats{font-size:11px}.subtitle,.mode p,.team-members,.empty-state,.team-reason{font-size:13px}}
+
+/* V4.1.3 — audit lisible du catalogue et simulation roster. */
+.audit-panel{margin:22px 0;padding:20px;border:1px solid #315b79;background:linear-gradient(145deg,#0b2032,#07111d)}
+.audit-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.audit-heading h3,.audit-subtitle{margin:0;color:#e5f6ff;font:500 16px Georgia,serif;letter-spacing:.06em}
+#auditSummary{color:#9fdcff;font-size:12px}
+.audit-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:16px}
+.audit-check{display:flex;gap:12px;align-items:flex-start;padding:12px;background:#091827;border:1px solid #29465d;min-width:0}
+.audit-check>strong{min-width:76px;font-size:9px;letter-spacing:.1em;color:#9fdcff}
+.audit-check.error{border-color:#874b50}.audit-check.error>strong{color:#ff9b9b}
+.audit-check.warning{border-color:#806e43}.audit-check.warning>strong{color:#e8cf8d}
+.audit-check b{font-size:12px;color:#e7f5ff}.audit-check p{margin:4px 0 0;color:#9db6ca;font-size:11px;line-height:1.5}
+.audit-subtitle{margin-top:22px;font-size:13px}
+.audit-coverage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.audit-coverage-row{display:grid;grid-template-columns:1fr auto;gap:3px 10px;padding:10px;background:#091827;border:1px solid #29465d}
+.audit-coverage-row strong{font-size:11px;color:#dff6ff}.audit-coverage-row span{font-size:11px;color:#9fdcff}
+.audit-coverage-row small{grid-column:1/-1;color:#8ca8bc;font-size:10px;line-height:1.5}
+.audit-disclaimer{margin:16px 0 0;color:#8ca8bc;font-size:10px;line-height:1.6}
+@media(max-width:640px){.audit-checks,.audit-coverage{grid-template-columns:1fr}.audit-panel{padding:13px}.audit-check>strong{min-width:68px}}
