@@ -751,6 +751,43 @@ function renderResults(data,profileOverride=null){
     build.forEach(m=>{const set=String(m.set_name||m.set||'').trim();if(set)setCounts[set]=(setCounts[set]||0)+1;});
     const setSummary=Object.entries(setCounts).map(([set,n])=>`${set} ×${n}`).join(' · ')||'Sets non renseignés';
     const audit=optimizerBuildReferenceAudit(build,profile);
+    const currentMods=getCharacterMods(character);
+    const beforeSpeed=forgeProjectedModSpeed(character,profile,currentMods);
+    const afterSpeed=forgeProjectedModSpeed(character,profile,build);
+    const beforeCharacterSpeed=beforeSpeed.baseSpeed+beforeSpeed.total;
+    const afterCharacterSpeed=afterSpeed.baseSpeed+afterSpeed.total;
+    const totalSpeedDelta=afterCharacterSpeed-beforeCharacterSpeed;
+    const signedSpeed=value=>`${value>0?'+':''}${num(value,1)}`;
+    const modComparisonLine=m=>{
+      if(!m)return 'Aucun mod équipé';
+      const primary=String(m.primary_stat||'Primaire inconnue');
+      const primaryValue=m.primary_value==null?'':` ${num(m.primary_value,1)}${primary.endsWith('%')?'%':''}`;
+      const secondaries=optimizerModSecondaries(m).slice(0,2).join(' · ');
+      return `${String(m.set_name||m.set||'Set inconnu')} · ${primary}${primaryValue} · ${num(modTotalSpeed(m),0)} Vitesse${secondaries?' · '+secondaries:''}`;
+    };
+    const currentBySlot=new Map(currentMods.map(m=>[optimizerSlotKey(m.slot),m]));
+    const slotComparisonMarkup=build.map(m=>{
+      const slot=optimizerSlotKey(m.slot)||String(m.slot||'Slot');
+      const previous=currentBySlot.get(slot);
+      const delta=previous?modTotalSpeed(m)-modTotalSpeed(previous):modTotalSpeed(m);
+      const deltaClass=delta>0?'gain':delta<0?'neutral':'same';
+      const donor=String(m._sourceOwner||m.character||'Inventaire libre');
+      return `<div class="forge-slot-compare">
+        <b class="forge-slot-compare-name">${esc(slot)}</b>
+        <div><small>ACTUEL</small><span>${esc(modComparisonLine(previous))}</span></div>
+        <div><small>PROPOSÉ · ${esc(donor)}</small><span>${esc(modComparisonLine(m))}</span></div>
+        <strong class="${deltaClass}">${previous?signedSpeed(delta):'NOUVEAU'} V</strong>
+      </div>`;
+    }).join('');
+    const speedComparisonMarkup=`<section class="forge-speed-comparison">
+      <div><span>VITESSE TOTALE ESTIMÉE</span><strong>${beforeSpeed.baseSpeed>0?`${num(beforeCharacterSpeed,1)} → ${num(afterCharacterSpeed,1)}`:'Base Speed indisponible'}</strong></div>
+      <b class="${totalSpeedDelta>=0?'gain':'loss'}">${signedSpeed(totalSpeedDelta)} V</b>
+      <small>Bonus du set Speed inclus · aucune baisse autorisée</small>
+    </section>
+    <section class="forge-slot-comparison">
+      <div class="forge-section-title"><span>COMPARAISON DES SIX SLOTS</span><small>Mod équipé → mod proposé · source du transfert</small></div>
+      <div class="forge-slot-compare-grid">${slotComparisonMarkup}</div>
+    </section>`;
     const statsEntries=Object.entries(r.stats||{});
     const featured=['Speed','Health','Protection','Physical Damage','Special Damage','Potency'].filter(k=>Object.prototype.hasOwnProperty.call(r.stats||{},k));
     const featuredStats=featured.map(k=>`<div class="forge-stat featured"><span>${optimizerStatLabel(k)}</span><b>${optimizerStatValue(k,r.stats[k])}</b></div>`).join('');
@@ -773,6 +810,7 @@ function renderResults(data,profileOverride=null){
         <div><span>PRIMAIRES</span><strong>${audit.primaryKnown?`${audit.primaryHits}/${audit.primaryKnown} conformes`:'Référence indisponible'}</strong></div>
         <div><span>SECONDAIRES</span><strong>${audit.secondaryHits} slot${audit.secondaryHits>1?'s':''} avec focus Kyber</strong></div>
       </div>
+      ${speedComparisonMarkup}
       <section class="forge-reasoning-block">
         <div class="forge-section-title"><span>VERDICT DE L’HOLOCRON</span><small>${pareto?'FRONT DE PARETO':'CANDIDAT RETENU'}</small></div>
         <div class="forge-verdict-main ${verdict.kind}"><div class="forge-verdict-mark">${verdict.kind==='strong'?'✓':verdict.kind==='action'?'→':'!'}</div><div><strong>${esc(verdict.title)}</strong><p>${esc(verdict.text)}</p></div></div>
