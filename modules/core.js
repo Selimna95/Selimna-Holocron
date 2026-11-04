@@ -349,7 +349,7 @@ function fillCharacters(names) {
   for(const c of sorted) {
     const name=c.name||c.character||c.baseId||'Inconnu';
     const p=profileForCharacter(c),gac=priorityFor(c);
-    const suffix=gac.known?` · GAC ${num(gac.uses)} combats`:'';
+    const suffix=gac.known?` · ${gac.defenseOnly?'GAC défense':'GAC'} ${num(gac.uses)} combats`:'';
     const o=document.createElement('option'); o.value=name; o.dataset.baseId=c.baseId||c.base_id||'';
     o.dataset.gacUses=gac.known?String(gac.uses):'';
     o.textContent=(p ? `${name}  ★ Profil Kyber` : name)+suffix; select.appendChild(o);
