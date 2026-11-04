@@ -3,7 +3,7 @@
   "source": "SWGOH.GG public GAC tier lists · defense · indexed page extraction",
   "collectionStatus": "partial",
   "collectionMethod": "Initial real-data snapshot extracted from SWGOH.GG's publicly indexed 5v5/3v3 defense tier-list pages. Each row is a complete squad with source rank, hold rate and battle count.",
-  "collectionNote": "Relevé partiel : 5v5 S84 et 3v3 S83 uniquement. Les pages serveur sont bloquées par Cloudflare (403) : 5v5 Chromium et 3v3 Aurodium restent absents. Aucune composition ni statistique n'a été inventée pour ces vues. Les saisons précédentes restent à collecter.",
+  "collectionNote": "Relevé partiel : saison prioritaire S84 en 5v5 et S83 en 3v3. Les compositions de la saison prioritaire sont toujours utilisées avant tout complément historique, même si elles sont peu nombreuses ou absentes pour une ligue. Les pages serveur restent bloquées par Cloudflare (403) : 5v5 Chromium et 3v3 Aurodium restent absents. Aucune composition ni statistique n'a été inventée.",
   "updatedAt": "2026-11-04T09:42:24.508Z",
   "seasons": {
     "5v5": {
@@ -1060,5 +1060,9 @@
       "source": "https://swgoh.gg/tier-list/3v3/?league=carbonite&rank=best&side=defense",
       "note": "S83 · Carbonite · rang source #24 · 78 combats observés"
     }
-  ]
+  ],
+  "currentSeasons": {
+    "5v5": 84,
+    "3v3": 83
+  }
 }
