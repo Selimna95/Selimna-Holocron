@@ -1,5 +1,6 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
+// Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 const CACHE_NAME = 'holocron-static-v4.3.7-sithari-cumulative';
 const STATIC_ASSETS = [
   './',
