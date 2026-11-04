@@ -55,11 +55,12 @@ return [];
 function renderTeams(){
 var results=document.getElementById('teamResults');results.innerHTML='';
 var roster=parseRoster();var status=document.getElementById('padawanStatus');var fmt=state.mode||'5v5';
+function appendCatalogNotice(){if(catalogMeta&&catalogMeta.collectionStatus==='partial'&&catalogMeta.collectionNote){status.textContent+=' '+catalogMeta.collectionNote;}}
 
  if(!catalogReady){status.textContent='Actualisation du catalogue défensif SWGOH.GG…';results.innerHTML='<div class="empty-state">Chargement des données de défense pour les cinq ligues et les deux formats.</div>';return;}
  if(catalogError){status.textContent='Le catalogue défensif ne peut pas être chargé : '+catalogError+'. Aucune ancienne composition ne sera présentée comme actuelle.';results.innerHTML='<div class="empty-state">Source de données momentanément indisponible. Réessaie plus tard.</div>';return;}
  if(!catalogMeta||!publicTeams.length){status.textContent='Le catalogue dynamique est en attente de son premier relevé SWGOH.GG. Aucune composition statique de remplacement ne sera utilisée.';results.innerHTML='<div class="empty-state">Les données seront disponibles après la première actualisation automatique.</div>';return;}
- if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
+ if(!roster.length){status.textContent='Aucune recommandation affichée : le roster synchronisé n’a pas été reconnu.';appendCatalogNotice();results.innerHTML='<div class="empty-state">Roster indisponible ou non reconnu. Charge ton profil dans l’Holocron principal, puis rouvre le Sanctuaire bleu.</div>';return;}
 var rosterSet=new Set(roster);
 var requiredCounts={'5v5':{Kyber:11,Aurodium:9,Chromium:7,Bronzium:5,Carbonite:3},'3v3':{Kyber:15,Aurodium:13,Chromium:10,Bronzium:7,Carbonite:3}};
 var required=(requiredCounts[fmt]&&requiredCounts[fmt][state.tier])||requiredCounts[fmt].Kyber;
@@ -79,16 +80,16 @@ function addUnavailableTeamCard(number){
  results.appendChild(card);
 }
 if(!ranked.length){
- status.textContent='Aucune composition défensive vérifiée n’est disponible pour '+state.tier+' en '+fmt+' dans les deux saisons relevées. Le catalogue est actualisé automatiquement depuis SWGOH.GG ; aucune équipe d’une autre ligue ne sera substituée.';
+ status.textContent='Aucune composition défensive vérifiée n’est disponible pour '+state.tier+' en '+fmt+' dans les saisons collectées. Aucune équipe d’une autre ligue ne sera substituée.';appendCatalogNotice();
  for(var noSourceIndex=1;noSourceIndex<=required;noSourceIndex++)addUnavailableTeamCard(noSourceIndex);
  return;
 }
 if(!candidates.length){
- status.textContent='Roster détecté ('+roster.length+' personnages), mais aucune équipe complète du classement actuel ne peut être posée sans doublon.';
+ status.textContent='Roster détecté ('+roster.length+' personnages), mais aucune équipe complète du classement actuel ne peut être posée sans doublon.';appendCatalogNotice();
  for(var emptyIndex=1;emptyIndex<=required;emptyIndex++)addUnavailableTeamCard(emptyIndex);
  return;
 }
-var availableSeasons=Array.from(new Set(ranked.map(function(t){return Number(t.season);}))).sort(function(a,b){return b-a;});status.textContent=candidates.length+' / '+required+' équipes défensives retenues pour '+fmt+' '+state.tier+'. Saisons réellement disponibles : '+availableSeasons.map(function(s){return 'S'+s;}).join(' et ')+'. '+skippedMissing+' équipe(s) ignorée(s) faute de personnages ; '+skippedUsed+' ignorée(s) pour éviter les doublons. '+ranked.length+' compositions observées · actualisation : '+new Date(catalogMeta.updatedAt).toLocaleString('fr-FR')+'.';
+var availableSeasons=Array.from(new Set(ranked.map(function(t){return Number(t.season);}))).sort(function(a,b){return b-a;});status.textContent=candidates.length+' / '+required+' équipes défensives retenues pour '+fmt+' '+state.tier+'. Saisons réellement disponibles : '+availableSeasons.map(function(s){return 'S'+s;}).join(' et ')+'. '+skippedMissing+' équipe(s) ignorée(s) faute de personnages ; '+skippedUsed+' ignorée(s) pour éviter les doublons. '+ranked.length+' compositions observées · actualisation : '+new Date(catalogMeta.updatedAt).toLocaleString('fr-FR')+'.';appendCatalogNotice();
 
 candidates.forEach(function(t,i){
 var card=document.createElement('article');card.className='team-card';
