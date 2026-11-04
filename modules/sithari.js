@@ -677,6 +677,7 @@ function renderSithariNexus(){
   buildFactionMap();
   state.textContent=rosterCharacters.length?'SITH’ARI // PRÊT':'EN ATTENTE DU SCAN';
   sithariRenderAll();
+  if(typeof renderSithariStrategy==='function')renderSithariStrategy();
 }
 function sithariRenderAll(resetActive=true){
   if(resetActive && sithariSelectedKeys.length && !sithariSelectedKeys.includes(sithariActiveKey))sithariActiveKey=sithariSelectedKeys[0];
