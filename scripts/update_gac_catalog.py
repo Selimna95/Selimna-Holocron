@@ -94,13 +94,13 @@ def number_value(value: str) -> int:
 def page_season(html: str, fmt: str | None = None) -> int:
     title = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
     if title:
-        match = re.search(r"Season\\s+(\\d+)", title.group(1), re.I)
+        match = re.search(r"Season\s+(\d+)", title.group(1), re.I)
         if match:
             return int(match.group(1))
-    reader_title = re.search(r"^Title:\\s*.*?Season\\s+(\\d+)", html, re.I | re.M)
+    reader_title = re.search(r"^Title:\s*.*?Season\s+(\d+)", html, re.I | re.M)
     if reader_title:
         return int(reader_title.group(1))
-    match = re.search(r"Season\\s+(\\d+)", html, re.I)
+    match = re.search(r"Season\s+(\d+)", html, re.I)
     if match:
         return int(match.group(1))
     if fmt in FALLBACK_SEASONS:
