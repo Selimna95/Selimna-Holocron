@@ -24,7 +24,9 @@ Comlink expose les profils joueurs, événements, classements GAC et groupes de 
 
 ## Fiabilité et publication
 
-- Le collecteur refuse de publier si l'un des 25 classements top 50 est incomplet ou si l'API renvoie une erreur.
+- Le collecteur refuse de publier si l'un des 25 classements est incomplet, si les 25 réponses ne contiennent aucun joueur, si aucun identifiant de joueur n'est exposé ou si l'API renvoie une erreur.
+- Chaque classement journalise le nombre d'entrées, le nombre d'identifiants et les noms de champs reçus (sans publier de données personnelles), afin de diagnostiquer les changements de schéma Comlink.
+- Les fichiers générés sont explicitement ajoutés à l'index Git avant le contrôle des différences ; les nouveaux fichiers non suivis ne peuvent donc plus être ignorés.
 - Les erreurs sur un bracket ne sont pas interprétées comme une fin de liste.
 - Si aucune saison GAC n'est active, les classements top 50 sont conservés et les brackets sont explicitement marqués comme non collectés pour cette exécution.
 - Le résultat conserve les réponses officielles brutes afin de ne pas perdre de champs si le jeu fait évoluer son schéma.
