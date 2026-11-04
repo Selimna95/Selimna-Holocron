@@ -45,10 +45,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- gac-official-leaderboards.json gac-official-leaderboards.js; then
+          test -s gac-official-leaderboards.json
+          test -s gac-official-leaderboards.js
+          git add gac-official-leaderboards.json gac-official-leaderboards.js
+          if git diff --cached --quiet -- gac-official-leaderboards.json gac-official-leaderboards.js; then
             echo "Official GAC leaderboard snapshot is unchanged."
           else
-            git add gac-official-leaderboards.json gac-official-leaderboards.js
             git commit -m "chore(gac): refresh official leaderboard snapshot"
             git pull --rebase origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
