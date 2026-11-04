@@ -29,7 +29,7 @@ LEAGUE_LABELS = {x: x.capitalize() for x in LEAGUES}
 # Reader projections sometimes strip headings; these are guarded fallbacks only.
 FALLBACK_SEASONS = {"5v5": 84, "3v3": 83}
 USER_AGENT = "SelimnasHolocron-GAC-Catalog/1.0 (+https://github.com/Selimna95/Selimna-Holocron)"
-MIN_TEAMS_PER_VIEW = 8
+MIN_TEAMS_PER_VIEW = 0  # Une saison en cours peut légitimement être vide ou partielle.
 
 
 class Node:
@@ -298,9 +298,11 @@ def build_url(base: str, league: str, season: int | None = None) -> str:
 def refresh() -> dict:
     all_teams = []
     seasons_by_format = {}
+    current_seasons = {}
 
     for fmt, base in BASES.items():
         seasons_by_format[fmt] = {}
+        discovered_current = set()
         for league in LEAGUES:
             discovery_url = build_url(base, league)
             discovery_html = fetch(discovery_url)
@@ -308,6 +310,7 @@ def refresh() -> dict:
                 current = page_season(discovery_html, fmt)
             except ValueError:
                 current = page_season(fetch(discovery_url, "markdown"), fmt)
+            discovered_current.add(current)
             previous = discover_previous_season(discovery_html, current)
             available_seasons = []
             candidates = []
@@ -341,6 +344,9 @@ def refresh() -> dict:
                 if len(available_seasons) >= 2:
                     break
             seasons_by_format[fmt][league] = available_seasons
+        if len(discovered_current) != 1:
+            raise ValueError(f"Inconsistent current seasons detected for {fmt}: {sorted(discovered_current)}")
+        current_seasons[fmt] = next(iter(discovered_current))
 
     keys = set()
     unique = []
@@ -357,14 +363,11 @@ def refresh() -> dict:
         }
         for fmt in BASES
     }
-    for fmt in BASES:
-        for league in LEAGUES:
-            if coverage[fmt][league] < MIN_TEAMS_PER_VIEW:
-                raise ValueError(f"Missing current-season coverage for {fmt} {league}: {coverage[fmt][league]} teams")
     return {
         "schemaVersion": 1,
         "source": "SWGOH.GG GAC tier lists · defense · most played",
         "updatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "currentSeasons": current_seasons,
         "seasons": seasons_by_format,
         "coverage": coverage,
         "teams": unique,
@@ -379,7 +382,7 @@ def main():
     temp.replace(OUTPUT)
     print(
         f"Published {len(catalog['teams'])} defensive teams; "
-        f"5 leagues × 2 formats × 2 seasons; updated {catalog['updatedAt']}"
+        f"current seasons {catalog['currentSeasons']}; {len(catalog['teams'])} teams including any historical supplements; updated {catalog['updatedAt']}"
     )
 
 
