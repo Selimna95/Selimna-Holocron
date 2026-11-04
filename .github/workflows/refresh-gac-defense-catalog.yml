@@ -2,12 +2,6 @@ name: Refresh public GAC defense catalogue
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "scripts/update_gac_catalog.py"
-      - "tests/test_gac_catalog.py"
-      - ".github/workflows/refresh-gac-defense-catalog.yml"
-
 permissions:
   contents: write
 
