@@ -14,7 +14,7 @@ SPEC.loader.exec_module(MODULE)
 class ComlinkGacCollectorTests(unittest.TestCase):
     def test_coverage_is_25_league_division_combinations(self):
         with patch.object(MODULE, "request_json", side_effect=[
-            {"player": [{"playerId": "123"}]}
+            {"player": []}
             for _ in range(25)
         ] + [{"gameEvent": []}]), patch.object(MODULE.time, "sleep"):
             snapshot = MODULE.build()
@@ -59,12 +59,44 @@ class ComlinkGacCollectorTests(unittest.TestCase):
 
     def test_dataset_disclaims_battle_usage_statistics(self):
         with patch.object(MODULE, "request_json", side_effect=[
-            {"player": [{"playerId": "123"}]}
+            {"player": []}
             for _ in range(25)
         ] + [{"gameEvent": []}]), patch.object(MODULE.time, "sleep"):
             snapshot = MODULE.build()
         self.assertTrue(any("do not expose battle history" in item for item in snapshot["limitations"]))
         self.assertEqual(snapshot["dataset"], "official_gac_leaderboards_and_brackets")
+
+    def test_roster_meta_aggregates_without_publishing_player_identity(self):
+        board = {
+            "league": "kyber",
+            "division": "division_1",
+            "response": {"player": [{"playerId": "private-player-id"}]},
+        }
+        profile = {
+            "playerId": "private-player-id",
+            "name": "Private Name",
+            "allyCode": "123456789",
+            "rosterUnit": [
+                {
+                    "definitionId": "UNIT_A",
+                    "currentTier": 13,
+                    "currentRarity": 7,
+                    "relic": {"currentTier": 7},
+                    "equippedStatMod": [{"id": "mod1"}],
+                }
+            ],
+        }
+        with patch.object(MODULE, "request_json", return_value=profile):
+            result = MODULE.collect_competitive_roster_meta([board])
+        self.assertEqual(result["uniqueProfilesFetched"], 1)
+        cohort = result["cohorts"][0]
+        self.assertEqual(cohort["status"], "complete")
+        self.assertEqual(cohort["units"][0]["definitionId"], "UNIT_A")
+        self.assertEqual(cohort["units"][0]["prevalencePercent"], 100.0)
+        serialized = __import__("json").dumps(result)
+        self.assertNotIn("private-player-id", serialized)
+        self.assertNotIn("Private Name", serialized)
+        self.assertNotIn("123456789", serialized)
 
 
 if __name__ == "__main__":
