@@ -61,7 +61,8 @@ class ModOwnerIntegrityTests(unittest.TestCase):
 
     def test_seigneur_six_mod_builds_keep_target_speed_and_report_roster_impact(self):
         self.assertIn("safeBuilds=builds.filter(row=>forgeBuildPreservesSpeed", self.seigneur)
-        self.assertIn("vitesse totale du personnage cible ne peut pas diminuer", self.seigneur)
+        self.assertIn("currentTargetMods);", self.seigneur)
+        self.assertIn("forgeBuildPreservesSpeed(character,profile,currentTargetMods", self.seigneur)
         self.assertIn("function forgeBuildPreservesSpeed", self.seigneur_impact)
         self.assertIn("function forgeBuildGlobalImpact", self.seigneur_impact)
         self.assertIn("statusWorsened", self.seigneur_impact)
