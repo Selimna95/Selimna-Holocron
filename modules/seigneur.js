@@ -626,7 +626,10 @@ $('runOptimizer').addEventListener('click',async()=>{
     $('results').innerHTML='<div class="calculating">Optimisation complète en cours : comparaison des sets, primaires, secondaires, vitesse et statistiques finales…</div>';
     const builds=await runOptimizationInWorker(character,profile,5,180,{mode:'seigneur-six-mods',donor_priority:'gac-terrestrial-plus-fleet'},scopedMods);
     if(!Array.isArray(builds)||!builds.length)throw new Error('Le moteur n’a retourné aucune configuration complète.');
-    renderResults(builds);
+    const currentTargetMods=getCharacterMods(character);
+    const safeBuilds=builds.filter(row=>forgeBuildPreservesSpeed(character,profile,currentTargetMods,row?.build));
+    if(!safeBuilds.length)throw new Error('Aucune configuration complète ne respecte la règle absolue : la vitesse totale du personnage cible ne peut pas diminuer, bonus de set Speed compris.');
+    renderResults(safeBuilds);
   }catch(e){$('optimizerError').textContent=String(e?.message||e);$('results').innerHTML='';}
   finally{$('runOptimizer').disabled=false;$('runOptimizer').textContent='OPTIMISER LES 6 MODS';}
 });
@@ -706,7 +709,7 @@ function renderResults(data){
   if(!data.length){$('results').textContent='Aucun build.';return;}
   const character=selectedCharacter();
   const profile=profileForCharacter(character);
-  const scope='DONNEURS CLASSÉS PAR USAGE GAC · TERRESTRE + FLOTTE';
+  const scope='DONNEURS FAIBLES / TRÈS FAIBLES / INCOMPLETS · PRIORITÉ GAC';
   const rec=optimizerRecommendationSummary(profile);
   const refSets=rec.sets.slice(0,3).map(x=>`${x.label}${x.weight!=null?' · '+(x.weight*100).toFixed(1)+' %':''}`).join(' · ')||'Référence Kyber non détaillée';
   const refSecondaries=rec.secondaries.slice(0,4).map(x=>x.name).join(' · ')||'Secondaires Kyber non détaillées';
@@ -734,6 +737,7 @@ function renderResults(data){
     const compliance=audit.compliance;
     const complianceLabel=compliance>=90?'FORTE':compliance>=75?'SOLIDE':compliance>=55?'PARTIELLE':'À AFFINER';
     const verdict=optimizerVerdictForBuild(audit,scope,i);
+    const impactMarkup=forgeBuildGlobalImpactMarkup(forgeBuildGlobalImpact(character,profile,build));
     return `<article class="result forge-result">
       <header class="forge-result-head">
         <div class="forge-rank"><span>CONFIGURATION</span><b>${i+1}</b></div>
@@ -755,6 +759,7 @@ function renderResults(data){
           <span class="ok"><b>✓</b> Mods recherchés sur : ${esc(scope)}</span>
         </div>
       </section>
+      ${impactMarkup}
       <section class="forge-stats-block">
         <div class="forge-section-title"><span>ÉTAT APRÈS APPLICATION</span><small>6 mods · comparaison immédiate</small></div>
         <div class="forge-featured-stats">${featuredStats}</div>
