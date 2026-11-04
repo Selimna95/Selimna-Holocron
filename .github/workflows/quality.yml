@@ -27,6 +27,8 @@ jobs:
       - run: node --check modules/acolyte.js
       - run: node --check modules/disciple.js
       - run: node --check modules/seigneur.js
+      - run: node --check modules/seigneur-gac.js
+      - run: node tests/seigneur_gac_bridge.test.mjs
       - run: node --check modules/sithari.js
       - run: node --check modules/runtime.js
       - run: node --check optimizer-worker.mjs
