@@ -1,0 +1,56 @@
+name: Refresh public GAC defense catalogue
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "35 5 * * *"
+  push:
+    paths:
+      - "scripts/update_gac_catalog.py"
+      - "tests/test_gac_catalog.py"
+      - ".github/workflows/refresh-gac-defense-catalog.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-gac-defense-catalog-main
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate catalogue parser
+        run: python -m unittest tests.test_gac_catalog -v
+      - name: Collect public SWGOH.GG defensive teams
+        run: python scripts/update_gac_catalog.py
+      - name: Publish collected catalogue
+        run: |
+          test -s blue-gac/gac-catalog.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("blue-gac/gac-catalog.json").read_text(encoding="utf-8"))
+          assert data.get("schemaVersion") == 1
+          assert isinstance(data.get("teams"), list) and data["teams"]
+          assert all(len(team.get("members", [])) in (3, 5) for team in data["teams"])
+          print("Validated", len(data["teams"]), "complete defensive compositions")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add blue-gac/gac-catalog.json
+          if git diff --cached --quiet -- blue-gac/gac-catalog.json; then
+            echo "GAC defensive catalogue is already up to date."
+          else
+            git commit -m "chore(gac): refresh public defensive team catalogue"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
