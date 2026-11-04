@@ -321,7 +321,7 @@ const scopedContext=vm.createContext({
   seigneurLatestGacUsageSeason:()=>({season:84,formatSeasons:{'5v5':84},sourceStatus:'partial',evidenceType:'defense-composition'}),
   seigneurDonorPriority:()=>({known:true,uses:10,characterUses:10,fleetUses:0,fleetKnown:true,sourceStatus:'partial'})
 });
-load(core,['characterKey','buildRosterOwnerResolver','resolveModOwnerKey'],scopedContext);
+load(core,['characterKey','buildRosterOwnerResolver','modOwnerKey','resolveModOwnerKey'],scopedContext);
 load(seigneur,['forgeSourceStatusAllowed','forgeAllSourceMods'],scopedContext);
 const scoped=scopedContext.forgeAllSourceMods(donorRoster[0]);
 assert.deepEqual(Array.from(scoped,x=>x.id).sort(),['free-mod','incomplete-mod','target-mod','weak-mod'].sort(),
