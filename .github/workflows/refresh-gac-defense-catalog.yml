@@ -2,8 +2,6 @@ name: Refresh public GAC defense catalogue
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "35 5 * * *"
   push:
     paths:
       - "scripts/update_gac_catalog.py"
