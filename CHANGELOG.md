@@ -1,3 +1,11 @@
+## V4.1.31 — Échanges atomiques de sets Sith’ari (2026-11-05)
+
+- Remplacement des échanges mod par mod par des permutations groupées de 2 ou 4 mods issus du même donneur.
+- Le receveur doit obtenir un set Kyber complet avec les primaires attendues ; le donneur récupère tous les mods remplacés.
+- Vérification stricte des six slots, des bonus de set conservés chez le donneur et du plancher de vitesse des deux personnages.
+- Suppression de l'exigence artificielle d'un profil Kyber donneur : le donneur doit préserver ses bonus et sa vitesse, pas reproduire un build Kyber.
+- Ajout d'un bilan des groupes examinés et des rejets par incompatibilité de set, primaire ou protection du donneur.
+
 ## V4.1.30 — Refonte ciblée de Sith’ari (2026-11-05)
 
 - Limitation du pool des receveurs à 50 personnages prioritaires maximum : légendes galactiques, usage GAC observé, puis puissance du roster.
