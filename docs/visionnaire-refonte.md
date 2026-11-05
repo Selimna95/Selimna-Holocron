@@ -108,7 +108,7 @@ Le code doit être séparé en responsabilités, sans conserver les multiples re
 6. **Recommandation de recherche** : mod exact à acquérir si aucun échange sûr n'existe.
 7. **Interface** : parcours en étapes, résultats lisibles, retour à la liste et modification de sélection.
 
-Le code historique de permutations globales ne doit pas être repris comme moteur du nouveau parcours. Les fonctions de normalisation des mods, de lecture des profils Kyber, de calcul des statistiques et les garde-fous métier ne seront réutilisés qu'après vérification de leur exactitude.
+Le nouveau module est écrit sur une base neuve et propre. **On conserve les moteurs, services et outils transverses existants lorsqu'ils sont nécessaires**, au lieu de les réimplémenter : synchronisation du roster, import/export JSON, chargement des profils Kyber, récupération des données GAC, catalogue des personnages, normalisation des mods, résolution des propriétaires, calcul des statistiques et fonctions partagées d'interface. Chaque dépendance sera auditée et appelée via une interface claire. Si un outil existant est défectueux, on le corrige à sa source plutôt que de créer un doublon dans le Visionnaire.\n\nEn revanche, **l'ancien module Sith'ari est supprimé intégralement** : ancien point d'entrée, vues, états, styles spécifiques, moteur de permutations globales, étapes automatiques, diagnostics et fonctions mortes. Aucun ancien parcours ou résultat ne doit rester accessible. Les utilitaires partagés ne sont pas supprimés s'ils sont encore utilisés par d'autres modules.
 
 ## Découpage d'implémentation
 
@@ -134,7 +134,7 @@ Le code historique de permutations globales ne doit pas être repris comme moteu
 - Recommandation du mod exact à rechercher si aucun échange sûr n'existe.
 - Tests de non-régression et validation sur le roster réel.
 
-## Hors périmètre
+## Conservation des outils transverses\n\nLe Visionnaire doit continuer à fonctionner avec le même profil synchronisé et les mêmes capacités d'import/export que le reste de l'application. Les outils partagés restent la source de vérité : aucune copie locale parallèle des profils, du roster ou des données GAC. Les contrats d'appel doivent être documentés et couverts par des tests.\n\n## Hors périmètre
 
 - Aucun changement au Worker Cloudflare ou à la synchronisation du roster.
 - Aucun changement aux modules Acolyte, Disciple, Seigneur Sith ou au Sanctuaire bleu GAC.
