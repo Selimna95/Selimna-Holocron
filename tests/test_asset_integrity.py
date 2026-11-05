@@ -96,8 +96,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("modules/seigneur.js?v=3.9.4-slot-comparison", self.sw)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.sw)
-        self.assertIn("app.css?v=4.1.2-seigneur-slot-comparison", self.html)
-        self.assertIn("app.css?v=4.1.2-seigneur-slot-comparison", self.sw)
+        self.assertIn("app.css?v=4.1.3-visionnaire-cleanup", self.html)
+        self.assertIn("app.css?v=4.1.3-visionnaire-cleanup", self.sw)
         self.assertIn("PRIORITÉ GAC", (ROOT / "modules" / "core.js").read_text(encoding="utf-8"))
 
     def test_seigneur_worker_receives_current_mods_and_enforces_speed_floor(self):
