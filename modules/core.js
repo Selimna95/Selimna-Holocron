@@ -182,7 +182,32 @@ function kyberProfileValid(p){
   return sets&&(primaries||secondaries);
 }
 function cleanLinesFromDoc(doc){const body=doc?.body;if(!body)return[];const clone=body.cloneNode(true);clone.querySelectorAll('script,style,noscript').forEach(n=>n.remove());clone.querySelectorAll('br').forEach(n=>n.replaceWith(document.createTextNode('\n')));clone.querySelectorAll('div,p,li,tr,h1,h2,h3,h4,h5,h6,section,article,table,thead,tbody,th,td').forEach(n=>n.insertBefore(document.createTextNode('\n'),n.firstChild));return String(clone.textContent||'').split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);}
-function numberFromText(value){const m=String(value??'').replace(/,/g,'').match(/[-+]?[0-9]+(?:\.[0-9]+)?/);return m?Number(m[0]):0;}
+function numberFromText(value){const m=String(value??'').replace(/,/g,'').match(/[-+]?[0-9]+(?:\\.[0-9]+)?/);return m?Number(m[0]):0;}
+function kyberNumber(value){
+  const raw=String(value??'').trim();
+  const normalized=/^[+-]?\\d+,\\d+$/.test(raw)?raw.replace(',','.'):raw.replace(/,/g,'');
+  const parsed=Number(normalized);return Number.isFinite(parsed)?parsed:0;
+}
+function kyberAverageFromFocusLine(value){
+  const match=String(value??'').match(/^\\s*([+-]?\\d[\\d,]*(?:\\.\\d+)?)\\s+avg\\b/i);
+  return match?kyberNumber(match[1]):0;
+}
+function kyberPrimaryDistribution(lines,heading){
+  const headings=['Arrow','Triangle','Circle','Cross','Secondary Stat Focus','Relic'];
+  const start=lines.findIndex(line=>String(line).trim().toLowerCase()===String(heading).toLowerCase());
+  if(start<0)return {};
+  let end=lines.length;
+  for(let i=start+1;i<lines.length;i++){
+    const line=String(lines[i]||'').trim();
+    if(headings.some(label=>label.toLowerCase()===line.toLowerCase())||/^Average Stats for\\b/i.test(line)){end=i;break;}
+  }
+  const out={};
+  for(const line of lines.slice(start+1,end)){
+    const match=String(line).match(/^(.+?)\\s+([0-9]+(?:[.,][0-9]+)?)%$/);
+    if(match)out[match[1].trim()]=kyberNumber(match[2])/100;
+  }
+  return out;
+}
 function parseKyberProfileHTML(text,character,kyberSlug){
   // V47: SWGOH.GG changes its DOM fairly often. Parse the visible text blocks
   // instead of depending on one exact CSS structure. Keep the six-slot model
@@ -252,31 +277,10 @@ function parseKyberProfileHTML(text,character,kyberSlug){
 
   // Primary distributions for all variable slots. Square and Diamond are fixed
   // in SWGOH and are always shown in the recommendation header.
-  const sections=[['Arrow','Best Arrow Mod '],['Triangle','Best Triangle Mod '],['Circle','Best Circle Mod '],['Cross','Best Cross Mod ']];
-  for(const pair of sections){ const slot=pair[0], prefix=pair[1];
-    const k=nextIndex(x=>x.startsWith(prefix),0); if(k<0)continue;
-    const end=nextIndex(x=>x.startsWith('Best ') && !x.startsWith(prefix),k+1);
-    const prim={};
-    const block=normalized.slice(k+1,end>=0?end:normalized.length);
-    // Current SWGOH.GG renders the primary distribution as a real table:
-    // Primary Stat / Count / Percentage, with the three values on separate
-    // lines after cleanLinesFromDoc(). Keep the compact parser first, then
-    // parse the table-shaped triplets when necessary.
-    for(const line of block){
-      const m=pctLine(line); if(m&&m[1]!=='Primary Stat')prim[m[1].trim()]=number(m[2])/100;
-    }
-    if(!Object.keys(prim).length){
-      for(let n=0;n<block.length;n++){
-        const stat=String(block[n]||'').trim();
-        if(!stat || /^(Primary Stat|Count|Percentage|---)$/i.test(stat)) continue;
-        const count=String(block[n+1]||'').trim();
-        const percentage=String(block[n+2]||'').trim();
-        if(/^\d[\d,]*$/.test(count) && /^[0-9]+(?:[.,][0-9]+)?%$/.test(percentage)){
-          prim[stat]=number(percentage.replace('%','').replace(',','.'))/100;
-          n+=2;
-        }
-      }
-    }
+  // SWGOH.GG currently exposes the four distributions under plain headings
+  // "Arrow", "Triangle", "Circle" and "Cross" (not "Best Arrow Mod").
+  for(const slot of ['Arrow','Triangle','Circle','Cross']){
+    const prim=kyberPrimaryDistribution(normalized,slot);
     if(Object.keys(prim).length)profile.slots[slot]={primaries:prim};
   }
   profile.slots.Square={primaries:{Offense:1}};
@@ -289,7 +293,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
     const labels=new Set(['Speed','Health','Protection','Offense','Defense','Potency','Tenacity','Critical Chance %','Critical Damage','Critical Chance','Offense %','Health %','Protection %','Defense %','Armor','Resistance','Physical Damage','Special Damage']);
     for(let k=i+1;k<(j>=0?j:normalized.length)-1;k++){
       if(!labels.has(normalized[k]))continue;
-      const next=normalized[k+1]||''; if(/avg/i.test(next)){profile.secondary_focus[normalized[k]]=number(next);k++;}
+      const next=normalized[k+1]||''; if(/\\bavg\\b/i.test(next)){profile.secondary_focus[normalized[k]]=kyberAverageFromFocusLine(next);k++;}
     }
   }
 
