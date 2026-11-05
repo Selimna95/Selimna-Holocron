@@ -275,7 +275,7 @@ async function ssAdvance(){
   if(state.phase==='profiles'){
    const batch=40,end=Math.min(state.people.length,state.profileCursor+batch),items=state.people.slice(state.profileCursor,end);let cursor=0,done=0,found=0,missing=0;
    show('Récupération de '+items.length+' profils maximum. Aucun autre filtre ne démarre pendant cette étape.');
-   await Promise.all(Array.from({length:4},async()=>{while(cursor<items.length){const c=items[cursor++];let profile=sithariProfileForCharacter(c);if(!profile){try{profile=await fetchKyberProfile(c);}catch(_){profile=null;}}if(profile)found++;else missing++;done++;const status=document.querySelector('#sithariStrategy .ss-status');if(status)status.innerHTML='<b>'+ssStepLabel('profiles')+'</b><br>Profils traités dans ce lot : '+done+' / '+items.length;}}));
+   await Promise.all(Array.from({length:2},async()=>{while(cursor<items.length){const c=items[cursor++];let profile=sithariProfileForCharacter(c);if(!profile){try{profile=await fetchKyberProfile(c);}catch(_){profile=null;}}if(profile)found++;else missing++;done++;const status=document.querySelector('#sithariStrategy .ss-status');if(status)status.innerHTML='<b>'+ssStepLabel('profiles')+'</b><br>Profils traités dans ce lot : '+done+' / '+items.length;}}));
    state.profileCursor=end;state.profileStats=state.profileStats||{found:0,missing:0};state.profileStats.found+=found;state.profileStats.missing+=missing;
    if(end>=state.people.length){
     if(state.profileStats.found>0)state.phase='sets';
