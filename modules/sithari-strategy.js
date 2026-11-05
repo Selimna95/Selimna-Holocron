@@ -8,6 +8,8 @@ const ssSlot=m=>modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);
 function ssBuildSnapshot(){
  const nodes=[],sources=[],people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
  for(const c of people){
+  // Les GL restent hors du graphe : ni donneurs ni receveurs, pour sanctuariser leurs six mods.
+  if(ssIsProtectedLegend(c))continue;
   const key=characterKey(c),equipped=sithariCharacterMods(c);
   for(const slot of SITHARI_SLOT_ORDER){
    const mod=equipped.find(m=>ssSlot(m)===slot);if(!mod)continue;
@@ -111,6 +113,8 @@ function ssKyberAuditHtml(edge){
 function ssCyclePreservesSpeed(items,openTerminal=false){
  // Open chains are forbidden: every donor must also receive a replacement mod.
  if(openTerminal)return false;
+ // Hard protection: a GL may never participate, even if a malformed/stale graph contains it.
+ if(items.some(edge=>ssIsProtectedLegend(edge.target?.character)||ssIsProtectedLegend(edge.source?.character)))return false;
  const replacements=new Map();
  for(const edge of items){
   const key=edge.target.owner;
@@ -125,8 +129,6 @@ function ssCyclePreservesSpeed(items,openTerminal=false){
   // Keep the equipped roster complete: no participant may finish with a missing slot.
   if(beforeMods.length===6&&entry.mods.length!==6)return false;
   if(new Set(entry.mods.map(ssSlot)).size!==entry.mods.length)return false;
-  // Preserve every existing active 2- or 4-piece set bonus.
-  if(!ssPreservesSetBonuses(beforeMods,entry.mods))return false;
   if(before.baseSpeed>0&&after.total+1e-9<before.total)return false;
   if(before.baseSpeed<=0&&after.modSpeed+1e-9<before.modSpeed)return false;
   if(before.baseSpeed<=0&&before.speedSetPieces>=4&&after.speedSetPieces<4)return false;
@@ -134,9 +136,13 @@ function ssCyclePreservesSpeed(items,openTerminal=false){
  return true;
 }
 function ssBuildEdges(snapshot){
- const bySlot=new Map();for(const source of (snapshot.sources||snapshot.nodes)){if(!bySlot.has(source.slot))bySlot.set(source.slot,[]);bySlot.get(source.slot).push(source);}
+ const bySlot=new Map();for(const source of (snapshot.sources||snapshot.nodes)){
+  if(ssIsProtectedLegend(source.character))continue;
+  if(!bySlot.has(source.slot))bySlot.set(source.slot,[]);bySlot.get(source.slot).push(source);
+ }
  const edges=new Map();let setCandidates=0,primaryCandidates=0,secondaryCandidates=0;
  for(const target of snapshot.nodes){
+  if(ssIsProtectedLegend(target.character)){edges.set(target.key,[]);continue;}
   // Donors come from the entire equipped roster, including characters without a Kyber profile.
   const setPool=(bySlot.get(target.slot)||[]).filter(source=>source.owner!==target.owner&&sithariSetMatch(source.mod,target.profile,target.character));
   setCandidates+=setPool.length;
