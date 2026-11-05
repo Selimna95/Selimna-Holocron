@@ -468,7 +468,7 @@ const strategyContext = vm.createContext({
   ssKyberSecondaryFit: mod => mod.fit,
   modTotalSpeed: mod => Number(mod.speed || 0)
 });
-load(strategy, ['ssBuildSetPools','ssBuildPrimaryPools','ssBuildSecondaryEdges'], strategyContext);
+load(strategy, ['ssIsProtectedLegend','ssBuildSetPools','ssBuildPrimaryPools','ssBuildSecondaryEdges'], strategyContext);
 const snapshotFixture = { nodes: [targetNode], sources: donorSources };
 const setStage = strategyContext.ssBuildSetPools(snapshotFixture);
 assert.equal(setStage.count, 3, 'All roster donors are considered at the set stage');
@@ -518,7 +518,7 @@ const openSpeedContext = vm.createContext({
   sithariIsSpeedSet: mod => mod.set_name === 'Speed',
   HOLOCRON_GALACTIC_LEGENDS: new Set(['GLREY'])
 });
-load(strategy, ['ssCyclePreservesSpeed','ssPreservesSetBonuses','ssIsProtectedLegend'], openSpeedContext);
+load(strategy, ['ssCyclePreservesSpeed','ssPreservesSetBonuses','ssSetBonusCounts','ssIsProtectedLegend'], openSpeedContext);
 const safeOpenEdge = { target: targetNode, source: { ...donorSources[0], mod: { slot: 'Square', set_name: 'Offense', speed: 0 } } };
 assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), false, 'Open chains must never leave a terminal donor without a replacement');
 assert.equal(openSpeedContext.ssPreservesSetBonuses(
