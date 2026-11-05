@@ -1,3 +1,13 @@
+## V4.1.38 — Le Visionnaire (premier incrément)
+
+- Remplacement de l’ancien Sith’ari par une interface neuve et guidée.
+- Audit Kyber sur l’ensemble du roster de personnages, sans plafond de 50.
+- Choix du domaine Sets ou Primaires ; filtre optionnel Sets + Primaires.
+- Références absentes ou incomplètes explicitement exclues des anomalies vérifiables.
+- Sélection explicite de slots ; aucun déplacement automatique.
+- Retrait du moteur de permutations et des styles historiques Sith’ari.
+- Les services partagés de synchronisation, profils Kyber, GAC et import/export restent inchangés.
+
 ## V4.1.37 — Pool donneur fondé sur l'utilisation GAC
 
 - Suppression du seuil de puissance du pool donneur : la puissance ne filtre plus les personnages peu utilisés en GAC.
