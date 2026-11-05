@@ -627,3 +627,177 @@ function ssRender(snapshot,result,message){
  '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div>'+diagnostic+'<h4>PERSONNAGES PRIORITAIRES À CORRIGER</h4>'+peopleHtml+'<h4>ÉCHANGES PROPOSÉS</h4><p class="ss-results-help">Les mods sont transférés par groupes complets de 2 ou 4. Les vitesses totales sont contrôlées avant/après pour les deux personnages. Aucun bonus de set du donneur n’est sacrifié.</p>'+(rows||'<div class="ss-empty">'+(phase==='done'?'Aucune permutation ne passe encore tous les contrôles. Le bilan ci-dessus détaille les filtres bloquants.':'Les permutations apparaîtront après le calcul des échanges.')+'</div>')+'<p class="ss-note">Analyse en lecture seule. Aucun mod n’est déplacé automatiquement. Les usages GAC absents restent inconnus.</p>';
  document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
 }
+
+
+
+/* V4.1.32 — audit des compositions complètes de sets Kyber.
+   Une liste de sets autorisés par mod n'est pas une composition valide :
+   on compare les six pièces aux combinaisons exactes publiées par SWGOH.GG. */
+function ssSetCompositionCounts(mods){
+ const counts=new Map();
+ for(const mod of mods||[]){
+  const set=sithariCanonicalSet(mod?.set_name||mod?.set||mod?.setId||mod?.set_id||'');
+  if(set)counts.set(set,(counts.get(set)||0)+1);
+ }
+ return counts;
+}
+function ssSameSetComposition(actual,expected){
+ const keys=new Set([...actual.keys(),...expected.keys()]);
+ for(const key of keys)if((actual.get(key)||0)!==(expected.get(key)||0))return false;
+ return true;
+}
+function ssCharacterSetAudit(mods,profile){
+ const equipped=Array.isArray(mods)?mods:[];
+ if(equipped.length!==6||new Set(equipped.map(ssSlot)).size!==6)return {status:'INCOMPLETE',exact:false,expected:[]};
+ const actual=ssSetCompositionCounts(equipped);
+ const configs=(Array.isArray(profile?.specific_sets)?profile.specific_sets:[])
+  .map(config=>{
+   const expected=new Map();
+   for(const [name,count] of Object.entries(config?.counts||{})){
+    const key=sithariCanonicalSet(name),value=Number(count)||0;
+    if(key&&value>0)expected.set(key,(expected.get(key)||0)+value);
+   }
+   const total=[...expected.values()].reduce((sum,value)=>sum+value,0);
+   return {name:String(config?.name||'Composition Kyber'),weight:Number(config?.weight)||0,expected,total};
+  })
+  .filter(config=>config.total===6)
+  .sort((a,b)=>b.weight-a.weight);
+ if(configs.length){
+  const match=configs.find(config=>ssSameSetComposition(actual,config.expected));
+  return {status:match?'MATCH':'MISMATCH',exact:true,expected:configs,matched:match||null,actual};
+ }
+ const choices=new Set(sithariKyberSetChoices(profile).map(sithariCanonicalSet));
+ const allAllowed=choices.size&&[...actual.keys()].every(set=>choices.has(set));
+ return {status:allAllowed?'UNVERIFIABLE':'MISMATCH',exact:false,expected:[...choices],actual};
+}
+function ssBuildSnapshot(state){
+ const sources=[],nodes=[],unverifiable=[];
+ const donorPeople=state?.donorPeople||[];
+ const recipientPeople=state?.recipientPeople||[];
+ for(const donor of donorPeople){
+  const equipped=sithariCharacterMods(donor),owner=characterKey(donor);
+  if(equipped.length!==6||ssIsProtectedLegend(donor))continue;
+  for(const slot of SITHARI_SLOT_ORDER){
+   const mod=equipped.find(item=>ssSlot(item)===slot);if(!mod)continue;
+   sources.push({key:owner+'::'+slot,owner,name:donor.name||donor.baseId||owner,character:donor,slot,mod});
+  }
+ }
+ for(const character of recipientPeople){
+  if(ssIsProtectedLegend(character))continue;
+  const profile=sithariProfileForCharacter(character);
+  if(!profile||!sithariKyberSetChoices(profile).length)continue;
+  const equipped=sithariCharacterMods(character);
+  const audit=ssCharacterSetAudit(equipped,profile);
+  if(audit.status==='UNVERIFIABLE'){
+   unverifiable.push({character,name:character.name||character.baseId||characterKey(character),audit});
+   continue;
+  }
+  if(audit.status!=='MISMATCH')continue;
+  const owner=characterKey(character);
+  nodes.push({key:owner,owner,name:character.name||character.baseId||owner,character,profile,mods:equipped.slice(),setAudit:audit,needsWork:true});
+ }
+ return {
+  nodes,sources,unverifiable,inventory:sithariEnsureModCache().items,
+  rosterCount:state?.people?.length||0,recipientCount:recipientPeople.length,
+  donorCount:donorPeople.length,profiledCount:recipientPeople.filter(c=>!!sithariProfileForCharacter(c)).length,
+  exactReferenceCount:recipientPeople.filter(c=>{const p=sithariProfileForCharacter(c);return Array.isArray(p?.specific_sets)&&p.specific_sets.some(x=>Object.values(x?.counts||{}).reduce((sum,n)=>sum+(Number(n)||0),0)===6);}).length
+ };
+}
+function ssAtomicSetSwap(target,donor,slots){
+ const targetBefore=sithariCharacterMods(target.character).slice();
+ const donorBefore=sithariCharacterMods(donor.character).slice();
+ if(targetBefore.length!==6||donorBefore.length!==6||ssIsProtectedLegend(target.character)||ssIsProtectedLegend(donor.character))return null;
+ if(!Array.isArray(target.profile?.specific_sets)||!target.profile.specific_sets.length)return null;
+ const targetBySlot=new Map(targetBefore.map(mod=>[ssSlot(mod),mod]));
+ const donorBySlot=new Map(donorBefore.map(mod=>[ssSlot(mod),mod]));
+ const incoming=slots.map(slot=>donorBySlot.get(slot));
+ const returned=slots.map(slot=>targetBySlot.get(slot));
+ if(incoming.some(mod=>!mod)||returned.some(mod=>!mod))return null;
+ if(new Set(slots).size!==slots.length)return null;
+ for(let i=0;i<slots.length;i++){
+  if(!sithariSetMatch(incoming[i],target.profile,target.character))return null;
+  if(!sithariPrimaryMatch(incoming[i],target.profile,slots[i]))return null;
+ }
+ const targetAfter=targetBefore.filter(mod=>!slots.includes(ssSlot(mod))).concat(incoming);
+ const donorAfter=donorBefore.filter(mod=>!slots.includes(ssSlot(mod))).concat(returned);
+ if(targetAfter.length!==6||donorAfter.length!==6)return null;
+ const composition=ssCharacterSetAudit(targetAfter,target.profile);
+ if(composition.status!=='MATCH'||!composition.exact)return null;
+ if(!ssPreservesSetBonuses(donorBefore,donorAfter))return null;
+ const targetSpeedBefore=sithariProjectedSpeed(target.character,targetBefore);
+ const targetSpeedAfter=sithariProjectedSpeed(target.character,targetAfter);
+ const donorSpeedBefore=sithariProjectedSpeed(donor.character,donorBefore);
+ const donorSpeedAfter=sithariProjectedSpeed(donor.character,donorAfter);
+ if(targetSpeedAfter.total+1e-9<targetSpeedBefore.total)return null;
+ if(donorSpeedAfter.total+1e-9<donorSpeedBefore.total)return null;
+ return {targetBefore,targetAfter,donorBefore,donorAfter,incoming,returned,targetSpeedBefore,targetSpeedAfter,donorSpeedBefore,donorSpeedAfter,composition,required:slots.length};
+}
+function ssFindCycles(snapshot){
+ const candidates=[];
+ const diagnostics={targets:0,donors:0,groupsTested:0,rejectedSet:0,rejectedPrimary:0,rejectedDonorSet:0,rejectedSpeed:0,validated:0};
+ const donors=[...new Map((snapshot.sources||[]).map(source=>[source.owner,source])).values()];
+ for(const target of snapshot.nodes||[]){
+  diagnostics.targets++;
+  for(const donor of donors){
+   if(donor.owner===target.owner||ssIsProtectedLegend(donor.character))continue;
+   const donorMods=sithariCharacterMods(donor.character);
+   if(donorMods.length!==6)continue;
+   diagnostics.donors++;
+   const donorBySlot=new Map(donorMods.map(mod=>[ssSlot(mod),mod]));
+   for(const size of [2,4]){
+    for(const slots of ssCombinations(SITHARI_SLOT_ORDER,size)){
+     diagnostics.groupsTested++;
+     const incoming=slots.map(slot=>donorBySlot.get(slot));
+     if(incoming.some(mod=>!mod))continue;
+     if(incoming.some(mod=>!sithariSetMatch(mod,target.profile,target.character))){diagnostics.rejectedSet++;continue;}
+     if(incoming.some((mod,index)=>!sithariPrimaryMatch(mod,target.profile,slots[index]))){diagnostics.rejectedPrimary++;continue;}
+     const audit=ssAtomicSetSwap(target,donor,slots);
+     if(!audit){diagnostics.rejectedDonorSet++;continue;}
+     diagnostics.validated++;
+     const items=slots.map((slot,index)=>({
+      target:{...target,key:target.owner+'::'+slot,slot},
+      source:{key:donor.owner+'::'+slot,owner:donor.owner,name:donor.name||donor.character?.name||donor.owner,character:donor.character,slot,mod:audit.incoming[index]},
+      returnMod:audit.returned[index],
+      secondary:ssSecondaryCoverage(audit.incoming[index],target.profile),
+      kyber:ssKyberSecondaryFit(audit.incoming[index],target.profile),
+      speed:modTotalSpeed(audit.incoming[index])
+     }));
+     candidates.push({items,length:size,kyberFit:items.reduce((sum,item)=>sum+item.kyber,0)/size,secondary:items.reduce((sum,item)=>sum+item.secondary,0)/size,speed:items.reduce((sum,item)=>sum+item.speed,0),audit,atomic:true});
+    }
+   }
+  }
+ }
+ candidates.sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed);
+ const selected=[],usedTargets=new Set(),usedDonors=new Set();
+ for(const candidate of candidates){
+  const edge=candidate.items[0],target=edge.target.owner,donor=edge.source.owner;
+  if(usedTargets.has(target)||usedDonors.has(donor))continue;
+  selected.push(candidate);usedTargets.add(target);usedDonors.add(donor);
+  if(selected.length>=30)break;
+ }
+ return {cycles:selected,expansions:diagnostics.groupsTested,closedCycles:selected.length,exhausted:false,candidateCount:candidates.length,diagnostics};
+}
+function ssRender(snapshot,result,message){
+ const root=document.getElementById('sithariStrategy');if(!root)return;
+ const needs=snapshot.nodes||[],cycles=result.cycles||[],diag=result.diagnostics||{};
+ const peopleHtml=needs.length
+  ?'<div class="ss-people">'+needs.map(node=>'<div><b>'+ssEsc(node.name)+'</b><span>Composition actuelle : '+ssEsc([...node.setAudit.actual.entries()].map(([name,count])=>count+' '+name).join(' · '))+'</span><small>Compositions Kyber examinées : '+ssEsc(node.setAudit.expected.map(config=>config.name+' ('+Math.round(config.weight*100)+'%)').join(' / '))+'</small></div>').join('')+'</div>'
+  :'<div class="ss-empty">Aucune composition incorrecte confirmée par les combinaisons exactes publiées.</div>';
+ const rows=cycles.map((cycle,index)=>{
+  const impacts=ssCycleImpactMap(cycle),edge=cycle.items[0],donor=impacts.get(edge.source.owner),recipient=impacts.get(edge.target.owner);
+  const moves=cycle.items.map(item=>'<div class="ss-modline"><b>'+ssEsc(item.source.mod.set_name||'Set inconnu')+'</b><span>'+ssEsc(item.source.slot)+' · '+ssEsc(item.source.mod.primary_stat||'Primaire inconnue')+'</span><strong>'+num(item.speed)+' vitesse</strong><small>Retour : '+ssEsc(item.returnMod?.set_name||'Set inconnu')+' · '+ssEsc(item.returnMod?.primary_stat||'Primaire inconnue')+'</small></div>'+ssKyberAuditHtml({...item,target:{...item.target,profile:edge.target.profile}})).join('');
+  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(index+1).padStart(2,'0')+'</b><span>'+cycle.length+' mods échangés en bloc</span><strong>Composition Kyber exacte · aucune perte de vitesse</strong></header><div class="ss-transfer"><div class="ss-person"><small>DONNEUR · FAIBLE / PEU UTILISÉ</small><b>'+ssEsc(edge.source.name)+'</b><span>'+ssImpactLabel(donor)+'</span></div><div class="ss-arrow">ÉCHANGE ATOMIQUE <b>⇄</b></div><div class="ss-person ss-recipient"><small>RECEVEUR PRIORITAIRE</small><b>'+ssEsc(edge.target.name)+'</b><span>'+ssImpactLabel(recipient)+'</span></div></div>'+moves+'<footer>Référence Kyber : '+Math.round(cycle.kyberFit*100)+'% · Couverture secondaire : '+Math.round(cycle.secondary*100)+'%</footer></article>';
+ }).join('');
+ const unverifiable=snapshot.unverifiable||[];
+ const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
+ const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LES 50 PRIORITAIRES':phase==='sets'?'IDENTIFIER LES MAUVAIS SETS':phase==='donors'?'CONSTITUER LE POOL DES DONNEURS':'CALCULER LES ÉCHANGES';
+ const diagnostic=phase==='done'?'<h4>BILAN DE RECHERCHE</h4><div class="ss-status">Groupes testés : '+(diag.groupsTested||result.expansions||0)+' · Candidats validés : '+(diag.validated||result.candidateCount||0)+'<br>Rejets : set incompatible '+(diag.rejectedSet||0)+' · primaire '+(diag.rejectedPrimary||0)+' · sécurité donneur '+(diag.rejectedDonorSet||0)+'</div>':'';
+ const referenceNote='<div class="ss-status"><b>FIABILITÉ DES RÉFÉRENCES DE SETS</b><br>Compositions Kyber exactes : '+(snapshot.exactReferenceCount||0)+' / '+(snapshot.recipientCount||0)+' receveurs prioritaires. Compositions non vérifiables : '+unverifiable.length+'. Elles ne sont jamais déclarées conformes par défaut.</div>';
+ root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>OPTIMISATION CIBLÉE · 50 PERSONNAGES</h3><p>Audit des six mods équipés contre les compositions complètes publiées par Kyber.</p></div><button id="ss-run" type="button" '+(busy?'disabled':'')+'>'+(busy?'ÉTAPE EN COURS…':label)+'</button></header>'+
+ '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>ROSTER</span></div><div><b>'+(sithariStepState?.recipientPeople?.length||0)+'</b><span>POOL PRIORITAIRE</span></div><div><b>'+needs.length+'</b><span>COMPOSITIONS À CORRIGER</span></div><div><b>'+unverifiable.length+'</b><span>NON VÉRIFIABLES</span></div><div><b>'+cycles.length+'</b><span>ÉCHANGES VALIDÉS</span></div></div>'+
+ '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div>'+referenceNote+diagnostic+'<h4>PERSONNAGES PRIORITAIRES À CORRIGER</h4>'+peopleHtml+
+ (unverifiable.length?'<h4>RÉFÉRENCES INSUFFISANTES</h4><div class="ss-people">'+unverifiable.map(item=>'<div><b>'+ssEsc(item.name)+'</b><span>Sets individuels disponibles, composition exacte absente</span><small>Conformité non conclue · aucune permutation automatique</small></div>').join('')+'</div>':'')+
+ '<h4>ÉCHANGES PROPOSÉS</h4><p class="ss-results-help">Les groupes de 2 ou 4 mods doivent produire exactement une composition Kyber publiée. Le donneur récupère les mods remplacés ; ses bonus de set et sa vitesse sont protégés.</p>'+(rows||'<div class="ss-empty">'+(phase==='done'?'Aucune permutation ne passe encore tous les contrôles. Le bilan ci-dessus détaille les filtres bloquants.':'Les permutations apparaîtront après le calcul des échanges.')+'</div>')+
+ '<p class="ss-note">Analyse en lecture seule. Aucun mod n’est déplacé automatiquement. Les usages GAC absents restent inconnus.</p>';
+ document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
+}
