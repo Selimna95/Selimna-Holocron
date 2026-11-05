@@ -184,7 +184,7 @@ function kyberProfileValid(p){
   return sets&&(primaries||secondaries);
 }
 function cleanLinesFromDoc(doc){const body=doc?.body;if(!body)return[];const clone=body.cloneNode(true);clone.querySelectorAll('script,style,noscript').forEach(n=>n.remove());clone.querySelectorAll('br').forEach(n=>n.replaceWith(document.createTextNode('\n')));clone.querySelectorAll('div,p,li,tr,h1,h2,h3,h4,h5,h6,section,article,table,thead,tbody,th,td').forEach(n=>n.insertBefore(document.createTextNode('\n'),n.firstChild));return String(clone.textContent||'').split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);}
-function numberFromText(value){const m=String(value??'').match(/[-+]?[0-9]+(?:\\.[0-9]+)?/);return m?Number(m[0].replace(',','.')):0;}
+function numberFromText(value){const m=String(value??'').match(/[-+]?[0-9]+(?:\.[0-9]+)?/);return m?Number(m[0].replace(',','.')):0;}
 function kyberNumber(value){
   const raw=String(value??'').trim();
   const normalized=/^[+-]?\d+,\d+$/.test(raw)?raw.replace(',','.'):raw.replace(/,/g,'');
