@@ -281,3 +281,20 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("// La vitesse peut baisser chez le donneur", strategy)
         self.assertIn("BILAN DE RECHERCHE", strategy)
         self.assertIn("mods échangés en bloc", strategy)
+
+
+    def test_sithari_multi_donor_search_and_filter_diagnostics(self):
+        strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
+        latest_search = strategy[strategy.rfind("function ssFindCycles(snapshot)") :]
+        self.assertIn("const MAX_GROUPS=160000", latest_search)
+        self.assertIn("const usedDonors=new Set()", latest_search)
+        self.assertIn("ssCombinations(SITHARI_SLOT_ORDER,size)", latest_search)
+        self.assertIn("ssCharacterSetAudit(targetAfter,target.profile)", latest_search)
+        self.assertIn("ssPreservesSetBonuses(donorBefore,donorAfter)", latest_search)
+        self.assertIn("rejectedComposition", latest_search)
+        self.assertIn("rejectedSpeed", latest_search)
+        self.assertIn("TRANSFERTS COORDONNÉS", latest_search)
+        self.assertIn("ssCycleImpactMap(cycle)", latest_search)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.sw)
+        self.assertIn("holocron-static-v4.4.18-sithari-multidonor", self.sw)
