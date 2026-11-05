@@ -1,3 +1,10 @@
+# V4.1.36 — échanges multi-mods par donneur
+
+- Un même donneur peut céder plusieurs mods au même receveur si les emplacements sont distincts.
+- La conservation des bonus de set est vérifiée sur l'équipement final complet de chaque donneur, après restitution de tous les mods remplacés.
+- Suppression du rejet prématuré qui évaluait chaque mod donneur isolément et empêchait des échanges groupés pourtant valides.
+- La cible conserve son plancher de vitesse et la composition finale doit toujours correspondre exactement à une référence Kyber.
+
 # V4.1.35 — recherche ciblée des permutations Sith’ari
 
 - Remplacement de l’énumération arbitraire des groupes de slots par des plans calculés depuis les sets excédentaires et manquants de chaque composition Kyber exacte.
