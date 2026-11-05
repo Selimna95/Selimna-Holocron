@@ -487,7 +487,7 @@ assert.deepEqual(
 // secondary priorities and whether the received mod satisfies set/primary.
 const auditContext=vm.createContext({
   sithariKyberSetChoices:p=>p.sets.map(x=>x.name),
-  sithariPrimaryRefs:(p,slot)=>p.slots[slot].primaries,
+  sithariPrimaryRefs:(p,slot)=>Object.entries(p.slots[slot].primaries).map(([name,weight])=>({name,weight})),
   sithariModSecondaryMap:m=>m.secondary,
   sithariStatKey:x=>x,
   sithariStatLabel:x=>x,
