@@ -581,6 +581,10 @@ assert.equal(kyberValidationContext.kyberProfileValid({
 }),false,'Character averages alone must never masquerade as a mod reference');
 assert.ok(core.includes('let kyberUnitIndexPromise=null;'),'Kyber unit index must be cached across profile requests');
 assert.ok(core.includes('const index=await loadKyberUnitIndex();'),'Profile discovery must use the shared canonical unit index');
+assert.ok(core.includes('let kyberUnitIndexFailureUntil=0;'),'A failed Kyber index fetch must enter a cooldown instead of retrying for every character');
+assert.ok(core.includes('Date.now()+60000'),'Kyber index retry cooldown must be bounded to one minute');
+assert.ok(core.includes('const kyberProfileInflight=new Map();'),'Concurrent requests for the same character must be deduplicated');
+assert.ok(strategy.includes('Array.from({length:2},async()=>'),'Sith’ari Kyber profile fetching must stay at two concurrent workers');
 assert.ok(!core.includes('if(!/Best Mods|Data Slice:'),'HTML title wording must not reject otherwise parseable Kyber profile pages');
 assert.ok(strategy.includes('const batch=40'),'Sith’ari must process useful batches rather than 20 individual profiles');
 assert.ok(strategy.includes('state.profileStats.found+=found'),'Sith’ari must report the number of usable profiles found');
