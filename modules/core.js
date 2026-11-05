@@ -308,56 +308,77 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   return kyberProfileValid(profile)?profile:null;
 }
 let kyberUnitIndexPromise=null;
+let kyberUnitIndexFailureUntil=0;
+const kyberProfileInflight=new Map();
 async function loadKyberUnitIndex(){
-  if(!kyberUnitIndexPromise){
-    kyberUnitIndexPromise=(async()=>{
-      const response=await fetch(`${workerUrl()}/?path=characters-index`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
-      if(!response.ok)throw new Error(`Index SWGOH.GG HTTP ${response.status}`);
-      const doc=parseHTML(await response.text()),index=new Map();
-      for(const anchor of Array.from(doc.querySelectorAll('a[href*="/units/"]')||[])){
-        const href=anchor.getAttribute('href')||'',match=href.match(/\/units\/([^/]+)/);
-        if(!match)continue;
-        const label=normalizeKyberKey(kyberCharacterLabel(anchor.textContent||anchor.getAttribute('aria-label')||''));
-        if(label&&!index.has(label))index.set(label,match[1]);
-      }
-      if(!index.size)throw new Error('Aucun personnage reconnu dans l’index SWGOH.GG');
-      return index;
-    })().catch(error=>{kyberUnitIndexPromise=null;throw error;});
+  if(kyberUnitIndexPromise)return kyberUnitIndexPromise;
+  if(Date.now()<kyberUnitIndexFailureUntil){
+    throw new Error('Index SWGOH.GG temporairement mis en pause après un échec récent.');
   }
-  return kyberUnitIndexPromise;
+  const request=(async()=>{
+    const response=await fetch(`${workerUrl()}/?path=characters-index`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
+    if(!response.ok)throw new Error(`Index SWGOH.GG HTTP ${response.status}`);
+    const doc=parseHTML(await response.text()),index=new Map();
+    for(const anchor of Array.from(doc.querySelectorAll('a[href*="/units/"]')||[])){
+      const href=anchor.getAttribute('href')||'',match=href.match(/\/units\/([^/]+)/);
+      if(!match)continue;
+      const label=normalizeKyberKey(kyberCharacterLabel(anchor.textContent||anchor.getAttribute('aria-label')||''));
+      if(label&&!index.has(label))index.set(label,match[1]);
+    }
+    if(!index.size)throw new Error('Aucun personnage reconnu dans l’index SWGOH.GG');
+    return index;
+  })();
+  kyberUnitIndexPromise=request;
+  try{
+    const index=await request;
+    kyberUnitIndexFailureUntil=0;
+    return index;
+  }catch(error){
+    // Keep concurrent callers on one failed request, then pause retries so a
+    // 40-character batch cannot trigger a new index fetch for every character.
+    kyberUnitIndexFailureUntil=Date.now()+60000;
+    if(kyberUnitIndexPromise===request)kyberUnitIndexPromise=null;
+    throw error;
+  }
 }
 async function fetchKyberProfile(character){
   if(!character)return null;
-  const existing=profileForCharacter(character); if(kyberProfileValid(existing))return existing;
   const display=character.name||character.character||character.baseId||character.base_id||'';
-  const tryCandidate=async candidate=>{
+  const requestKey=normalizeKyberKey(display)||slug(character.baseId||character.base_id||'');
+  if(kyberProfileInflight.has(requestKey))return kyberProfileInflight.get(requestKey);
+  const request=(async()=>{
+    const existing=profileForCharacter(character); if(kyberProfileValid(existing))return existing;
+    const tryCandidate=async candidate=>{
+      try{
+        const response=await fetch(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
+        if(!response.ok){log(`Référence Kyber ${candidate} : Worker HTTP ${response.status}.`);return null;}
+        const html=await response.text();
+        const parsed=parseKyberProfileHTML(html,display,candidate);
+        return kyberProfileValid(parsed)?parsed:null;
+      }catch(error){log(`Référence Kyber ${candidate}: ${error?.message||error}`);return null;}
+    };
     try{
-      const response=await fetch(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
-      if(!response.ok){log(`Référence Kyber ${candidate} : Worker HTTP ${response.status}.`);return null;}
-      const html=await response.text();
-      const parsed=parseKyberProfileHTML(html,display,candidate);
-      return kyberProfileValid(parsed)?parsed:null;
-    }catch(error){log(`Référence Kyber ${candidate}: ${error?.message||error}`);return null;}
-  };
-  // One shared index lookup replaces a fresh index request for every missing character.
-  try{
-    const index=await loadKyberUnitIndex();
-    const indexed=index.get(normalizeKyberKey(display));
-    if(indexed){
-      const parsed=await tryCandidate(indexed);
-      if(parsed){profiles[indexed]=parsed;return parsed;}
+      const index=await loadKyberUnitIndex();
+      const indexed=index.get(normalizeKyberKey(display));
+      if(indexed){
+        const parsed=await tryCandidate(indexed);
+        if(parsed){profiles[indexed]=parsed;return parsed;}
+      }
+    }catch(error){log(`Index personnages Kyber indisponible : ${error?.message||error}`);}
+    const candidates=[];
+    for(const value of [display,character.baseId||character.base_id]){
+      const candidate=slug(value);
+      if(candidate&&!candidates.includes(candidate))candidates.push(candidate);
     }
-  }catch(error){log(`Index personnages Kyber indisponible : ${error?.message||error}`);}
-  const candidates=[];
-  for(const value of [display,character.baseId||character.base_id]){
-    const candidate=slug(value);
-    if(candidate&&!candidates.includes(candidate))candidates.push(candidate);
-  }
-  for(const candidate of candidates){
-    const parsed=await tryCandidate(candidate);
-    if(parsed){profiles[candidate]=parsed;return parsed;}
-  }
-  return null;
+    for(const candidate of candidates){
+      const parsed=await tryCandidate(candidate);
+      if(parsed){profiles[candidate]=parsed;return parsed;}
+    }
+    return null;
+  })();
+  kyberProfileInflight.set(requestKey,request);
+  try{return await request;}
+  finally{if(kyberProfileInflight.get(requestKey)===request)kyberProfileInflight.delete(requestKey);}
 }
 let kyberRequestSeq=0;
 function buildLocalOptimizerReference(character){
