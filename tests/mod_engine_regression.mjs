@@ -473,4 +473,25 @@ openDonorMods[0] = { slot: 'Square', speed: 4 };
 assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), false, 'Terminal donor cannot lose total speed');
 assert.ok(strategy.includes("if(!edges.has(next))"), 'Search must recognize an open donor-chain endpoint');
 
+// 8) Kyber profile validity depends on real mod-reference content, not fragile average-stat blocks.
+const kyberValidationContext=vm.createContext({});
+load(core,['kyberProfileValid'],kyberValidationContext);
+assert.equal(kyberValidationContext.kyberProfileValid({
+  sets:[{name:'Health',weight:0.8}],
+  slots:{Arrow:{primaries:{Speed:0.9}}},
+  secondary_focus:{Speed:20}
+}),true,'A usable Kyber reference remains valid when SWGOH.GG omits average stats');
+assert.equal(kyberValidationContext.kyberProfileValid({
+  sets:[{name:'Health',weight:0.8}],
+  averages:{Speed:260,Health:100000,Protection:50000}
+}),false,'A set-only page without slot or secondary guidance is not sufficient');
+assert.equal(kyberValidationContext.kyberProfileValid({
+  averages:{Speed:260,Health:100000,Protection:50000}
+}),false,'Character averages alone must never masquerade as a mod reference');
+assert.ok(core.includes('let kyberUnitIndexPromise=null;'),'Kyber unit index must be cached across profile requests');
+assert.ok(core.includes('const index=await loadKyberUnitIndex();'),'Profile discovery must use the shared canonical unit index');
+assert.ok(!core.includes('if(!/Best Mods|Data Slice:'),'HTML title wording must not reject otherwise parseable Kyber profile pages');
+assert.ok(strategy.includes('const batch=40'),'Sith’ari must process useful batches rather than 20 individual profiles');
+assert.ok(strategy.includes('state.profileStats.found+=found'),'Sith’ari must report the number of usable profiles found');
+
 console.log('Mods engine regression tests passed.');
