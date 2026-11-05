@@ -75,13 +75,8 @@ function ssCyclePreservesSpeed(items,openTerminal=false){
   entry.mods=entry.mods.filter(mod=>ssSlot(mod)!==slot);
   entry.mods.push(edge.source.mod);
  }
- if(openTerminal&&items.length){
-  const terminal=items[items.length-1].source;
-  if(!replacements.has(terminal.owner)){
-   const remaining=sithariCharacterMods(terminal.character).filter(mod=>ssSlot(mod)!==terminal.slot);
-   replacements.set(terminal.owner,{character:terminal.character,mods:remaining});
-  }
- }
+ // The terminal donor of an open chain is a source, not a recipient:
+ // it may lose the donated mod. Every actual target below must keep or gain speed.
  for(const entry of replacements.values()){
   const before=sithariProjectedSpeed(entry.character,sithariCharacterMods(entry.character));
   const after=sithariProjectedSpeed(entry.character,entry.mods);
@@ -170,7 +165,7 @@ function ssRender(snapshot,result,message){
  const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
  const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LE LOT DE RÉFÉRENCES':phase==='sets'?'EXÉCUTER LE FILTRE SETS':phase==='primaries'?'EXÉCUTER LE FILTRE PRIMAIRES':phase==='secondaries'?'EXÉCUTER LE FILTRE SECONDAIRES':'LANCER LA RECHERCHE DES PERMUTATIONS';
  root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>ANALYSE CUMULATIVE DU ROSTER</h3><p>Chaque étape s’exécute séparément. La suivante attend ta commande.</p></div><button id="ss-run" type="button" '+(busy?'disabled':'')+'>'+ (busy?'ÉTAPE EN COURS…':label)+'</button></header>'+
- '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>PERSONNAGES</span></div><div><b>'+snapshot.inventory.length+'</b><span>MODS</span></div><div><b>'+needs.length+'</b><span>SLOTS À AMÉLIORER</span></div><div><b>'+(result.cycles||[]).length+'</b><span>PERMUTATIONS</span></div></div>'+
+ '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>PERSONNAGES</span></div><div><b>'+(sithariStepState?.profileStats?.found??snapshot.profiledCount??0)+'</b><span>PROFILS KYBER</span></div><div><b>'+snapshot.inventory.length+'</b><span>MODS</span></div><div><b>'+needs.length+'</b><span>SLOTS À AMÉLIORER</span></div><div><b>'+(result.cycles||[]).length+'</b><span>PERMUTATIONS</span></div></div>'+
  '<div class="ss-pipeline"><div><b>01 · SETS</b><strong>'+setBad+'</strong><small>'+(result.setCandidates||0)+' donneurs compatibles</small></div><i>→</i><div><b>02 · PRIMAIRES</b><strong>'+primaryBad+'</strong><small>'+(result.primaryCandidates||0)+' donneurs retenus</small></div><i>→</i><div><b>03 · SECONDAIRES</b><strong>'+(result.secondaryCandidates||0)+'</strong><small>meilleure couverture conservée</small></div><i>→</i><div><b>04 · KYBER</b><strong>'+(result.cycles||[]).length+'</strong><small>scénarios validés</small></div></div>'+
  '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div><h4>PERSONNAGES HORS CRITÈRES KYBER</h4>'+peopleHtml+'<h4>PERMUTATIONS EN CHAÎNE</h4>'+(rows||'<div class="ss-empty">Les permutations apparaîtront après l’exécution de la cinquième étape.</div>')+
  '<p class="ss-note">Analyse en lecture seule. Aucune modification des mods n’est appliquée.</p>';
@@ -187,8 +182,11 @@ async function ssAdvance(){
    show('Récupération de '+items.length+' profils maximum. Aucun autre filtre ne démarre pendant cette étape.');
    await Promise.all(Array.from({length:4},async()=>{while(cursor<items.length){const c=items[cursor++];let profile=sithariProfileForCharacter(c);if(!profile){try{profile=await fetchKyberProfile(c);}catch(_){profile=null;}}if(profile)found++;else missing++;done++;const status=document.querySelector('#sithariStrategy .ss-status');if(status)status.innerHTML='<b>'+ssStepLabel('profiles')+'</b><br>Profils traités dans ce lot : '+done+' / '+items.length;}}));
    state.profileCursor=end;state.profileStats=state.profileStats||{found:0,missing:0};state.profileStats.found+=found;state.profileStats.missing+=missing;
-   if(end>=state.people.length)state.phase='sets';
-   state.message='Lot terminé : '+end+' / '+state.people.length+' personnages examinés. '+found+' références disponibles dans ce lot, '+missing+' sans référence exploitable. Total chargé : '+state.profileStats.found+'. '+(state.phase==='sets'?'Les références sont prêtes. Lance le filtre des sets.':'Relance cette étape pour charger le lot suivant.');
+   if(end>=state.people.length){
+    if(state.profileStats.found>0)state.phase='sets';
+    else{state.profileCursor=0;state.phase='profiles';}
+   }
+   state.message='Lot terminé : '+end+' / '+state.people.length+' personnages examinés. '+found+' références disponibles dans ce lot, '+missing+' sans référence exploitable. Total chargé : '+state.profileStats.found+'. '+(state.phase==='sets'?'Les références sont prêtes. Lance le filtre des sets.':'Aucune référence Kyber exploitable récupérée. Le moteur s’arrête ici : vérifie le relais Cloudflare et relance la récupération.');
    show(state.message);
   }else if(state.phase==='sets'){
    state.snapshot=ssBuildSnapshot();state.setPools=ssBuildSetPools(state.snapshot);state.result.setCandidates=state.setPools.count;state.phase='primaries';
