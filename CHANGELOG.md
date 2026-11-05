@@ -1,3 +1,12 @@
+## V4.1.33 — Pipeline Sith’ari et pool donneur fiabilisés (2026-11-05)
+
+- Attend explicitement la fin du chargement du catalogue GAC avant de constituer les 50 prioritaires et le pool des donneurs ; les priorités sont recalculées après disponibilité des observations.
+- Les donneurs doivent avoir une observation GAC positive et faible, une puissance de roster faible, six mods équipés et ne pas appartenir au pool prioritaire.
+- La vitesse de la cible reste protégée ; le donneur peut céder de la vitesse, conformément à la règle métier, tout en conservant ses bonus de set.
+- Les personnages sans profil Kyber et les profils sans composition exacte sont désormais listés comme non vérifiables au lieu d'être silencieusement exclus.
+- Déduplication des compositions identiques et affichage des compteurs d'observations GAC, donneurs, groupes testés et rejets.
+- Les GL restent prioritaires comme receveurs ; ils ne peuvent jamais être donneurs.
+
 ## V4.1.32 — Audit exact des compositions de sets Sith’ari (2026-11-05)
 
 - Comparaison des six mods équipés aux compositions complètes `specific_sets` publiées par SWGOH.GG, au lieu de considérer chaque set individuellement comme conforme.
