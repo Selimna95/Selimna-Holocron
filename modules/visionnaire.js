@@ -161,7 +161,7 @@
     </section>`;
   }
   window.renderVisionnaire=()=>{
-    if(!state.rows.length&&!state.loading&&characters().length)buildAudit();
+    if(document.body.dataset.page==='visionnaire'&&!state.rows.length&&!state.loading&&characters().length)buildAudit();
     else render();
   };
   window.addEventListener('holocron:data-updated',()=>{state.rows=[];state.selected=null;state.slots.clear();if(document.body.dataset.page==='visionnaire')buildAudit();});
