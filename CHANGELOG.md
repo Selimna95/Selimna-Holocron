@@ -1,3 +1,10 @@
+# V4.1.35 — recherche ciblée des permutations Sith’ari
+
+- Remplacement de l’énumération arbitraire des groupes de slots par des plans calculés depuis les sets excédentaires et manquants de chaque composition Kyber exacte.
+- Recherche des donneurs uniquement pour le set attendu sur chaque emplacement, avec primaire compatible et bonus de set du donneur préservés.
+- Recherche bornée à 500 essais par receveur ; la vitesse du receveur reste un plancher strict, tandis que le donneur peut perdre de la vitesse.
+- Diagnostics séparant les plans, candidats donneurs, rejets de composition et rejets de vitesse.
+
 
 ## [4.1.34] — 2026-11-05
 
