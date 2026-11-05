@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.12-kyber-serialized-fetch", self.sw)
+        self.assertIn("holocron-static-v4.4.13-kyber-circuit-breaker", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -180,7 +180,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.9-kyber-serialized-fetch", self.html)
+        self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.html)
         self.assertIn("modules/core.js?v=4.2.9-kyber-serialized-fetch", self.sw)
         self.assertIn("holocron-static-v4.4.12-kyber-serialized-fetch", self.sw)
 
@@ -211,7 +211,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("peopleSummary", strategy)
         self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
         self.assertIn("lecture seule", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.1.1-kyber-throttle", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.1.2-kyber-reference-label", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
         self.assertIn("modules/sithari-strategy.js?v=1.1.1-kyber-throttle", self.sw)
@@ -223,6 +223,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("kyberFetchQueue=operation.then", core)
         self.assertIn("X-Upstream-Status", core)
         self.assertIn("KYBER_PROFILE_CACHE_TTL", core)
+        self.assertIn("kyberCircuitOpenUntil=Date.now()+60000", core)
+        self.assertIn("Sans index fiable, ne pas essayer des slugs devinés", core)
         self.assertIn("persistKyberProfile(requestKey,candidate,result.profile)", core)
         self.assertIn("const terminalStatus=upstreamStatus||response.status", core)
 
