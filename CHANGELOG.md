@@ -1,3 +1,11 @@
+## V4.1.32 — Audit exact des compositions de sets Sith’ari (2026-11-05)
+
+- Comparaison des six mods équipés aux compositions complètes `specific_sets` publiées par SWGOH.GG, au lieu de considérer chaque set individuellement comme conforme.
+- Les références ne publiant que des sets individuels sont classées « non vérifiables » lorsque la composition complète ne peut pas être prouvée ; elles ne sont plus comptées comme conformes par défaut.
+- Les échanges atomiques de 2 ou 4 mods ne sont proposés que si les six mods du receveur correspondent exactement à une composition Kyber publiée.
+- Conservation des protections de vitesse, des bonus de set du donneur et du pool distinct de donneurs faibles avec usage GAC observé.
+- Affichage du nombre de compositions vérifiables, des compositions non vérifiables et des rejets.
+
 ## V4.1.31 — Échanges atomiques de sets Sith’ari (2026-11-05)
 
 - Remplacement des échanges mod par mod par des permutations groupées de 2 ou 4 mods issus du même donneur.
