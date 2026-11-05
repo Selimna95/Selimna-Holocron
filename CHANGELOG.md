@@ -1,3 +1,11 @@
+## V4.1.29 — Arrêt rapide des échecs Kyber (2026-11-05)
+
+- Ouverture d'un coupe-circuit de 60 secondes après une erreur réseau ou HTTP 5xx du relais / de SWGOH.GG ; les requêtes suivantes échouent rapidement au lieu de s'empiler.
+- Suppression des tentatives de slugs devinés lorsque l'index SWGOH.GG est indisponible : un index défaillant ne déclenche plus une rafale de pages de profils.
+- Conservation de la file sérialisée et du cache des profils Kyber validés ; les réponses réussies ne sont pas ralenties par les reprises inutiles.
+- Libellé Sith’ari précisé : « Références Kyber » distingue les données de référence des profils Optimizer.
+- La synchronisation du roster et les règles de permutation / vitesse ne sont pas modifiées.
+
 ## V4.1.28 — Récupération Kyber résiliente (2026-11-05)
 
 - Sérialisation des requêtes SWGOH.GG de référence : une seule page est demandée à la fois, avec un espacement entre les appels.
