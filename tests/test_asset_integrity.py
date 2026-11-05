@@ -225,7 +225,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("KYBER_PROFILE_CACHE_TTL", core)
         self.assertIn("kyberCircuitOpenUntil=Date.now()+60000", core)
         self.assertIn("Sans index fiable, ne pas essayer des slugs devinés", core)
-        self.assertIn("persistKyberProfile(requestKey,candidate,result.profile)", core)
+        self.assertIn("persistKyberProfile(requestKey,indexed,result.profile)", core)
         self.assertIn("const terminalStatus=upstreamStatus||response.status", core)
 
 if __name__ == "__main__":
