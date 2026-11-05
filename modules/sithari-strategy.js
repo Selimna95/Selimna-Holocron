@@ -987,3 +987,162 @@ function ssRender(snapshot,result,message){
  '<p class="ss-note">Analyse en lecture seule. Aucun mod n’est déplacé automatiquement. Les usages GAC absents restent inconnus, jamais assimilés à zéro.</p>';
  document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
 }
+
+
+/* V4.1.34 — recherche multi-donneurs et diagnostic par filtre.
+   Un receveur peut obtenir les pièces d'un set depuis plusieurs donneurs.
+   Chaque donneur rend le mod remplacé sur le même slot et conserve ses bonus.
+   La vitesse du receveur est un plancher absolu ; celle du donneur peut baisser. */
+function ssFindCycles(snapshot){
+ const diagnostics={
+  targets:0,donors:new Set((snapshot.sources||[]).map(x=>x.owner)).size,
+  groupsTested:0,rawBySlot:{},setCandidates:0,primaryCandidates:0,
+  donorSetCandidates:0,rejectedSet:0,rejectedPrimary:0,
+  rejectedDonorSet:0,rejectedComposition:0,rejectedSpeed:0,validated:0,
+  capped:false
+ };
+ const candidates=[];
+ const MAX_GROUPS=160000,MAX_PER_SLOT=16;
+ for(const target of snapshot.nodes||[]){
+  diagnostics.targets++;
+  const targetBefore=sithariCharacterMods(target.character).slice();
+  if(targetBefore.length!==6)continue;
+  const targetBySlot=new Map(targetBefore.map(mod=>[ssSlot(mod),mod]));
+  const eligibleBySlot=new Map();
+  for(const slot of SITHARI_SLOT_ORDER){
+   const old=targetBySlot.get(slot),pool=[];
+   if(!old){eligibleBySlot.set(slot,pool);continue;}
+   for(const source of snapshot.sources||[]){
+    if(source.owner===target.owner||source.slot!==slot||ssIsProtectedLegend(source.character))continue;
+    if(!sithariSetMatch(source.mod,target.profile,target.character)){diagnostics.rejectedSet++;continue;}
+    diagnostics.setCandidates++;
+    if(!sithariPrimaryMatch(source.mod,target.profile,slot)){diagnostics.rejectedPrimary++;continue;}
+    diagnostics.primaryCandidates++;
+    const donorBefore=sithariCharacterMods(source.character).slice();
+    if(donorBefore.length!==6)continue;
+    const donorAfter=donorBefore.filter(mod=>ssSlot(mod)!==slot).concat([old]);
+    if(donorAfter.length!==6||!ssPreservesSetBonuses(donorBefore,donorAfter)){diagnostics.rejectedDonorSet++;continue;}
+    diagnostics.donorSetCandidates++;
+    pool.push({
+     target:{...target,slot},source,returnMod:old,
+     secondary:ssSecondaryCoverage(source.mod,target.profile),
+     kyber:ssKyberSecondaryFit(source.mod,target.profile),
+     speed:modTotalSpeed(source.mod)
+    });
+   }
+   pool.sort((a,b)=>b.kyber-a.kyber||b.secondary-a.secondary||b.speed-a.speed);
+   eligibleBySlot.set(slot,pool.slice(0,MAX_PER_SLOT));
+   diagnostics.rawBySlot[slot]={compatibleSet:diagnostics.rawBySlot[slot]?.compatibleSet||0,compatiblePrimary:diagnostics.rawBySlot[slot]?.compatiblePrimary||0,donorSafe:diagnostics.rawBySlot[slot]?.donorSafe||0};
+   diagnostics.rawBySlot[slot].compatibleSet+=pool.length;
+   diagnostics.rawBySlot[slot].compatiblePrimary+=pool.length;
+   diagnostics.rawBySlot[slot].donorSafe+=pool.length;
+  }
+  for(const size of [2,4]){
+   for(const slots of ssCombinations(SITHARI_SLOT_ORDER,size)){
+    if(slots.some(slot=>!(eligibleBySlot.get(slot)||[]).length))continue;
+    const chosen=[],usedDonors=new Set();
+    const walk=(index)=>{
+     if(diagnostics.groupsTested>=MAX_GROUPS){diagnostics.capped=true;return;}
+     if(index===slots.length){
+      diagnostics.groupsTested++;
+      const incoming=chosen.map(item=>item.source.mod);
+      const targetAfter=targetBefore.filter(mod=>!slots.includes(ssSlot(mod))).concat(incoming);
+      if(targetAfter.length!==6||new Set(targetAfter.map(ssSlot)).size!==6){diagnostics.rejectedComposition++;return;}
+      const composition=ssCharacterSetAudit(targetAfter,target.profile);
+      if(composition.status!=='MATCH'||!composition.exact){diagnostics.rejectedComposition++;return;}
+      const beforeSpeed=sithariProjectedSpeed(target.character,targetBefore);
+      const afterSpeed=sithariProjectedSpeed(target.character,targetAfter);
+      if(afterSpeed.total+1e-9<beforeSpeed.total){diagnostics.rejectedSpeed++;return;}
+      diagnostics.validated++;
+      const items=chosen.map(item=>({...item,target:{...target,slot:item.source.slot}}));
+      candidates.push({
+       items,length:items.length,kyberFit:items.reduce((sum,item)=>sum+item.kyber,0)/items.length,
+       secondary:items.reduce((sum,item)=>sum+item.secondary,0)/items.length,
+       speed:items.reduce((sum,item)=>sum+item.speed,0),
+       audit:{targetBefore,targetAfter,composition},atomic:true
+      });
+      return;
+     }
+     for(const item of eligibleBySlot.get(slots[index])||[]){
+      const owner=item.source.owner;
+      if(usedDonors.has(owner))continue;
+      usedDonors.add(owner);chosen.push(item);walk(index+1);chosen.pop();usedDonors.delete(owner);
+      if(diagnostics.capped)return;
+     }
+    };
+    walk(0);
+    if(diagnostics.capped)break;
+   }
+   if(diagnostics.capped)break;
+  }
+  if(diagnostics.capped)break;
+ }
+ candidates.sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed);
+ const selected=[],usedTargets=new Set(),usedDonors=new Set();
+ for(const candidate of candidates){
+  const target=candidate.items[0].target.owner;
+  const donors=candidate.items.map(item=>item.source.owner);
+  if(usedTargets.has(target)||donors.some(owner=>usedDonors.has(owner)))continue;
+  selected.push(candidate);usedTargets.add(target);donors.forEach(owner=>usedDonors.add(owner));
+  if(selected.length>=30)break;
+ }
+ diagnostics.donors=[...new Set((snapshot.sources||[]).map(x=>x.owner))].length;
+ return {cycles:selected,expansions:diagnostics.groupsTested,closedCycles:selected.length,exhausted:diagnostics.capped,candidateCount:candidates.length,diagnostics};
+}
+function ssCycleImpactMap(cycle){
+ const affected=new Map();
+ const ensure=(character,owner,name)=>{
+  if(!affected.has(owner)){
+   const beforeMods=sithariCharacterMods(character).slice();
+   affected.set(owner,{character,name,beforeMods,afterMods:beforeMods.slice()});
+  }
+  return affected.get(owner);
+ };
+ for(const item of cycle.items||[]){
+  const target=ensure(item.target.character,item.target.owner,item.target.name);
+  target.afterMods=target.afterMods.filter(mod=>ssSlot(mod)!==item.target.slot);
+  target.afterMods.push(item.source.mod);
+  const donor=ensure(item.source.character,item.source.owner,item.source.name);
+  donor.afterMods=donor.afterMods.filter(mod=>ssSlot(mod)!==item.source.slot);
+  donor.afterMods.push(item.returnMod);
+ }
+ for(const item of affected.values()){
+  item.before=sithariProjectedSpeed(item.character,item.beforeMods);
+  item.after=sithariProjectedSpeed(item.character,item.afterMods);
+  item.delta=Number(item.after.total||item.after.modSpeed||0)-Number(item.before.total||item.before.modSpeed||0);
+ }
+ return affected;
+}
+function ssRender(snapshot,result,message){
+ const root=document.getElementById('sithariStrategy');if(!root)return;
+ const needs=snapshot.nodes||[],cycles=result.cycles||[],diag=result.diagnostics||{},unverifiable=snapshot.unverifiable||[];
+ const uniqueConfigs=configs=>{
+  const seen=new Set();return (configs||[]).filter(config=>{
+   const signature=typeof config==='string'?config:JSON.stringify([...config.expected.entries()].sort((a,b)=>a[0].localeCompare(b[0])));
+   if(seen.has(signature))return false;seen.add(signature);return true;
+  });
+ };
+ const peopleHtml=needs.length
+  ?'<div class="ss-people">'+needs.map(node=>'<div><b>'+ssEsc(node.name)+'</b><span>Composition actuelle : '+ssEsc([...node.setAudit.actual.entries()].map(([name,count])=>count+' '+name).join(' · '))+'</span><small>Compositions Kyber examinées : '+ssEsc(uniqueConfigs(node.setAudit.expected).map(config=>typeof config==='string'?config:config.name+' ('+Math.round(config.weight*100)+'%)').join(' / '))+'</small></div>').join('')+'</div>'
+  :'<div class="ss-empty">Aucune composition incorrecte confirmée par une référence Kyber complète.</div>';
+ const rows=cycles.map((cycle,index)=>{
+  const impacts=ssCycleImpactMap(cycle),edge=cycle.items[0],recipient=impacts.get(edge.target.owner);
+  const donorNames=[...new Set(cycle.items.map(item=>item.source.name))];
+  const donorImpact=cycle.items.map(item=>impacts.get(item.source.owner)).filter(Boolean);
+  const donorHtml=donorImpact.map(impact=>'<div class="ss-person"><small>DONNEUR · FAIBLE / PEU UTILISÉ</small><b>'+ssEsc(impact.name)+'</b><span>'+ssImpactLabel(impact)+'</span></div>').join('');
+  const moves=cycle.items.map(item=>'<div class="ss-modline"><b>'+ssEsc(item.source.mod.set_name||'Set inconnu')+'</b><span>'+ssEsc(item.source.slot)+' · '+ssEsc(item.source.mod.primary_stat||'Primaire inconnue')+'</span><strong>'+num(item.speed)+' vitesse</strong><small>Retour chez le donneur : '+ssEsc(item.returnMod?.set_name||'Set inconnu')+' · '+ssEsc(item.returnMod?.primary_stat||'Primaire inconnue')+'</small></div>'+ssKyberAuditHtml({...item,target:{...item.target,profile:edge.target.profile}})).join('');
+  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(index+1).padStart(2,'0')+'</b><span>'+cycle.length+' mods · '+donorNames.length+' donneur(s)</span><strong>Cible : aucune perte de vitesse</strong></header><div class="ss-transfer">'+donorHtml+'<div class="ss-arrow">TRANSFERTS COORDONNÉS <b>⇄</b></div><div class="ss-person ss-recipient"><small>RECEVEUR PRIORITAIRE</small><b>'+ssEsc(edge.target.name)+'</b><span>'+ssImpactLabel(recipient)+'</span></div></div>'+moves+'<footer>Référence Kyber : '+Math.round(cycle.kyberFit*100)+'% · Couverture secondaire : '+Math.round(cycle.secondary*100)+'%</footer></article>';
+ }).join('');
+ const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
+ const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LES 50 PRIORITAIRES':phase==='sets'?'IDENTIFIER LES MAUVAIS SETS':phase==='donors'?'CONSTITUER LE POOL DES DONNEURS':'CALCULER LES ÉCHANGES';
+ const diagnostic=phase==='done'?'<h4>BILAN DE RECHERCHE</h4><div class="ss-status">Groupes testés : '+(diag.groupsTested??result.expansions??0)+' · Combinaisons validées : '+(diag.validated??result.candidateCount??0)+' · Scénarios retenus : '+cycles.length+'<br>Donneurs examinés : '+(diag.donors||0)+' · Candidats après set/primaire/sécurité donneur : '+(diag.donorSetCandidates||0)+'<br>Rejets : set '+(diag.rejectedSet||0)+' · primaire '+(diag.rejectedPrimary||0)+' · bonus donneur '+(diag.rejectedDonorSet||0)+' · composition Kyber '+(diag.rejectedComposition||0)+' · vitesse cible '+(diag.rejectedSpeed||0)+(diag.capped?' · recherche plafonnée':'')+'</div>':'';
+ const referenceNote='<div class="ss-status"><b>FIABILITÉ DES RÉFÉRENCES DE SETS</b><br>Compositions Kyber exactes : '+(snapshot.exactReferenceCount||0)+' / '+(snapshot.recipientCount||0)+' receveurs prioritaires. Personnages non vérifiables : '+unverifiable.length+'.';
+ const donorNote=snapshot.donorStats?'<br>Usage GAC observé : '+snapshot.donorStats.knownCount+' personnages · seuil bas : '+(snapshot.donorStats.lowUseThreshold??'indisponible')+' · donneurs retenus : '+snapshot.donorStats.people.length+'.':'';
+ root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>OPTIMISATION CIBLÉE · 50 PERSONNAGES</h3><p>Recherche multi-donneurs : plusieurs personnages faibles peuvent céder des mods au même receveur. Chaque donneur récupère le mod remplacé sur le même emplacement.</p></div><button id="ss-run" type="button" '+(busy?'disabled':'')+'>'+(busy?'ÉTAPE EN COURS…':label)+'</button></header>'+
+ '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>ROSTER</span></div><div><b>'+snapshot.recipientCount+'</b><span>POOL PRIORITAIRE</span></div><div><b>'+needs.length+'</b><span>COMPOSITIONS À CORRIGER</span></div><div><b>'+unverifiable.length+'</b><span>NON VÉRIFIABLES</span></div><div><b>'+cycles.length+'</b><span>ÉCHANGES VALIDÉS</span></div></div>'+
+ '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div>'+referenceNote+donorNote+'</div>'+diagnostic+'<h4>PERSONNAGES PRIORITAIRES À CORRIGER</h4>'+peopleHtml+
+ (unverifiable.length?'<h4>RÉFÉRENCES INSUFFISANTES</h4><div class="ss-people">'+unverifiable.map(item=>'<div><b>'+ssEsc(item.name)+'</b><span>'+ssEsc(item.reason||'Référence incomplète')+'</span><small>Conformité non conclue · aucune permutation automatique</small></div>').join('')+'</div>':'')+
+ '<h4>ÉCHANGES PROPOSÉS</h4><p class="ss-results-help">Les mods peuvent venir de plusieurs donneurs, mais chaque emplacement est échangé en retour. La composition finale doit correspondre exactement à une référence Kyber, les bonus de set des donneurs sont préservés et la cible ne perd jamais de vitesse.</p>'+(rows||'<div class="ss-empty">'+(phase==='done'?'Aucune permutation validée. Le bilan sépare désormais les rejets de chaque filtre et indique si la recherche a atteint son plafond.':'Les permutations apparaîtront après le calcul des échanges.')+'</div>')+
+ '<p class="ss-note">Analyse en lecture seule. Aucun mod n’est déplacé automatiquement. Les usages GAC absents restent inconnus, jamais assimilés à zéro.</p>';
+ document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
+}
