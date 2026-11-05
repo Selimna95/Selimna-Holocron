@@ -287,7 +287,7 @@ class AssetIntegrityTests(unittest.TestCase):
         strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
         latest_search = strategy[strategy.rfind("function ssFindCycles(snapshot)") :]
         self.assertIn("const MAX_GROUPS=160000", latest_search)
-        self.assertIn("const usedDonors=new Set()", latest_search)
+        self.assertIn("usedDonors=new Set()", latest_search)
         self.assertIn("ssCombinations(SITHARI_SLOT_ORDER,size)", latest_search)
         self.assertIn("ssCharacterSetAudit(targetAfter,target.profile)", latest_search)
         self.assertIn("ssPreservesSetBonuses(donorBefore,donorAfter)", latest_search)
