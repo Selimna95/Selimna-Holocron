@@ -1,3 +1,9 @@
+## V4.1.37 — Pool donneur fondé sur l'utilisation GAC
+
+- Suppression du seuil de puissance du pool donneur : la puissance ne filtre plus les personnages peu utilisés en GAC.
+- Conservation des garde-fous : usage GAC connu et bas, personnage hors pool prioritaire, non-GL et six mods équipés.
+- Version du moteur et cache statique incrémentés.
+
 # V4.1.36 — échanges multi-mods par donneur
 
 - Un même donneur peut céder plusieurs mods au même receveur si les emplacements sont distincts.
