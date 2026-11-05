@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.3-kyber-profile-recovery", self.sw)
+        self.assertIn("holocron-static-v4.4.4-kyber-live-page-parser", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -180,9 +180,9 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.4-kyber-index-cache", self.html)
-        self.assertIn("modules/core.js?v=4.2.4-kyber-index-cache", self.sw)
-        self.assertIn("holocron-static-v4.4.3-kyber-profile-recovery", self.sw)
+        self.assertIn("modules/core.js?v=4.2.5-kyber-live-page-parser", self.html)
+        self.assertIn("modules/core.js?v=4.2.5-kyber-live-page-parser", self.sw)
+        self.assertIn("holocron-static-v4.4.4-kyber-live-page-parser", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -211,7 +211,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithari-strategy.css?v=1.0.1-roster-synthesis", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.1-roster-synthesis", self.sw)
         self.assertIn("modules/sithari-strategy.js?v=1.0.4-kyber-batch-diagnostics", self.sw)
-        self.assertIn("holocron-static-v4.4.3-kyber-profile-recovery", self.sw)
+        self.assertIn("holocron-static-v4.4.4-kyber-live-page-parser", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
