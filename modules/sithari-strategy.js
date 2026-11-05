@@ -66,6 +66,28 @@ function ssKyberSecondaryFit(mod,profile){
   return sum+(target>0?Math.min(1,Math.max(0,actual)/target):0);
  },0)/entries.length;
 }
+function ssKyberMoveAudit(edge){
+ const profile=edge?.target?.profile||{},mod=edge?.source?.mod||{},slot=edge?.target?.slot||'';
+ const sets=sithariKyberSetChoices(profile);
+ const primaries=sithariPrimaryRefs(profile,slot);
+ const secondaries=Object.entries(profile.secondary_focus||{}).map(([stat,reference])=>{
+  const actual=Number(sithariModSecondaryMap(mod)[sithariStatKey(stat)]||0);
+  return {stat:sithariStatLabel(stat),reference:Number(reference)||0,actual,present:actual>0};
+ });
+ return {
+  source:profile.source||'Référence Kyber',
+  set:{actual:String(mod.set_name||'—'),choices:sets,matches:sithariSetMatch(mod,profile,edge.target.character)},
+  primary:{actual:String(mod.primary_stat||'—'),choices:primaries.map(x=>({name:x.name,weight:Number(x.weight)||0})),matches:sithariPrimaryMatch(mod,profile,slot)},
+  secondaries,secondaryFit:Number(edge.kyber)||0
+ };
+}
+function ssKyberAuditHtml(edge){
+ const audit=ssKyberMoveAudit(edge);
+ const setChoices=audit.set.choices.length?audit.set.choices.join(' / '):'aucune donnée';
+ const primaryChoices=audit.primary.choices.length?audit.primary.choices.map(x=>x.name+' '+Math.round(x.weight*100)+'%').join(' / '):'aucune donnée';
+ const secondary=audit.secondaries.length?audit.secondaries.map(x=>ssEsc(x.stat)+' '+num(x.actual,1)+' / '+num(x.reference,1)).join(' · '):'aucune priorité secondaire publiée';
+ return '<small class="ss-kyber-audit"><b>RÉFÉRENCE KYBER · '+ssEsc(audit.source)+'</b><br>Set reçu : '+ssEsc(audit.set.actual)+' · Choix : '+ssEsc(setChoices)+' · '+(audit.set.matches?'conforme':'non conforme')+'<br>Primaire reçue : '+ssEsc(audit.primary.actual)+' · Choix : '+ssEsc(primaryChoices)+' · '+(audit.primary.matches?'conforme':'non conforme')+'<br>Secondaires : '+secondary+'</small>';
+}
 function ssCyclePreservesSpeed(items,openTerminal=false){
  const replacements=new Map();
  for(const edge of items){
@@ -159,8 +181,8 @@ function ssRender(snapshot,result,message){
  const peopleSummary=[...needs.reduce((map,node)=>{const item=map.get(node.owner)||{name:node.name,slots:0,sets:0,primaries:0};item.slots++;if(!node.setOk)item.sets++;if(!node.primaryOk)item.primaries++;map.set(node.owner,item);return map;},new Map()).values()].sort((a,b)=>b.slots-a.slots||a.name.localeCompare(b.name,'fr'));
  const peopleHtml=peopleSummary.length?'<div class="ss-people">'+peopleSummary.map(person=>'<div><b>'+ssEsc(person.name)+'</b><span>'+person.slots+' slot(s) à revoir</span><small>'+person.sets+' set(s) · '+person.primaries+' primaire(s)</small></div>').join('')+'</div>':'<div class="ss-empty">Aucun emplacement équipé hors critères Set / primaire parmi les personnages disposant d’une référence Kyber.</div>';
  const rows=(result.cycles||[]).map((cycle,i)=>{
-  const moves=cycle.items.map(e=>'<div class="ss-move"><span>'+ssEsc(e.source.name)+'</span><i>→</i><b>'+ssEsc(e.target.name)+'</b><small>'+ssEsc(e.source.mod.set_name||'Set ?')+' · '+ssEsc(e.source.mod.primary_stat||'Primaire ?')+' · '+num(modTotalSpeed(e.source.mod))+' vit.</small></div>').join('');
-  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(i+1).padStart(2,'0')+'</b><span>'+cycle.length+' transferts</span><strong>Kyber '+Math.round(cycle.kyberFit*100)+'%</strong></header>'+moves+'<footer>Couverture secondaires : '+Math.round(cycle.secondary*100)+'% · Référence Kyber : '+Math.round(cycle.kyberFit*100)+'% · Vitesse mods : '+num(cycle.speed)+'</footer></article>';
+  const moves=cycle.items.map(e=>'<div class="ss-move"><span>'+ssEsc(e.source.name)+'</span><i>→</i><b>'+ssEsc(e.target.name)+'</b><small>'+ssEsc(e.source.mod.set_name||'Set ?')+' · '+ssEsc(e.source.mod.primary_stat||'Primaire ?')+' · '+num(modTotalSpeed(e.source.mod))+' vit.</small>'+ssKyberAuditHtml(e)+'</div>').join('');
+  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(i+1).padStart(2,'0')+'</b><span>'+cycle.length+' transferts</span><strong>Secondaires Kyber '+Math.round(cycle.kyberFit*100)+'%</strong></header>'+moves+'<footer>Couverture des secondaires prioritaires : '+Math.round(cycle.secondary*100)+'% · Ajustement secondaires Kyber : '+Math.round(cycle.kyberFit*100)+'% · Vitesse mods transférés : '+num(cycle.speed)+'</footer></article>';
  }).join('');
  const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
  const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LE LOT DE RÉFÉRENCES':phase==='sets'?'EXÉCUTER LE FILTRE SETS':phase==='primaries'?'EXÉCUTER LE FILTRE PRIMAIRES':phase==='secondaries'?'EXÉCUTER LE FILTRE SECONDAIRES':'LANCER LA RECHERCHE DES PERMUTATIONS';
