@@ -1256,8 +1256,6 @@ function ssFindCycles(snapshot){
      if(!sithariPrimaryMatch(source.mod,target.profile,slot)){diagnostics.rejectedPrimary++;continue;}
      const donor=donorState(source);
      if(donor.before.length!==6)continue;
-     const donorAfter=donor.before.filter(mod=>ssSlot(mod)!==slot).concat([old]);
-     if(donorAfter.length!==6||!ssPreservesSetBonuses(donor.before,donorAfter)){diagnostics.rejectedDonorSet++;continue;}
      diagnostics.donorCandidates++;
      pool.push({
       target:{...target,slot},source,returnMod:old,
@@ -1273,7 +1271,7 @@ function ssFindCycles(snapshot){
    if(impossible)continue;
    // Le slot ayant le moins de donneurs est traité en premier : moins de branches.
    slotPools.sort((a,b)=>a.pool.length-b.pool.length);
-   const chosen=[],usedDonors=new Set();
+   const chosen=[];
    let foundForPlan=false;
    const walk=index=>{
     if(foundForPlan||attempts>=MAX_ATTEMPTS_PER_TARGET)return;
@@ -1283,6 +1281,19 @@ function ssFindCycles(snapshot){
      const replacedSlots=chosen.map(item=>item.target.slot);
      const targetAfter=targetBefore.filter(mod=>!replacedSlots.includes(ssSlot(mod))).concat(incoming);
      if(targetAfter.length!==6||new Set(targetAfter.map(ssSlot)).size!==6){diagnostics.rejectedComposition++;return;}
+     const donorGroups=new Map();
+     for(const item of chosen){
+      if(!donorGroups.has(item.source.owner))donorGroups.set(item.source.owner,{before:donorState(item.source).before,givenSlots:[],returned:[]});
+      const group=donorGroups.get(item.source.owner);
+      group.givenSlots.push(item.source.slot);
+      group.returned.push(item.returnMod);
+     }
+     for(const group of donorGroups.values()){
+      const donorAfter=group.before.filter(mod=>!group.givenSlots.includes(ssSlot(mod))).concat(group.returned);
+      if(donorAfter.length!==6||new Set(donorAfter.map(ssSlot)).size!==6||!ssPreservesSetBonuses(group.before,donorAfter)){
+       diagnostics.rejectedDonorSet++;return;
+      }
+     }
      const audit=ssCharacterSetAudit(targetAfter,target.profile);
      if(audit.status!=='MATCH'||!audit.exact){diagnostics.rejectedComposition++;return;}
      const beforeSpeed=sithariProjectedSpeed(target.character,targetBefore);
@@ -1302,11 +1313,9 @@ function ssFindCycles(snapshot){
     }
     const slotPool=slotPools[index];
     for(const item of slotPool.pool){
-     const owner=item.source.owner;
-     if(usedDonors.has(owner))continue;
-     usedDonors.add(owner);chosen.push(item);
+     chosen.push(item);
      walk(index+1);
-     chosen.pop();usedDonors.delete(owner);
+     chosen.pop();
      if(foundForPlan||attempts>=MAX_ATTEMPTS_PER_TARGET)return;
     }
    };
