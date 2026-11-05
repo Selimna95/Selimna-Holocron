@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.18-sithari-multidonor", self.sw)
+        self.assertIn("holocron-static-v4.4.19-sithari-targeted-sets", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.html)
         self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.sw)
-        self.assertIn("holocron-static-v4.4.18-sithari-multidonor", self.sw)
+        self.assertIn("holocron-static-v4.4.19-sithari-targeted-sets", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -211,11 +211,11 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("peopleSummary", strategy)
         self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
         self.assertIn("lecture seule", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.2-targeted-set-deficit", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
-        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.sw)
-        self.assertIn("holocron-static-v4.4.18-sithari-multidonor", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.2-targeted-set-deficit", self.sw)
+        self.assertIn("holocron-static-v4.4.19-sithari-targeted-sets", self.sw)
 
     def test_sithari_uses_a_bounded_priority_pool_and_observed_low_use_donors(self):
         strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
@@ -253,9 +253,9 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("for(const donor of donorPeople)", strategy)
         self.assertIn("for(const character of recipientPeople)", strategy)
         self.assertIn("Compositions Kyber exactes", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.html)
-        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.sw)
-        self.assertIn("holocron-static-v4.4.18-sithari-multidonor", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.2-targeted-set-deficit", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.2-targeted-set-deficit", self.sw)
+        self.assertIn("holocron-static-v4.4.19-sithari-targeted-sets", self.sw)
 
 
     def test_sithari_waits_for_gac_and_allows_donor_speed_loss(self):
@@ -269,8 +269,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("unverifiable.push({character,name,reason:", strategy)
         self.assertIn("if(ssIsProtectedLegend(donor))continue", strategy)
         self.assertIn("La cible ne perd jamais de vitesse", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.html)
-        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.2-targeted-set-deficit", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.2-targeted-set-deficit", self.sw)
 
     def test_sithari_supports_atomic_two_and_four_mod_set_swaps(self):
         strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
@@ -286,16 +286,28 @@ class AssetIntegrityTests(unittest.TestCase):
     def test_sithari_multi_donor_search_and_filter_diagnostics(self):
         strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
         latest_search = strategy[strategy.rfind("function ssFindCycles(snapshot)") :]
-        self.assertIn("const MAX_GROUPS=200000,MAX_GROUPS_PER_TARGET=4000", latest_search)
+        self.assertIn("const MAX_ATTEMPTS_PER_TARGET=500", latest_search)
         self.assertIn("targetCappedCount", latest_search)
         self.assertIn("usedDonors=new Set()", latest_search)
-        self.assertIn("ssCombinations(SITHARI_SLOT_ORDER,size)", latest_search)
+        self.assertIn("function ssRequiredSetPlans(target)", strategy)
         self.assertIn("ssCharacterSetAudit(targetAfter,target.profile)", latest_search)
-        self.assertIn("ssPreservesSetBonuses(donorBefore,donorAfter)", latest_search)
+        self.assertIn("ssPreservesSetBonuses(donor.before,donorAfter)", latest_search)
         self.assertIn("rejectedComposition", latest_search)
         self.assertIn("rejectedSpeed", latest_search)
-        self.assertIn("TRANSFERTS COORDONNÉS", latest_search)
-        self.assertIn("ssCycleImpactMap(cycle)", latest_search)
-        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.html)
-        self.assertIn("modules/sithari-strategy.js?v=1.5.1-multidonor-diagnostics", self.sw)
-        self.assertIn("holocron-static-v4.4.18-sithari-multidonor", self.sw)
+        self.assertIn("TRANSFERTS COORDONNÉS", strategy)
+        self.assertIn("ssCycleImpactMap(cycle)", strategy)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.2-targeted-set-deficit", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.2-targeted-set-deficit", self.sw)
+        self.assertIn("holocron-static-v4.4.19-sithari-targeted-sets", self.sw)
+
+
+    def test_sithari_search_builds_only_exact_missing_set_plans(self):
+        strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
+        latest_search = strategy[strategy.rfind("function ssFindCycles(snapshot)") :]
+        self.assertIn("function ssRequiredSetPlans(target)", strategy)
+        self.assertIn("requiredBySlot:new Map", strategy)
+        self.assertIn("incomingSet!==requiredSet", latest_search)
+        self.assertIn("const MAX_ATTEMPTS_PER_TARGET=500", latest_search)
+        self.assertIn("afterSpeed.total+1e-9<beforeSpeed.total", latest_search)
+        self.assertIn("ssPreservesSetBonuses(donor.before,donorAfter)", latest_search)
+        self.assertNotIn("for(const size of [2,4])", latest_search)
