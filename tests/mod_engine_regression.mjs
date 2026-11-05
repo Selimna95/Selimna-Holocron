@@ -506,25 +506,32 @@ assert.equal(kyberAudit.secondaries.length,2);
 assert.equal(kyberAudit.secondaries[0].actual,15);
 assert.equal(kyberAudit.secondaryFit,0.7);
 
-// Open donor chains are allowed only when the terminal donor also preserves total speed.
-const openTargetMods = [{ slot: 'Square', speed: 0 }, { slot: 'Arrow', speed: 12 }];
-const openDonorMods = [{ slot: 'Square', speed: 0 }, { slot: 'Arrow', speed: 8 }];
+// Sith'ari: open chains and broken active mod sets are forbidden.
+const openTargetMods = [{ slot: 'Square', set_name: 'Offense', speed: 0 }, { slot: 'Arrow', set_name: 'Speed', speed: 12 }];
+const openDonorMods = [{ slot: 'Square', set_name: 'Health', speed: 0 }, { slot: 'Arrow', set_name: 'Speed', speed: 8 }];
 const openSpeedContext = vm.createContext({
   numericValue,
   modTotalSpeed: speed,
   ssSlot: mod => mod.slot,
   sithariCharacterMods: character => character.baseId === 'TARGET' ? openTargetMods : openDonorMods,
   sithariProjectedSpeed: (character, list) => ({ baseSpeed: 100, modSpeed: list.reduce((sum, mod) => sum + Number(mod.speed || 0), 0), total: 100 + list.reduce((sum, mod) => sum + Number(mod.speed || 0), 0), speedSetPieces: 0 }),
-  sithariIsSpeedSet: () => false
+  sithariIsSpeedSet: mod => mod.set_name === 'Speed',
+  HOLOCRON_GALACTIC_LEGENDS: new Set(['GLREY'])
 });
-load(strategy, ['ssCyclePreservesSpeed'], openSpeedContext);
-const safeOpenEdge = { target: targetNode, source: { ...donorSources[0], mod: { slot: 'Square', speed: 0 } } };
-assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), true, 'Zero-speed terminal donor can safely become unequipped');
-openDonorMods[0] = { slot: 'Square', speed: 4 };
-assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), true, 'A terminal source donor may lose speed when donating');
-openTargetMods[0] = { slot: 'Square', speed: 4 };
-assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), false, 'The recipient target must never lose total speed');
-assert.ok(strategy.includes("if(!edges.has(next))"), 'Search must recognize an open donor-chain endpoint');
+load(strategy, ['ssCyclePreservesSpeed','ssPreservesSetBonuses','ssIsProtectedLegend'], openSpeedContext);
+const safeOpenEdge = { target: targetNode, source: { ...donorSources[0], mod: { slot: 'Square', set_name: 'Offense', speed: 0 } } };
+assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), false, 'Open chains must never leave a terminal donor without a replacement');
+assert.equal(openSpeedContext.ssPreservesSetBonuses(
+  [{set_name:'Offense'},{set_name:'Offense'},{set_name:'Offense'},{set_name:'Offense'},{set_name:'Speed'},{set_name:'Speed'}],
+  [{set_name:'Offense'},{set_name:'Offense'},{set_name:'Offense'},{set_name:'Speed'},{set_name:'Speed'},{set_name:'Health'}]
+), false, 'A transfer that breaks an existing four-piece set is rejected');
+assert.equal(openSpeedContext.ssPreservesSetBonuses(
+  [{set_name:'Offense'},{set_name:'Offense'},{set_name:'Speed'},{set_name:'Speed'},{set_name:'Health'},{set_name:'Health'}],
+  [{set_name:'Offense'},{set_name:'Offense'},{set_name:'Speed'},{set_name:'Speed'},{set_name:'Health'},{set_name:'Health'}]
+), true, 'Existing two-piece set bonuses remain valid');
+assert.equal(openSpeedContext.ssIsProtectedLegend({baseId:'GL Rey'}), true, 'GL aliases are normalized before donor protection');
+assert.equal(openSpeedContext.ssIsProtectedLegend({baseId:'RANDOM_CHARACTER'}), false);
+assert.ok(strategy.includes('if(!edges.has(next))continue'), 'Open donor-chain endpoints are discarded');
 
 // 8) Kyber profile validity depends on real mod-reference content, not fragile average-stat blocks.
 const kyberValidationContext=vm.createContext({});
