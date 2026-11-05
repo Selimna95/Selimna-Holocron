@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASELINE_EXTRA_SELECTOR_BLOCKS = {
     "app.css": 697,  # 24 intentional repeated blocks for the Seigneur result-card layout, including responsive rules
     "holocron-system.css": 251,
-    "sithari.css": 358,  # adaptive slot board and readable mod details
+    "visionnaire.css": 0,
 }
 
 
@@ -33,17 +33,18 @@ class CssMaintenanceTests(unittest.TestCase):
     def test_stylesheets_keep_the_intended_cascade_order(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         app = html.index('href="app.css?')
-        sithari = html.index('href="sithari.css?')
+        visionnaire = html.index('href="visionnaire.css?')
         shared = html.index('href="holocron-system.css?')
-        self.assertLess(app, sithari)
-        self.assertLess(sithari, shared)
+        self.assertLess(app, visionnaire)
+        self.assertLess(visionnaire, shared)
 
-    def test_sithari_logic_remains_separate_from_its_visual_styles(self):
-        sithari_js = (ROOT / "modules" / "sithari.js").read_text(encoding="utf-8")
-        sithari_css = (ROOT / "sithari.css").read_text(encoding="utf-8")
-        self.assertIn("function sithariCharacterMods", sithari_js)
-        self.assertIn(".sithari-page", sithari_css)
-        self.assertNotIn("<script", sithari_css)
+    def test_visionnaire_logic_remains_separate_from_its_visual_styles(self):
+        visionnaire_js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
+        visionnaire_css = (ROOT / "visionnaire.css").read_text(encoding="utf-8")
+        self.assertIn("function inspectCharacter", visionnaire_js)
+        self.assertIn(".visionnaire-page", visionnaire_css)
+        self.assertNotIn("<script", visionnaire_css)
+        self.assertFalse((ROOT / "modules" / "sithari.js").exists())
 
     def test_duplicate_selector_debt_does_not_grow(self):
         for filename, maximum in BASELINE_EXTRA_SELECTOR_BLOCKS.items():
