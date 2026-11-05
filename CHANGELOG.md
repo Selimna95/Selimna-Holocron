@@ -1,3 +1,12 @@
+## V4.1.30 — Refonte ciblée de Sith’ari (2026-11-05)
+
+- Limitation du pool des receveurs à 50 personnages prioritaires maximum : légendes galactiques, usage GAC observé, puis puissance du roster.
+- Détection des mauvais sets uniquement sur ce pool ; les références ne sont plus recherchées sur l’ensemble des personnages du compte.
+- Création d’un pool distinct de donneurs : personnages hors pool prioritaire, faibles en puissance, peu utilisés selon les observations GAC disponibles et disposant de six mods équipés.
+- Remplacement de la recherche de cycles généraux par des échanges 1-pour-1 contrôlés : le donneur reçoit le mod remplacé.
+- Validation des deux personnages avant proposition : slot, référence de set et primaire pour le receveur, bonus de set préservés et aucune perte de vitesse pour l’un ou l’autre.
+- Les personnages sans observation GAC restent inconnus et ne sont jamais considérés comme ayant zéro utilisation. Les données GAC partielles sont utilisées comme signal observé, pas comme couverture exhaustive.
+
 ## V4.1.29 — Arrêt rapide des échecs Kyber (2026-11-05)
 
 - Ouverture d'un coupe-circuit de 60 secondes après une erreur réseau ou HTTP 5xx du relais / de SWGOH.GG ; les requêtes suivantes échouent rapidement au lieu de s'empiler.
