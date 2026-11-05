@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.8-kyber-index-backoff", self.html)
         self.assertIn("modules/core.js?v=4.2.8-kyber-index-backoff", self.sw)
-        self.assertIn("holocron-static-v4.4.10-gl-permutation-recovery", self.sw)
+        self.assertIn("holocron-static-v4.4.11-kyber-request-recovery", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -215,7 +215,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
         self.assertIn("modules/sithari-strategy.js?v=1.1.1-kyber-throttle", self.sw)
-        self.assertIn("holocron-static-v4.4.10-gl-permutation-recovery", self.sw)
+        self.assertIn("holocron-static-v4.4.11-kyber-request-recovery", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
