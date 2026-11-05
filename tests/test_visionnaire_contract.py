@@ -27,6 +27,7 @@ class VisionnaireContractTests(unittest.TestCase):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
         self.assertIn("rosterCharacters", js)
         self.assertIn("Math.min(4,roster.length)", js)
+        self.assertIn("document.body.dataset.page==='visionnaire'", js)
         self.assertIn("data-slot", js)
         self.assertNotIn("slice(0,50)", js)
         self.assertNotIn("transferMod", js)
