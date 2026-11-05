@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.13-kyber-circuit-breaker", self.sw)
+        self.assertIn("holocron-static-v4.4.14-sithari-target-pool", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.html)
         self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.sw)
-        self.assertIn("holocron-static-v4.4.13-kyber-circuit-breaker", self.sw)
+        self.assertIn("holocron-static-v4.4.14-sithari-target-pool", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -211,11 +211,25 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("peopleSummary", strategy)
         self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
         self.assertIn("lecture seule", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.1.2-kyber-reference-label", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.2.0-target-pool", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
-        self.assertIn("modules/sithari-strategy.js?v=1.1.2-kyber-reference-label", self.sw)
-        self.assertIn("holocron-static-v4.4.13-kyber-circuit-breaker", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.2.0-target-pool", self.sw)
+        self.assertIn("holocron-static-v4.4.14-sithari-target-pool", self.sw)
+
+    def test_sithari_uses_a_bounded_priority_pool_and_observed_low_use_donors(self):
+        strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
+        self.assertIn("const SS_RECIPIENT_POOL_LIMIT=50", strategy)
+        self.assertIn(".slice(0,SS_RECIPIENT_POOL_LIMIT)", strategy)
+        self.assertIn("function ssDonorPool(people,recipientPeople)", strategy)
+        self.assertIn("x.gac.uses<=lowUseThreshold", strategy)
+        self.assertIn("x.power<=weakPowerThreshold", strategy)
+        self.assertIn("sithariCharacterMods(x.c).length===6", strategy)
+        self.assertIn("function ssSwapSafe(target,source)", strategy)
+        self.assertIn("targetSpeedAfter.total+1e-9<targetSpeedBefore.total", strategy)
+        self.assertIn("donorSpeedAfter.total+1e-9<donorSpeedBefore.total", strategy)
+        self.assertIn("Le moteur attend la première commande. Il commencera par 50 personnages prioritaires maximum.", strategy)
+        self.assertIn("Les usages absents des données GAC restent inconnus", strategy)
 
     def test_kyber_profile_fetch_is_serialized_retried_and_cached(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
