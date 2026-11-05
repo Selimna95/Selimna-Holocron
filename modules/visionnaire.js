@@ -53,8 +53,8 @@
       const primaryOk=!!mod && primaries.length>0 && primaries.some(name=>key(name)===key(mod.primary_stat));
       return {slot,mod,setOk,primaryOk,hasSetReference:allowedSets.length>0,hasPrimaryReference:primaries.length>0};
     });
-    const setSlots=slotRows.filter(x=>!x.hasSetReference || (x.mod&&!x.setOk));
-    const primarySlots=slotRows.filter(x=>!x.hasPrimaryReference || (x.mod&&!x.primaryOk));
+    const setSlots=slotRows.filter(x=>x.hasSetReference&&x.mod&&!x.setOk);
+    const primarySlots=slotRows.filter(x=>x.hasPrimaryReference&&x.mod&&!x.primaryOk);
     const setMismatch=slotRows.some(x=>x.hasSetReference&&x.mod&&!x.setOk);
     const primaryMismatch=slotRows.some(x=>x.hasPrimaryReference&&x.mod&&!x.primaryOk);
     const setVerifiable=allowedSets.length>0;
@@ -121,7 +121,7 @@
       <section class="visionnaire-list">
         <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · PERSONNAGES À EXAMINER</div><h3>${state.mode==='sets'?'Écarts de sets':'Écarts de primaires'}</h3></div><input id="visionnaireSearch" type="search" placeholder="Rechercher un personnage…" value="${esc(state.filter)}"></div>
         ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber sur l’ensemble du roster…</p>':rows.length?rows.map(row=>{
-          const c=row.character;const selected=state.selected===c;
+          const c=row.character;const selected=state.selected?.character===c;
           const mismatch=state.mode==='sets'?row.setSlots:row.primarySlots;
           const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):'Primaires par slot';
           return `<button type="button" class="visionnaire-character ${selected?'active':''}" data-character="${esc(characterKey(c))}">
