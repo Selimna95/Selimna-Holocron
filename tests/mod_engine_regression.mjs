@@ -45,6 +45,9 @@ const speed = (mod) => Number(mod?.speed ?? 0);
 // SWGOH.GG's live Kyber page uses plain slot headings and focus rows such as
 // "+19.6 avg 23.68%". Keep these exact live-format regressions covered.
 const kyberParserContext=vm.createContext({});
+load(core,['normalizeKyberKey','kyberCharacterLabel'],kyberParserContext);
+assert.equal(kyberParserContext.normalizeKyberKey(kyberParserContext.kyberCharacterLabel('General Skywalker Attacker • Leader • Jedi')),'generalskywalker');
+assert.equal(kyberParserContext.normalizeKyberKey(kyberParserContext.kyberCharacterLabel('0-0-0 Support • Droid')),'000');
 load(core,['kyberNumber','kyberAverageFromFocusLine','kyberPrimaryDistribution'],kyberParserContext);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+19.6 avg 23.68%'),19.6);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+1,682.4 avg 8.35%'),1682.4);
@@ -492,7 +495,9 @@ load(strategy, ['ssCyclePreservesSpeed'], openSpeedContext);
 const safeOpenEdge = { target: targetNode, source: { ...donorSources[0], mod: { slot: 'Square', speed: 0 } } };
 assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), true, 'Zero-speed terminal donor can safely become unequipped');
 openDonorMods[0] = { slot: 'Square', speed: 4 };
-assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), false, 'Terminal donor cannot lose total speed');
+assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), true, 'A terminal source donor may lose speed when donating');
+openTargetMods[0] = { slot: 'Square', speed: 4 };
+assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), false, 'The recipient target must never lose total speed');
 assert.ok(strategy.includes("if(!edges.has(next))"), 'Search must recognize an open donor-chain endpoint');
 
 // 8) Kyber profile validity depends on real mod-reference content, not fragile average-stat blocks.
