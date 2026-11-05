@@ -215,7 +215,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
         self.assertIn("modules/sithari-strategy.js?v=1.1.2-kyber-reference-label", self.sw)
-        self.assertIn("holocron-static-v4.4.12-kyber-serialized-fetch", self.sw)
+        self.assertIn("holocron-static-v4.4.13-kyber-circuit-breaker", self.sw)
 
     def test_kyber_profile_fetch_is_serialized_retried_and_cached(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
