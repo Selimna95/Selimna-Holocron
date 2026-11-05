@@ -48,4 +48,4 @@ Les anciens fichiers d'interface, de stratégie et de styles Sith'ari ont été 
 
 ## État de livraison
 
-**V4.1.38 — premier incrément :** nouvelle interface, audit Sets/Primaires sur tout le roster, filtre croisé et sélection explicite des slots. La recherche d'échanges, le bilan statistique complet et la recommandation de mod à acquérir constituent les étapes suivantes ; ils ne sont pas présentés comme déjà disponibles.
+**V4.1.39 — premier incrément :** nouvelle interface, audit Sets/Primaires sur tout le roster, filtre croisé et sélection explicite des slots. La recherche d'échanges, le bilan statistique complet et la recommandation de mod à acquérir constituent les étapes suivantes ; ils ne sont pas présentés comme déjà disponibles.
