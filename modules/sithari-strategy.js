@@ -343,16 +343,16 @@ function ssPercentile(values,p){
 }
 function ssDonorPool(people,recipientPeople){
  const recipientKeys=new Set(recipientPeople.map(characterKey));
+ // L'utilisation GAC est le critère de sélection : la puissance ne doit pas
+ // exclure un personnage peu utilisé qui possède précisément les mods recherchés.
  const known=people.map(c=>({c,gac:ssGacEvidence(c),power:ssRosterPower(c)})).filter(x=>x.gac.known);
- if(!known.length)return {people:[],lowUseThreshold:null,weakPowerThreshold:null,knownCount:0};
+ if(!known.length)return {people:[],lowUseThreshold:null,knownCount:0};
  const lowUseThreshold=ssPercentile(known.map(x=>x.gac.uses),0.35);
- const weakPowerThreshold=ssPercentile(people.map(ssRosterPower).filter(x=>x>0),0.65);
  const donors=known.filter(x=>
   !recipientKeys.has(characterKey(x.c))&&!ssIsProtectedLegend(x.c)&&
-  x.gac.uses<=lowUseThreshold&&x.power>0&&x.power<=weakPowerThreshold&&
-  sithariCharacterMods(x.c).length===6
+  x.gac.uses<=lowUseThreshold&&sithariCharacterMods(x.c).length===6
  ).sort((a,b)=>a.gac.uses-b.gac.uses||a.power-b.power);
- return {people:donors.map(x=>x.c),lowUseThreshold,weakPowerThreshold,knownCount:known.length};
+ return {people:donors.map(x=>x.c),lowUseThreshold,knownCount:known.length};
 }
 function ssBuildSnapshot(state){
  const sources=[],nodes=[];
