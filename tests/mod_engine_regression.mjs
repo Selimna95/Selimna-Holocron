@@ -55,6 +55,7 @@ load(core,['kyberNumber','kyberAverageFromFocusLine','kyberPrimaryDistribution']
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+19.6 avg 23.68%'),19.6);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+1,682.4 avg 8.35%'),1682.4);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+3.93% avg 11.86%'),3.93);
+assert.equal(kyberParserContext.kyberAverageFromFocusLine('not a focus row'),null,'Non-average rows must not be treated as secondary guidance');
 const arrowPrimary=kyberParserContext.kyberPrimaryDistribution([
   'Arrow','Protection 65.38%','Speed 30.47%','Offense 3.55%','Triangle',
   'Protection 61.24%','Critical Damage 33.13%','Circle','Protection 97.04%',
@@ -481,6 +482,30 @@ assert.deepEqual(
   'Kyber secondary fit ranks candidates within the best secondary tier'
 );
 
+
+// Every displayed transfer must expose the target's real Kyber set, primary,
+// secondary priorities and whether the received mod satisfies set/primary.
+const auditContext=vm.createContext({
+  sithariKyberSetChoices:p=>p.sets.map(x=>x.name),
+  sithariPrimaryRefs:(p,slot)=>p.slots[slot].primaries,
+  sithariModSecondaryMap:m=>m.secondary,
+  sithariStatKey:x=>x,
+  sithariStatLabel:x=>x,
+  sithariSetMatch:(m,p)=>p.sets.some(x=>x.name===m.set_name),
+  sithariPrimaryMatch:(m,p,slot)=>p.slots[slot].primaries.some(x=>x.name===m.primary_stat)
+});
+load(strategy,['ssKyberMoveAudit'],auditContext);
+const kyberAudit=auditContext.ssKyberMoveAudit({
+  target:{profile:{source:'SWGOH.GG Kyber / Top 1000 GAC',sets:[{name:'Offense'}],slots:{Square:[{name:'Offense',weight:1}]},secondary_focus:{Speed:20,Offense:1500}},slot:'Square',character:{name:'Target'}},
+  source:{mod:{set_name:'Offense',primary_stat:'Offense',secondary:{Speed:15,Offense:900}}},
+  kyber:0.7
+});
+assert.equal(kyberAudit.set.matches,true);
+assert.equal(kyberAudit.primary.matches,true);
+assert.equal(kyberAudit.secondaries.length,2);
+assert.equal(kyberAudit.secondaries[0].actual,15);
+assert.equal(kyberAudit.secondaryFit,0.7);
+
 // Open donor chains are allowed only when the terminal donor also preserves total speed.
 const openTargetMods = [{ slot: 'Square', speed: 0 }, { slot: 'Arrow', speed: 12 }];
 const openDonorMods = [{ slot: 'Square', speed: 0 }, { slot: 'Arrow', speed: 8 }];
@@ -511,8 +536,13 @@ assert.equal(kyberValidationContext.kyberProfileValid({
 }),true,'A usable Kyber reference remains valid when SWGOH.GG omits average stats');
 assert.equal(kyberValidationContext.kyberProfileValid({
   sets:[{name:'Health',weight:0.8}],
+  slots:{Square:{primaries:{Offense:1}},Diamond:{primaries:{Defense:1}}},
   averages:{Speed:260,Health:100000,Protection:50000}
-}),false,'A set-only page without slot or secondary guidance is not sufficient');
+}),false,'Fixed Square/Diamond primaries must not make a set-only page look like a parsed Kyber reference');
+assert.equal(kyberValidationContext.kyberProfileValid({
+  sets:[{name:'Health',weight:0.8}],
+  slots:{Arrow:{primaries:{Speed:0.9}}}
+}),true,'A variable-slot primary distribution is real Kyber guidance');
 assert.equal(kyberValidationContext.kyberProfileValid({
   averages:{Speed:260,Health:100000,Protection:50000}
 }),false,'Character averages alone must never masquerade as a mod reference');
