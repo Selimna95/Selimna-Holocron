@@ -185,11 +185,11 @@ function cleanLinesFromDoc(doc){const body=doc?.body;if(!body)return[];const clo
 function numberFromText(value){const m=String(value??'').replace(/,/g,'').match(/[-+]?[0-9]+(?:\\.[0-9]+)?/);return m?Number(m[0]):0;}
 function kyberNumber(value){
   const raw=String(value??'').trim();
-  const normalized=/^[+-]?\\d+,\\d+$/.test(raw)?raw.replace(',','.'):raw.replace(/,/g,'');
+  const normalized=/^[+-]?\d+,\d+$/.test(raw)?raw.replace(',','.'):raw.replace(/,/g,'');
   const parsed=Number(normalized);return Number.isFinite(parsed)?parsed:0;
 }
 function kyberAverageFromFocusLine(value){
-  const match=String(value??'').match(/^\\s*([+-]?\\d[\\d,]*(?:\\.\\d+)?)\\s+avg\\b/i);
+  const match=String(value??'').match(/^\s*([+-]?\d[\d,]*(?:\.\d+)?)\s+avg\b/i);
   return match?kyberNumber(match[1]):0;
 }
 function kyberPrimaryDistribution(lines,heading){
@@ -199,11 +199,11 @@ function kyberPrimaryDistribution(lines,heading){
   let end=lines.length;
   for(let i=start+1;i<lines.length;i++){
     const line=String(lines[i]||'').trim();
-    if(headings.some(label=>label.toLowerCase()===line.toLowerCase())||/^Average Stats for\\b/i.test(line)){end=i;break;}
+    if(headings.some(label=>label.toLowerCase()===line.toLowerCase())||/^Average Stats for\b/i.test(line)){end=i;break;}
   }
   const out={};
   for(const line of lines.slice(start+1,end)){
-    const match=String(line).match(/^(.+?)\\s+([0-9]+(?:[.,][0-9]+)?)%$/);
+    const match=String(line).match(/^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)%$/);
     if(match)out[match[1].trim()]=kyberNumber(match[2])/100;
   }
   return out;
