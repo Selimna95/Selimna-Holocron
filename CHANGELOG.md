@@ -6,7 +6,8 @@
 - Références absentes ou incomplètes explicitement exclues des anomalies vérifiables.
 - Sélection explicite de slots ; aucun déplacement automatique.
 - Retrait du moteur de permutations et des styles historiques Sith’ari.
-- Les services partagés de synchronisation, profils Kyber, GAC et import/export restent inchangés.
+- La synchronisation du roster appelle désormais le nouveau Visionnaire ; les services partagés de profils Kyber, GAC et import/export sont conservés.
+- Suppression des anciens styles Sith’ari résiduels dans `app.css` et adaptation des tests CI.
 
 ## V4.1.37 — Pool donneur fondé sur l'utilisation GAC
 
