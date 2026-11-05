@@ -180,9 +180,9 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.3-seigneur-speed-floor", self.html)
-        self.assertIn("modules/core.js?v=4.2.3-seigneur-speed-floor", self.sw)
-        self.assertIn("holocron-static-v4.3.6-seigneur-slot-comparison", self.sw)
+        self.assertIn("modules/core.js?v=4.2.4-kyber-index-cache", self.html)
+        self.assertIn("modules/core.js?v=4.2.4-kyber-index-cache", self.sw)
+        self.assertIn("holocron-static-v4.4.3-kyber-profile-recovery", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -195,7 +195,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("function ssBuildPrimaryPools(snapshot,setPools)", strategy)
         self.assertIn("function ssBuildSecondaryEdges(snapshot,primaryPools)", strategy)
         self.assertIn("function ssAdvance()", strategy)
-        self.assertIn("const batch=20", strategy)
+        self.assertIn("const batch=40", strategy)
         self.assertIn("if(!edges.has(next))", strategy)
         self.assertIn("ssCyclePreservesSpeed(chain,true)", strategy)
         self.assertIn("ssFindCycles", strategy)
@@ -207,10 +207,10 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("peopleSummary", strategy)
         self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
         self.assertIn("lecture seule", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.0.3-stepwise-pipeline", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.0.4-kyber-batch-diagnostics", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.1-roster-synthesis", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.1-roster-synthesis", self.sw)
-        self.assertIn("modules/sithari-strategy.js?v=1.0.3-stepwise-pipeline", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.0.4-kyber-batch-diagnostics", self.sw)
         self.assertIn("holocron-static-v4.4.3-kyber-profile-recovery", self.sw)
 
 if __name__ == "__main__":
