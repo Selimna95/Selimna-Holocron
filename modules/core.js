@@ -172,6 +172,7 @@ function profileForCharacter(character) {
 }
 
 function normalizeKyberKey(value){return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');}
+function kyberCharacterLabel(value){const text=String(value||'').replace(/\s+/g,' ').trim();return text.split(/\s+(?=(?:Attacker|Tank|Support|Healer)\b)/i)[0]||text;}
 function kyberProfileValid(p){
   if(!p||typeof p!=='object')return false;
   const sets=(Array.isArray(p.sets)&&p.sets.length>0)||(Array.isArray(p.specific_sets)&&p.specific_sets.length>0);
@@ -315,7 +316,7 @@ async function loadKyberUnitIndex(){
       for(const anchor of Array.from(doc.querySelectorAll('a[href*="/units/"]')||[])){
         const href=anchor.getAttribute('href')||'',match=href.match(/\/units\/([^/]+)/);
         if(!match)continue;
-        const label=normalizeKyberKey(anchor.textContent||anchor.getAttribute('aria-label')||'');
+        const label=normalizeKyberKey(kyberCharacterLabel(anchor.textContent||anchor.getAttribute('aria-label')||''));
         if(label&&!index.has(label))index.set(label,match[1]);
       }
       if(!index.size)throw new Error('Aucun personnage reconnu dans l’index SWGOH.GG');
