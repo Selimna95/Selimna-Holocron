@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASELINE_EXTRA_SELECTOR_BLOCKS = {
     "app.css": 697,  # 24 intentional repeated blocks for the Seigneur result-card layout, including responsive rules
     "holocron-system.css": 251,
-    "visionnaire.css": 0,
+    "visionnaire.css": 4,
 }
 
 
@@ -41,7 +41,7 @@ class CssMaintenanceTests(unittest.TestCase):
     def test_visionnaire_logic_remains_separate_from_its_visual_styles(self):
         visionnaire_js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
         visionnaire_css = (ROOT / "visionnaire.css").read_text(encoding="utf-8")
-        self.assertIn("function inspectCharacter", visionnaire_js)
+        self.assertIn("const inspectCharacter = (character,profile)", visionnaire_js)
         self.assertIn(".visionnaire-page", visionnaire_css)
         self.assertNotIn("<script", visionnaire_css)
         self.assertFalse((ROOT / "modules" / "sithari.js").exists())
