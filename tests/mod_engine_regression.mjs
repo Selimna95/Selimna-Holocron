@@ -110,38 +110,6 @@ for (const baseId of ['REY', 'GRANDMASTERYODA', 'JEDIKNIGHTLUKE', 'STARKILLER', 
   assert.equal(glContext.holocronIsGalacticLegend({ baseId }), false, 'Non-GL ' + baseId);
 }
 
-// 3) Run the production Sith'ari cache against the four real collision pairs.
-const sithari = read('../modules/sithari.js');
-const slots = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'];
-const fixtureMods = collisionRoster.flatMap((c, ci) => slots.map((slot, si) => ({
-  id: c.baseId + '-' + slot, game_id: c.baseId + '-' + slot,
-  character: c.baseId, slot, set_name: 'Speed', primary_stat: 'Health',
-  secondary_1_stat: 'Speed', secondary_1_value: 8 + ci + si, level: 15
-})));
-const cacheContext = vm.createContext({
-  compactKey, rosterCharacters: collisionRoster, mods: fixtureMods,
-  SITHARI_SLOT_ORDER: slots,
-  sithariModCache: { signature: '', items: [], byOwner: new Map(), statusByOwner: new Map(), ownerResolver: null },
-  normalizeModForDisplay: (m) => ({ ...m, game_id: m.game_id || m.id }),
-  modSlotLabel: (v) => v,
-  v176ModStatus: (arr) => ({ status: arr.length === 6 ? 'BONS' : arr.length ? 'FAIBLES' : 'SANS MODS' })
-});
-load(core, ['characterKey', 'buildRosterOwnerResolver', 'modOwnerKey', 'resolveModOwnerKey'], cacheContext);
-cacheContext.getCharacterMods = (c) => {
-  const r = cacheContext.buildRosterOwnerResolver(cacheContext.rosterCharacters);
-  return cacheContext.mods.filter(m => r.resolve(m.character) === cacheContext.characterKey(c)).map(cacheContext.normalizeModForDisplay);
-};
-load(sithari, ['sithariEnsureModCache', 'sithariCharacterMods', 'sithariEquippedOwner', 'sithariSourceStatus'], cacheContext);
-const cache = cacheContext.sithariEnsureModCache();
-for (const c of collisionRoster) {
-  const key = cacheContext.characterKey(c);
-  assert.equal(cache.byOwner.get(key)?.length, 6, 'Sith\'ari cache ownership for ' + c.name);
-  assert.equal(cacheContext.sithariCharacterMods(c).length, 6, 'Sith\'ari equipped slots for ' + c.name);
-  assert.equal(cache.statusByOwner.get(key), 'BONS');
-}
-assert.equal(cacheContext.sithariEquippedOwner({ character: 'SITHTROOPER' }), 'SITHTROOPER');
-assert.equal(cacheContext.sithariSourceStatus(cache.items.find(m => m.character === 'REY')), 'BONS');
-
 // 3) Acolyte: the target must gain mod speed and total equipped speed.
 const acolyte = read('../modules/acolyte.js');
 const acContext = vm.createContext({ compactKey, numericValue, modTotalSpeed: speed });
@@ -419,7 +387,7 @@ const exactCompositionProfile = {
 assert.equal(forgeReferenceContext.forgeKyberSetRules(exactCompositionProfile).length, 1,
   'Only an explicit six-piece composition becomes an exact set plan');
 
-// 5c) Seigneur: neutral verdicts must not call an unrelated Sith’ari UI binder.
+// 5c) Seigneur: neutral verdicts remain independent of the retired interface.
 const verdictContext = vm.createContext({});
 load(seigneur, ['optimizerVerdictForBuild'], verdictContext);
 assert.equal(verdictContext.optimizerVerdictForBuild({
@@ -427,137 +395,6 @@ assert.equal(verdictContext.optimizerVerdictForBuild({
   primaryHits: 6, secondaryTotal: 6, secondaryPct: 100,
   setHits: 6, secondaryHits: 6
 }, 'MOYENS', 0).kind, 'neutral');
-
-// 6) Sith'ari: same net-speed logic, with a conservative fallback when base speed is unknown.
-const sithariSpeedContext = vm.createContext({
-  numericValue, modTotalSpeed: speed, modSlotLabel: (v) => v,
-  sithariCanonicalSet: (v) => String(v ?? '').toUpperCase(),
-  SITHARI_SLOT_ORDER: slots,
-  testBaseSpeed: 100,
-  testEquipped: equipped
-});
-sithariSpeedContext.sithariBaseSpeed = () => sithariSpeedContext.testBaseSpeed;
-sithariSpeedContext.sithariCharacterMods = () => sithariSpeedContext.testEquipped;
-load(sithari, ['sithariIsSpeedSet', 'sithariProjectedSpeed', 'sithariReplacementPreservesSpeed'], sithariSpeedContext);
-assert.equal(sithariSpeedContext.sithariReplacementPreservesSpeed({}, equipped[0], { slot: 'Square', set_name: 'Offense', speed: 25 }), true);
-assert.equal(sithariSpeedContext.sithariReplacementPreservesSpeed({}, equipped[0], { slot: 'Square', set_name: 'Offense', speed: 10 }), false);
-sithariSpeedContext.testBaseSpeed = 0;
-assert.equal(sithariSpeedContext.sithariReplacementPreservesSpeed({}, equipped[0], { slot: 'Square', set_name: 'Offense', speed: 25 }), false);
-
-
-// 7) Sith'ari cumulative pipeline: donors include equipped characters without a Kyber target profile.
-const strategy = read('../modules/sithari-strategy.js');
-const targetChar = { baseId: 'TARGET' };
-const donorCharA = { baseId: 'DONOR_A' };
-const donorCharB = { baseId: 'DONOR_B' };
-const donorCharC = { baseId: 'DONOR_C' };
-const targetNode = { key: 'TARGET::Square', owner: 'TARGET', name: 'Target', character: targetChar, slot: 'Square', profile: {}, needsWork: true };
-const sourceNode = (owner, character, coverage, fit, speedValue) => ({
-  key: owner + '::Square', owner, name: owner, character, slot: 'Square',
-  mod: { slot: 'Square', coverage, fit, speed: speedValue }
-});
-const donorSources = [
-  sourceNode('DONOR_A', donorCharA, 0.5, 0.99, 10),
-  sourceNode('DONOR_B', donorCharB, 1, 0.4, 12),
-  sourceNode('DONOR_C', donorCharC, 1, 0.8, 9)
-];
-const strategyContext = vm.createContext({
-  sithariSetMatch: () => true,
-  sithariPrimaryMatch: () => true,
-  ssSecondaryCoverage: mod => mod.coverage,
-  ssKyberSecondaryFit: mod => mod.fit,
-  modTotalSpeed: mod => Number(mod.speed || 0)
-});
-strategyContext.HOLOCRON_GALACTIC_LEGENDS = new Set(['GLREY']);
-const glDonor = sourceNode('GLREY', { baseId: 'GL Rey' }, 1, 1, 30);
-const allDonorSources = [...donorSources, glDonor];
-load(strategy, ['ssIsProtectedLegend','ssBuildSetPools','ssBuildPrimaryPools','ssBuildSecondaryEdges','ssBuildEdges'], strategyContext);
-const snapshotFixture = { nodes: [targetNode], sources: allDonorSources };
-const setStage = strategyContext.ssBuildSetPools(snapshotFixture);
-assert.equal(setStage.count, 3, 'All non-GL roster donors are considered at the set stage');
-const primaryStage = strategyContext.ssBuildPrimaryPools(snapshotFixture, setStage.pools);
-assert.equal(primaryStage.count, 3, 'Primary stage narrows only after set compatibility');
-const secondaryStage = strategyContext.ssBuildSecondaryEdges(snapshotFixture, primaryStage.pools);
-assert.equal(secondaryStage.count, 2, 'Secondary stage keeps only the best available coverage tier');
-const directEdges = strategyContext.ssBuildEdges(snapshotFixture);
-assert.equal(directEdges.setCandidates, 3, 'The production edge builder must exclude GL donors too');
-assert.ok(Array.from(directEdges.edges.get(targetNode.key) || []).every(edge => edge.source.owner !== 'GLREY'), 'A GL must never enter a donor pool');
-assert.deepEqual(
-  Array.from(secondaryStage.edges.get(targetNode.key), edge => edge.source.owner),
-  ['DONOR_C', 'DONOR_B'],
-  'Kyber secondary fit ranks candidates within the best secondary tier'
-);
-
-
-// Every displayed transfer must expose the target's real Kyber set, primary,
-// secondary priorities and whether the received mod satisfies set/primary.
-const auditContext=vm.createContext({
-  sithariKyberSetChoices:p=>p.sets.map(x=>x.name),
-  sithariPrimaryRefs:(p,slot)=>Object.entries(p.slots[slot].primaries).map(([name,weight])=>({name,weight})),
-  sithariModSecondaryMap:m=>m.secondary,
-  sithariStatKey:x=>x,
-  sithariStatLabel:x=>x,
-  sithariSetMatch:(m,p)=>p.sets.some(x=>x.name===m.set_name),
-  sithariPrimaryMatch:(m,p,slot)=>Object.keys(p.slots[slot].primaries).includes(m.primary_stat)
-});
-load(strategy,['ssKyberMoveAudit'],auditContext);
-const kyberAudit=auditContext.ssKyberMoveAudit({
-  target:{profile:{source:'SWGOH.GG Kyber / Top 1000 GAC',sets:[{name:'Offense'}],slots:{Square:{primaries:{Offense:1}}},secondary_focus:{Speed:20,Offense:1500}},slot:'Square',character:{name:'Target'}},
-  source:{mod:{set_name:'Offense',primary_stat:'Offense',secondary:{Speed:15,Offense:900}}},
-  kyber:0.7
-});
-assert.equal(kyberAudit.set.matches,true);
-assert.equal(kyberAudit.primary.matches,true);
-assert.equal(kyberAudit.secondaries.length,2);
-assert.equal(kyberAudit.secondaries[0].actual,15);
-assert.equal(kyberAudit.secondaryFit,0.7);
-
-// Sith'ari: open chains and broken active mod sets are forbidden.
-const openTargetMods = [{ slot: 'Square', set_name: 'Offense', speed: 0 }, { slot: 'Arrow', set_name: 'Speed', speed: 12 }];
-const openDonorMods = [{ slot: 'Square', set_name: 'Health', speed: 0 }, { slot: 'Arrow', set_name: 'Speed', speed: 8 }];
-const openSpeedContext = vm.createContext({
-  numericValue,
-  modTotalSpeed: speed,
-  ssSlot: mod => mod.slot,
-  sithariCharacterMods: character => character.baseId === 'TARGET' ? openTargetMods : openDonorMods,
-  sithariProjectedSpeed: (character, list) => ({ baseSpeed: 100, modSpeed: list.reduce((sum, mod) => sum + Number(mod.speed || 0), 0), total: 100 + list.reduce((sum, mod) => sum + Number(mod.speed || 0), 0), speedSetPieces: 0 }),
-  sithariIsSpeedSet: mod => mod.set_name === 'Speed',
-  HOLOCRON_GALACTIC_LEGENDS: new Set(['GLREY'])
-});
-load(strategy, ['ssCyclePreservesSpeed','ssPreservesSetBonuses','ssSetBonusCounts','ssIsProtectedLegend'], openSpeedContext);
-const safeOpenEdge = { target: targetNode, source: { ...donorSources[0], mod: { slot: 'Square', set_name: 'Offense', speed: 0 } } };
-assert.equal(openSpeedContext.ssCyclePreservesSpeed([safeOpenEdge], true), false, 'Open chains must never leave a terminal donor without a replacement');
-assert.equal(openSpeedContext.ssPreservesSetBonuses(
-  [{set_name:'Offense'},{set_name:'Offense'},{set_name:'Offense'},{set_name:'Offense'},{set_name:'Speed'},{set_name:'Speed'}],
-  [{set_name:'Offense'},{set_name:'Offense'},{set_name:'Offense'},{set_name:'Speed'},{set_name:'Speed'},{set_name:'Health'}]
-), false, 'A transfer that breaks an existing four-piece set is rejected');
-assert.equal(openSpeedContext.ssPreservesSetBonuses(
-  [{set_name:'Offense'},{set_name:'Offense'},{set_name:'Speed'},{set_name:'Speed'},{set_name:'Health'},{set_name:'Health'}],
-  [{set_name:'Offense'},{set_name:'Offense'},{set_name:'Speed'},{set_name:'Speed'},{set_name:'Health'},{set_name:'Health'}]
-), true, 'Existing two-piece set bonuses remain valid');
-assert.equal(openSpeedContext.ssIsProtectedLegend({baseId:'GL Rey'}), true, 'GL aliases are normalized before donor protection');
-assert.equal(openSpeedContext.ssIsProtectedLegend({baseId:'RANDOM_CHARACTER'}), false);
-
-// A non-GL cycle can be useful even when it changes an existing set bonus.
-const makeSix = (squareSet, speed) => [
- {slot:'Square',set_name:squareSet,speed},
- {slot:'Arrow',set_name:'Speed',speed:10},
- {slot:'Diamond',set_name:'Speed',speed:0},
- {slot:'Triangle',set_name:'Speed',speed:0},
- {slot:'Circle',set_name:'Speed',speed:0},
- {slot:'Cross',set_name:'Speed',speed:0}
-];
-const modsA=makeSix('Offense',8), modsB=makeSix('Health',8);
-openSpeedContext.sithariCharacterMods = c => c.baseId === 'A' ? modsA : c.baseId === 'B' ? modsB : openDonorMods;
-const charA={baseId:'A'}, charB={baseId:'B'};
-const cycleAB=[
- {target:{owner:'A',character:charA,slot:'Square'},source:{character:charB,mod:{slot:'Square',set_name:'Health',speed:8}}},
- {target:{owner:'B',character:charB,slot:'Square'},source:{character:charA,mod:{slot:'Square',set_name:'Offense',speed:8}}}
-];
-assert.equal(openSpeedContext.ssCyclePreservesSpeed(cycleAB), true, 'A valid non-GL cycle remains available when it changes an existing set bonus');
-const glCycle=[{target:{owner:'GLREY',character:{baseId:'GL Rey'},slot:'Square'},source:{character:charA,mod:{slot:'Square',set_name:'Offense',speed:8}}},cycleAB[1]];
-assert.equal(openSpeedContext.ssCyclePreservesSpeed(glCycle), false, 'A GL may never participate in a permutation');
-assert.ok(strategy.includes('if(!edges.has(next))continue'), 'Open donor-chain endpoints are discarded');
 
 // 8) Kyber profile validity depends on real mod-reference content, not fragile average-stat blocks.
 const kyberValidationContext=vm.createContext({});
@@ -584,9 +421,6 @@ assert.ok(core.includes('const index=await loadKyberUnitIndex();'),'Profile disc
 assert.ok(core.includes('let kyberUnitIndexFailureUntil=0;'),'A failed Kyber index fetch must enter a cooldown instead of retrying for every character');
 assert.ok(core.includes('Date.now()+60000'),'Kyber index retry cooldown must be bounded to one minute');
 assert.ok(core.includes('const kyberProfileInflight=new Map();'),'Concurrent requests for the same character must be deduplicated');
-assert.ok(strategy.includes('Array.from({length:2},async()=>'),'Sith’ari Kyber profile fetching must stay at two concurrent workers');
 assert.ok(!core.includes('if(!/Best Mods|Data Slice:'),'HTML title wording must not reject otherwise parseable Kyber profile pages');
-assert.ok(strategy.includes('const batch=40'),'Sith’ari must process useful batches rather than 20 individual profiles');
-assert.ok(strategy.includes('state.profileStats.found+=found'),'Sith’ari must report the number of usable profiles found');
 
 console.log('Mods engine regression tests passed.');
