@@ -781,7 +781,7 @@ function ssRender(snapshot,result,message){
  const root=document.getElementById('sithariStrategy');if(!root)return;
  const needs=snapshot.nodes||[],cycles=result.cycles||[],diag=result.diagnostics||{};
  const peopleHtml=needs.length
-  ?'<div class="ss-people">'+needs.map(node=>'<div><b>'+ssEsc(node.name)+'</b><span>Composition actuelle : '+ssEsc([...node.setAudit.actual.entries()].map(([name,count])=>count+' '+name).join(' · '))+'</span><small>Compositions Kyber examinées : '+ssEsc(node.setAudit.expected.map(config=>config.name+' ('+Math.round(config.weight*100)+'%)').join(' / '))+'</small></div>').join('')+'</div>'
+  ?'<div class="ss-people">'+needs.map(node=>'<div><b>'+ssEsc(node.name)+'</b><span>Composition actuelle : '+ssEsc([...node.setAudit.actual.entries()].map(([name,count])=>count+' '+name).join(' · '))+'</span><small>Compositions Kyber examinées : '+ssEsc(node.setAudit.expected.map(config=>typeof config==='string'?config:config.name+' ('+Math.round(config.weight*100)+'%)').join(' / '))+'</small></div>').join('')+'</div>'
   :'<div class="ss-empty">Aucune composition incorrecte confirmée par les combinaisons exactes publiées.</div>';
  const rows=cycles.map((cycle,index)=>{
   const impacts=ssCycleImpactMap(cycle),edge=cycle.items[0],donor=impacts.get(edge.source.owner),recipient=impacts.get(edge.target.owner);
