@@ -183,12 +183,13 @@ async function ssAdvance(){
  const show=(message)=>ssRender(state.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length,profiledCount:0},state.result,message);
  try{
   if(state.phase==='profiles'){
-   const batch=20,end=Math.min(state.people.length,state.profileCursor+batch),items=state.people.slice(state.profileCursor,end);let cursor=0,done=0;
+   const batch=40,end=Math.min(state.people.length,state.profileCursor+batch),items=state.people.slice(state.profileCursor,end);let cursor=0,done=0,found=0,missing=0;
    show('Récupération de '+items.length+' profils maximum. Aucun autre filtre ne démarre pendant cette étape.');
-   await Promise.all(Array.from({length:4},async()=>{while(cursor<items.length){const c=items[cursor++];if(!sithariProfileForCharacter(c)){try{await fetchKyberProfile(c);}catch(_){}}done++;const status=document.querySelector('#sithariStrategy .ss-status');if(status)status.innerHTML='<b>'+ssStepLabel('profiles')+'</b><br>Profils traités dans ce lot : '+done+' / '+items.length;}}));
-   state.profileCursor=end;
+   await Promise.all(Array.from({length:4},async()=>{while(cursor<items.length){const c=items[cursor++];let profile=sithariProfileForCharacter(c);if(!profile){try{profile=await fetchKyberProfile(c);}catch(_){profile=null;}}if(profile)found++;else missing++;done++;const status=document.querySelector('#sithariStrategy .ss-status');if(status)status.innerHTML='<b>'+ssStepLabel('profiles')+'</b><br>Profils traités dans ce lot : '+done+' / '+items.length;}}));
+   state.profileCursor=end;state.profileStats=state.profileStats||{found:0,missing:0};state.profileStats.found+=found;state.profileStats.missing+=missing;
    if(end>=state.people.length)state.phase='sets';
-   show('Lot terminé : '+end+' / '+state.people.length+' personnages examinés. '+(state.phase==='sets'?'Les références sont prêtes. Lance le filtre des sets.':'Relance cette étape pour charger le lot suivant.'));
+   state.message='Lot terminé : '+end+' / '+state.people.length+' personnages examinés. '+found+' références disponibles dans ce lot, '+missing+' sans référence exploitable. Total chargé : '+state.profileStats.found+'. '+(state.phase==='sets'?'Les références sont prêtes. Lance le filtre des sets.':'Relance cette étape pour charger le lot suivant.');
+   show(state.message);
   }else if(state.phase==='sets'){
    state.snapshot=ssBuildSnapshot();state.setPools=ssBuildSetPools(state.snapshot);state.result.setCandidates=state.setPools.count;state.phase='primaries';
    show(state.result.setCandidates+' donneurs compatibles après le filtre des sets. Étape suivante : primaires.');
@@ -203,7 +204,7 @@ async function ssAdvance(){
    show(search.cycles.length+' scénarios validés. '+search.expansions+' explorations effectuées'+(search.exhausted?' avant la limite de sécurité.':'.'));
   }
  }catch(error){show('Étape interrompue : '+String(error?.message||error));console.error('Sith’ari strategy:',error);}
- finally{sithariStrategyBusy=false;ssRender(state.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length,profiledCount:0},state.result,state.phase==='done'?'Analyse terminée.':state.phase==='profiles'?'Lot de profils traité. Tu peux continuer.':'Étape terminée. Tu peux lancer la suivante.');}
+ finally{sithariStrategyBusy=false;ssRender(state.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length,profiledCount:0},state.result,state.message||(state.phase==='done'?'Analyse terminée.':'Étape terminée. Tu peux lancer la suivante.'));}
 }
 function renderSithariStrategy(){
  const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
