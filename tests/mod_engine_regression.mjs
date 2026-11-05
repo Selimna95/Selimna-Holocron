@@ -60,13 +60,13 @@ assert.deepEqual(
     'Arrow','Protection 65.38%','Speed 30.47%','Offense 3.55%','Triangle',
     'Protection 61.24%','Critical Damage 33.13%','Circle','Protection 97.04%',
     'Cross','Protection 84.31%','Offense 13.6%','Secondary Stat Focus','Speed'
-  ],'Arrow')),
+  ],'Arrow'))),
   {Protection:0.6538,Speed:0.3047,Offense:0.0355}
 );
 assert.deepEqual(
   JSON.parse(JSON.stringify(kyberParserContext.kyberPrimaryDistribution([
     'Arrow','Protection 65.38%','Triangle','Protection 61.24%','Critical Damage 33.13%'
-  ],'Triangle')),
+  ],'Triangle'))),
   {Protection:0.6124,'Critical Damage':0.3313}
 );
 const collisionRoster = [
