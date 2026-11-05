@@ -19,8 +19,28 @@ function ssBuildSnapshot(){
  }
  return {nodes,sources,inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:new Set(nodes.map(n=>n.owner)).size};
 }
+function ssIsProtectedLegend(character){
+ const base=String(character?.baseId||character?.base_id||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ return typeof HOLOCRON_GALACTIC_LEGENDS!=='undefined'&&HOLOCRON_GALACTIC_LEGENDS instanceof Set&&HOLOCRON_GALACTIC_LEGENDS.has(base);
+}
+function ssSetBonusCounts(mods){
+ const counts=new Map();
+ for(const mod of mods||[]){
+  const set=String(mod?.set_name||mod?.set||mod?.setId||mod?.set_id||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(set)counts.set(set,(counts.get(set)||0)+1);
+ }
+ return counts;
+}
+function ssPreservesSetBonuses(beforeMods,afterMods){
+ const before=ssSetBonusCounts(beforeMods),after=ssSetBonusCounts(afterMods);
+ for(const [set,count] of before){
+  const required=count>=4?4:count>=2?2:0;
+  if(required&&(after.get(set)||0)<required)return false;
+ }
+ return true;
+}
 function ssBuildSetPools(snapshot){
- const bySlot=new Map();for(const source of snapshot.sources){if(!bySlot.has(source.slot))bySlot.set(source.slot,[]);bySlot.get(source.slot).push(source);}
+ const bySlot=new Map();for(const source of snapshot.sources){if(!ssIsProtectedLegend(source.character)){if(!bySlot.has(source.slot))bySlot.set(source.slot,[]);bySlot.get(source.slot).push(source);}}
  const pools=new Map();let count=0;
  for(const target of snapshot.nodes){
   const matches=(bySlot.get(target.slot)||[]).filter(source=>source.owner!==target.owner&&sithariSetMatch(source.mod,target.profile,target.character));
@@ -89,6 +109,8 @@ function ssKyberAuditHtml(edge){
  return '<small class="ss-kyber-audit"><b>RÉFÉRENCE KYBER · '+ssEsc(audit.source)+'</b><br>Set reçu : '+ssEsc(audit.set.actual)+' · Choix : '+ssEsc(setChoices)+' · '+(audit.set.matches?'conforme':'non conforme')+'<br>Primaire reçue : '+ssEsc(audit.primary.actual)+' · Choix : '+ssEsc(primaryChoices)+' · '+(audit.primary.matches?'conforme':'non conforme')+'<br>Secondaires : '+secondary+'</small>';
 }
 function ssCyclePreservesSpeed(items,openTerminal=false){
+ // Open chains are forbidden: every donor must also receive a replacement mod.
+ if(openTerminal)return false;
  const replacements=new Map();
  for(const edge of items){
   const key=edge.target.owner;
@@ -97,11 +119,14 @@ function ssCyclePreservesSpeed(items,openTerminal=false){
   entry.mods=entry.mods.filter(mod=>ssSlot(mod)!==slot);
   entry.mods.push(edge.source.mod);
  }
- // The terminal donor of an open chain is a source, not a recipient:
- // it may lose the donated mod. Every actual target below must keep or gain speed.
  for(const entry of replacements.values()){
-  const before=sithariProjectedSpeed(entry.character,sithariCharacterMods(entry.character));
+  const beforeMods=sithariCharacterMods(entry.character),before=sithariProjectedSpeed(entry.character,beforeMods);
   const after=sithariProjectedSpeed(entry.character,entry.mods);
+  // Keep the equipped roster complete: no participant may finish with a missing slot.
+  if(beforeMods.length===6&&entry.mods.length!==6)return false;
+  if(new Set(entry.mods.map(ssSlot)).size!==entry.mods.length)return false;
+  // Preserve every existing active 2- or 4-piece set bonus.
+  if(!ssPreservesSetBonuses(beforeMods,entry.mods))return false;
   if(before.baseSpeed>0&&after.total+1e-9<before.total)return false;
   if(before.baseSpeed<=0&&after.modSpeed+1e-9<before.modSpeed)return false;
   if(before.baseSpeed<=0&&before.speedSetPieces>=4&&after.speedSetPieces<4)return false;
@@ -152,11 +177,7 @@ async function ssFindCycles(edges){
      if(closedCycles>=MAX_CLOSED_CYCLES){exhausted=true;return;}
      continue;
     }
-    if(!edges.has(next)){
-     const chain=[...path,edge],sig='OPEN:'+chain.map(x=>x.target.key).sort().join('|');
-     if(!found.has(sig)&&ssCyclePreservesSpeed(chain,true))found.set(sig,{items:chain,open:true});
-     continue;
-    }
+    if(!edges.has(next))continue; // No terminal donor: never leave a character with an empty slot.
     if(used.has(next)||next<start)continue;
     const nextUsed=new Set(used);nextUsed.add(next);
     await walk(next,[...path,edge],nextUsed);
