@@ -316,31 +316,29 @@ const kyberProfileInflight=new Map();
 // reprises avec un délai progressif, sans multiplier les variantes de slug.
 let kyberFetchQueue=Promise.resolve();
 let kyberNextFetchAt=0;
+let kyberCircuitOpenUntil=0;
 let kyberPersistentCache=null;
 const KYBER_PROFILE_CACHE_KEY='holocron-kyber-profile-cache-v1';
 const KYBER_PROFILE_CACHE_TTL=12*60*60*1000;
 function kyberSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 async function fetchKyberThroughRelay(url){
   const operation=kyberFetchQueue.then(async()=>{
+    if(Date.now()<kyberCircuitOpenUntil)throw new Error('Relais Kyber en pause après une erreur amont. Réessaie dans quelques instants.');
     const wait=Math.max(0,kyberNextFetchAt-Date.now());
     if(wait)await kyberSleep(wait);
-    let response=null;
-    for(let attempt=0;attempt<3;attempt++){
-      try{
-        response=await fetch(url,{headers:{'Accept':'text/html,application/xhtml+xml'}});
-      }catch(error){
-        if(attempt===2){kyberNextFetchAt=Date.now()+1800;throw error;}
-        await kyberSleep(1200*(attempt+1));
-        continue;
-      }
-      const upstreamStatus=Number(response.headers.get('X-Upstream-Status')||0);
-      const effectiveStatus=upstreamStatus||response.status;
-      const retryable=[429,500,502,503,504].includes(effectiveStatus);
-      if(response.ok||!retryable||attempt===2)break;
+    let response;
+    try{response=await fetch(url,{headers:{'Accept':'text/html,application/xhtml+xml'}});}
+    catch(error){kyberCircuitOpenUntil=Date.now()+60000;kyberNextFetchAt=kyberCircuitOpenUntil;throw error;}
+    const upstreamStatus=Number(response.headers.get('X-Upstream-Status')||0);
+    const effectiveStatus=upstreamStatus||response.status;
+    if(response.ok){kyberCircuitOpenUntil=0;kyberNextFetchAt=Date.now()+500;return response;}
+    if([500,502,503,504].includes(effectiveStatus)){
+      kyberCircuitOpenUntil=Date.now()+60000;kyberNextFetchAt=kyberCircuitOpenUntil;
       try{if(response.body)await response.body.cancel();}catch(_){}
-      await kyberSleep(1600*(attempt+1));
+      return response;
     }
-    kyberNextFetchAt=Date.now()+(response?.ok?1000:1800);
+    if(effectiveStatus===429){kyberCircuitOpenUntil=Date.now()+15000;kyberNextFetchAt=kyberCircuitOpenUntil;}
+    else kyberNextFetchAt=Date.now()+500;
     return response;
   });
   kyberFetchQueue=operation.then(()=>undefined,()=>undefined);
@@ -438,20 +436,10 @@ async function fetchKyberProfile(character){
         }
         if(result.terminal)return null;
       }
-    }catch(error){log(`Index personnages Kyber indisponible : ${error?.message||error}`);}
-    const candidates=[];
-    for(const value of [display,character.baseId||character.base_id]){
-      const candidate=slug(value);
-      if(candidate&&!candidates.includes(candidate))candidates.push(candidate);
-    }
-    for(const candidate of candidates){
-      const result=await tryCandidate(candidate);
-      if(result.profile){
-        profiles[candidate]=result.profile;
-        persistKyberProfile(requestKey,candidate,result.profile);
-        return result.profile;
-      }
-      if(result.terminal)return null;
+    }catch(error){
+      log(`Index personnages Kyber indisponible : ${error?.message||error}`);
+      // Sans index fiable, ne pas essayer des slugs devinés pour chaque unité.
+      return null;
     }
     return null;
   })();
