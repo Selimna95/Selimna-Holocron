@@ -211,33 +211,3 @@ function renderSithariStrategy(){
  ssRender(sithariStepState.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:0},sithariStepState.result,'Le moteur attend la première commande. Chaque clic exécute une seule étape.');
 }
 
-async function ssRun(){
- if(sithariStrategyBusy)return;sithariStrategyBusy=true;
- try{
- const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
- const empty={nodes:[],inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:0};
- ssRender(empty,{setCandidates:0,primaryCandidates:0,secondaryCandidates:0,cycles:[]},'Récupération des références Kyber…');
- let cursor=0,done=0;
- await Promise.all(Array.from({length:4},async()=>{
-  while(cursor<people.length){
-   const c=people[cursor++];if(!sithariProfileForCharacter(c)){try{await fetchKyberProfile(c);}catch(_){}}
-   done++;const status=document.querySelector('#sithariStrategy .ss-status');if(status)status.textContent='Références examinées : '+done+' / '+people.length;
-  }
- }));
- const snapshot=ssBuildSnapshot(),built=ssBuildEdges(snapshot),search=await ssFindCycles(built.edges),cycles=search.cycles;
- const secondaryCandidates=built.secondaryCandidates;
- sithariStrategySnapshot=snapshot;sithariStrategyBusy=false;
- ssRender(snapshot,{...built,secondaryCandidates,cycles},'Analyse terminée : '+snapshot.profiledCount+' personnages avec référence Kyber exploitable sur '+snapshot.rosterCount+'. '+(search.exhausted?'Exploration plafonnée pour préserver le navigateur. ':'')+search.expansions+' étapes examinées.');
- }catch(error){
-  sithariStrategyBusy=false;
-  const root=document.getElementById('sithariStrategy');
-  if(root){const status=root.querySelector('.ss-status');if(status)status.textContent='Analyse interrompue : '+String(error?.message||error);}
-  console.error('Sith’ari strategy:',error);
- }
-}
-function renderSithariStrategy(){
- const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
- ssRender({nodes:[],inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:0},
-  {setCandidates:0,primaryCandidates:0,secondaryCandidates:0,cycles:[]},
-  people.length?'Inventaire prêt. Lance l’analyse pour récupérer les références Kyber.':'Charge ton Ally Code pour analyser le roster.');
-}
