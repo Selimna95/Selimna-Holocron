@@ -278,6 +278,6 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("for(const size of [2,4])", strategy)
         self.assertIn("ssPreservesSetBonuses(donorBefore,donorAfter)", strategy)
         self.assertIn("targetSpeedAfter.total+1e-9<targetSpeedBefore.total", strategy)
-        self.assertIn("donorSpeedAfter.total+1e-9<donorSpeedBefore.total", strategy)
+        self.assertIn("// La vitesse peut baisser chez le donneur", strategy)
         self.assertIn("BILAN DE RECHERCHE", strategy)
         self.assertIn("mods échangés en bloc", strategy)
