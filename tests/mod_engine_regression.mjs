@@ -492,11 +492,11 @@ const auditContext=vm.createContext({
   sithariStatKey:x=>x,
   sithariStatLabel:x=>x,
   sithariSetMatch:(m,p)=>p.sets.some(x=>x.name===m.set_name),
-  sithariPrimaryMatch:(m,p,slot)=>p.slots[slot].primaries.some(x=>x.name===m.primary_stat)
+  sithariPrimaryMatch:(m,p,slot)=>Object.keys(p.slots[slot].primaries).includes(m.primary_stat)
 });
 load(strategy,['ssKyberMoveAudit'],auditContext);
 const kyberAudit=auditContext.ssKyberMoveAudit({
-  target:{profile:{source:'SWGOH.GG Kyber / Top 1000 GAC',sets:[{name:'Offense'}],slots:{Square:[{name:'Offense',weight:1}]},secondary_focus:{Speed:20,Offense:1500}},slot:'Square',character:{name:'Target'}},
+  target:{profile:{source:'SWGOH.GG Kyber / Top 1000 GAC',sets:[{name:'Offense'}],slots:{Square:{primaries:{Offense:1}}},secondary_focus:{Speed:20,Offense:1500}},slot:'Square',character:{name:'Target'}},
   source:{mod:{set_name:'Offense',primary_stat:'Offense',secondary:{Speed:15,Offense:900}}},
   kyber:0.7
 });
