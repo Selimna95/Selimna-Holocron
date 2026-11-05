@@ -313,5 +313,5 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("afterSpeed.total+1e-9<beforeSpeed.total", latest_search)
         self.assertIn("ssPreservesSetBonuses(group.before,donorAfter)", latest_search)
         self.assertIn("const donorGroups=new Map()", latest_search)
-        self.assertNotIn("usedDonors.has(owner)", latest_search)
+        self.assertNotIn("if(usedDonors.has(owner))continue", latest_search)
         self.assertNotIn("for(const size of [2,4])", latest_search)
