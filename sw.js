@@ -1,7 +1,7 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
-const CACHE_NAME = 'holocron-static-v4.4.20-sithari-multimod-donors';
+const CACHE_NAME = 'holocron-static-v4.4.21-sithari-gac-only-donors';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -27,7 +27,7 @@ const STATIC_ASSETS = [
   './modules/seigneur.js?v=3.9.4-slot-comparison',
   './modules/seigneur-impact.js?v=1.0.0-roster-impact',
   './modules/sithari.js?v=4.1.8-strategy-render-fix',
-  './modules/sithari-strategy.js?v=1.5.3-multi-mod-donor-final-check',
+  './modules/sithari-strategy.js?v=1.5.4-no-power-gate',
   './modules/runtime.js?v=3.7.0-sith-portraits',
   './optimizer-worker.mjs?v=3.5.3-seigneur-speed-floor',
   './python/optimizer.py?v=3.5.1-seigneur-speed-floor',
