@@ -242,7 +242,6 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("persistKyberProfile(requestKey,indexed,result.profile)", core)
         self.assertIn("const terminalStatus=upstreamStatus||response.status", core)
 
-    def test_sithari_audits_exact_six_mod_kyber_compositions(self):
         strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
         self.assertIn("function ssCharacterSetAudit(mods,profile)", strategy)
         self.assertIn("ssSameSetComposition(actual,config.expected)", strategy)
@@ -258,8 +257,6 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("holocron-static-v4.4.16-sithari-exact-set-audit", self.sw)
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
     def test_sithari_supports_atomic_two_and_four_mod_set_swaps(self):
