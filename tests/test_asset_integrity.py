@@ -242,6 +242,22 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("persistKyberProfile(requestKey,indexed,result.profile)", core)
         self.assertIn("const terminalStatus=upstreamStatus||response.status", core)
 
+    def test_sithari_audits_exact_six_mod_kyber_compositions(self):
+        strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
+        self.assertIn("function ssCharacterSetAudit(mods,profile)", strategy)
+        self.assertIn("ssSameSetComposition(actual,config.expected)", strategy)
+        self.assertIn("status:'UNVERIFIABLE'", strategy)
+        self.assertIn("Compositions non vérifiables", strategy)
+        self.assertIn("composition.status!=='MATCH'||!composition.exact", strategy)
+        self.assertIn("function ssBuildSnapshot(state)", strategy)
+        self.assertIn("for(const donor of donorPeople)", strategy)
+        self.assertIn("for(const character of recipientPeople)", strategy)
+        self.assertIn("Compositions Kyber exactes", strategy)
+        self.assertIn("modules/sithari-strategy.js?v=1.4.0-exact-set-compositions", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.4.0-exact-set-compositions", self.sw)
+        self.assertIn("holocron-static-v4.4.16-sithari-exact-set-audit", self.sw)
+
+
 if __name__ == "__main__":
     unittest.main()
 
