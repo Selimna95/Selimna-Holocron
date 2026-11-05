@@ -441,13 +441,16 @@ const strategyContext = vm.createContext({
   ssKyberSecondaryFit: mod => mod.fit,
   modTotalSpeed: mod => Number(mod.speed || 0)
 });
-load(strategy, ['ssBuildEdges'], strategyContext);
-const edgeResult = strategyContext.ssBuildEdges({ nodes: [targetNode], sources: donorSources });
-assert.equal(edgeResult.setCandidates, 3, 'All roster donors are considered at the set stage');
-assert.equal(edgeResult.primaryCandidates, 3, 'Primary stage narrows only after set compatibility');
-assert.equal(edgeResult.secondaryCandidates, 2, 'Secondary stage keeps only the best available coverage tier');
+load(strategy, ['ssBuildSetPools','ssBuildPrimaryPools','ssBuildSecondaryEdges'], strategyContext);
+const snapshotFixture = { nodes: [targetNode], sources: donorSources };
+const setStage = strategyContext.ssBuildSetPools(snapshotFixture);
+assert.equal(setStage.count, 3, 'All roster donors are considered at the set stage');
+const primaryStage = strategyContext.ssBuildPrimaryPools(snapshotFixture, setStage.pools);
+assert.equal(primaryStage.count, 3, 'Primary stage narrows only after set compatibility');
+const secondaryStage = strategyContext.ssBuildSecondaryEdges(snapshotFixture, primaryStage.pools);
+assert.equal(secondaryStage.count, 2, 'Secondary stage keeps only the best available coverage tier');
 assert.deepEqual(
-  Array.from(edgeResult.edges.get(targetNode.key), edge => edge.source.owner),
+  Array.from(secondaryStage.edges.get(targetNode.key), edge => edge.source.owner),
   ['DONOR_C', 'DONOR_B'],
   'Kyber secondary fit ranks candidates within the best secondary tier'
 );
