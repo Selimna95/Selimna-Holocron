@@ -801,3 +801,189 @@ function ssRender(snapshot,result,message){
  '<p class="ss-note">Analyse en lecture seule. Aucun mod n’est déplacé automatiquement. Les usages GAC absents restent inconnus.</p>';
  document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
 }
+
+
+
+/* V4.1.33 — pipeline réel : attendre le signal GAC, auditer les 50 cibles,
+   puis calculer les échanges. La cible ne perd jamais de vitesse ; le donneur
+   peut en céder, mais conserve ses bonus de set. */
+function ssCharacterSetAudit(mods,profile){
+ const equipped=Array.isArray(mods)?mods:[];
+ if(equipped.length!==6||new Set(equipped.map(ssSlot)).size!==6)return {status:'INCOMPLETE',exact:false,expected:[],actual:ssSetCompositionCounts(equipped)};
+ const actual=ssSetCompositionCounts(equipped),unique=new Map();
+ for(const config of (Array.isArray(profile?.specific_sets)?profile.specific_sets:[])){
+  const expected=new Map();
+  for(const [name,count] of Object.entries(config?.counts||{})){
+   const key=sithariCanonicalSet(name),value=Number(count)||0;
+   if(key&&value>0)expected.set(key,(expected.get(key)||0)+value);
+  }
+  const total=[...expected.values()].reduce((sum,value)=>sum+value,0);
+  if(total!==6)continue;
+  const signature=[...expected.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+':'+v).join('|');
+  const item={name:String(config?.name||'Composition Kyber'),weight:Number(config?.weight)||0,expected,total};
+  if(!unique.has(signature)||unique.get(signature).weight<item.weight)unique.set(signature,item);
+ }
+ const configs=[...unique.values()].sort((a,b)=>b.weight-a.weight);
+ if(configs.length){
+  const match=configs.find(config=>ssSameSetComposition(actual,config.expected));
+  return {status:match?'MATCH':'MISMATCH',exact:true,expected:configs,matched:match||null,actual};
+ }
+ const choices=new Set(sithariKyberSetChoices(profile).map(sithariCanonicalSet));
+ const allAllowed=choices.size&&[...actual.keys()].every(set=>choices.has(set));
+ return {status:allAllowed?'UNVERIFIABLE':'MISMATCH',exact:false,expected:[...choices],actual};
+}
+function ssBuildSnapshot(state){
+ const sources=[],nodes=[],unverifiable=[];
+ const donorPeople=state?.donorPeople||[],recipientPeople=state?.recipientPeople||[];
+ for(const donor of donorPeople){
+  if(ssIsProtectedLegend(donor))continue;
+  const equipped=sithariCharacterMods(donor),owner=characterKey(donor);
+  if(equipped.length!==6)continue;
+  for(const slot of SITHARI_SLOT_ORDER){
+   const mod=equipped.find(item=>ssSlot(item)===slot);if(!mod)continue;
+   sources.push({key:owner+'::'+slot,owner,name:donor.name||donor.baseId||owner,character:donor,slot,mod});
+  }
+ }
+ for(const character of recipientPeople){
+  const name=character.name||character.baseId||characterKey(character);
+  const profile=sithariProfileForCharacter(character);
+  if(!profile||!sithariKyberSetChoices(profile).length){
+   unverifiable.push({character,name,reason:'Aucune référence Kyber exploitable pour ce personnage.'});
+   continue;
+  }
+  const equipped=sithariCharacterMods(character);
+  const audit=ssCharacterSetAudit(equipped,profile);
+  if(audit.status==='UNVERIFIABLE'||audit.status==='INCOMPLETE'){
+   unverifiable.push({character,name,reason:audit.status==='INCOMPLETE'?'Six mods équipés distincts non disponibles.':'Les compositions exactes de sets ne sont pas publiées.',audit});
+   continue;
+  }
+  if(audit.status!=='MISMATCH')continue;
+  const owner=characterKey(character);
+  nodes.push({key:owner,owner,name,character,profile,mods:equipped.slice(),setAudit:audit,needsWork:true});
+ }
+ const exactReferenceCount=recipientPeople.filter(character=>{
+  const p=sithariProfileForCharacter(character);
+  return Array.isArray(p?.specific_sets)&&p.specific_sets.some(config=>Object.values(config?.counts||{}).reduce((sum,n)=>sum+(Number(n)||0),0)===6);
+ }).length;
+ return {
+  nodes,sources,unverifiable,inventory:sithariEnsureModCache().items,
+  rosterCount:state?.people?.length||0,recipientCount:recipientPeople.length,
+  donorCount:donorPeople.length,profiledCount:recipientPeople.filter(c=>!!sithariProfileForCharacter(c)).length,
+  exactReferenceCount,donorStats:state?.donorStats||null
+ };
+}
+function ssAtomicSetSwap(target,donor,slots){
+ const targetBefore=sithariCharacterMods(target.character).slice(),donorBefore=sithariCharacterMods(donor.character).slice();
+ if(targetBefore.length!==6||donorBefore.length!==6||ssIsProtectedLegend(donor.character))return null;
+ if(!Array.isArray(target.profile?.specific_sets)||!target.profile.specific_sets.length)return null;
+ const targetBySlot=new Map(targetBefore.map(mod=>[ssSlot(mod),mod]));
+ const donorBySlot=new Map(donorBefore.map(mod=>[ssSlot(mod),mod]));
+ const incoming=slots.map(slot=>donorBySlot.get(slot)),returned=slots.map(slot=>targetBySlot.get(slot));
+ if(incoming.some(mod=>!mod)||returned.some(mod=>!mod)||new Set(slots).size!==slots.length)return null;
+ for(let i=0;i<slots.length;i++){
+  if(!sithariSetMatch(incoming[i],target.profile,target.character)||!sithariPrimaryMatch(incoming[i],target.profile,slots[i]))return null;
+ }
+ const targetAfter=targetBefore.filter(mod=>!slots.includes(ssSlot(mod))).concat(incoming);
+ const donorAfter=donorBefore.filter(mod=>!slots.includes(ssSlot(mod))).concat(returned);
+ if(targetAfter.length!==6||donorAfter.length!==6)return null;
+ const composition=ssCharacterSetAudit(targetAfter,target.profile);
+ if(composition.status!=='MATCH'||!composition.exact)return null;
+ if(!ssPreservesSetBonuses(donorBefore,donorAfter))return null;
+ const targetSpeedBefore=sithariProjectedSpeed(target.character,targetBefore),targetSpeedAfter=sithariProjectedSpeed(target.character,targetAfter);
+ const donorSpeedBefore=sithariProjectedSpeed(donor.character,donorBefore),donorSpeedAfter=sithariProjectedSpeed(donor.character,donorAfter);
+ if(targetSpeedAfter.total+1e-9<targetSpeedBefore.total)return null;
+ // La vitesse peut baisser chez le donneur : seule la cible prioritaire a un plancher absolu.
+ return {targetBefore,targetAfter,donorBefore,donorAfter,incoming,returned,targetSpeedBefore,targetSpeedAfter,donorSpeedBefore,donorSpeedAfter,composition,required:slots.length};
+}
+async function ssAdvance(){
+ if(sithariStrategyBusy)return;
+ if(!sithariStepState||sithariStepState.phase==='done'){
+  const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
+  sithariStepState={phase:'profiles',people,recipientPeople:[],donorPeople:[],profileCursor:0,snapshot:null,result:{cycles:[]},profileStats:{found:0,missing:0}};
+ }
+ const state=sithariStepState;sithariStrategyBusy=true;
+ const show=message=>{
+  state.message=message;
+  ssRender(state.snapshot||{nodes:[],unverifiable:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length,recipientCount:state.recipientPeople.length,exactReferenceCount:0},state.result,message);
+ };
+ try{
+  if(state.phase==='profiles'){
+   if(window.__SWGOH_GAC_USAGE_READY__&&typeof window.__SWGOH_GAC_USAGE_READY__.then==='function'){
+    try{await window.__SWGOH_GAC_USAGE_READY__;}catch(_){}
+   }
+   state.recipientPeople=ssRecipientPool(state.people);
+   let done=0,found=0,missing=0;
+   for(const character of state.recipientPeople){
+    let profile=sithariProfileForCharacter(character);
+    if(!profile||!sithariKyberSetChoices(profile).length){try{profile=await fetchKyberProfile(character);}catch(_){profile=null;}}
+    if(profile&&sithariKyberSetChoices(profile).length)found++;else missing++;
+    done++;
+    const status=document.querySelector('#sithariStrategy .ss-status');
+    if(status)status.innerHTML='<b>'+ssStepLabel('profiles')+'</b><br>Références examinées : '+done+' / '+state.recipientPeople.length;
+   }
+   state.profileStats={found,missing};
+   state.phase='sets';
+   show('50 personnages prioritaires examinés après chargement des données GAC : '+found+' références avec recommandations de sets exploitables, '+missing+' sans référence. Lance l’identification des sets.');
+  }else if(state.phase==='sets'){
+   state.snapshot=ssBuildSnapshot(state);
+   state.phase='donors';
+   show(state.snapshot.nodes.length+' personnages présentent une composition de sets différente des compositions Kyber exactes. '+state.snapshot.unverifiable.length+' restent non vérifiables.');
+  }else if(state.phase==='donors'){
+   if(window.__SWGOH_GAC_USAGE_READY__&&typeof window.__SWGOH_GAC_USAGE_READY__.then==='function'){
+    try{await window.__SWGOH_GAC_USAGE_READY__;}catch(_){}
+   }
+   const selection=ssDonorPool(state.people,state.recipientPeople);
+   state.donorPeople=selection.people;state.donorStats=selection;
+   state.snapshot=ssBuildSnapshot(state);
+   state.phase='permutations';
+   show(selection.people.length+' donneurs validés parmi '+selection.knownCount+' personnages avec usage GAC réellement observé. Seuil faible utilisation : '+(selection.lowUseThreshold??'indisponible')+'.');
+  }else if(state.phase==='permutations'){
+   if(!state.donorPeople?.length){
+    state.result={cycles:[],candidateCount:0,diagnostics:{targets:state.snapshot?.nodes?.length||0,donors:0,groupsTested:0,validated:0}};
+    state.phase='done';
+    show('Calcul arrêté : aucun donneur ne possède actuellement une observation GAC exploitable et un profil de puissance compatible. Aucune absence de données n’est assimilée à zéro utilisation.');
+   }else{
+    const search=ssFindCycles(state.snapshot);
+    state.result.cycles=search.cycles;state.result.candidateCount=search.candidateCount;state.result.diagnostics=search.diagnostics;
+    state.phase='done';
+    show(search.cycles.length+' échanges validés après examen de '+search.expansions+' groupes de mods. La cible ne perd jamais de vitesse ; le donneur peut en céder sans perdre ses bonus de set.');
+   }
+  }
+ }catch(error){
+  show('Étape interrompue : '+String(error?.message||error));
+  console.error('Sith’ari strategy:',error);
+ }finally{
+  sithariStrategyBusy=false;
+  ssRender(state.snapshot||{nodes:[],unverifiable:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length,recipientCount:state.recipientPeople.length,exactReferenceCount:0},state.result,state.message||'Étape terminée.');
+ }
+}
+function ssRender(snapshot,result,message){
+ const root=document.getElementById('sithariStrategy');if(!root)return;
+ const needs=snapshot.nodes||[],cycles=result.cycles||[],diag=result.diagnostics||{},unverifiable=snapshot.unverifiable||[];
+ const uniqueConfigs=configs=>{
+  const seen=new Set();return (configs||[]).filter(config=>{
+   const signature=typeof config==='string'?config:JSON.stringify([...config.expected.entries()].sort((a,b)=>a[0].localeCompare(b[0])));
+   if(seen.has(signature))return false;seen.add(signature);return true;
+  });
+ };
+ const peopleHtml=needs.length
+  ?'<div class="ss-people">'+needs.map(node=>'<div><b>'+ssEsc(node.name)+'</b><span>Composition actuelle : '+ssEsc([...node.setAudit.actual.entries()].map(([name,count])=>count+' '+name).join(' · '))+'</span><small>Compositions Kyber examinées : '+ssEsc(uniqueConfigs(node.setAudit.expected).map(config=>typeof config==='string'?config:config.name+' ('+Math.round(config.weight*100)+'%)').join(' / '))+'</small></div>').join('')+'</div>'
+  :'<div class="ss-empty">Aucune composition incorrecte confirmée par une référence Kyber complète.</div>';
+ const rows=cycles.map((cycle,index)=>{
+  const impacts=ssCycleImpactMap(cycle),edge=cycle.items[0],donor=impacts.get(edge.source.owner),recipient=impacts.get(edge.target.owner);
+  const moves=cycle.items.map(item=>'<div class="ss-modline"><b>'+ssEsc(item.source.mod.set_name||'Set inconnu')+'</b><span>'+ssEsc(item.source.slot)+' · '+ssEsc(item.source.mod.primary_stat||'Primaire inconnue')+'</span><strong>'+num(item.speed)+' vitesse</strong><small>Retour : '+ssEsc(item.returnMod?.set_name||'Set inconnu')+' · '+ssEsc(item.returnMod?.primary_stat||'Primaire inconnue')+'</small></div>'+ssKyberAuditHtml({...item,target:{...item.target,profile:edge.target.profile}})).join('');
+  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(index+1).padStart(2,'0')+'</b><span>'+cycle.length+' mods échangés en bloc</span><strong>Cible : aucune perte de vitesse</strong></header><div class="ss-transfer"><div class="ss-person"><small>DONNEUR · FAIBLE / PEU UTILISÉ</small><b>'+ssEsc(edge.source.name)+'</b><span>'+ssImpactLabel(donor)+'</span></div><div class="ss-arrow">ÉCHANGE ATOMIQUE <b>⇄</b></div><div class="ss-person ss-recipient"><small>RECEVEUR PRIORITAIRE</small><b>'+ssEsc(edge.target.name)+'</b><span>'+ssImpactLabel(recipient)+'</span></div></div>'+moves+'<footer>Référence Kyber : '+Math.round(cycle.kyberFit*100)+'% · Couverture secondaire : '+Math.round(cycle.secondary*100)+'%</footer></article>';
+ }).join('');
+ const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
+ const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LES 50 PRIORITAIRES':phase==='sets'?'IDENTIFIER LES MAUVAIS SETS':phase==='donors'?'CONSTITUER LE POOL DES DONNEURS':'CALCULER LES ÉCHANGES';
+ const diagnostic=phase==='done'?'<h4>BILAN DE RECHERCHE</h4><div class="ss-status">Groupes testés : '+(diag.groupsTested??result.expansions??0)+' · Candidats validés : '+(diag.validated??result.candidateCount??0)+'<br>Rejets : set incompatible '+(diag.rejectedSet||0)+' · primaire '+(diag.rejectedPrimary||0)+' · protection des bonus du donneur '+(diag.rejectedDonorSet||0)+'</div>':'';
+ const referenceNote='<div class="ss-status"><b>FIABILITÉ DES RÉFÉRENCES DE SETS</b><br>Compositions Kyber exactes : '+(snapshot.exactReferenceCount||0)+' / '+(snapshot.recipientCount||0)+' receveurs prioritaires. Personnages non vérifiables : '+unverifiable.length+'.';
+ const donorNote=snapshot.donorStats?'<br>Usage GAC observé : '+snapshot.donorStats.knownCount+' personnages · seuil bas : '+(snapshot.donorStats.lowUseThreshold??'indisponible')+' · donneurs retenus : '+snapshot.donorStats.people.length+'.':'';
+ root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>OPTIMISATION CIBLÉE · 50 PERSONNAGES</h3><p>Audit des six mods équipés contre les compositions complètes publiées par Kyber.</p></div><button id="ss-run" type="button" '+(busy?'disabled':'')+'>'+(busy?'ÉTAPE EN COURS…':label)+'</button></header>'+
+ '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>ROSTER</span></div><div><b>'+snapshot.recipientCount+'</b><span>POOL PRIORITAIRE</span></div><div><b>'+needs.length+'</b><span>COMPOSITIONS À CORRIGER</span></div><div><b>'+unverifiable.length+'</b><span>NON VÉRIFIABLES</span></div><div><b>'+cycles.length+'</b><span>ÉCHANGES VALIDÉS</span></div></div>'+
+ '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div>'+referenceNote+donorNote+'</div>'+diagnostic+'<h4>PERSONNAGES PRIORITAIRES À CORRIGER</h4>'+peopleHtml+
+ (unverifiable.length?'<h4>RÉFÉRENCES INSUFFISANTES</h4><div class="ss-people">'+unverifiable.map(item=>'<div><b>'+ssEsc(item.name)+'</b><span>'+ssEsc(item.reason||'Référence incomplète')+'</span><small>Conformité non conclue · aucune permutation automatique</small></div>').join('')+'</div>':'')+
+ '<h4>ÉCHANGES PROPOSÉS</h4><p class="ss-results-help">Les groupes de 2 ou 4 mods doivent produire exactement une composition Kyber publiée. Le donneur récupère les mods remplacés et conserve ses bonus de set. La cible ne perd jamais de vitesse ; le donneur peut en céder.</p>'+(rows||'<div class="ss-empty">'+(phase==='done'?'Aucune permutation validée avec les donneurs actuellement identifiés. Consulte le bilan GAC et les filtres ci-dessus.':'Les permutations apparaîtront après le calcul des échanges.')+'</div>')+
+ '<p class="ss-note">Analyse en lecture seule. Aucun mod n’est déplacé automatiquement. Les usages GAC absents restent inconnus, jamais assimilés à zéro.</p>';
+ document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
+}
