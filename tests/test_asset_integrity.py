@@ -181,8 +181,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.html)
-        self.assertIn("modules/core.js?v=4.2.9-kyber-serialized-fetch", self.sw)
-        self.assertIn("holocron-static-v4.4.12-kyber-serialized-fetch", self.sw)
+        self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.sw)
+        self.assertIn("holocron-static-v4.4.13-kyber-circuit-breaker", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -214,7 +214,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("modules/sithari-strategy.js?v=1.1.2-kyber-reference-label", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
-        self.assertIn("modules/sithari-strategy.js?v=1.1.1-kyber-throttle", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.1.2-kyber-reference-label", self.sw)
         self.assertIn("holocron-static-v4.4.12-kyber-serialized-fetch", self.sw)
 
     def test_kyber_profile_fetch_is_serialized_retried_and_cached(self):
