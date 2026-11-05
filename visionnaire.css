@@ -1,0 +1,30 @@
+/* Le Visionnaire — interface guidée, indépendante de l'ancien Sith'ari. */
+.visionnaire-page{min-height:calc(100vh - 76px);padding:28px clamp(16px,3vw,38px) 70px;background:radial-gradient(circle at 50% 0,rgba(185,40,55,.12),transparent 38%),#080808;color:#eee}
+.visionnaire-page .visionnaire-header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:1px solid #292326;padding-bottom:22px}
+.visionnaire-header small,.visionnaire-section-kicker{font-size:10px;letter-spacing:.18em;color:#c58b76}
+.visionnaire-header h2{font-size:clamp(28px,4vw,44px);letter-spacing:.1em;margin:8px 0}
+.visionnaire-header p,.visionnaire-selected p{color:#aaa;line-height:1.6;max-width:760px}
+.visionnaire-state{font-size:10px;letter-spacing:.12em;color:#d7b6a5;border:1px solid #493238;padding:10px 13px}
+.visionnaire-domain,.visionnaire-list,.visionnaire-selected{margin-top:22px;padding:20px;background:linear-gradient(145deg,#111,#0b0b0b);border:1px solid #292326}
+.visionnaire-domain-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.visionnaire-domain-options button{display:flex;flex-direction:column;text-align:left;gap:8px;padding:18px;background:#151313;color:#eee;border:1px solid #373033;cursor:pointer}
+.visionnaire-domain-options button.active{border-color:#bd5965;background:linear-gradient(130deg,rgba(138,35,49,.25),#151313)}
+.visionnaire-domain-options b{font-size:18px;letter-spacing:.12em}.visionnaire-domain-options span{color:#aaa;font-size:13px}
+.visionnaire-toggle{display:flex;align-items:center;gap:10px;color:#cfc6c6;font-size:13px;margin:8px 0 18px}
+.visionnaire-kpis{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.visionnaire-kpis span{padding:10px 13px;background:#191719;color:#aaa;font-size:11px}.visionnaire-kpis b{color:#f1e6e4;font-size:17px;margin-right:5px}
+.visionnaire-list-head{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:14px}.visionnaire-list h3,.visionnaire-selected h3{font-size:22px;margin:7px 0}
+.visionnaire-list-head input{background:#111;border:1px solid #393235;color:#fff;padding:11px 13px;min-width:min(280px,100%)}
+.visionnaire-character{display:grid;grid-template-columns:42px minmax(0,1fr) minmax(150px,.7fr) 18px;gap:13px;align-items:center;width:100%;text-align:left;padding:12px 10px;background:#0e0e0e;border:1px solid #242124;color:#eee;margin-top:7px;cursor:pointer}
+.visionnaire-character.active,.visionnaire-character:hover{border-color:#a64b57;background:#171113}
+.visionnaire-avatar{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#342025;color:#f1c3c5;font-weight:700}
+.visionnaire-character-main,.visionnaire-character-reference{display:flex;flex-direction:column;gap:5px;min-width:0}.visionnaire-character-main small,.visionnaire-character-reference small{color:#999;font-size:10px}.visionnaire-character-reference b{font-size:11px;font-weight:500;color:#d8b4a8;overflow-wrap:anywhere}
+.visionnaire-character>i{font-style:normal;color:#d58b8e}
+.visionnaire-empty{padding:20px;color:#aaa;background:#111;border:1px dashed #393235;line-height:1.6}
+.visionnaire-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:18px 0}
+.visionnaire-slots button{display:flex;flex-direction:column;gap:6px;text-align:left;padding:13px;background:#111;border:1px solid #343034;color:#eee;cursor:pointer;min-width:0}
+.visionnaire-slots button.mismatch{border-left:3px solid #a94d59}.visionnaire-slots button.selected{outline:1px solid #e0a0a5;background:#241519}
+.visionnaire-slots button span{font-size:10px;letter-spacing:.12em;color:#c58b76}.visionnaire-slots button b{font-size:13px}.visionnaire-slots button small{color:#aaa}.visionnaire-slots button em{font-size:10px;color:#999;font-style:normal}
+.visionnaire-next{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.visionnaire-next span{color:#d5b6b6}.visionnaire-next button{padding:12px 15px;background:#292326;border:1px solid #55444a;color:#aaa}
+.visionnaire-note{font-size:12px;color:#b7a4a4;margin-top:15px}
+@media(max-width:720px){.visionnaire-page .visionnaire-header,.visionnaire-list-head{flex-direction:column;align-items:stretch}.visionnaire-domain-options{grid-template-columns:1fr}.visionnaire-character{grid-template-columns:36px minmax(0,1fr) 16px}.visionnaire-character-reference{grid-column:2;grid-row:2}.visionnaire-character>i{grid-column:3;grid-row:1/3}.visionnaire-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
