@@ -468,14 +468,20 @@ const strategyContext = vm.createContext({
   ssKyberSecondaryFit: mod => mod.fit,
   modTotalSpeed: mod => Number(mod.speed || 0)
 });
-load(strategy, ['ssIsProtectedLegend','ssBuildSetPools','ssBuildPrimaryPools','ssBuildSecondaryEdges'], strategyContext);
-const snapshotFixture = { nodes: [targetNode], sources: donorSources };
+strategyContext.HOLOCRON_GALACTIC_LEGENDS = new Set(['GLREY']);
+const glDonor = sourceNode('GLREY', { baseId: 'GL Rey' }, 1, 1, 30);
+const allDonorSources = [...donorSources, glDonor];
+load(strategy, ['ssIsProtectedLegend','ssBuildSetPools','ssBuildPrimaryPools','ssBuildSecondaryEdges','ssBuildEdges'], strategyContext);
+const snapshotFixture = { nodes: [targetNode], sources: allDonorSources };
 const setStage = strategyContext.ssBuildSetPools(snapshotFixture);
-assert.equal(setStage.count, 3, 'All roster donors are considered at the set stage');
+assert.equal(setStage.count, 3, 'All non-GL roster donors are considered at the set stage');
 const primaryStage = strategyContext.ssBuildPrimaryPools(snapshotFixture, setStage.pools);
 assert.equal(primaryStage.count, 3, 'Primary stage narrows only after set compatibility');
 const secondaryStage = strategyContext.ssBuildSecondaryEdges(snapshotFixture, primaryStage.pools);
 assert.equal(secondaryStage.count, 2, 'Secondary stage keeps only the best available coverage tier');
+const directEdges = strategyContext.ssBuildEdges(snapshotFixture);
+assert.equal(directEdges.setCandidates, 3, 'The production edge builder must exclude GL donors too');
+assert.ok(Array.from(directEdges.edges.get(targetNode.key) || []).every(edge => edge.source.owner !== 'GLREY'), 'A GL must never enter a donor pool');
 assert.deepEqual(
   Array.from(secondaryStage.edges.get(targetNode.key), edge => edge.source.owner),
   ['DONOR_C', 'DONOR_B'],
@@ -531,6 +537,26 @@ assert.equal(openSpeedContext.ssPreservesSetBonuses(
 ), true, 'Existing two-piece set bonuses remain valid');
 assert.equal(openSpeedContext.ssIsProtectedLegend({baseId:'GL Rey'}), true, 'GL aliases are normalized before donor protection');
 assert.equal(openSpeedContext.ssIsProtectedLegend({baseId:'RANDOM_CHARACTER'}), false);
+
+// A non-GL cycle can be useful even when it changes an existing set bonus.
+const makeSix = (squareSet, speed) => [
+ {slot:'Square',set_name:squareSet,speed},
+ {slot:'Arrow',set_name:'Speed',speed:10},
+ {slot:'Diamond',set_name:'Speed',speed:0},
+ {slot:'Triangle',set_name:'Speed',speed:0},
+ {slot:'Circle',set_name:'Speed',speed:0},
+ {slot:'Cross',set_name:'Speed',speed:0}
+];
+const modsA=makeSix('Offense',8), modsB=makeSix('Health',8);
+openSpeedContext.sithariCharacterMods = c => c.baseId === 'A' ? modsA : c.baseId === 'B' ? modsB : openDonorMods;
+const charA={baseId:'A'}, charB={baseId:'B'};
+const cycleAB=[
+ {target:{owner:'A',character:charA,slot:'Square'},source:{character:charB,mod:{slot:'Square',set_name:'Health',speed:8}}},
+ {target:{owner:'B',character:charB,slot:'Square'},source:{character:charA,mod:{slot:'Square',set_name:'Offense',speed:8}}}
+];
+assert.equal(openSpeedContext.ssCyclePreservesSpeed(cycleAB), true, 'A valid non-GL cycle remains available when it changes an existing set bonus');
+const glCycle=[{target:{owner:'GLREY',character:{baseId:'GL Rey'},slot:'Square'},source:{character:charA,mod:{slot:'Square',set_name:'Offense',speed:8}}},cycleAB[1]];
+assert.equal(openSpeedContext.ssCyclePreservesSpeed(glCycle), false, 'A GL may never participate in a permutation');
 assert.ok(strategy.includes('if(!edges.has(next))continue'), 'Open donor-chain endpoints are discarded');
 
 // 8) Kyber profile validity depends on real mod-reference content, not fragile average-stat blocks.
