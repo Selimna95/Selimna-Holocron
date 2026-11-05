@@ -176,14 +176,15 @@ function kyberCharacterLabel(value){const text=String(value||'').replace(/\s+/g,
 function kyberProfileValid(p){
   if(!p||typeof p!=='object')return false;
   const sets=(Array.isArray(p.sets)&&p.sets.length>0)||(Array.isArray(p.specific_sets)&&p.specific_sets.length>0);
-  const primaries=Object.values(p.slots||{}).some(slot=>slot&&slot.primaries&&Object.keys(slot.primaries).length>0);
+  const variableSlots=['Arrow','Triangle','Circle','Cross'];
+  const primaries=variableSlots.some(name=>Object.keys(p.slots?.[name]?.primaries||{}).length>0);
   const secondaries=Object.keys(p.secondary_focus||{}).length>0;
   // SWGOH.GG's average-stat block is not consistently exposed in its HTML.
   // Validate the actual mod recommendations rather than three unrelated averages.
   return sets&&(primaries||secondaries);
 }
 function cleanLinesFromDoc(doc){const body=doc?.body;if(!body)return[];const clone=body.cloneNode(true);clone.querySelectorAll('script,style,noscript').forEach(n=>n.remove());clone.querySelectorAll('br').forEach(n=>n.replaceWith(document.createTextNode('\n')));clone.querySelectorAll('div,p,li,tr,h1,h2,h3,h4,h5,h6,section,article,table,thead,tbody,th,td').forEach(n=>n.insertBefore(document.createTextNode('\n'),n.firstChild));return String(clone.textContent||'').split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);}
-function numberFromText(value){const m=String(value??'').replace(/,/g,'').match(/[-+]?[0-9]+(?:\\.[0-9]+)?/);return m?Number(m[0]):0;}
+function numberFromText(value){const m=String(value??'').match(/[-+]?[0-9]+(?:\\.[0-9]+)?/);return m?Number(m[0].replace(',','.')):0;}
 function kyberNumber(value){
   const raw=String(value??'').trim();
   const normalized=/^[+-]?\d+,\d+$/.test(raw)?raw.replace(',','.'):raw.replace(/,/g,'');
@@ -191,7 +192,7 @@ function kyberNumber(value){
 }
 function kyberAverageFromFocusLine(value){
   const match=String(value??'').match(/^\s*([+-]?\d[\d,]*(?:\.\d+)?)%?\s+avg\b/i);
-  return match?kyberNumber(match[1]):0;
+  return match?kyberNumber(match[1]):null;
 }
 function kyberPrimaryDistribution(lines,heading){
   const headings=['Arrow','Triangle','Circle','Cross','Secondary Stat Focus','Relic'];
@@ -221,7 +222,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   const pctLine=(line)=>line.match(pct);
   const nextIndex=(pred,start)=>{for(let i=start;i<normalized.length;i++)if(pred(normalized[i]))return i;return -1;};
   const idx=(needle)=>normalized.findIndex(x=>x===needle||x.startsWith(needle));
-  const number=(v)=>Number(String(v??'').replace(/,/g,''));
+  const number=(v)=>kyberNumber(v);
   const canonicalSet=(v)=>String(v||'').replace(/^Triple\s+/,'').replace(/^Double\s+/,'').trim().replace(/^Crit Chance$/,'Critical Chance').replace(/^Crit Damage$/,'Critical Damage');
   const addSet=(name,weight)=>{name=String(name||'').trim();if(!name||!Number.isFinite(weight))return;const base=canonicalSet(name);let count=4;if(/^Triple\s+/i.test(name))count=6;else if(/^Double\s+/i.test(name))count=4;profile.sets.push({name:base,count,weight});};
 
@@ -294,7 +295,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
     const labels=new Set(['Speed','Health','Protection','Offense','Defense','Potency','Tenacity','Critical Chance %','Critical Damage','Critical Chance','Offense %','Health %','Protection %','Defense %','Armor','Resistance','Physical Damage','Special Damage']);
     for(let k=i+1;k<(j>=0?j:normalized.length)-1;k++){
       if(!labels.has(normalized[k]))continue;
-      const next=normalized[k+1]||''; if(/\\bavg\\b/i.test(next)){profile.secondary_focus[normalized[k]]=kyberAverageFromFocusLine(next);k++;}
+      const next=normalized[k+1]||'',average=kyberAverageFromFocusLine(next); if(average!==null){profile.secondary_focus[normalized[k]]=average;k++;}
     }
   }
 
