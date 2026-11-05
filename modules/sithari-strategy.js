@@ -13,12 +13,43 @@ function ssBuildSnapshot(){
    const mod=equipped.find(m=>ssSlot(m)===slot);if(!mod)continue;
    const source={key:key+'::'+slot,owner:key,name:c.name||c.baseId||key,character:c,slot,mod};
    sources.push(source);
-   const p=sithariProfileForCharacter(c);if(!p)continue;
-   const setOk=sithariSetMatch(mod,p,c),primaryOk=sithariPrimaryMatch(mod,p,slot);
-   nodes.push({...source,profile:p,setOk,primaryOk,needsWork:!setOk||!primaryOk});
+   const profile=sithariProfileForCharacter(c);if(!profile)continue;
+   nodes.push({...source,profile,setOk:false,primaryOk:false,needsWork:true});
   }
  }
  return {nodes,sources,inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:new Set(nodes.map(n=>n.owner)).size};
+}
+function ssBuildSetPools(snapshot){
+ const bySlot=new Map();for(const source of snapshot.sources){if(!bySlot.has(source.slot))bySlot.set(source.slot,[]);bySlot.get(source.slot).push(source);}
+ const pools=new Map();let count=0;
+ for(const target of snapshot.nodes){
+  const matches=(bySlot.get(target.slot)||[]).filter(source=>source.owner!==target.owner&&sithariSetMatch(source.mod,target.profile,target.character));
+  target.setOk=sithariSetMatch(target.mod,target.profile,target.character);
+  target.needsWork=!target.setOk;
+  pools.set(target.key,matches);count+=matches.length;
+ }
+ return {pools,count};
+}
+function ssBuildPrimaryPools(snapshot,setPools){
+ const pools=new Map();let count=0;
+ for(const target of snapshot.nodes){
+  const matches=(setPools.get(target.key)||[]).filter(source=>sithariPrimaryMatch(source.mod,target.profile,target.slot));
+  target.primaryOk=sithariPrimaryMatch(target.mod,target.profile,target.slot);
+  target.needsWork=!target.setOk||!target.primaryOk;
+  pools.set(target.key,matches);count+=matches.length;
+ }
+ return {pools,count};
+}
+function ssBuildSecondaryEdges(snapshot,primaryPools){
+ const edges=new Map();let count=0;
+ for(const target of snapshot.nodes){
+  const scored=(primaryPools.get(target.key)||[]).map(source=>({target,source,secondary:ssSecondaryCoverage(source.mod,target.profile),kyber:ssKyberSecondaryFit(source.mod,target.profile),speed:modTotalSpeed(source.mod)}));
+  const best=scored.reduce((best,edge)=>Math.max(best,edge.secondary),0);
+  const retained=best>0?scored.filter(edge=>Math.abs(edge.secondary-best)<1e-9):scored;
+  retained.sort((a,b)=>b.kyber-a.kyber||b.speed-a.speed);
+  edges.set(target.key,retained);count+=retained.length;
+ }
+ return {edges,count};
 }
 function ssSecondaryCoverage(mod,profile){
  const priorities=Object.keys(profile?.secondary_focus||{});
@@ -83,7 +114,7 @@ async function ssFindCycles(edges){
  // Exploration volontairement bornée : le graphe d'un grand roster est dense.
  // On garde les meilleurs donneurs par slot et on cède régulièrement la main au navigateur.
  const found=new Map(),starts=[...edges.keys()].sort(),maxLength=4;
- const MAX_EDGES_PER_SLOT=16,MAX_EXPANSIONS=48000,MAX_CLOSED_CYCLES=2400,YIELD_EVERY=160;
+ const MAX_EDGES_PER_SLOT=8,MAX_EXPANSIONS=6000,MAX_CLOSED_CYCLES=500,YIELD_EVERY=100;
  let expansions=0,closedCycles=0,exhausted=false;
  const yieldToBrowser=()=>new Promise(resolve=>setTimeout(resolve,0));
  for(const start of starts){
@@ -123,22 +154,63 @@ async function ssFindCycles(edges){
  })).filter(cycle=>cycle.items.some(edge=>edge.target.needsWork)).sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed).slice(0,30);
  return {cycles,expansions,closedCycles,exhausted};
 }
+let sithariStepState=null;
+function ssStepLabel(phase){
+ return ({profiles:'ÉTAPE 1/5 · RÉFÉRENCES KYBER',sets:'ÉTAPE 2/5 · FILTRE DES SETS',primaries:'ÉTAPE 3/5 · FILTRE DES PRIMAIRES',secondaries:'ÉTAPE 4/5 · FILTRE DES SECONDAIRES',permutations:'ÉTAPE 5/5 · RECHERCHE DES PERMUTATIONS',done:'ANALYSE TERMINÉE'})[phase]||'PRÉPARATION';
+}
 function ssRender(snapshot,result,message){
  const root=document.getElementById('sithariStrategy');if(!root)return;
- const needs=snapshot.nodes.filter(n=>n.needsWork),setBad=needs.filter(n=>!n.setOk).length,primaryBad=needs.filter(n=>!n.primaryOk).length;
+ const needs=snapshot.nodes.filter(n=>n.needsWork),setBad= snapshot.nodes.filter(n=>!n.setOk).length,primaryBad=snapshot.nodes.filter(n=>!n.primaryOk).length;
  const peopleSummary=[...needs.reduce((map,node)=>{const item=map.get(node.owner)||{name:node.name,slots:0,sets:0,primaries:0};item.slots++;if(!node.setOk)item.sets++;if(!node.primaryOk)item.primaries++;map.set(node.owner,item);return map;},new Map()).values()].sort((a,b)=>b.slots-a.slots||a.name.localeCompare(b.name,'fr'));
  const peopleHtml=peopleSummary.length?'<div class="ss-people">'+peopleSummary.map(person=>'<div><b>'+ssEsc(person.name)+'</b><span>'+person.slots+' slot(s) à revoir</span><small>'+person.sets+' set(s) · '+person.primaries+' primaire(s)</small></div>').join('')+'</div>':'<div class="ss-empty">Aucun emplacement équipé hors critères Set / primaire parmi les personnages disposant d’une référence Kyber.</div>';
- const rows=result.cycles.map((cycle,i)=>{
+ const rows=(result.cycles||[]).map((cycle,i)=>{
   const moves=cycle.items.map(e=>'<div class="ss-move"><span>'+ssEsc(e.source.name)+'</span><i>→</i><b>'+ssEsc(e.target.name)+'</b><small>'+ssEsc(e.source.mod.set_name||'Set ?')+' · '+ssEsc(e.source.mod.primary_stat||'Primaire ?')+' · '+num(modTotalSpeed(e.source.mod))+' vit.</small></div>').join('');
-  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(i+1).padStart(2,'0')+'</b><span>'+cycle.length+' personnages</span><strong>Kyber '+Math.round(cycle.kyberFit*100)+'%</strong></header>'+moves+'<footer>Couverture secondaires : '+Math.round(cycle.secondary*100)+'% · Référence Kyber : '+Math.round(cycle.kyberFit*100)+'% · Vitesse mods : '+num(cycle.speed)+'</footer></article>';
+  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(i+1).padStart(2,'0')+'</b><span>'+cycle.length+' transferts</span><strong>Kyber '+Math.round(cycle.kyberFit*100)+'%</strong></header>'+moves+'<footer>Couverture secondaires : '+Math.round(cycle.secondary*100)+'% · Référence Kyber : '+Math.round(cycle.kyberFit*100)+'% · Vitesse mods : '+num(cycle.speed)+'</footer></article>';
  }).join('');
- root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>ANALYSE CUMULATIVE DU ROSTER</h3><p>Un inventaire unique. Chaque filtre affine les possibilités conservées par le précédent.</p></div><button id="ss-run" type="button" '+(sithariStrategyBusy?'disabled':'')+'>'+(sithariStrategyBusy?'ANALYSE EN COURS…':'LANCER L’ANALYSE')+'</button></header>'+
- '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>PERSONNAGES</span></div><div><b>'+snapshot.inventory.length+'</b><span>MODS</span></div><div><b>'+needs.length+'</b><span>SLOTS À AMÉLIORER</span></div><div><b>'+result.cycles.length+'</b><span>PERMUTATIONS</span></div></div>'+
- '<div class="ss-pipeline"><div><b>01 · SETS</b><strong>'+setBad+'</strong><small>'+result.setCandidates+' correspondances</small></div><i>→</i><div><b>02 · PRIMAIRES</b><strong>'+primaryBad+'</strong><small>'+result.primaryCandidates+' conservées</small></div><i>→</i><div><b>03 · SECONDAIRES</b><strong>'+result.secondaryCandidates+'</strong><small>classées sans filtre arbitraire</small></div><i>→</i><div><b>04 · KYBER</b><strong>'+result.cycles.length+'</strong><small>scénarios comparés</small></div></div>'+
- '<div class="ss-status">'+ssEsc(message)+'</div><h4>PERSONNAGES HORS CRITÈRES KYBER</h4>'+peopleHtml+'<h4>PERMUTATIONS EN CHAÎNE</h4>'+(rows||'<div class="ss-empty">Aucune permutation circulaire complète trouvée. Les mods restent inchangés ; aucune proposition partielle n’est présentée comme réalisable.</div>')+
- '<p class="ss-note">Prototype en lecture seule. Chaque cycle présenté attribue à chaque personnage un mod compatible avec son slot, son set et sa primaire. Aucune modification n’est appliquée.</p>';
- document.getElementById('ss-run')?.addEventListener('click',ssRun);
+ const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
+ const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LE LOT DE RÉFÉRENCES':phase==='sets'?'EXÉCUTER LE FILTRE SETS':phase==='primaries'?'EXÉCUTER LE FILTRE PRIMAIRES':phase==='secondaries'?'EXÉCUTER LE FILTRE SECONDAIRES':'LANCER LA RECHERCHE DES PERMUTATIONS';
+ root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>ANALYSE CUMULATIVE DU ROSTER</h3><p>Chaque étape s’exécute séparément. La suivante attend ta commande.</p></div><button id="ss-run" type="button" '+(busy?'disabled':'')+'>'+ (busy?'ÉTAPE EN COURS…':label)+'</button></header>'+
+ '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>PERSONNAGES</span></div><div><b>'+snapshot.inventory.length+'</b><span>MODS</span></div><div><b>'+needs.length+'</b><span>SLOTS À AMÉLIORER</span></div><div><b>'+(result.cycles||[]).length+'</b><span>PERMUTATIONS</span></div></div>'+
+ '<div class="ss-pipeline"><div><b>01 · SETS</b><strong>'+setBad+'</strong><small>'+(result.setCandidates||0)+' donneurs compatibles</small></div><i>→</i><div><b>02 · PRIMAIRES</b><strong>'+primaryBad+'</strong><small>'+(result.primaryCandidates||0)+' donneurs retenus</small></div><i>→</i><div><b>03 · SECONDAIRES</b><strong>'+(result.secondaryCandidates||0)+'</strong><small>meilleure couverture conservée</small></div><i>→</i><div><b>04 · KYBER</b><strong>'+(result.cycles||[]).length+'</strong><small>scénarios validés</small></div></div>'+
+ '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div><h4>PERSONNAGES HORS CRITÈRES KYBER</h4>'+peopleHtml+'<h4>PERMUTATIONS EN CHAÎNE</h4>'+(rows||'<div class="ss-empty">Les permutations apparaîtront après l’exécution de la cinquième étape.</div>')+
+ '<p class="ss-note">Analyse en lecture seule. Aucune modification des mods n’est appliquée.</p>';
+ document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
 }
+async function ssAdvance(){
+ if(sithariStrategyBusy)return;
+ if(!sithariStepState||sithariStepState.phase==='done')sithariStepState={phase:'profiles',people:(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship'),profileCursor:0,snapshot:null,setPools:null,primaryPools:null,result:{setCandidates:0,primaryCandidates:0,secondaryCandidates:0,cycles:[]}};
+ const state=sithariStepState;sithariStrategyBusy=true;
+ const show=(message)=>ssRender(state.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length,profiledCount:0},state.result,message);
+ try{
+  if(state.phase==='profiles'){
+   const batch=20,end=Math.min(state.people.length,state.profileCursor+batch),items=state.people.slice(state.profileCursor,end);let cursor=0,done=0;
+   show('Récupération de '+items.length+' profils maximum. Aucun autre filtre ne démarre pendant cette étape.');
+   await Promise.all(Array.from({length:4},async()=>{while(cursor<items.length){const c=items[cursor++];if(!sithariProfileForCharacter(c)){try{await fetchKyberProfile(c);}catch(_){}}done++;const status=document.querySelector('#sithariStrategy .ss-status');if(status)status.innerHTML='<b>'+ssStepLabel('profiles')+'</b><br>Profils traités dans ce lot : '+done+' / '+items.length;}}));
+   state.profileCursor=end;
+   if(end>=state.people.length)state.phase='sets';
+   show('Lot terminé : '+end+' / '+state.people.length+' personnages examinés. '+(state.phase==='sets'?'Les références sont prêtes. Lance le filtre des sets.':'Relance cette étape pour charger le lot suivant.'));
+  }else if(state.phase==='sets'){
+   state.snapshot=ssBuildSnapshot();state.setPools=ssBuildSetPools(state.snapshot);state.result.setCandidates=state.setPools.count;state.phase='primaries';
+   show(state.result.setCandidates+' donneurs compatibles après le filtre des sets. Étape suivante : primaires.');
+  }else if(state.phase==='primaries'){
+   state.primaryPools=ssBuildPrimaryPools(state.snapshot,state.setPools.pools);state.result.primaryCandidates=state.primaryPools.count;state.phase='secondaries';
+   show(state.result.primaryCandidates+' donneurs restent après le filtre des primaires. Étape suivante : secondaires.');
+  }else if(state.phase==='secondaries'){
+   const secondary=ssBuildSecondaryEdges(state.snapshot,state.primaryPools.pools);state.result.secondaryCandidates=secondary.count;state.result.edges=secondary.edges;state.phase='permutations';
+   show(secondary.count+' donneurs restent après le filtre des secondaires. Étape suivante : recherche des permutations.');
+  }else if(state.phase==='permutations'){
+   const search=await ssFindCycles(state.result.edges);state.result.cycles=search.cycles;state.phase='done';
+   show(search.cycles.length+' scénarios validés. '+search.expansions+' explorations effectuées'+(search.exhausted?' avant la limite de sécurité.':'.'));
+  }
+ }catch(error){show('Étape interrompue : '+String(error?.message||error));console.error('Sith’ari strategy:',error);}
+ finally{sithariStrategyBusy=false;ssRender(state.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length,profiledCount:0},state.result,state.phase==='done'?'Analyse terminée.':state.phase==='profiles'?'Lot de profils traité. Tu peux continuer.':'Étape terminée. Tu peux lancer la suivante.');}
+}
+function renderSithariStrategy(){
+ const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
+ if(!sithariStepState||sithariStepState.people.length!==people.length)sithariStepState={phase:'profiles',people,profileCursor:0,snapshot:null,setPools:null,primaryPools:null,result:{setCandidates:0,primaryCandidates:0,secondaryCandidates:0,cycles:[]}};
+ ssRender(sithariStepState.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:0},sithariStepState.result,'Le moteur attend la première commande. Chaque clic exécute une seule étape.');
+}
+
 async function ssRun(){
  if(sithariStrategyBusy)return;sithariStrategyBusy=true;
  try{
