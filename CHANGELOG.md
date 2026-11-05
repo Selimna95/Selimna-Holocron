@@ -1,3 +1,14 @@
+
+## [4.1.34] — 2026-11-05
+
+### Sith’ari — recherche multi-donneurs
+- Recherche de blocs de 2 ou 4 mods dont les pièces peuvent provenir de plusieurs donneurs distincts.
+- Chaque donneur reçoit le mod remplacé sur le même slot ; ses bonus de set sont contrôlés individuellement.
+- La vitesse du receveur reste protégée ; une baisse de vitesse chez un donneur reste autorisée.
+- Diagnostic détaillé des filtres set, primaire, sécurité donneur, composition Kyber et vitesse cible, avec indication du plafond de recherche.
+- Présentation de l'impact vitesse de chaque donneur et du receveur.
+- Correction de la version visible de l'en-tête : V4.1.34.
+
 ## V4.1.33 — Pipeline Sith’ari et pool donneur fiabilisés (2026-11-05)
 
 - Attend explicitement la fin du chargement du catalogue GAC avant de constituer les 50 prioritaires et le pool des donneurs ; les priorités sont recalculées après disponibilité des observations.
