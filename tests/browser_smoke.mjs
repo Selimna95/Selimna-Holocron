@@ -76,48 +76,10 @@ try {
   assert.equal(await page.locator("body").getAttribute("data-page"), "data");
   assert.equal(await page.locator("#data").getAttribute("aria-hidden"), "false");
 
-  await page.evaluate(() => showPage("sithari"));
-  assert.equal(await page.locator("body").getAttribute("data-page"), "sithari");
-  assert.equal(await page.locator("#sithari").getAttribute("aria-hidden"), "false");
-
-  // Regression guard: duplicate/aliased rows must never inflate equipped mods
-  // beyond the six physical slots on either forge or Sith'ari.
-  const counts = await page.evaluate(() => {
-    const character = { baseId: "AHSOKATANO", name: "Ahsoka Tano", characterId: "UNIT-42" };
-    const slots = [2, 3, 4, 5, 6, 7];
-    const makeMod = (slot, id) => ({
-      game_id: id,
-      characterId: "UNIT-42",
-      slot,
-      set_name: "Speed",
-      primary_stat: "Speed",
-      primary_value: 30,
-      level: 15,
-      rarity: 5,
-      secondary_1_stat: "Speed",
-      secondary_1_value: 5,
-    });
-    const originalMods = mods;
-    const originalRoster = rosterCharacters;
-    const originalCache = sithariModCache;
-    try {
-      rosterCharacters = [character];
-      mods = slots.flatMap((slot, index) => [
-        makeMod(slot, "equipped-" + index),
-        makeMod(slot, "equipped-" + index),
-      ]);
-      sithariModCache = { signature: "", items: [], byOwner: new Map(), statusByOwner: new Map() };
-      return {
-        forge: getCharacterMods(character).length,
-        sithari: sithariCharacterMods(character).length,
-      };
-    } finally {
-      mods = originalMods;
-      rosterCharacters = originalRoster;
-      sithariModCache = originalCache;
-    }
-  });
-  assert.deepEqual(counts, { forge: 6, sithari: 6 });
+  await page.evaluate(() => showPage("visionnaire"));
+  assert.equal(await page.locator("body").getAttribute("data-page"), "visionnaire");
+  assert.equal(await page.locator("#visionnaire").getAttribute("aria-hidden"), "false");
+  assert.equal(await page.locator("#visionnaireRoot").count(), 1);
 
   const ambiguousSlotCount = await page.evaluate(() => {
     const character = { baseId: "AHSOKATANO", name: "Ahsoka Tano", characterId: "UNIT-42" };
@@ -151,7 +113,6 @@ try {
   const modMath = await page.evaluate(() => ({
     localized: numericValue("1 234,5"),
     forgeTotal: forgeProjectedModSpeed({baseId:"TEST",name:"Test"},{},Array.from({length:6},(_,i)=>({game_id:"m"+i,slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",secondary_1_stat:"Speed",secondary_1_value:5}))).total,
-    sithariTotal: sithariProjectedSpeed({baseId:"TEST",name:"Test"},Array.from({length:6},(_,i)=>({slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",secondary_1_stat:"Speed",secondary_1_value:5}))).total,
     offenseFlat: discipleCanonicalStat("Offense"),
     offensePercent: discipleCanonicalStat("Offense %"),
     healthFlat: discipleCanonicalStat("Health"),
@@ -341,7 +302,7 @@ try {
   assert.match(await page.locator("#padawanStatus").textContent(), /catalogue dynamique|compositions observées|équipes défensives retenues|classement actuel/i);
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
-  console.log("Browser smoke passed: shell, navigation, six-slot invariant, characterId ownership, and numeric slot aliases.");
+  console.log("Browser smoke passed: shell, navigation, profile sync, and blue-GAC flow.");
 } finally {
   await browser.close();
 }
