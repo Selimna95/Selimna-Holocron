@@ -202,7 +202,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("ssCyclePreservesSpeed", strategy)
         self.assertIn("MAX_EXPANSIONS=6000", strategy)
         self.assertIn("MAX_EDGES_PER_SLOT=8", strategy)
-        self.assertIn("await ssFindCycles(built.edges)", strategy)
+        self.assertIn("await ssFindCycles(state.result.edges)", strategy)
         self.assertIn("ssSecondaryCoverage", strategy)
         self.assertIn("peopleSummary", strategy)
         self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
