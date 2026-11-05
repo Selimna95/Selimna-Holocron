@@ -808,7 +808,7 @@ async function loadRemotePlayer(){
     mods=nextMods;rosterCharacters=chars;rosterShips=ships;accountGalacticPower=nextGalacticPower;
     log(`Mods exploitables : ${apiMods.length} via API + ${htmlMods.length} via HTML de secours = ${mods.length}.`);
     renderGalacticPower();
-    updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();
+    updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderVisionnaire();
     currentData={allyCode,name:title,characters:chars,ships,mods,galacticPower:accountGalacticPower};
     $('dataInfo').textContent=`Source: ${apiChars.length?'SWGOH.GG API JSON':'SWGOH.GG HTML'}${relay?' via Cloudflare Worker':''}${!apiMods.length?' · mods HTML secours':''}\nJoueur: ${title}\nAlly Code: ${fmt}\nPersonnages: ${chars.length}\nVaisseaux: ${ships.length}\nUnités totales: ${chars.length+ships.length}\nMods: ${mods.length}\nProfils Kyber disponibles dans cette version: ${Object.keys(profiles).length}`;
     log(`TERMINÉ : ${chars.length} personnages, ${ships.length} vaisseaux, ${mods.length} mods exploitables.`);
