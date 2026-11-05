@@ -21,7 +21,7 @@ function ssBuildSnapshot(){
 }
 function ssIsProtectedLegend(character){
  const base=String(character?.baseId||character?.base_id||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
- return typeof HOLOCRON_GALACTIC_LEGENDS!=='undefined'&&HOLOCRON_GALACTIC_LEGENDS instanceof Set&&HOLOCRON_GALACTIC_LEGENDS.has(base);
+ return typeof HOLOCRON_GALACTIC_LEGENDS!=='undefined'&&typeof HOLOCRON_GALACTIC_LEGENDS.has==='function'&&HOLOCRON_GALACTIC_LEGENDS.has(base);
 }
 function ssSetBonusCounts(mods){
  const counts=new Map();
