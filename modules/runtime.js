@@ -19,7 +19,7 @@ function updateGuardianContext(page){
     'top-changes': hasProfile ? 'Acolyte · commence par le gain prioritaire le plus utile.' : 'Charge un profil pour calculer les priorités.',
     'mods-analysis': hasProfile ? 'Disciple · avance du diagnostic à la recherche, étape par étape.' : 'Charge un profil pour examiner les mods disponibles.',
     optimizer: hasProfile ? 'Forge · diagnostique le personnage avant de lancer la recherche.' : 'Choisis ou charge un profil pour ouvrir la Forge.',
-    sithari: hasProfile ? 'Sith’ari · compare les slots avant de renforcer ou calibrer.' : 'Charge un profil pour comparer les six slots au Kyber.',
+    visionnaire: hasProfile ? 'Le Visionnaire · audite les sets et primaires par rapport à Kyber.' : 'Charge un profil pour lancer l’audit Kyber.',
     help: 'Système · consulte le relais, le moteur et les limites des données.'
   };
   const message=messages[page] || messages.dashboard;
@@ -35,7 +35,7 @@ function updateSidebarLevelPortrait(page){
     'top-changes':{name:'ACOLYTE',position:'0%'},
     'mods-analysis':{name:'DISCIPLE',position:'33.333%'},
     optimizer:{name:'SEIGNEUR SITH',position:'66.667%'},
-    sithari:{name:'SITH’ARI',position:'100%'}
+    visionnaire:{name:'VISIONNAIRE',position:'100%'}
   };
   const level=levels[page]||levels['top-changes'];
   portrait.dataset.level=page;
@@ -62,7 +62,7 @@ function showPage(page){
   updateGuardianContext(page);
   if(page==='mods-analysis') renderModsAnalysis();
   if(page==='top-changes') renderHolocronTopChanges();
-  if(page==='sithari') renderSithariNexus();
+  if(page==='visionnaire') renderVisionnaire();
   if(page==='dashboard') sanctuaryRenderEnergy();
 }
 
@@ -111,7 +111,7 @@ $('reallocationIncomplete')?.addEventListener('change',discipleHandleSearchEvent
 $('reallocationVeryLow')?.addEventListener('change',discipleHandleSearchEvent);
 $('reallocationLow')?.addEventListener('change',discipleHandleSearchEvent);
 $('runReallocation')?.addEventListener('click',discipleHandleSearchEvent);
-$('clearData').addEventListener('click',()=>{currentData=null;mods=[];modFiltersReady=false;const mf=$('modFilters'),ms=$('modSummary');if(mf)mf.hidden=true;if(ms)ms.hidden=true;rosterCharacters=[];rosterShips=[];factionMap={};analysisSelectedCharacter='';analysisFaction='';analysisSide='ALL';analysisStatus='TOUS';analysisAuditSpeed='TOUS';analysisAuditSort='priority';updateRosterCounts([],[]);fillCharacters([]);if($('v18DashboardSpeed'))$('v18DashboardSpeed').innerHTML='';$('results').textContent='Chargez d’abord vos données.';$('dataInfo').textContent='Aucune donnée.';if($('playerName'))$('playerName').textContent='Profil non chargé';if($('playerAlly'))$('playerAlly').textContent='—';if($('heroPlayerName'))$('heroPlayerName').textContent='Profil non chargé';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent='—';if($('heroProfileState'))$('heroProfileState').textContent='EN ATTENTE';$('dataTableMeta').textContent='Aucune donnée.';$('dataTable').innerHTML='<div class="empty">Chargez un profil pour afficher les données.</div>';$('log').textContent='Données effacées.';if($('topAccountName'))$('topAccountName').textContent='—';if($('topProfileState'))$('topProfileState').textContent='EN ATTENTE';if($('topUnitsCount'))$('topUnitsCount').textContent='—';try{sessionStorage.removeItem('holocronSessionEstablished');sessionStorage.removeItem('holocronLastAllyCode');}catch(_){}window.dispatchEvent(new Event('holocron:data-updated'));renderSithariNexus();updateGuardianContext(document.body.dataset.page||'dashboard');});
+$('clearData').addEventListener('click',()=>{currentData=null;mods=[];modFiltersReady=false;const mf=$('modFilters'),ms=$('modSummary');if(mf)mf.hidden=true;if(ms)ms.hidden=true;rosterCharacters=[];rosterShips=[];factionMap={};analysisSelectedCharacter='';analysisFaction='';analysisSide='ALL';analysisStatus='TOUS';analysisAuditSpeed='TOUS';analysisAuditSort='priority';updateRosterCounts([],[]);fillCharacters([]);if($('v18DashboardSpeed'))$('v18DashboardSpeed').innerHTML='';$('results').textContent='Chargez d’abord vos données.';$('dataInfo').textContent='Aucune donnée.';if($('playerName'))$('playerName').textContent='Profil non chargé';if($('playerAlly'))$('playerAlly').textContent='—';if($('heroPlayerName'))$('heroPlayerName').textContent='Profil non chargé';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent='—';if($('heroProfileState'))$('heroProfileState').textContent='EN ATTENTE';$('dataTableMeta').textContent='Aucune donnée.';$('dataTable').innerHTML='<div class="empty">Chargez un profil pour afficher les données.</div>';$('log').textContent='Données effacées.';if($('topAccountName'))$('topAccountName').textContent='—';if($('topProfileState'))$('topProfileState').textContent='EN ATTENTE';if($('topUnitsCount'))$('topUnitsCount').textContent='—';try{sessionStorage.removeItem('holocronSessionEstablished');sessionStorage.removeItem('holocronLastAllyCode');}catch(_){}window.dispatchEvent(new Event('holocron:data-updated'));renderVisionnaire();updateGuardianContext(document.body.dataset.page||'dashboard');});
 
 document.querySelectorAll('.analysis-tab').forEach(btn=>btn.addEventListener('click',()=>setAnalysisTab(btn.dataset.analysisTab)));
 $('analysisFaction')?.addEventListener('change',()=>{analysisFaction=$('analysisFaction').value;analysisSelectedCharacter='';renderSelectionPanel();});
@@ -222,12 +222,9 @@ document.addEventListener('click',e=>{
   render();
 })();
 
-$('sithariFaction')?.addEventListener('change',e=>{sithariFaction=e.target.value;sithariRenderAll();});
-$('sithariCharacterSearch')?.addEventListener('input',e=>{sithariSearch=e.target.value||'';sithariRenderSelectors();});
-$('sithariClearSelection')?.addEventListener('click',()=>{sithariSelectedKeys=[];sithariActiveKey='';sithariRenderAll();});
 showPage(document.querySelector('.page.active')?.id || 'dashboard');
 renderGalacticPower();
-renderSithariNexus();
+renderVisionnaire();
 boot();
 
 
