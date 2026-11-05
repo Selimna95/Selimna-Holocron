@@ -997,14 +997,15 @@ function ssFindCycles(snapshot){
  const diagnostics={
   targets:0,donors:new Set((snapshot.sources||[]).map(x=>x.owner)).size,
   groupsTested:0,rawBySlot:{},setCandidates:0,primaryCandidates:0,
-  donorSetCandidates:0,rejectedSet:0,rejectedPrimary:0,
+  donorSetCandidates:0,targetCappedCount:0,rejectedSet:0,rejectedPrimary:0,
   rejectedDonorSet:0,rejectedComposition:0,rejectedSpeed:0,validated:0,
   capped:false
  };
  const candidates=[];
- const MAX_GROUPS=160000,MAX_PER_SLOT=16;
+ const MAX_GROUPS=200000,MAX_GROUPS_PER_TARGET=4000,MAX_PER_SLOT=16;
  for(const target of snapshot.nodes||[]){
   diagnostics.targets++;
+  let targetGroups=0,targetCapped=false;
   const targetBefore=sithariCharacterMods(target.character).slice();
   if(targetBefore.length!==6)continue;
   const targetBySlot=new Map(targetBefore.map(mod=>[ssSlot(mod),mod]));
@@ -1043,8 +1044,9 @@ function ssFindCycles(snapshot){
     const chosen=[],usedDonors=new Set();
     const walk=(index)=>{
      if(diagnostics.groupsTested>=MAX_GROUPS){diagnostics.capped=true;return;}
+     if(targetGroups>=MAX_GROUPS_PER_TARGET){targetCapped=true;return;}
      if(index===slots.length){
-      diagnostics.groupsTested++;
+      diagnostics.groupsTested++;targetGroups++;
       const incoming=chosen.map(item=>item.source.mod);
       const targetAfter=targetBefore.filter(mod=>!slots.includes(ssSlot(mod))).concat(incoming);
       if(targetAfter.length!==6||new Set(targetAfter.map(ssSlot)).size!==6){diagnostics.rejectedComposition++;return;}
@@ -1067,7 +1069,7 @@ function ssFindCycles(snapshot){
       const owner=item.source.owner;
       if(usedDonors.has(owner))continue;
       usedDonors.add(owner);chosen.push(item);walk(index+1);chosen.pop();usedDonors.delete(owner);
-      if(diagnostics.capped)return;
+      if(diagnostics.capped||targetCapped)return;
      }
     };
     walk(0);
@@ -1135,7 +1137,7 @@ function ssRender(snapshot,result,message){
  }).join('');
  const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
  const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LES 50 PRIORITAIRES':phase==='sets'?'IDENTIFIER LES MAUVAIS SETS':phase==='donors'?'CONSTITUER LE POOL DES DONNEURS':'CALCULER LES ÉCHANGES';
- const diagnostic=phase==='done'?'<h4>BILAN DE RECHERCHE</h4><div class="ss-status">Groupes testés : '+(diag.groupsTested??result.expansions??0)+' · Combinaisons validées : '+(diag.validated??result.candidateCount??0)+' · Scénarios retenus : '+cycles.length+'<br>Donneurs examinés : '+(diag.donors||0)+' · Candidats après set/primaire/sécurité donneur : '+(diag.donorSetCandidates||0)+'<br>Rejets : set '+(diag.rejectedSet||0)+' · primaire '+(diag.rejectedPrimary||0)+' · bonus donneur '+(diag.rejectedDonorSet||0)+' · composition Kyber '+(diag.rejectedComposition||0)+' · vitesse cible '+(diag.rejectedSpeed||0)+(diag.capped?' · recherche plafonnée':'')+'</div>':'';
+ const diagnostic=phase==='done'?'<h4>BILAN DE RECHERCHE</h4><div class="ss-status">Groupes testés : '+(diag.groupsTested??result.expansions??0)+' · Combinaisons validées : '+(diag.validated??result.candidateCount??0)+' · Scénarios retenus : '+cycles.length+'<br>Donneurs examinés : '+(diag.donors||0)+' · Candidats après set/primaire/sécurité donneur : '+(diag.donorSetCandidates||0)+'<br>Rejets : set '+(diag.rejectedSet||0)+' · primaire '+(diag.rejectedPrimary||0)+' · bonus donneur '+(diag.rejectedDonorSet||0)+' · composition Kyber '+(diag.rejectedComposition||0)+' · vitesse cible '+(diag.rejectedSpeed||0)+' · receveurs plafonnés '+(diag.targetCappedCount||0)+(diag.capped?' · plafond global atteint':'')+'</div>':'';
  const referenceNote='<div class="ss-status"><b>FIABILITÉ DES RÉFÉRENCES DE SETS</b><br>Compositions Kyber exactes : '+(snapshot.exactReferenceCount||0)+' / '+(snapshot.recipientCount||0)+' receveurs prioritaires. Personnages non vérifiables : '+unverifiable.length+'.';
  const donorNote=snapshot.donorStats?'<br>Usage GAC observé : '+snapshot.donorStats.knownCount+' personnages · seuil bas : '+(snapshot.donorStats.lowUseThreshold??'indisponible')+' · donneurs retenus : '+snapshot.donorStats.people.length+'.':'';
  root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>OPTIMISATION CIBLÉE · 50 PERSONNAGES</h3><p>Recherche multi-donneurs : plusieurs personnages faibles peuvent céder des mods au même receveur. Chaque donneur récupère le mod remplacé sur le même emplacement.</p></div><button id="ss-run" type="button" '+(busy?'disabled':'')+'>'+(busy?'ÉTAPE EN COURS…':label)+'</button></header>'+
