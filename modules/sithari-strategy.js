@@ -1073,10 +1073,11 @@ function ssFindCycles(snapshot){
      }
     };
     walk(0);
-    if(diagnostics.capped)break;
+    if(diagnostics.capped||targetCapped)break;
    }
-   if(diagnostics.capped)break;
+   if(diagnostics.capped||targetCapped)break;
   }
+  if(targetCapped)diagnostics.targetCappedCount++;
   if(diagnostics.capped)break;
  }
  candidates.sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed);
