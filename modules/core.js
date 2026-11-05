@@ -329,7 +329,7 @@ async function fetchKyberThroughRelay(url){
       try{
         response=await fetch(url,{headers:{'Accept':'text/html,application/xhtml+xml'}});
       }catch(error){
-        if(attempt===2)throw error;
+        if(attempt===2){kyberNextFetchAt=Date.now()+1800;throw error;}
         await kyberSleep(1200*(attempt+1));
         continue;
       }
@@ -415,7 +415,8 @@ async function fetchKyberProfile(character){
         if(!response.ok){
           const upstreamStatus=Number(response.headers.get('X-Upstream-Status')||0);
           log(`Référence Kyber ${candidate} : Worker HTTP ${response.status}${upstreamStatus?` (SWGOH.GG ${upstreamStatus})`:''}.`);
-          return {profile:null,terminal:response.status>=500||upstreamStatus===403||upstreamStatus>=500||upstreamStatus===429};
+          const terminalStatus=upstreamStatus||response.status;
+          return {profile:null,terminal:terminalStatus>=500||terminalStatus===403||terminalStatus===429};
         }
         const html=await response.text();
         const parsed=parseKyberProfileHTML(html,display,candidate);
