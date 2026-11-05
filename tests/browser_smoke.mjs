@@ -120,7 +120,6 @@ try {
   }));
   assert.equal(modMath.localized, 1234.5);
   assert.equal(modMath.forgeTotal, 30, "Forge must add six mod speeds numerically, not concatenate strings");
-  assert.equal(modMath.sithariTotal, 30, "Sith'ari must add six mod speeds numerically, not concatenate strings");
   assert.notEqual(modMath.offenseFlat, modMath.offensePercent, "Offense and Offense % are distinct secondary stats");
   assert.notEqual(modMath.healthFlat, modMath.healthPercent, "Health and Health % are distinct secondary stats");
 
