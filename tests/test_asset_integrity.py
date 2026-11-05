@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.9-gl-protection", self.sw)
+        self.assertIn("holocron-static-v4.4.10-gl-permutation-recovery", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.7-kyber-reference-validation", self.html)
         self.assertIn("modules/core.js?v=4.2.7-kyber-reference-validation", self.sw)
-        self.assertIn("holocron-static-v4.4.9-gl-protection", self.sw)
+        self.assertIn("holocron-static-v4.4.10-gl-permutation-recovery", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -198,7 +198,9 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("const batch=40", strategy)
         self.assertIn("if(!edges.has(next))", strategy)
         self.assertIn("if(!edges.has(next))continue", strategy)
-        self.assertIn("ssPreservesSetBonuses(beforeMods,entry.mods)", strategy)
+        self.assertIn("if(items.some(edge=>ssIsProtectedLegend", strategy)
+        self.assertIn("if(ssIsProtectedLegend(c))continue;", strategy)
+        self.assertNotIn("if(!ssPreservesSetBonuses(beforeMods,entry.mods))return false;", strategy)
         self.assertIn("!ssIsProtectedLegend(source.character)", strategy)
         self.assertIn("ssFindCycles", strategy)
         self.assertIn("ssCyclePreservesSpeed", strategy)
@@ -209,11 +211,11 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("peopleSummary", strategy)
         self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
         self.assertIn("lecture seule", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.0.9-gl-protection-fix", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.1.0-gl-hard-protection", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
-        self.assertIn("modules/sithari-strategy.js?v=1.0.9-gl-protection-fix", self.sw)
-        self.assertIn("holocron-static-v4.4.9-gl-protection", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.1.0-gl-hard-protection", self.sw)
+        self.assertIn("holocron-static-v4.4.10-gl-permutation-recovery", self.sw)
 
 if __name__ == "__main__":
     unittest.main()
