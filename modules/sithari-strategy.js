@@ -1149,3 +1149,182 @@ function ssRender(snapshot,result,message){
  '<p class="ss-note">Analyse en lecture seule. Aucun mod n’est déplacé automatiquement. Les usages GAC absents restent inconnus, jamais assimilés à zéro.</p>';
  document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
 }
+
+
+/* V4.1.35 — recherche guidée par le déficit exact de sets.
+   On ne teste plus des combinaisons arbitraires de slots : chaque plan part
+   d'une composition Kyber complète et ne remplace que les pièces excédentaires. */
+function ssRequiredSetPlans(target){
+ const mods=(target.mods||sithariCharacterMods(target.character)).slice();
+ if(mods.length!==6)return [];
+ const actual=ssSetCompositionCounts(mods),plans=[],seen=new Set();
+ const configs=(target.setAudit?.expected||[]).filter(config=>config?.expected instanceof Map)
+  .slice().sort((a,b)=>(Number(b.weight)||0)-(Number(a.weight)||0));
+ const choose=(items,count)=>{
+  const out=[];
+  const walk=(start,chosen)=>{
+   if(chosen.length===count){out.push(chosen.slice());return;}
+   for(let i=start;i<=items.length-(count-chosen.length);i++){
+    chosen.push(items[i]);walk(i+1,chosen);chosen.pop();
+   }
+  };
+  walk(0,[]);return out;
+ };
+ for(const config of configs){
+  const surplus=[],deficits=[];
+  for(const [set,count] of actual){
+   const extra=count-(config.expected.get(set)||0);
+   if(extra>0){
+    const slots=mods.filter(mod=>sithariCanonicalSet(mod?.set_name||mod?.set||mod?.setId||mod?.set_id||'')===set).map(ssSlot);
+    surplus.push({set,slots,count:extra});
+   }
+  }
+  for(const [set,count] of config.expected){
+   const missing=count-(actual.get(set)||0);
+   if(missing>0)for(let i=0;i<missing;i++)deficits.push(set);
+  }
+  if(!surplus.length||surplus.reduce((sum,item)=>sum+item.count,0)!==deficits.length)continue;
+  const selectedSlotPlans=[];
+  const pickSurplus=(index,slots)=>{
+   if(index===surplus.length){selectedSlotPlans.push(slots.slice());return;}
+   const group=surplus[index];
+   for(const subset of choose(group.slots,group.count))pickSurplus(index+1,slots.concat(subset));
+  };
+  pickSurplus(0,[]);
+  for(const slots of selectedSlotPlans){
+   const orderedSlots=slots.slice().sort((a,b)=>SITHARI_SLOT_ORDER.indexOf(a)-SITHARI_SLOT_ORDER.indexOf(b));
+   const remaining=deficits.slice().sort(),assignment=[],used=new Set();
+   const assign=(index)=>{
+    if(index===orderedSlots.length){
+     const signature=orderedSlots.map((slot,i)=>slot+'='+assignment[i]).join('|');
+     if(!seen.has(signature)){
+      seen.add(signature);
+      plans.push({slots:orderedSlots.slice(),requiredBySlot:new Map(orderedSlots.map((slot,i)=>[slot,assignment[i]])),config});
+     }
+     return;
+    }
+    let previous=null;
+    for(let i=0;i<remaining.length;i++){
+     const set=remaining[i];
+     if(used.has(i)||set===previous)continue;
+     previous=set;used.add(i);assignment.push(set);
+     assign(index+1);
+     assignment.pop();used.delete(i);
+    }
+   };
+   assign(0);
+   if(plans.length>=120)return plans;
+  }
+ }
+ return plans;
+}
+function ssFindCycles(snapshot){
+ const diagnostics={
+  targets:0,donors:new Set((snapshot.sources||[]).map(source=>source.owner)).size,
+  plansTested:0,groupsTested:0,donorCandidates:0,rejectedSet:0,
+  rejectedPrimary:0,rejectedDonorSet:0,rejectedComposition:0,
+  rejectedSpeed:0,validated:0,targetCappedCount:0,capped:false
+ };
+ const candidates=[],donorCache=new Map();
+ const donorState=source=>{
+  if(!donorCache.has(source.owner)){
+   const before=sithariCharacterMods(source.character).slice();
+   donorCache.set(source.owner,{before,bySlot:new Map(before.map(mod=>[ssSlot(mod),mod]))});
+  }
+  return donorCache.get(source.owner);
+ };
+ const MAX_ATTEMPTS_PER_TARGET=500,MAX_SCENARIOS_PER_TARGET=3,MAX_DONORS_PER_SLOT=12;
+ for(const target of snapshot.nodes||[]){
+  diagnostics.targets++;
+  const targetBefore=(target.mods||sithariCharacterMods(target.character)).slice();
+  if(targetBefore.length!==6)continue;
+  const targetBySlot=new Map(targetBefore.map(mod=>[ssSlot(mod),mod]));
+  const plans=ssRequiredSetPlans({...target,mods:targetBefore});
+  let attempts=0,foundForTarget=0;
+  if(!plans.length){diagnostics.rejectedComposition++;continue;}
+  for(const plan of plans){
+   if(foundForTarget>=MAX_SCENARIOS_PER_TARGET)break;
+   diagnostics.plansTested++;
+   const slotPools=[];
+   let impossible=false;
+   for(const slot of plan.slots){
+    const requiredSet=plan.requiredBySlot.get(slot),old=targetBySlot.get(slot),pool=[];
+    for(const source of snapshot.sources||[]){
+     if(source.owner===target.owner||source.slot!==slot||ssIsProtectedLegend(source.character))continue;
+     const incomingSet=sithariCanonicalSet(source.mod?.set_name||source.mod?.set||source.mod?.setId||source.mod?.set_id||'');
+     if(incomingSet!==requiredSet){diagnostics.rejectedSet++;continue;}
+     if(!sithariPrimaryMatch(source.mod,target.profile,slot)){diagnostics.rejectedPrimary++;continue;}
+     const donor=donorState(source);
+     if(donor.before.length!==6)continue;
+     const donorAfter=donor.before.filter(mod=>ssSlot(mod)!==slot).concat([old]);
+     if(donorAfter.length!==6||!ssPreservesSetBonuses(donor.before,donorAfter)){diagnostics.rejectedDonorSet++;continue;}
+     diagnostics.donorCandidates++;
+     pool.push({
+      target:{...target,slot},source,returnMod:old,
+      secondary:ssSecondaryCoverage(source.mod,target.profile),
+      kyber:ssKyberSecondaryFit(source.mod,target.profile),
+      speed:modTotalSpeed(source.mod)
+     });
+    }
+    pool.sort((a,b)=>b.kyber-a.kyber||b.secondary-a.secondary||b.speed-a.speed);
+    if(!pool.length){impossible=true;break;}
+    slotPools.push({slot,pool:pool.slice(0,MAX_DONORS_PER_SLOT)});
+   }
+   if(impossible)continue;
+   // Le slot ayant le moins de donneurs est traité en premier : moins de branches.
+   slotPools.sort((a,b)=>a.pool.length-b.pool.length);
+   const chosen=[],usedDonors=new Set();
+   let foundForPlan=false;
+   const walk=index=>{
+    if(foundForPlan||attempts>=MAX_ATTEMPTS_PER_TARGET)return;
+    if(index===slotPools.length){
+     attempts++;diagnostics.groupsTested++;
+     const incoming=chosen.map(item=>item.source.mod);
+     const replacedSlots=chosen.map(item=>item.target.slot);
+     const targetAfter=targetBefore.filter(mod=>!replacedSlots.includes(ssSlot(mod))).concat(incoming);
+     if(targetAfter.length!==6||new Set(targetAfter.map(ssSlot)).size!==6){diagnostics.rejectedComposition++;return;}
+     const audit=ssCharacterSetAudit(targetAfter,target.profile);
+     if(audit.status!=='MATCH'||!audit.exact){diagnostics.rejectedComposition++;return;}
+     const beforeSpeed=sithariProjectedSpeed(target.character,targetBefore);
+     const afterSpeed=sithariProjectedSpeed(target.character,targetAfter);
+     if(afterSpeed.total+1e-9<beforeSpeed.total){diagnostics.rejectedSpeed++;return;}
+     diagnostics.validated++;
+     const items=chosen.map(item=>({...item,target:{...target,slot:item.source.slot}}));
+     candidates.push({
+      items,length:items.length,
+      kyberFit:items.reduce((sum,item)=>sum+item.kyber,0)/items.length,
+      secondary:items.reduce((sum,item)=>sum+item.secondary,0)/items.length,
+      speed:items.reduce((sum,item)=>sum+item.speed,0),
+      audit:{targetBefore,targetAfter,composition:audit},atomic:true
+     });
+     foundForPlan=true;foundForTarget++;
+     return;
+    }
+    const slotPool=slotPools[index];
+    for(const item of slotPool.pool){
+     const owner=item.source.owner;
+     if(usedDonors.has(owner))continue;
+     usedDonors.add(owner);chosen.push(item);
+     walk(index+1);
+     chosen.pop();usedDonors.delete(owner);
+     if(foundForPlan||attempts>=MAX_ATTEMPTS_PER_TARGET)return;
+    }
+   };
+   walk(0);
+  }
+  if(attempts>=MAX_ATTEMPTS_PER_TARGET)diagnostics.targetCappedCount++;
+ }
+ candidates.sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed);
+ const selected=[],usedTargets=new Set(),usedDonors=new Set();
+ for(const candidate of candidates){
+  const target=candidate.items[0].target.owner;
+  const donors=candidate.items.map(item=>item.source.owner);
+  if(usedTargets.has(target)||donors.some(owner=>usedDonors.has(owner)))continue;
+  selected.push(candidate);usedTargets.add(target);donors.forEach(owner=>usedDonors.add(owner));
+  if(selected.length>=30)break;
+ }
+ return {
+  cycles:selected,expansions:diagnostics.groupsTested,closedCycles:selected.length,
+  exhausted:diagnostics.targetCappedCount>0,candidateCount:candidates.length,diagnostics
+ };
+}
