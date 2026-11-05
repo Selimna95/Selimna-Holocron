@@ -331,7 +331,7 @@ async function fetchKyberProfile(character){
   const tryCandidate=async candidate=>{
     try{
       const response=await fetch(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
-      if(!response.ok)return null;
+      if(!response.ok){log(`Référence Kyber ${candidate} : Worker HTTP ${response.status}.`);return null;}
       const html=await response.text();
       const parsed=parseKyberProfileHTML(html,display,candidate);
       return kyberProfileValid(parsed)?parsed:null;
