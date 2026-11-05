@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.16-sithari-exact-set-audit", self.sw)
+        self.assertIn("holocron-static-v4.4.17-sithari-gac-ready-speed-floor", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.html)
         self.assertIn("modules/core.js?v=4.2.10-kyber-circuit-breaker", self.sw)
-        self.assertIn("holocron-static-v4.4.16-sithari-exact-set-audit", self.sw)
+        self.assertIn("holocron-static-v4.4.17-sithari-gac-ready-speed-floor", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -211,11 +211,11 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("peopleSummary", strategy)
         self.assertIn("PERSONNAGES HORS CRITÈRES KYBER", strategy)
         self.assertIn("lecture seule", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.4.0-exact-set-compositions", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.0-gac-ready-donor-speed", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
-        self.assertIn("modules/sithari-strategy.js?v=1.4.0-exact-set-compositions", self.sw)
-        self.assertIn("holocron-static-v4.4.16-sithari-exact-set-audit", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.0-gac-ready-donor-speed", self.sw)
+        self.assertIn("holocron-static-v4.4.17-sithari-gac-ready-speed-floor", self.sw)
 
     def test_sithari_uses_a_bounded_priority_pool_and_observed_low_use_donors(self):
         strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
@@ -227,7 +227,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithariCharacterMods(x.c).length===6", strategy)
         self.assertIn("function ssSwapSafe(target,source)", strategy)
         self.assertIn("targetSpeedAfter.total+1e-9<targetSpeedBefore.total", strategy)
-        self.assertIn("donorSpeedAfter.total+1e-9<donorSpeedBefore.total", strategy)
+        self.assertIn("// La vitesse peut baisser chez le donneur", strategy)
         self.assertIn("Le moteur attend la première commande. Il commencera par 50 personnages prioritaires maximum.", strategy)
         self.assertIn("Les usages absents des données GAC restent inconnus", strategy)
 
@@ -253,10 +253,24 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("for(const donor of donorPeople)", strategy)
         self.assertIn("for(const character of recipientPeople)", strategy)
         self.assertIn("Compositions Kyber exactes", strategy)
-        self.assertIn("modules/sithari-strategy.js?v=1.4.0-exact-set-compositions", self.html)
-        self.assertIn("modules/sithari-strategy.js?v=1.4.0-exact-set-compositions", self.sw)
-        self.assertIn("holocron-static-v4.4.16-sithari-exact-set-audit", self.sw)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.0-gac-ready-donor-speed", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.0-gac-ready-donor-speed", self.sw)
+        self.assertIn("holocron-static-v4.4.17-sithari-gac-ready-speed-floor", self.sw)
 
+
+    def test_sithari_waits_for_gac_and_allows_donor_speed_loss(self):
+        strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
+        latest_atomic = strategy[strategy.rfind("function ssAtomicSetSwap(target,donor,slots)"):]
+        self.assertIn("await window.__SWGOH_GAC_USAGE_READY__", strategy)
+        self.assertIn("state.recipientPeople=ssRecipientPool(state.people)", strategy)
+        self.assertIn("Aucune absence de données n’est assimilée à zéro utilisation", strategy)
+        self.assertIn("// La vitesse peut baisser chez le donneur", latest_atomic)
+        self.assertNotIn("if(donorSpeedAfter.total+1e-9<donorSpeedBefore.total)return null", latest_atomic)
+        self.assertIn("unverifiable.push({character,name,reason:", strategy)
+        self.assertIn("if(ssIsProtectedLegend(donor))continue", strategy)
+        self.assertIn("La cible ne perd jamais de vitesse", strategy)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.0-gac-ready-donor-speed", self.html)
+        self.assertIn("modules/sithari-strategy.js?v=1.5.0-gac-ready-donor-speed", self.sw)
 
     def test_sithari_supports_atomic_two_and_four_mod_set_swaps(self):
         strategy = (ROOT / "modules" / "sithari-strategy.js").read_text(encoding="utf-8")
