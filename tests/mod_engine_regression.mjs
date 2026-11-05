@@ -55,20 +55,21 @@ load(core,['kyberNumber','kyberAverageFromFocusLine','kyberPrimaryDistribution']
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+19.6 avg 23.68%'),19.6);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+1,682.4 avg 8.35%'),1682.4);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+3.93% avg 11.86%'),3.93);
-assert.deepEqual(
-  JSON.parse(JSON.stringify(kyberParserContext.kyberPrimaryDistribution([
-    'Arrow','Protection 65.38%','Speed 30.47%','Offense 3.55%','Triangle',
-    'Protection 61.24%','Critical Damage 33.13%','Circle','Protection 97.04%',
-    'Cross','Protection 84.31%','Offense 13.6%','Secondary Stat Focus','Speed'
-  ],'Arrow'))),
-  {Protection:0.6538,Speed:0.3047,Offense:0.0355}
-);
-assert.deepEqual(
-  JSON.parse(JSON.stringify(kyberParserContext.kyberPrimaryDistribution([
-    'Arrow','Protection 65.38%','Triangle','Protection 61.24%','Critical Damage 33.13%'
-  ],'Triangle'))),
-  {Protection:0.6124,'Critical Damage':0.3313}
-);
+const arrowPrimary=kyberParserContext.kyberPrimaryDistribution([
+  'Arrow','Protection 65.38%','Speed 30.47%','Offense 3.55%','Triangle',
+  'Protection 61.24%','Critical Damage 33.13%','Circle','Protection 97.04%',
+  'Cross','Protection 84.31%','Offense 13.6%','Secondary Stat Focus','Speed'
+],'Arrow');
+assert.deepEqual(Object.keys(arrowPrimary).sort(),['Offense','Protection','Speed']);
+assert.ok(Math.abs(arrowPrimary.Protection-0.6538)<1e-9);
+assert.ok(Math.abs(arrowPrimary.Speed-0.3047)<1e-9);
+assert.ok(Math.abs(arrowPrimary.Offense-0.0355)<1e-9);
+const trianglePrimary=kyberParserContext.kyberPrimaryDistribution([
+  'Arrow','Protection 65.38%','Triangle','Protection 61.24%','Critical Damage 33.13%'
+],'Triangle');
+assert.deepEqual(Object.keys(trianglePrimary).sort(),['Critical Damage','Protection']);
+assert.ok(Math.abs(trianglePrimary.Protection-0.6124)<1e-9);
+assert.ok(Math.abs(trianglePrimary['Critical Damage']-0.3313)<1e-9);
 const collisionRoster = [
   { name: 'Ahsoka Tano (Snips)', baseId: 'AHSOKATANO' },
   { name: 'Ahsoka Tano', baseId: 'GLAHSOKATANO' },
