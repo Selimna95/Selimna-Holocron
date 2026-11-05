@@ -175,21 +175,67 @@ let sithariStepState=null;
 function ssStepLabel(phase){
  return ({profiles:'ÉTAPE 1/5 · RÉFÉRENCES KYBER',sets:'ÉTAPE 2/5 · FILTRE DES SETS',primaries:'ÉTAPE 3/5 · FILTRE DES PRIMAIRES',secondaries:'ÉTAPE 4/5 · FILTRE DES SECONDAIRES',permutations:'ÉTAPE 5/5 · RECHERCHE DES PERMUTATIONS',done:'ANALYSE TERMINÉE'})[phase]||'PRÉPARATION';
 }
+function ssCycleImpactMap(cycle){
+ const affected=new Map();
+ const ensure=(character,owner,name)=>{
+  if(!affected.has(owner)){
+   const beforeMods=sithariCharacterMods(character).slice();
+   affected.set(owner,{character,name,beforeMods,afterMods:beforeMods.slice()});
+  }
+  return affected.get(owner);
+ };
+ for(const edge of cycle.items){
+  const target=ensure(edge.target.character,edge.target.owner,edge.target.name);
+  target.afterMods=target.afterMods.filter(mod=>ssSlot(mod)!==edge.target.slot);
+  target.afterMods.push(edge.source.mod);
+ }
+ if(cycle.open){
+  const terminal=cycle.items[cycle.items.length-1].source;
+  if(!affected.has(terminal.owner)){
+   const donor=ensure(terminal.character,terminal.owner,terminal.name);
+   donor.afterMods=donor.afterMods.filter(mod=>ssId(mod)!==ssId(terminal.mod));
+  }
+ }
+ for(const item of affected.values()){
+  item.before=sithariProjectedSpeed(item.character,item.beforeMods);
+  item.after=sithariProjectedSpeed(item.character,item.afterMods);
+  item.delta=Number(item.after.total||item.after.modSpeed||0)-Number(item.before.total||item.before.modSpeed||0);
+ }
+ return affected;
+}
+function ssImpactLabel(impact){
+ if(!impact)return 'Impact vitesse non calculable';
+ const delta=impact.delta,sign=delta>0?'+':'';
+ return 'Vitesse totale : '+num(impact.before.total||impact.before.modSpeed)+' → '+num(impact.after.total||impact.after.modSpeed)+' ('+sign+num(delta)+')';
+}
+function ssKyberAuditHtml(edge){
+ const audit=ssKyberMoveAudit(edge);
+ const setChoices=audit.set.choices.length?audit.set.choices.join(' / '):'aucune donnée';
+ const primaryChoices=audit.primary.choices.length?audit.primary.choices.map(x=>x.name+' '+Math.round(x.weight*100)+'%').join(' / '):'aucune donnée';
+ const secondary=audit.secondaries.length?audit.secondaries.map(x=>ssEsc(x.stat)+' '+num(x.actual,1)+' / '+num(x.reference,1)).join(' · '):'aucune priorité secondaire publiée';
+ return '<details class="ss-kyber-audit"><summary>DÉTAIL DE LA RÉFÉRENCE KYBER</summary><div><b>'+ssEsc(audit.source)+'</b><p><strong>Set</strong> · reçu : '+ssEsc(audit.set.actual)+' · attendu : '+ssEsc(setChoices)+' · '+(audit.set.matches?'Conforme':'Non conforme')+'</p><p><strong>Primaire</strong> · reçue : '+ssEsc(audit.primary.actual)+' · attendue : '+ssEsc(primaryChoices)+' · '+(audit.primary.matches?'Conforme':'Non conforme')+'</p><p><strong>Secondaires</strong> · valeur du mod / référence : '+secondary+'</p></div></details>';
+}
 function ssRender(snapshot,result,message){
  const root=document.getElementById('sithariStrategy');if(!root)return;
  const needs=snapshot.nodes.filter(n=>n.needsWork),setBad= snapshot.nodes.filter(n=>!n.setOk).length,primaryBad=snapshot.nodes.filter(n=>!n.primaryOk).length;
  const peopleSummary=[...needs.reduce((map,node)=>{const item=map.get(node.owner)||{name:node.name,slots:0,sets:0,primaries:0};item.slots++;if(!node.setOk)item.sets++;if(!node.primaryOk)item.primaries++;map.set(node.owner,item);return map;},new Map()).values()].sort((a,b)=>b.slots-a.slots||a.name.localeCompare(b.name,'fr'));
  const peopleHtml=peopleSummary.length?'<div class="ss-people">'+peopleSummary.map(person=>'<div><b>'+ssEsc(person.name)+'</b><span>'+person.slots+' slot(s) à revoir</span><small>'+person.sets+' set(s) · '+person.primaries+' primaire(s)</small></div>').join('')+'</div>':'<div class="ss-empty">Aucun emplacement équipé hors critères Set / primaire parmi les personnages disposant d’une référence Kyber.</div>';
  const rows=(result.cycles||[]).map((cycle,i)=>{
-  const moves=cycle.items.map(e=>'<div class="ss-move"><span>'+ssEsc(e.source.name)+'</span><i>→</i><b>'+ssEsc(e.target.name)+'</b><small>'+ssEsc(e.source.mod.set_name||'Set ?')+' · '+ssEsc(e.source.mod.primary_stat||'Primaire ?')+' · '+num(modTotalSpeed(e.source.mod))+' vit.</small>'+ssKyberAuditHtml(e)+'</div>').join('');
-  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(i+1).padStart(2,'0')+'</b><span>'+cycle.length+' transferts</span><strong>Secondaires Kyber '+Math.round(cycle.kyberFit*100)+'%</strong></header>'+moves+'<footer>Couverture des secondaires prioritaires : '+Math.round(cycle.secondary*100)+'% · Ajustement secondaires Kyber : '+Math.round(cycle.kyberFit*100)+'% · Vitesse mods transférés : '+num(cycle.speed)+'</footer></article>';
+  const impacts=ssCycleImpactMap(cycle);
+  const moves=cycle.items.map(e=>{
+   const donor=impacts.get(e.source.owner),recipient=impacts.get(e.target.owner);
+   const delta=Number(modTotalSpeed(e.source.mod)||0);
+   return '<article class="ss-move"><div class="ss-transfer"><div class="ss-person"><small>DONNEUR</small><b>'+ssEsc(e.source.name)+'</b><span>'+ssImpactLabel(donor)+'</span></div><div class="ss-arrow">MOD TRANSFÉRÉ <b>→</b></div><div class="ss-person ss-recipient"><small>RECEVEUR</small><b>'+ssEsc(e.target.name)+'</b><span>'+ssImpactLabel(recipient)+'</span></div></div><div class="ss-modline"><b>'+ssEsc(e.source.mod.set_name||'Set inconnu')+'</b><span>'+ssEsc(e.source.mod.primary_stat||'Primaire inconnue')+'</span><strong>'+num(delta)+' vitesse sur le mod</strong></div>'+ssKyberAuditHtml(e)+'</article>';
+  }).join('');
+  const deltas=[...impacts.values()].map(x=>x.delta),net=deltas.reduce((sum,x)=>sum+x,0);
+  return '<article class="ss-cycle"><header><b>SCÉNARIO '+String(i+1).padStart(2,'0')+'</b><span>'+cycle.length+' transfert(s)</span><strong>Écart vitesse roster : '+(net>0?'+':'')+num(net)+'</strong></header>'+moves+'<footer>Référence secondaire Kyber : '+Math.round(cycle.kyberFit*100)+'% · Couverture des priorités secondaires : '+Math.round(cycle.secondary*100)+'%</footer></article>';
  }).join('');
  const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
  const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LE LOT DE RÉFÉRENCES':phase==='sets'?'EXÉCUTER LE FILTRE SETS':phase==='primaries'?'EXÉCUTER LE FILTRE PRIMAIRES':phase==='secondaries'?'EXÉCUTER LE FILTRE SECONDAIRES':'LANCER LA RECHERCHE DES PERMUTATIONS';
  root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>ANALYSE CUMULATIVE DU ROSTER</h3><p>Chaque étape s’exécute séparément. La suivante attend ta commande.</p></div><button id="ss-run" type="button" '+(busy?'disabled':'')+'>'+ (busy?'ÉTAPE EN COURS…':label)+'</button></header>'+
  '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>PERSONNAGES</span></div><div><b>'+(sithariStepState?.profileStats?.found??snapshot.profiledCount??0)+'</b><span>PROFILS KYBER</span></div><div><b>'+snapshot.inventory.length+'</b><span>MODS</span></div><div><b>'+needs.length+'</b><span>SLOTS À AMÉLIORER</span></div><div><b>'+(result.cycles||[]).length+'</b><span>PERMUTATIONS</span></div></div>'+
  '<div class="ss-pipeline"><div><b>01 · SETS</b><strong>'+setBad+'</strong><small>'+(result.setCandidates||0)+' donneurs compatibles</small></div><i>→</i><div><b>02 · PRIMAIRES</b><strong>'+primaryBad+'</strong><small>'+(result.primaryCandidates||0)+' donneurs retenus</small></div><i>→</i><div><b>03 · SECONDAIRES</b><strong>'+(result.secondaryCandidates||0)+'</strong><small>meilleure couverture conservée</small></div><i>→</i><div><b>04 · KYBER</b><strong>'+(result.cycles||[]).length+'</strong><small>scénarios validés</small></div></div>'+
- '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div><h4>PERSONNAGES HORS CRITÈRES KYBER</h4>'+peopleHtml+'<h4>PERMUTATIONS EN CHAÎNE</h4>'+(rows||'<div class="ss-empty">Les permutations apparaîtront après l’exécution de la cinquième étape.</div>')+
+ '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div><h4>PERSONNAGES HORS CRITÈRES KYBER</h4>'+peopleHtml+'<h4>INCIDENCES DES PERMUTATIONS</h4><p class="ss-results-help">Lis chaque ligne de gauche à droite : personnage donneur, mod déplacé, personnage receveur. Les vitesses indiquent le total avant et après l’ensemble du scénario.</p>'+(rows||'<div class="ss-empty">Les permutations apparaîtront après l’exécution de la cinquième étape.</div>')+
  '<p class="ss-note">Analyse en lecture seule. Aucune modification des mods n’est appliquée.</p>';
  document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
 }
