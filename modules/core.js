@@ -190,7 +190,7 @@ function kyberNumber(value){
   const parsed=Number(normalized);return Number.isFinite(parsed)?parsed:0;
 }
 function kyberAverageFromFocusLine(value){
-  const match=String(value??'').match(/^\s*([+-]?\d[\d,]*(?:\.\d+)?)\s+avg\b/i);
+  const match=String(value??'').match(/^\s*([+-]?\d[\d,]*(?:\.\d+)?)%?\s+avg\b/i);
   return match?kyberNumber(match[1]):0;
 }
 function kyberPrimaryDistribution(lines,heading){
