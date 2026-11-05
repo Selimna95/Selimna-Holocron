@@ -172,7 +172,15 @@ function profileForCharacter(character) {
 }
 
 function normalizeKyberKey(value){return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');}
-function kyberProfileValid(p){if(!p||typeof p!=='object')return false;const a=p.averages||{};return Number(a.Speed||0)>=100&&Number(a.Health||0)>=10000&&Number(a.Protection||0)>=10000;}
+function kyberProfileValid(p){
+  if(!p||typeof p!=='object')return false;
+  const sets=(Array.isArray(p.sets)&&p.sets.length>0)||(Array.isArray(p.specific_sets)&&p.specific_sets.length>0);
+  const primaries=Object.values(p.slots||{}).some(slot=>slot&&slot.primaries&&Object.keys(slot.primaries).length>0);
+  const secondaries=Object.keys(p.secondary_focus||{}).length>0;
+  // SWGOH.GG's average-stat block is not consistently exposed in its HTML.
+  // Validate the actual mod recommendations rather than three unrelated averages.
+  return sets&&(primaries||secondaries);
+}
 function cleanLinesFromDoc(doc){const body=doc?.body;if(!body)return[];const clone=body.cloneNode(true);clone.querySelectorAll('script,style,noscript').forEach(n=>n.remove());clone.querySelectorAll('br').forEach(n=>n.replaceWith(document.createTextNode('\n')));clone.querySelectorAll('div,p,li,tr,h1,h2,h3,h4,h5,h6,section,article,table,thead,tbody,th,td').forEach(n=>n.insertBefore(document.createTextNode('\n'),n.firstChild));return String(clone.textContent||'').split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);}
 function numberFromText(value){const m=String(value??'').replace(/,/g,'').match(/[-+]?[0-9]+(?:\.[0-9]+)?/);return m?Number(m[0]):0;}
 function parseKyberProfileHTML(text,character,kyberSlug){
@@ -293,18 +301,56 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   profile.specific_sets.sort((a,b)=>b.weight-a.weight);
   return kyberProfileValid(profile)?profile:null;
 }
+let kyberUnitIndexPromise=null;
+async function loadKyberUnitIndex(){
+  if(!kyberUnitIndexPromise){
+    kyberUnitIndexPromise=(async()=>{
+      const response=await fetch(`${workerUrl()}/?path=characters-index`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
+      if(!response.ok)throw new Error(`Index SWGOH.GG HTTP ${response.status}`);
+      const doc=parseHTML(await response.text()),index=new Map();
+      for(const anchor of Array.from(doc.querySelectorAll('a[href*="/units/"]')||[])){
+        const href=anchor.getAttribute('href')||'',match=href.match(/\/units\/([^/]+)/);
+        if(!match)continue;
+        const label=normalizeKyberKey(anchor.textContent||anchor.getAttribute('aria-label')||'');
+        if(label&&!index.has(label))index.set(label,match[1]);
+      }
+      if(!index.size)throw new Error('Aucun personnage reconnu dans l’index SWGOH.GG');
+      return index;
+    })().catch(error=>{kyberUnitIndexPromise=null;throw error;});
+  }
+  return kyberUnitIndexPromise;
+}
 async function fetchKyberProfile(character){
   if(!character)return null;
   const existing=profileForCharacter(character); if(kyberProfileValid(existing))return existing;
   const display=character.name||character.character||character.baseId||character.base_id||'';
-  const candidates=[]; const add=v=>{const s=slug(v);if(s&&!candidates.includes(s))candidates.push(s);};
-  add(display); add(character.baseId||character.base_id);
-  const tryCandidate=async candidate=>{try{const r=await fetch(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`,{headers:{'Accept':'text/html,application/xhtml+xml'}});if(!r.ok)return null;const html=await r.text();if(!/Best Mods|Data Slice:\s*Kyber/i.test(html))return null;return parseKyberProfileHTML(html,display,candidate);}catch(e){log(`Référence Kyber ${candidate}: ${e?.message||e}`);return null;}};
-  for(const candidate of candidates){const parsed=await tryCandidate(candidate);if(parsed){profiles[candidate]=parsed;return parsed;}}
+  const tryCandidate=async candidate=>{
+    try{
+      const response=await fetch(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
+      if(!response.ok)return null;
+      const html=await response.text();
+      const parsed=parseKyberProfileHTML(html,display,candidate);
+      return kyberProfileValid(parsed)?parsed:null;
+    }catch(error){log(`Référence Kyber ${candidate}: ${error?.message||error}`);return null;}
+  };
+  // One shared index lookup replaces a fresh index request for every missing character.
   try{
-    const r=await fetch(`${workerUrl()}/?path=characters-index`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
-    if(r.ok){const doc=parseHTML(await r.text());const wanted=normalizeKyberKey(display);for(const a of Array.from(doc.querySelectorAll('a[href*="/units/"]')||[])){const label=normalizeKyberKey(a.textContent);const href=a.getAttribute('href')||'';const m=href.match(/\/units\/([^/]+)/);if(label===wanted&&m){const candidate=m[1];const parsed=await tryCandidate(candidate);if(parsed){profiles[candidate]=parsed;return parsed;}}}}
-  }catch(e){log(`Index personnages Kyber indisponible : ${e?.message||e}`);}
+    const index=await loadKyberUnitIndex();
+    const indexed=index.get(normalizeKyberKey(display));
+    if(indexed){
+      const parsed=await tryCandidate(indexed);
+      if(parsed){profiles[indexed]=parsed;return parsed;}
+    }
+  }catch(error){log(`Index personnages Kyber indisponible : ${error?.message||error}`);}
+  const candidates=[];
+  for(const value of [display,character.baseId||character.base_id]){
+    const candidate=slug(value);
+    if(candidate&&!candidates.includes(candidate))candidates.push(candidate);
+  }
+  for(const candidate of candidates){
+    const parsed=await tryCandidate(candidate);
+    if(parsed){profiles[candidate]=parsed;return parsed;}
+  }
   return null;
 }
 let kyberRequestSeq=0;
