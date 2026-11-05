@@ -1,3 +1,11 @@
+## V4.1.28 — Récupération Kyber résiliente (2026-11-05)
+
+- Sérialisation des requêtes SWGOH.GG de référence : une seule page est demandée à la fois, avec un espacement entre les appels.
+- Reprises limitées avec temporisation progressive sur les erreurs réseau et HTTP temporaires ; les erreurs amont sont maintenant distinguées dans le journal.
+- Arrêt des variantes de slug après une erreur amont définitive, pour éviter de multiplier inutilement les requêtes.
+- Mise en cache locale des profils Kyber validés pendant 12 heures afin de conserver les récupérations réussies entre les sessions.
+- Aucun changement à la synchronisation du roster, aux règles d'optimisation ou aux protections de vitesse.
+
 ## V4.1.3 — Fiabilisation des fondations (2026-11-02)
 
 - Synchronisation atomique : les nouvelles données ne remplacent le profil affiché qu'après validation du roster et de l'inventaire des mods.

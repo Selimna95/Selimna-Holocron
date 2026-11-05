@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.11-kyber-request-recovery", self.sw)
+        self.assertIn("holocron-static-v4.4.12-kyber-serialized-fetch", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -180,9 +180,9 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.8-kyber-index-backoff", self.html)
-        self.assertIn("modules/core.js?v=4.2.8-kyber-index-backoff", self.sw)
-        self.assertIn("holocron-static-v4.4.11-kyber-request-recovery", self.sw)
+        self.assertIn("modules/core.js?v=4.2.9-kyber-serialized-fetch", self.html)
+        self.assertIn("modules/core.js?v=4.2.9-kyber-serialized-fetch", self.sw)
+        self.assertIn("holocron-static-v4.4.12-kyber-serialized-fetch", self.sw)
 
 
     def test_sithari_uses_one_cumulative_roster_permutation_pipeline(self):
@@ -215,7 +215,16 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.html)
         self.assertIn("sithari-strategy.css?v=1.0.3-set-integrity", self.sw)
         self.assertIn("modules/sithari-strategy.js?v=1.1.1-kyber-throttle", self.sw)
-        self.assertIn("holocron-static-v4.4.11-kyber-request-recovery", self.sw)
+        self.assertIn("holocron-static-v4.4.12-kyber-serialized-fetch", self.sw)
+
+    def test_kyber_profile_fetch_is_serialized_retried_and_cached(self):
+        core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        self.assertIn("function fetchKyberThroughRelay(url)", core)
+        self.assertIn("kyberFetchQueue=operation.then", core)
+        self.assertIn("X-Upstream-Status", core)
+        self.assertIn("KYBER_PROFILE_CACHE_TTL", core)
+        self.assertIn("persistKyberProfile(requestKey,candidate,result.profile)", core)
+        self.assertIn("response.status>=500", core)
 
 if __name__ == "__main__":
     unittest.main()

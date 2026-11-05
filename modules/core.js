@@ -310,13 +310,69 @@ function parseKyberProfileHTML(text,character,kyberSlug){
 let kyberUnitIndexPromise=null;
 let kyberUnitIndexFailureUntil=0;
 const kyberProfileInflight=new Map();
+
+// Toutes les lectures SWGOH.GG passent par une file unique : le Worker ne reçoit
+// jamais plusieurs pages best-mods en rafale. Les erreurs temporaires sont
+// reprises avec un délai progressif, sans multiplier les variantes de slug.
+let kyberFetchQueue=Promise.resolve();
+let kyberNextFetchAt=0;
+let kyberPersistentCache=null;
+const KYBER_PROFILE_CACHE_KEY='holocron-kyber-profile-cache-v1';
+const KYBER_PROFILE_CACHE_TTL=12*60*60*1000;
+function kyberSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+async function fetchKyberThroughRelay(url){
+  const operation=kyberFetchQueue.then(async()=>{
+    const wait=Math.max(0,kyberNextFetchAt-Date.now());
+    if(wait)await kyberSleep(wait);
+    let response=null;
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        response=await fetch(url,{headers:{'Accept':'text/html,application/xhtml+xml'}});
+      }catch(error){
+        if(attempt===2)throw error;
+        await kyberSleep(1200*(attempt+1));
+        continue;
+      }
+      const upstreamStatus=Number(response.headers.get('X-Upstream-Status')||0);
+      const effectiveStatus=upstreamStatus||response.status;
+      const retryable=[429,500,502,503,504].includes(effectiveStatus);
+      if(response.ok||!retryable||attempt===2)break;
+      try{if(response.body)await response.body.cancel();}catch(_){}
+      await kyberSleep(1600*(attempt+1));
+    }
+    kyberNextFetchAt=Date.now()+(response?.ok?1000:1800);
+    return response;
+  });
+  kyberFetchQueue=operation.then(()=>undefined,()=>undefined);
+  return operation;
+}
+function readKyberPersistentCache(){
+  if(kyberPersistentCache)return kyberPersistentCache;
+  let parsed={};
+  try{
+    const raw=localStorage.getItem(KYBER_PROFILE_CACHE_KEY);
+    const value=raw?JSON.parse(raw):{};
+    if(value&&typeof value==='object'&&!Array.isArray(value))parsed=value;
+  }catch(_){}
+  const now=Date.now();
+  kyberPersistentCache=Object.fromEntries(Object.entries(parsed)
+    .filter(([,entry])=>entry&&Number(entry.savedAt)>0&&now-Number(entry.savedAt)<KYBER_PROFILE_CACHE_TTL&&kyberProfileValid(entry.profile))
+    .slice(-500));
+  return kyberPersistentCache;
+}
+function persistKyberProfile(requestKey,slugValue,profile){
+  const cache=readKyberPersistentCache();
+  cache[requestKey]={savedAt:Date.now(),slug:slugValue,profile};
+  kyberPersistentCache=Object.fromEntries(Object.entries(cache).slice(-500));
+  try{localStorage.setItem(KYBER_PROFILE_CACHE_KEY,JSON.stringify(kyberPersistentCache));}catch(_){}
+}
 async function loadKyberUnitIndex(){
   if(kyberUnitIndexPromise)return kyberUnitIndexPromise;
   if(Date.now()<kyberUnitIndexFailureUntil){
     throw new Error('Index SWGOH.GG temporairement mis en pause après un échec récent.');
   }
   const request=(async()=>{
-    const response=await fetch(`${workerUrl()}/?path=characters-index`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
+    const response=await fetchKyberThroughRelay(`${workerUrl()}/?path=characters-index`);
     if(!response.ok)throw new Error(`Index SWGOH.GG HTTP ${response.status}`);
     const doc=parseHTML(await response.text()),index=new Map();
     for(const anchor of Array.from(doc.querySelectorAll('a[href*="/units/"]')||[])){
@@ -348,21 +404,38 @@ async function fetchKyberProfile(character){
   if(kyberProfileInflight.has(requestKey))return kyberProfileInflight.get(requestKey);
   const request=(async()=>{
     const existing=profileForCharacter(character); if(kyberProfileValid(existing))return existing;
+    const cache=readKyberPersistentCache(),cached=cache[requestKey];
+    if(cached&&kyberProfileValid(cached.profile)){
+      profiles[cached.slug||requestKey]=cached.profile;
+      return cached.profile;
+    }
     const tryCandidate=async candidate=>{
       try{
-        const response=await fetch(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`,{headers:{'Accept':'text/html,application/xhtml+xml'}});
-        if(!response.ok){log(`Référence Kyber ${candidate} : Worker HTTP ${response.status}.`);return null;}
+        const response=await fetchKyberThroughRelay(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`);
+        if(!response.ok){
+          const upstreamStatus=Number(response.headers.get('X-Upstream-Status')||0);
+          log(`Référence Kyber ${candidate} : Worker HTTP ${response.status}${upstreamStatus?` (SWGOH.GG ${upstreamStatus})`:''}.`);
+          return {profile:null,terminal:response.status>=500||upstreamStatus===403||upstreamStatus>=500||upstreamStatus===429};
+        }
         const html=await response.text();
         const parsed=parseKyberProfileHTML(html,display,candidate);
-        return kyberProfileValid(parsed)?parsed:null;
-      }catch(error){log(`Référence Kyber ${candidate}: ${error?.message||error}`);return null;}
+        return {profile:kyberProfileValid(parsed)?parsed:null,terminal:false};
+      }catch(error){
+        log(`Référence Kyber ${candidate}: ${error?.message||error}`);
+        return {profile:null,terminal:true};
+      }
     };
     try{
       const index=await loadKyberUnitIndex();
       const indexed=index.get(normalizeKyberKey(display));
       if(indexed){
-        const parsed=await tryCandidate(indexed);
-        if(parsed){profiles[indexed]=parsed;return parsed;}
+        const result=await tryCandidate(indexed);
+        if(result.profile){
+          profiles[indexed]=result.profile;
+          persistKyberProfile(requestKey,indexed,result.profile);
+          return result.profile;
+        }
+        if(result.terminal)return null;
       }
     }catch(error){log(`Index personnages Kyber indisponible : ${error?.message||error}`);}
     const candidates=[];
@@ -371,8 +444,13 @@ async function fetchKyberProfile(character){
       if(candidate&&!candidates.includes(candidate))candidates.push(candidate);
     }
     for(const candidate of candidates){
-      const parsed=await tryCandidate(candidate);
-      if(parsed){profiles[candidate]=parsed;return parsed;}
+      const result=await tryCandidate(candidate);
+      if(result.profile){
+        profiles[candidate]=result.profile;
+        persistKyberProfile(requestKey,candidate,result.profile);
+        return result.profile;
+      }
+      if(result.terminal)return null;
     }
     return null;
   })();
