@@ -305,3 +305,197 @@ function renderSithariStrategy(){
  ssRender(sithariStepState.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:people.length,profiledCount:0},sithariStepState.result,'Le moteur attend la première commande. Chaque clic exécute une seule étape.');
 }
 
+
+
+/* V4.1.30 — ciblage Sith'ari : 50 receveurs, donneurs GAC faibles et peu utilisés.
+   Les propositions sont des échanges 1-pour-1 : le donneur reçoit le mod remplacé.
+   Aucun profil Kyber n'est téléchargé pour les donneurs. */
+const SS_RECIPIENT_POOL_LIMIT=50;
+function ssGacEvidence(character){
+ try{
+  const fn=window.holocronGacPriorityForCharacter;
+  const result=typeof fn==='function'?fn(character):null;
+  return result&&result.known&&Number.isFinite(Number(result.uses))?{known:true,uses:Number(result.uses),label:result.label||'GAC observé'}:{known:false,uses:null,label:'Usage GAC inconnu'};
+ }catch(_){return {known:false,uses:null,label:'Usage GAC inconnu'};}
+}
+function ssRosterPower(character){
+ const raw=character?.raw?.data||character?.raw||character||{};
+ const power=Number(character?.power??raw?.power??raw?.power_rating??raw?.powerRating??0);
+ if(power>0)return power;
+ const relic=Number(character?.relic_tier??character?.relicTier??raw?.relic_tier??raw?.relicTier??0);
+ const gear=Number(character?.gear??character?.gear_level??raw?.gear_level??raw?.gearLevel??0);
+ return relic*10000+gear*1000+Number(character?.stars??character?.rarity??0)*100;
+}
+function ssRecipientPool(people){
+ return people.slice().sort((a,b)=>{
+  const ag=ssIsProtectedLegend(a)?1:0,bg=ssIsProtectedLegend(b)?1:0;
+  if(ag!==bg)return bg-ag;
+  const au=ssGacEvidence(a),bu=ssGacEvidence(b);
+  if(au.known&&bu.known&&au.uses!==bu.uses)return bu.uses-au.uses;
+  if(au.known!==bu.known)return au.known?-1:1;
+  return ssRosterPower(b)-ssRosterPower(a)||String(a.name||'').localeCompare(String(b.name||''),'fr');
+ }).slice(0,SS_RECIPIENT_POOL_LIMIT);
+}
+function ssPercentile(values,p){
+ if(!values.length)return 0;
+ const sorted=values.slice().sort((a,b)=>a-b);
+ return sorted[Math.min(sorted.length-1,Math.max(0,Math.ceil(p*sorted.length)-1))];
+}
+function ssDonorPool(people,recipientPeople){
+ const recipientKeys=new Set(recipientPeople.map(characterKey));
+ const known=people.map(c=>({c,gac:ssGacEvidence(c),power:ssRosterPower(c)})).filter(x=>x.gac.known);
+ if(!known.length)return {people:[],lowUseThreshold:null,weakPowerThreshold:null,knownCount:0};
+ const lowUseThreshold=ssPercentile(known.map(x=>x.gac.uses),0.35);
+ const weakPowerThreshold=ssPercentile(people.map(ssRosterPower).filter(x=>x>0),0.65);
+ const donors=known.filter(x=>
+  !recipientKeys.has(characterKey(x.c))&&!ssIsProtectedLegend(x.c)&&
+  x.gac.uses<=lowUseThreshold&&x.power>0&&x.power<=weakPowerThreshold&&
+  sithariCharacterMods(x.c).length===6
+ ).sort((a,b)=>a.gac.uses-b.gac.uses||a.power-b.power);
+ return {people:donors.map(x=>x.c),lowUseThreshold,weakPowerThreshold,knownCount:known.length};
+}
+function ssBuildSnapshot(state){
+ const sources=[],nodes=[];
+ for(const donor of state.donorPeople||[]){
+  const owner=characterKey(donor),equipped=sithariCharacterMods(donor);
+  for(const slot of SITHARI_SLOT_ORDER){
+   const mod=equipped.find(m=>ssSlot(m)===slot);if(!mod)continue;
+   sources.push({key:owner+'::'+slot,owner,name:donor.name||donor.baseId||owner,character:donor,slot,mod});
+  }
+ }
+ for(const character of state.recipientPeople||[]){
+  const profile=sithariProfileForCharacter(character);
+  if(!profile||!sithariKyberSetChoices(profile).length)continue;
+  const owner=characterKey(character),equipped=sithariCharacterMods(character);
+  if(equipped.length!==6)continue;
+  for(const slot of SITHARI_SLOT_ORDER){
+   const mod=equipped.find(m=>ssSlot(m)===slot);if(!mod||sithariSetMatch(mod,profile,character))continue;
+   nodes.push({key:owner+'::'+slot,owner,name:character.name||character.baseId||owner,character,slot,mod,profile,setOk:false,primaryOk:sithariPrimaryMatch(mod,profile,slot),needsWork:true});
+  }
+ }
+ return {nodes,sources,inventory:sithariEnsureModCache().items,rosterCount:state.people.length,recipientCount:state.recipientPeople.length,donorCount:state.donorPeople.length,profiledCount:new Set(nodes.map(n=>n.owner)).size};
+}
+function ssSwapSafe(target,source){
+ const targetBefore=sithariCharacterMods(target.character).slice(),donorBefore=sithariCharacterMods(source.character).slice();
+ if(targetBefore.length!==6||donorBefore.length!==6)return null;
+ const targetOld=targetBefore.find(m=>ssSlot(m)===target.slot);
+ const donorOld=donorBefore.find(m=>ssSlot(m)===source.slot);
+ if(!targetOld||!donorOld||ssSlot(targetOld)!==ssSlot(donorOld))return null;
+ const targetAfter=targetBefore.filter(m=>ssSlot(m)!==target.slot).concat([donorOld]);
+ const donorAfter=donorBefore.filter(m=>ssSlot(m)!==source.slot).concat([targetOld]);
+ if(targetAfter.length!==6||donorAfter.length!==6)return null;
+ if(!sithariSetMatch(donorOld,target.profile,target.character))return null;
+ if(!sithariPrimaryMatch(donorOld,target.profile,target.slot))return null;
+ if(!ssPreservesSetBonuses(targetBefore,targetAfter)||!ssPreservesSetBonuses(donorBefore,donorAfter))return null;
+ const targetSpeedBefore=sithariProjectedSpeed(target.character,targetBefore),targetSpeedAfter=sithariProjectedSpeed(target.character,targetAfter);
+ const donorSpeedBefore=sithariProjectedSpeed(source.character,donorBefore),donorSpeedAfter=sithariProjectedSpeed(source.character,donorAfter);
+ if(targetSpeedAfter.total+1e-9<targetSpeedBefore.total||donorSpeedAfter.total+1e-9<donorSpeedBefore.total)return null;
+ const donorProfile=sithariProfileForCharacter(source.character);
+ if(donorProfile&&sithariKyberSetChoices(donorProfile).length){
+  if(!sithariSetMatch(targetOld,donorProfile,source.character)||!sithariPrimaryMatch(targetOld,donorProfile,source.slot))return null;
+ }else if(compactKey(targetOld.primary_stat)!==compactKey(donorOld.primary_stat))return null;
+ return {targetBefore,targetAfter,donorBefore,donorAfter,targetOld,donorOld,targetSpeedBefore,targetSpeedAfter,donorSpeedBefore,donorSpeedAfter};
+}
+function ssFindCycles(snapshot){
+ const candidates=[];
+ for(const target of snapshot.nodes){
+  for(const source of snapshot.sources){
+   if(source.owner===target.owner||source.slot!==target.slot)continue;
+   const audit=ssSwapSafe(target,source);if(!audit)continue;
+   const edge={target,source,secondary:ssSecondaryCoverage(source.mod,target.profile),kyber:ssKyberSecondaryFit(source.mod,target.profile),speed:modTotalSpeed(source.mod),returnMod:audit.targetOld};
+   candidates.push({items:[edge],length:1,kyberFit:edge.kyber,secondary:edge.secondary,speed:edge.speed,returnMod:audit.targetOld,audit});
+  }
+ }
+ candidates.sort((a,b)=>b.kyberFit-a.kyberFit||b.secondary-a.secondary||b.speed-a.speed);
+ const selected=[],usedTargets=new Set(),usedDonors=new Set();
+ for(const candidate of candidates){
+  const edge=candidate.items[0];
+  if(usedTargets.has(edge.target.owner)||usedDonors.has(edge.source.owner))continue;
+  selected.push(candidate);usedTargets.add(edge.target.owner);usedDonors.add(edge.source.owner);
+  if(selected.length>=30)break;
+ }
+ return {cycles:selected,expansions:candidates.length,closedCycles:selected.length,exhausted:false,candidateCount:candidates.length};
+}
+function ssStepLabel(phase){
+ return ({profiles:'ÉTAPE 1/4 · PROFILS DES 50 PRIORITAIRES',sets:'ÉTAPE 2/4 · PERSONNAGES AU MAUVAIS SET',donors:'ÉTAPE 3/4 · POOL DES DONNEURS',permutations:'ÉTAPE 4/4 · ÉCHANGES SÉCURISÉS',done:'ANALYSE TERMINÉE'})[phase]||'PRÉPARATION';
+}
+function ssCycleImpactMap(cycle){
+ const edge=cycle.items[0],affected=new Map();
+ const add=(character,owner,name,beforeMods,afterMods)=>{
+  const before=sithariProjectedSpeed(character,beforeMods),after=sithariProjectedSpeed(character,afterMods);
+  affected.set(owner,{character,name,beforeMods,afterMods,before,after,delta:Number(after.total||after.modSpeed||0)-Number(before.total||before.modSpeed||0)});
+ };
+ const targetBefore=sithariCharacterMods(edge.target.character).slice(),donorBefore=sithariCharacterMods(edge.source.character).slice();
+ const targetAfter=targetBefore.filter(m=>ssSlot(m)!==edge.target.slot).concat([edge.source.mod]);
+ const donorAfter=donorBefore.filter(m=>ssSlot(m)!==edge.source.slot).concat([edge.source.returnMod||cycle.returnMod]);
+ add(edge.target.character,edge.target.owner,edge.target.name,targetBefore,targetAfter);
+ add(edge.source.character,edge.source.owner,edge.source.name,donorBefore,donorAfter);
+ return affected;
+}
+function ssRender(snapshot,result,message){
+ const root=document.getElementById('sithariStrategy');if(!root)return;
+ const needs=snapshot.nodes||[],cycles=result.cycles||[];
+ const peopleHtml=needs.length?'<div class="ss-people">'+[...new Map(needs.map(n=>[n.owner,n])).values()].map(n=>'<div><b>'+ssEsc(n.name)+'</b><span>Set actuel : '+ssEsc(n.mod.set_name||'inconnu')+'</span><small>Set(s) Kyber : '+ssEsc(sithariKyberSetChoices(n.profile).join(' / ')||'non documenté')+'</small></div>').join('')+'</div>':'<div class="ss-empty">Aucun mauvais set détecté parmi les 50 personnages prioritaires disposant d’une référence exploitable.</div>';
+ const rows=cycles.map((cycle,i)=>{
+  const edge=cycle.items[0],impacts=ssCycleImpactMap(cycle),donor=impacts.get(edge.source.owner),recipient=impacts.get(edge.target.owner);
+  return '<article class="ss-cycle"><header><b>ÉCHANGE '+String(i+1).padStart(2,'0')+'</b><span>'+ssEsc(edge.target.slot)+'</span><strong>Deux personnages protégés contre toute perte de vitesse</strong></header><article class="ss-move"><div class="ss-transfer"><div class="ss-person"><small>DONNEUR · FAIBLE / PEU UTILISÉ</small><b>'+ssEsc(edge.source.name)+'</b><span>'+ssImpactLabel(donor)+'</span></div><div class="ss-arrow">MOD CÉDÉ <b>→</b></div><div class="ss-person ss-recipient"><small>RECEVEUR PRIORITAIRE</small><b>'+ssEsc(edge.target.name)+'</b><span>'+ssImpactLabel(recipient)+'</span></div></div><div class="ss-modline"><b>'+ssEsc(edge.source.mod.set_name||'Set inconnu')+'</b><span>'+ssEsc(edge.source.mod.primary_stat||'Primaire inconnue')+'</span><strong>'+num(edge.speed)+' vitesse sur le mod</strong></div><p>Retour au donneur : '+ssEsc(edge.returnMod?.set_name||'Set inconnu')+' · '+ssEsc(edge.returnMod?.primary_stat||'Primaire inconnue')+'</p>'+ssKyberAuditHtml(edge)+'</article></article>';
+ }).join('');
+ const phase=sithariStepState?.phase||'profiles',busy=sithariStrategyBusy;
+ const label=phase==='done'?'RECOMMENCER':phase==='profiles'?'CHARGER LES 50 PRIORITAIRES':phase==='sets'?'IDENTIFIER LES MAUVAIS SETS':phase==='donors'?'CONSTITUER LE POOL DES DONNEURS':'CALCULER LES ÉCHANGES';
+ root.innerHTML='<header class="ss-head"><div><small>SITH’ARI // STRATÈGE ULTIME</small><h3>OPTIMISATION CIBLÉE · 50 PERSONNAGES</h3><p>Les receveurs prioritaires sont séparés des donneurs faibles et peu utilisés.</p></div><button id="ss-run" type="button" '+(busy?'disabled':'')+'>'+(busy?'ÉTAPE EN COURS…':label)+'</button></header>'+
+ '<div class="ss-kpis"><div><b>'+snapshot.rosterCount+'</b><span>ROSTER</span></div><div><b>'+ (sithariStepState?.recipientPeople?.length||0)+'</b><span>POOL PRIORITAIRE</span></div><div><b>'+needs.length+'</b><span>MAUVAIS SETS</span></div><div><b>'+ (sithariStepState?.donorPeople?.length||0)+'</b><span>DONNEURS VALIDÉS</span></div><div><b>'+cycles.length+'</b><span>ÉCHANGES VALIDÉS</span></div></div>'+
+ '<div class="ss-pipeline"><div><b>01 · PRIORITAIRES</b><strong>'+ (sithariStepState?.recipientPeople?.length||0)+'/50</strong><small>GL + usage GAC + puissance</small></div><i>→</i><div><b>02 · SETS</b><strong>'+needs.length+'</strong><small>mauvais sets uniquement</small></div><i>→</i><div><b>03 · DONNEURS</b><strong>'+ (sithariStepState?.donorPeople?.length||0)+'</strong><small>faibles + faible usage observé</small></div><i>→</i><div><b>04 · ÉCHANGES</b><strong>'+cycles.length+'</strong><small>échanges 1 pour 1 validés</small></div></div>'+
+ '<div class="ss-status"><b>'+ssStepLabel(phase)+'</b><br>'+ssEsc(message)+'</div><h4>PERSONNAGES PRIORITAIRES À CORRIGER</h4>'+peopleHtml+'<h4>ÉCHANGES PROPOSÉS</h4><p class="ss-results-help">Chaque proposition est un échange : le receveur obtient le mod conforme au set Kyber ; le donneur récupère le mod remplacé. Aucun des deux ne perd de vitesse ni de bonus de set.</p>'+(rows||'<div class="ss-empty">Aucun échange validé à ce stade.</div>')+'<p class="ss-note">Analyse en lecture seule. Aucun mod n’est déplacé automatiquement. Les usages absents des données GAC restent inconnus, jamais assimilés à zéro.</p>';
+ document.getElementById('ss-run')?.addEventListener('click',ssAdvance);
+}
+async function ssAdvance(){
+ if(sithariStrategyBusy)return;
+ if(!sithariStepState||sithariStepState.phase==='done'){
+  const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
+  const recipientPeople=ssRecipientPool(people);
+  sithariStepState={phase:'profiles',people,recipientPeople,donorPeople:[],profileCursor:0,snapshot:null,result:{cycles:[]},profileStats:{found:0,missing:0}};
+ }
+ const state=sithariStepState;sithariStrategyBusy=true;
+ const show=message=>{state.message=message;ssRender(state.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length},state.result,message);};
+ try{
+  if(state.phase==='profiles'){
+   let done=0,found=0,missing=0;
+   for(const character of state.recipientPeople){
+    let profile=sithariProfileForCharacter(character);
+    if(!profile||!sithariKyberSetChoices(profile).length){try{profile=await fetchKyberProfile(character);}catch(_){profile=null;}}
+    if(profile&&sithariKyberSetChoices(profile).length)found++;else missing++;
+    done++;
+    const status=document.querySelector('#sithariStrategy .ss-status');
+    if(status)status.innerHTML='<b>'+ssStepLabel('profiles')+'</b><br>Références examinées : '+done+' / '+state.recipientPeople.length;
+   }
+   state.profileStats={found,missing};
+   state.phase='sets';
+   show('50 personnages maximum examinés : '+found+' références avec recommandations de sets exploitables, '+missing+' sans référence. Lance l’identification des mauvais sets.');
+  }else if(state.phase==='sets'){
+   state.snapshot=ssBuildSnapshot(state);
+   state.phase='donors';
+   show(state.snapshot.nodes.length+' personnages prioritaires présentent au moins un mauvais set. Le pool donneur sera limité aux personnages faibles avec un usage GAC bas et observé.');
+  }else if(state.phase==='donors'){
+   const selection=ssDonorPool(state.people,state.recipientPeople);
+   state.donorPeople=selection.people;
+   state.donorStats=selection;
+   state.snapshot=ssBuildSnapshot(state);
+   state.phase='permutations';
+   show(state.donorPeople.length+' donneurs validés parmi '+selection.knownCount+' personnages avec usage GAC observé. Seuil faible utilisation : '+(selection.lowUseThreshold??'indisponible')+'.');
+  }else if(state.phase==='permutations'){
+   const search=ssFindCycles(state.snapshot);
+   state.result.cycles=search.cycles;
+   state.result.candidateCount=search.candidateCount;
+   state.phase='done';
+   show(search.cycles.length+' échanges validés parmi '+search.candidateCount+' possibilités examinées. Chaque échange respecte les sets, les slots et le plancher de vitesse des deux personnages.');
+  }
+ }catch(error){show('Étape interrompue : '+String(error?.message||error));console.error('Sith’ari strategy:',error);}
+ finally{sithariStrategyBusy=false;ssRender(state.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:state.people.length},state.result,state.message||'Étape terminée.');}
+}
+function renderSithariStrategy(){
+ const people=(rosterCharacters||[]).filter(c=>rosterUnitType(c)!=='ship');
+ if(!sithariStepState||sithariStepState.people.length!==people.length){
+  sithariStepState={phase:'profiles',people,recipientPeople:ssRecipientPool(people),donorPeople:[],snapshot:null,result:{cycles:[]},profileStats:{found:0,missing:0}};
+ }
+ ssRender(sithariStepState.snapshot||{nodes:[],inventory:sithariEnsureModCache().items,rosterCount:people.length},sithariStepState.result,'Le moteur attend la première commande. Il commencera par 50 personnages prioritaires maximum.');
+}
