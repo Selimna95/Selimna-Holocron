@@ -1,3 +1,8 @@
+## V4.1.39 — Chargement à l'ouverture du Visionnaire
+
+- Le scan Kyber complet démarre uniquement lorsque la page Visionnaire est ouverte, pas pendant la synchronisation du profil sur le Sanctuaire.
+- Cache et version des assets incrémentés.
+
 ## V4.1.38 — Le Visionnaire (premier incrément)
 
 - Remplacement de l’ancien Sith’ari par une interface neuve et guidée.
