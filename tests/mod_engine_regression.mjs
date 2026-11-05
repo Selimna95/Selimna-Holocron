@@ -42,6 +42,9 @@ const numericValue = (value, fallback = 0) => {
 };
 const speed = (mod) => Number(mod?.speed ?? 0);
 
+// 1) Exact baseId identity must win over a colliding display-name alias.
+const core = read('../modules/core.js');
+
 // SWGOH.GG's live Kyber page uses plain slot headings and focus rows such as
 // "+19.6 avg 23.68%". Keep these exact live-format regressions covered.
 const kyberParserContext=vm.createContext({});
@@ -66,9 +69,6 @@ assert.deepEqual(
   ],'Triangle')),
   {Protection:0.6124,'Critical Damage':0.3313}
 );
-
-// 1) Exact baseId identity must win over a colliding display-name alias.
-const core = read('../modules/core.js');
 const collisionRoster = [
   { name: 'Ahsoka Tano (Snips)', baseId: 'AHSOKATANO' },
   { name: 'Ahsoka Tano', baseId: 'GLAHSOKATANO' },
