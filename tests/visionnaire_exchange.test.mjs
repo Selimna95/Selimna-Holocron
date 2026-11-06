@@ -127,10 +127,12 @@ const focusImpact=sandbox.focusImpact({secondary_focus:{Speed:20,Health:100}},[
  {secondary_1_stat:'Speed',secondary_1_value:20,secondary_2_stat:'Health',secondary_2_value:100}
 ],[
  {secondary_1_stat:'Speed',secondary_1_value:20,secondary_2_stat:'Health',secondary_2_value:60}
-]);
+],{Defense:76},{Defense:33});
 assert.equal(focusImpact.losses.length,1,'A major loss on a Kyber-prioritized secondary must be rejected');
 assert.equal(focusImpact.losses[0].name,'Health');
 assert.ok(focusImpact.balance<0,'Target focus impact must penalize loss of prioritized secondaries');
+assert.equal(focusImpact.coreLosses.length,1,'A major core-stat loss must also be rejected');
+assert.equal(focusImpact.coreLosses[0].name,'Defense');
 
 const noSources=runSearch(glTarget,[],[],kyber);
 assert.equal(noSources.proposals.length,0);
