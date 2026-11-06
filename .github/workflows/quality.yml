@@ -24,6 +24,8 @@ jobs:
           node-version: "22"
       - run: node --check interface-adapter.js
       - run: node --check modules/core.js
+      - run: node --check tests/kyber_parser.test.mjs
+      - run: node tests/kyber_parser.test.mjs
       - run: node --check modules/acolyte.js
       - run: node --check modules/disciple.js
       - run: node --check modules/seigneur.js
