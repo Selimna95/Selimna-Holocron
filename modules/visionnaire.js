@@ -4,7 +4,7 @@
   const SLOTS = ['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const LABELS = {Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'};
   const FIXED = {Square:'Offense',Diamond:'Defense'};
-  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),loading:false,faction:'ALL'};
+  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),loading:false,faction:'ALL',progress:{done:0,total:0,profiles:0,failures:0,lastError:''}};
   const $ = id => document.getElementById(id);
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -118,28 +118,46 @@
   async function buildAudit(){
     if(state.loading)return;
     const roster=characters();
-    if(!roster.length){state.rows=[];render();return;}
-    state.loading=true;render();
+    if(!roster.length){state.rows=[];state.progress={done:0,total:0,profiles:0,failures:0,lastError:''};render();return;}
+    state.loading=true;
+    state.rows=[];
+    state.progress={done:0,total:roster.length,profiles:0,failures:0,lastError:''};
+    render();
     const rows=[];
     let cursor=0;
+    const publishProgress=()=>{
+      state.rows=rows.slice().sort((a,b)=>String(a.character?.name||'').localeCompare(String(b.character?.name||''),'fr'));
+      render();
+    };
     const worker=async()=>{
       while(cursor<roster.length){
         const character=roster[cursor++];
+        let row;
         try{
           let profile=typeof profileForCharacter==='function'?profileForCharacter(character):null;
           if(typeof kyberProfileHasFullDistribution==='function'&&!kyberProfileHasFullDistribution(profile)) profile=null;
           else if(typeof kyberProfileValid==='function'&&!kyberProfileValid(profile)) profile=null;
           if(!profile && typeof fetchKyberProfile==='function') profile=await fetchKyberProfile(character);
-          if(profile && (typeof kyberProfileHasFullDistribution==='function'?kyberProfileHasFullDistribution(profile):(typeof kyberProfileValid!=='function'||kyberProfileValid(profile)))) rows.push(inspectCharacter(character,profile));
-          else rows.push({character,profile:null,slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[]});
+          if(profile && (typeof kyberProfileHasFullDistribution==='function'?kyberProfileHasFullDistribution(profile):(typeof kyberProfileValid!=='function'||kyberProfileValid(profile)))) {
+            row=inspectCharacter(character,profile);
+            state.progress.profiles++;
+          } else {
+            row={character,profile:null,slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[]};
+          }
         }catch(error){
-          rows.push({character,profile:null,slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[],error:String(error?.message||error)});
+          const message=String(error?.message||error);
+          state.progress.failures++;
+          state.progress.lastError=message;
+          row={character,profile:null,slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[],error:message};
         }
+        rows.push(row);
+        state.progress.done++;
+        if(state.progress.done%6===0||state.progress.done===state.progress.total)publishProgress();
       }
     };
     await Promise.all(Array.from({length:Math.min(4,roster.length)},worker));
-    rows.sort((a,b)=>String(a.character?.name||'').localeCompare(String(b.character?.name||''),'fr'));
-    state.rows=rows;state.loading=false;state.selected=null;state.slots.clear();render();
+    state.rows=rows.sort((a,b)=>String(a.character?.name||'').localeCompare(String(b.character?.name||''),'fr'));
+    state.loading=false;state.selected=null;state.slots.clear();render();
   }
   const factionsOf = row => {
     const id=typeof characterKey==='function'?characterKey(row.character):key(row.character?.baseId||row.character?.name);
@@ -171,7 +189,7 @@
     root.innerHTML=`
       <header class="visionnaire-header">
         <div><small>HOLOCRON // LE VISIONNAIRE</small><h2>LE VISIONNAIRE</h2><p>Repère les écarts avec Kyber, choisis les slots à travailler et décide des échanges en connaissance de cause.</p></div>
-        <div class="visionnaire-state">${state.loading?'ANALYSE KYBER EN COURS':'AUDIT '+state.rows.length+' PERSONNAGES'}</div>
+        <div class="visionnaire-state">${state.loading?'ANALYSE '+state.progress.done+'/'+state.progress.total:'AUDIT '+state.rows.length+' PERSONNAGES'}</div>
       </header>
       <section class="visionnaire-domain">
         <div class="visionnaire-section-kicker">ÉTAPE 1 · FILTRER LES ÉCARTS KYBER</div>
@@ -180,11 +198,11 @@
           <button type="button" data-mode="primaries" class="${state.mode==='primaries'?'active':''}"><b>PRIMAIRES</b><span>${modeCount('primaries')}</span></button>
           <button type="button" data-mode="both" class="${state.mode==='both'?'active':''}"><b>SETS + PRIMAIRES</b><span>${modeCount('both')}</span></button>
         </div>
-        <div class="visionnaire-kpis"><span><b>${state.rows.length}</b> personnages analysés</span><span><b>${knownSets}</b> références de sets</span><span><b>${knownPrimaries}</b> références de primaires</span><span><b>${nonverifiable}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
+        <div class="visionnaire-kpis"><span><b>${state.loading?state.progress.done:state.rows.length}${state.loading?' / '+state.progress.total:''}</b> personnages analysés</span><span><b>${state.progress.profiles}</b> profils Kyber chargés</span><span><b>${knownSets}</b> références de sets</span><span><b>${knownPrimaries}</b> références de primaires</span><span><b>${nonverifiable}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
       </section>
       <section class="visionnaire-list">
         <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><label class="visionnaire-faction-filter" for="visionnaireFaction"><span>FACTION</span><select id="visionnaireFaction"><option value="ALL">Toutes les factions</option>${factionOptions().map(f=>`<option value="${esc(f)}" ${state.faction===f?'selected':''}>${esc(f)}</option>`).join('')}</select></label></div>
-        ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber sur l’ensemble du roster…</p>':rows.length?rows.map(row=>{
+        ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber : '+state.progress.done+' / '+state.progress.total+' personnages traités · '+state.progress.profiles+' profils complets · '+state.progress.failures+' erreurs. Les résultats apparaissent progressivement.</p>':rows.length?rows.map(row=>{
           const c=row.character;const selected=state.selected?.character===c;
           const mismatch=activeIssues(row);
           const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):state.mode==='primaries'?'Répartition Kyber par slot':'Sets et primaires Kyber';
