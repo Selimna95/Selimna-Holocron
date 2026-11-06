@@ -405,10 +405,16 @@
     });
     const proposals=[];
     let tested=0;
-    const diagnostics={limit:15000,sourceCount:source.length,optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),rejected:{},examples:[]};
-    const reject=(reason,detail='')=>{
+    const diagnostics={limit:15000,sourceCount:source.length,optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),rejected:{},examples:[],rejectedCandidates:[]};
+    const reject=(reason,detail='',score=null)=>{
       diagnostics.rejected[reason]=(diagnostics.rejected[reason]||0)+1;
       if(detail&&diagnostics.examples.length<8&&!diagnostics.examples.some(item=>item.reason===reason))diagnostics.examples.push({reason,detail});
+      const candidate={reason,detail,score:Number.isFinite(score)?score:null,
+        transfers:chosen.map(mod=>({slot:LABELS[slotOf(mod)],set:mod.set_name||mod.set||'Set inconnu',
+          speed:modTotalSpeed(mod),source:mod._visionnaireDonor?.name||mod._sourceOwner||'Libre'}))};
+      diagnostics.rejectedCandidates.push(candidate);
+      diagnostics.rejectedCandidates.sort((a,b)=>(b.score??-1)-(a.score??-1));
+      diagnostics.rejectedCandidates=diagnostics.rejectedCandidates.slice(0,5);
     };
     const chosen=[];
     const walk=index=>{
@@ -470,7 +476,7 @@
         const secondaryFocus=exchangeSecondaryFocusScore(profile,finalTarget);
         const targetFocusImpact=exchangeTargetFocusImpact(profile,current,finalTarget,targetStatsBefore,targetStatsAfter);
         // Never trade away a major part of a Kyber-prioritized secondary for a cosmetic score gain.
-        if(targetFocusImpact?.losses.length){const loss=targetFocusImpact.losses[0];reject('perte_stat_cible',loss.name+' : '+Number(loss.relative*100).toFixed(1)+'%');return;}
+        if(targetFocusImpact?.losses.length){const loss=targetFocusImpact.losses[0];const preview=exchangeScenarioScore({mode:state.mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,targetBalance:targetFocusImpact?.balance??null,donors});reject('perte_stat_cible',loss.name+' : '+Number(loss.relative*100).toFixed(1)+'%',preview.score);return;}
         const score=exchangeScenarioScore({mode:state.mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,
           targetBalance:targetFocusImpact?.balance??null,donors});
         const ids=chosen.map(exchangeModId).join('|');
@@ -506,6 +512,7 @@
       '<p>Mods candidats par slot : '+Object.entries(diagnostics.optionsBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
       (rejected.length?'<ul>'+rejected.map(([reason,count])=>'<li><b>'+esc(labels[reason]||reason)+'</b> : '+count.toLocaleString('fr-FR')+'</li>').join('')+'</ul>':'<p>Aucun rejet comptabilisé.</p>')+
       (diagnostics.examples?.length?'<div class="visionnaire-search-examples"><b>Exemples de motifs</b>'+diagnostics.examples.map(item=>'<p>'+esc(labels[item.reason]||item.reason)+' : '+esc(item.detail)+'</p>').join('')+'</div>':'')+
+      (diagnostics.rejectedCandidates?.length?'<div class="visionnaire-search-examples"><b>Meilleurs échanges écartés</b>'+diagnostics.rejectedCandidates.map(item=>'<p>'+(item.score===null?'Score non calculable':'Score indicatif '+item.score+'/100')+' · '+esc(labels[item.reason]||item.reason)+' — '+esc(item.detail)+' · '+item.transfers.map(t=>esc(t.slot)+': '+esc(t.set)+' ('+t.speed+' V, '+esc(t.source)+')').join(' / ')+'</p>').join('')+'</div>':'')+
       (diagnostics.hitLimit?'<p class="visionnaire-search-limit">Limite atteinte : les résultats sont partiels. Le moteur ne prétend pas avoir exploré toutes les combinaisons.</p>':'')+'</details>';
   }
   function renderExchangeProposals(){
