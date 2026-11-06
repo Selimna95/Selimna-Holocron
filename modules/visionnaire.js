@@ -99,7 +99,7 @@
       const hasPrimaryReference=distribution.length>0;
       const currentPrimary=distribution.find(x=>statKey(x.name)===statKey(mod?.primary_stat));
       const primaryShare=currentPrimary?.weight||0;
-      const primaryOk=!hasPrimaryReference||primaryShare>=0.01;
+      const primaryOk=!hasPrimaryReference||primaryShare>0;
       return {slot,mod,setOk:setVerifiable&&!differingSets.includes(setName),primaryOk,
         primaryReference:currentPrimary||null,primaryShare,primaryDistribution:distribution,
         hasSetReference:setVerifiable,hasPrimaryReference};
@@ -187,7 +187,7 @@
           const c=row.character;const selected=state.selected?.character===c;
           const mismatch=activeIssues(row);
           const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):state.mode==='primaries'?'Répartition Kyber par slot':'Sets et primaires Kyber';
-          const sample=row.profile?.sample_size?' · '+row.profile.sample_size+' unités':'';
+          const sample=(row.profile?.sample_size?' · '+row.profile.sample_size+' unités':'')+(row.profile?.updated_label?' · '+row.profile.updated_label:'');
           const referenceMeta=state.mode==='sets'?(row.setConfigurations?.length||0)+' configurations'+sample:sample;
           return `<button type="button" class="visionnaire-character ${selected?'active':''}" data-character="${esc(characterKey(c))}">
             <span class="visionnaire-avatar">${esc(String(c.name||c.baseId||'?').slice(0,1))}</span>
