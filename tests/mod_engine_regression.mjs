@@ -51,7 +51,7 @@ const kyberParserContext=vm.createContext({});
 load(core,['normalizeKyberKey','kyberCharacterLabel'],kyberParserContext);
 assert.equal(kyberParserContext.normalizeKyberKey(kyberParserContext.kyberCharacterLabel('General Skywalker Attacker • Leader • Jedi')),'generalskywalker');
 assert.equal(kyberParserContext.normalizeKyberKey(kyberParserContext.kyberCharacterLabel('0-0-0 Support • Droid')),'000');
-load(core,['kyberNumber','kyberAverageFromFocusLine','kyberPrimaryDistribution'],kyberParserContext);
+load(core,['kyberNumber','kyberPercentageEntries','kyberAverageFromFocusLine','kyberPrimaryDistribution'],kyberParserContext);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+19.6 avg 23.68%'),19.6);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+1,682.4 avg 8.35%'),1682.4);
 assert.equal(kyberParserContext.kyberAverageFromFocusLine('+3.93% avg 11.86%'),3.93);
