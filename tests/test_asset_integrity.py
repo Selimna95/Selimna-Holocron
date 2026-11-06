@@ -180,8 +180,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.14-kyber-slug-fallback", self.html)
-        self.assertIn("modules/core.js?v=4.2.14-kyber-slug-fallback", self.sw)
+        self.assertIn("modules/core.js?v=4.2.15-kyber-split-percentages", self.html)
+        self.assertIn("modules/core.js?v=4.2.15-kyber-split-percentages", self.sw)
         self.assertIn("holocron-static-v4.4.30-kyber-split-percentages", self.sw)
 
 
