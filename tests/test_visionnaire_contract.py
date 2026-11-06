@@ -54,7 +54,7 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("equippedMods.length===6", js)
         self.assertIn("rankedSetConfigurations", js)
         self.assertIn("primaryDistribution", js)
-        self.assertIn("primaryShare>=0.01", js)
+        self.assertIn("primaryShare>0", js)
         self.assertIn("setCoverage", js)
         self.assertIn("exactMatch", js)
         self.assertIn("currentCounts[name]<2", js)
