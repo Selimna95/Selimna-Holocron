@@ -128,8 +128,10 @@ function seigneurLatestGacUsageSeason(){
     record&&record.byFormat&&Object.keys(record.byFormat).length
   ));
   if(!hasFormatBreakdown){
-    return seasons.filter(s=>(s.characters&&Object.keys(s.characters).length)||(s.ships&&Object.keys(s.ships).length)||(Array.isArray(s.fleets)&&s.fleets.length))
+    const latest=seasons.filter(s=>(s.characters&&Object.keys(s.characters).length)||(s.ships&&Object.keys(s.ships).length)||(Array.isArray(s.fleets)&&s.fleets.length))
       .sort((a,b)=>Number(b.season)-Number(a.season))[0]||null;
+    return latest?{...latest,sourceStatus:data.sourceStatus||'observed',
+      source:data.source||'SWGOH.GG GAC usage',evidenceType:data.evidenceType||'unit-usage'}:null;
   }
   const combined={season:0,characters:{},ships:{},fleets:[],coverage:[],
     formatSeasons:{},sourceStatus:data.sourceStatus||'observed',
