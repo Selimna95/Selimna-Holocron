@@ -211,77 +211,98 @@ function kyberPrimaryDistribution(lines,heading){
   }
   return out;
 }
+function kyberSetComposition(value){
+  const raw=String(value||'').trim();
+  if(!raw||/^(none|no set|n\/a)$/i.test(raw))return {};
+  const parts=raw.split(/\\s*\\+\\s*/).map(x=>x.trim()).filter(Boolean);
+  const counts={};
+  parts.forEach((part,index)=>{
+    const match=part.match(/^(Triple|Double)\\s+(.+)$/i);
+    const modifier=match?.[1]?.toLowerCase()||'';
+    const name=String(match?.[2]||part).trim()
+      .replace(/^Crit Chance$/i,'Critical Chance')
+      .replace(/^Crit Damage$/i,'Critical Damage');
+    if(!name)return;
+    let count=modifier==='triple'?6:modifier==='double'?4:
+      parts.length>=3?2:parts.length===2?(index===0?4:2):4;
+    counts[name]=(counts[name]||0)+count;
+  });
+  const total=Object.values(counts).reduce((sum,count)=>sum+count,0);
+  return total>0&&total<=6?counts:{};
+}
 function parseKyberProfileHTML(text,character,kyberSlug){
-  // V47: SWGOH.GG changes its DOM fairly often. Parse the visible text blocks
-  // instead of depending on one exact CSS structure. Keep the six-slot model
-  // explicit: Square/Transmitter and Diamond/Processor are fixed primaries.
+  // Parse the full visible Kyber page: every grouped set build, every slot
+  // distribution, sample size and freshness metadata. Never collapse to TLDR.
   const doc=parseHTML(text);
   const lines=cleanLinesFromDoc(doc);
-  const normalized=lines.map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
-  const profile={character:String(character||''),source:'SWGOH.GG Kyber / Top 1000 GAC',url:`https://swgoh.gg/units/${kyberSlug}/best-mods/`,sets:[],specific_sets:[],slots:{},averages:{},secondary_focus:{}};
-  const pct=/^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)%$/;
-  const pctLine=(line)=>line.match(pct);
+  const normalized=lines.map(x=>x.replace(/\\s+/g,' ').trim()).filter(Boolean);
+  const profile={character:String(character||''),source:'SWGOH.GG Units / Best Mods / Kyber',url:`https://swgoh.gg/units/${kyberSlug}/best-mods/`,data_slice:'Kyber',sets:[],secondary_sets:[],specific_sets:[],slots:{},averages:{},secondary_focus:{},sample_size:null,updated_label:null};
+  const pct=/^(.+?)\\s+([0-9]+(?:[.,][0-9]+)?)%$/;
+  const pctLine=line=>String(line||'').match(pct);
   const nextIndex=(pred,start)=>{for(let i=start;i<normalized.length;i++)if(pred(normalized[i]))return i;return -1;};
-  const idx=(needle)=>normalized.findIndex(x=>x===needle||x.startsWith(needle));
-  const number=(v)=>kyberNumber(v);
-  const canonicalSet=(v)=>String(v||'').replace(/^Triple\s+/,'').replace(/^Double\s+/,'').trim().replace(/^Crit Chance$/,'Critical Chance').replace(/^Crit Damage$/,'Critical Damage');
-  const addSet=(name,weight)=>{name=String(name||'').trim();if(!name||!Number.isFinite(weight))return;const base=canonicalSet(name);let count=4;if(/^Triple\s+/i.test(name))count=6;else if(/^Double\s+/i.test(name))count=4;profile.sets.push({name:base,count,weight});};
+  const idx=needle=>normalized.findIndex(x=>x===needle||x.startsWith(needle));
+  const number=v=>kyberNumber(v);
+  const canonicalSet=v=>String(v||'').trim().replace(/^Crit Chance$/i,'Critical Chance').replace(/^Crit Damage$/i,'Critical Damage');
+  const addPrimarySet=(name,weight)=>{
+    const counts=kyberSetComposition(name);
+    if(!Object.keys(counts).length)return;
+    profile.sets.push({name:String(name).trim(),count:Object.values(counts).reduce((a,b)=>a+b,0),counts,weight});
+  };
+  const addSpecific=(name,weight,source)=>{
+    const counts=kyberSetComposition(name);
+    if(!Object.keys(counts).length||!Number.isFinite(weight)||weight<=0)return;
+    const signature=Object.entries(counts).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+':'+v).join('|');
+    const previous=profile.specific_sets.find(item=>item.signature===signature);
+    if(previous){if(weight>previous.weight){previous.weight=weight;previous.name=name;}return;}
+    profile.specific_sets.push({name:String(name).trim(),weight,counts,signature,source:source||'specific'});
+  };
 
-  // Primary-set distribution.
+  const based=normalized.find(line=>/^Based on [0-9,]+ fully-modded units/i.test(line));
+  if(based){const match=based.match(/^Based on ([0-9,]+)/i);if(match)profile.sample_size=Number(match[1].replace(/,/g,''))||null;}
+  profile.updated_label=normalized.find(line=>/^Updated\\s+/i.test(line))||null;
+  const sliceLine=normalized.find(line=>/^Data Slice:/i.test(line));
+  if(sliceLine)profile.data_slice=sliceLine.replace(/^Data Slice:\\s*/i,'').trim()||'Kyber';
+
+  // Four-piece set distribution.
   let i=idx('Primary Set');
   if(i>=0){
     const j=nextIndex(x=>x==='Secondary Set'||x.startsWith('Secondary Set'),i+1);
     for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
-      const m=pctLine(line); if(!m)continue;
-      addSet(m[1],number(m[2])/100);
+      const match=pctLine(line);if(match)addPrimarySet(match[1],number(match[2])/100);
     }
   }
 
-  // Exact grouped set combinations, e.g. "Offense + Health 42.4%".
+  // Two-piece set distribution, retained independently as a fallback signal.
+  i=idx('Secondary Set');
+  if(i>=0){
+    const j=nextIndex(x=>x==='Specific Mod Sets'||x.startsWith('Specific Mod Sets'),i+1);
+    for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
+      const match=pctLine(line);if(!match||/^(none|no set)$/i.test(match[1]))continue;
+      profile.secondary_sets.push({name:canonicalSet(match[1]),count:2,weight:number(match[2])/100});
+    }
+  }
+
+  // Complete configurations shown in the grouped-set table.
   i=idx('Specific Mod Sets');
   if(i>=0){
-    const j=nextIndex(x=>/^Arrow\b/i.test(x),i+1);
+    const j=nextIndex(x=>/^Arrow\\b/i.test(x),i+1);
     for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
-      const m=pctLine(line); if(!m)continue;
-      const name=m[1].trim();
-      if(!/[+]|^Triple\s|^Double\s/i.test(name))continue;
-      const parts=name.replace(/^Triple\s+/i,'').replace(/^Double\s+/i,'').split(/\s*\+\s*/).map(x=>canonicalSet(x)).filter(Boolean);
-      if(!parts.length)continue;
-      const counts={};
-      if(parts.length===1){counts[parts[0]]=/^Triple\s/i.test(name)?6:4;}
-      else {counts[parts[0]]=4;counts[parts[1]]=2;}
-      profile.specific_sets.push({name,weight:number(m[2])/100,counts});
+      const match=pctLine(line);if(match)addSpecific(match[1].trim(),number(match[2])/100,'specific-table');
     }
   }
 
-  // Some versions of the page expose the grouped sets in the prose rather than
-  // as a clean line. Recover the most common "X + Y 42.4%" forms as a fallback.
-  if(!profile.specific_sets.length){
-    const joined=normalized.join(' ');
-    const re=/([A-Za-z%][A-Za-z% ]+\+\s*[A-Za-z%][A-Za-z% ]+)\s+([0-9]+(?:[.,][0-9]+)?)%/g;
-    let m; while((m=re.exec(joined))){
-      const name=m[1].trim(); if(!/^(Offense|Health|Speed|Defense|Tenacity|Potency|Critical Chance|Critical Damage|Critical Avoidance)/i.test(name))continue;
-      const parts=name.split(/\s*\+\s*/).map(canonicalSet); if(parts.length!==2)continue;
-      const counts={};counts[parts[0]]=4;counts[parts[1]]=2;
-      profile.specific_sets.push({name,weight:number(m[2])/100,counts});
-      if(profile.specific_sets.length>=8)break;
-    }
-  }
-
-  // Average stats.
-  i=nextIndex(x=>/^Average Stats for /i.test(x),0);
+  // The explanatory text below the chart often lists additional grouped
+  // configurations. Merge it with the table instead of ignoring the tail.
+  i=nextIndex(x=>/^Best Mod Set for\\b/i.test(x),0);
   if(i>=0){
-    const j=nextIndex(x=>/^Best Mod Set for /i.test(x),i+1);
-    const block=normalized.slice(i+1,j>=0?j:normalized.length);
-    for(const stat of ['Health','Protection','Speed','Physical Damage','Special Damage','Armor','Potency','Tenacity']){
-      const k=block.findIndex(x=>x===stat); if(k>=0&&block[k+1])profile.averages[stat]=number(block[k+1]);
+    const j=nextIndex(x=>/^Note that there are always/i.test(x),i+1);
+    for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
+      const match=pctLine(line);if(match)addSpecific(match[1].trim(),number(match[2])/100,'popular-build-list');
     }
   }
+  profile.specific_sets.sort((a,b)=>b.weight-a.weight);
 
-  // Primary distributions for all variable slots. Square and Diamond are fixed
-  // in SWGOH and are always shown in the recommendation header.
-  // SWGOH.GG currently exposes the four distributions under plain headings
-  // "Arrow", "Triangle", "Circle" and "Cross" (not "Best Arrow Mod").
+  // Slot primary distributions: keep every alternative and its observed share.
   for(const slot of ['Arrow','Triangle','Circle','Cross']){
     const prim=kyberPrimaryDistribution(normalized,slot);
     if(Object.keys(prim).length)profile.slots[slot]={primaries:prim};
@@ -289,23 +310,27 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   profile.slots.Square={primaries:{Offense:1}};
   profile.slots.Diamond={primaries:{Defense:1}};
 
-  // Secondary-stat focus.
+  // Secondary-stat focus: retain all available average values.
   i=idx('Secondary Stat Focus');
   if(i>=0){
-    const j=nextIndex(x=>/^Relic\b/i.test(x),i+1);
+    const j=nextIndex(x=>/^Relic\\b/i.test(x),i+1);
     const labels=new Set(['Speed','Health','Protection','Offense','Defense','Potency','Tenacity','Critical Chance %','Critical Damage','Critical Chance','Offense %','Health %','Protection %','Defense %','Armor','Resistance','Physical Damage','Special Damage']);
     for(let k=i+1;k<(j>=0?j:normalized.length)-1;k++){
       if(!labels.has(normalized[k]))continue;
-      const next=normalized[k+1]||'',average=kyberAverageFromFocusLine(next); if(average!==null){profile.secondary_focus[normalized[k]]=average;k++;}
+      const average=kyberAverageFromFocusLine(normalized[k+1]||'');
+      if(average!==null){profile.secondary_focus[normalized[k]]=average;k++;}
     }
   }
 
-  // Last-resort averages from the page text.
-  if(!Object.keys(profile.averages).length){
-    const joined=normalized.join('\n');
-    for(const stat of ['Health','Protection','Speed']){const m=joined.match(new RegExp('\\b'+stat+'\\s+([0-9][0-9,]*(?:\\.[0-9]+)?)','i'));if(m)profile.averages[stat]=number(m[1]);}
+  // Average stats and relic context from the average-loadout section.
+  i=nextIndex(x=>/^Average Stats for /i.test(x),0);
+  if(i>=0){
+    const j=nextIndex(x=>/^Best Mod Set for /i.test(x),i+1);
+    const block=normalized.slice(i+1,j>=0?j:normalized.length);
+    for(const stat of ['Health','Protection','Speed','Physical Damage','Special Damage','Armor','Potency','Tenacity','Relic']){
+      const k=block.findIndex(x=>x===stat);if(k>=0&&block[k+1])profile.averages[stat]=number(block[k+1]);
+    }
   }
-  profile.specific_sets.sort((a,b)=>b.weight-a.weight);
   return kyberProfileValid(profile)?profile:null;
 }
 let kyberUnitIndexPromise=null;
@@ -319,7 +344,7 @@ let kyberFetchQueue=Promise.resolve();
 let kyberNextFetchAt=0;
 let kyberCircuitOpenUntil=0;
 let kyberPersistentCache=null;
-const KYBER_PROFILE_CACHE_KEY='holocron-kyber-profile-cache-v1';
+const KYBER_PROFILE_CACHE_KEY='holocron-kyber-profile-cache-v2-full-distributions';
 const KYBER_PROFILE_CACHE_TTL=12*60*60*1000;
 function kyberSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 async function fetchKyberThroughRelay(url){
