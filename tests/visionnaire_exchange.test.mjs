@@ -75,7 +75,7 @@ const buildSandbox={
 vm.createContext(buildSandbox);
 vm.runInContext(js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,speed,primary_stat:primary,primary_value:value});
-function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
+async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
   const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
   donor.mods=donorMods;
   const glDonor={baseId:'GLDONOR',name:'Donneur GL',base_stats:{Speed:100},mods:glDonorMods};
@@ -108,7 +108,7 @@ glTarget.mods=[
 const kyber={specific_sets:[{name:'4 Speed + 2 Offense',counts:{Speed:4,Offense:2},weight:1}]};
 const weakDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('d'+i,slot,'Speed',10,'Speed',10));
 const dangerousGlDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('g'+i,slot,'Speed',25,'Speed',25));
-const glSearch=runSearch(glTarget,weakDonor,[],kyber,'sets',dangerousGlDonor);
+const glSearch=await runSearch(glTarget,weakDonor,[],kyber,'sets',dangerousGlDonor);
 assert.ok(glSearch.proposals.length>0,'A Galactic Legend is a valid recipient');
 assert.equal(glSearch.proposals[0].donors[0].owner.baseId,'DONOR','The non-GL donor is selected');
 assert.ok(glSearch.proposals[0].targetStatsAfter,'Recipient global stats are calculated');
@@ -117,7 +117,7 @@ assert.ok(glSearch.proposals[0].donors[0].afterStats,'Donor global stats are cal
 // A non-GL recipient can use free inventory mods without creating a donor.
 const normalTarget={...glTarget,baseId:'JEDIKNIGHTLUKE',name:'Jedi Knight Luke',mods:glTarget.mods.map(m=>({...m,game_id:'n-'+m.game_id}))};
 const freeChoices=[makeMod('free-s','Square','Speed',10,'Speed',10),makeMod('free-c','Circle','Speed',10,'Speed',10)];
-const freeSearch=runSearch(normalTarget,[],freeChoices,kyber);
+const freeSearch=await runSearch(normalTarget,[],freeChoices,kyber);
 assert.ok(freeSearch.proposals.length>0,'A normal character can receive free inventory mods');
 assert.equal(freeSearch.proposals[0].freeMods,2);
 assert.equal(freeSearch.proposals[0].donors.length,0);
@@ -127,7 +127,7 @@ const speedTarget={baseId:'GLLEIA',name:'Leia',base_stats:{Speed:100,Health:1000
 speedTarget.mods=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('sp'+i,slot,'Speed',10,'Speed',5));
 const slowFree=[makeMod('slow-s','Square','Health',0,'Speed',5),makeMod('slow-c','Circle','Health',0,'Speed',5)];
 const primaryProfile={slots:{Square:{primaries:{Speed:1}},Circle:{primaries:{Speed:1}}}};
-const rejected=runSearch(speedTarget,[],slowFree,primaryProfile,'primaries');
+const rejected=await runSearch(speedTarget,[],slowFree,primaryProfile,'primaries');
 assert.equal(rejected.proposals.length,0,'No scenario may lower the target total speed');
 
 const focusScore=sandbox.focus({secondary_focus:{Speed:20,Health:10}},[
@@ -145,9 +145,9 @@ assert.ok(focusImpact.balance<0,'Target focus impact must penalize loss of prior
 assert.equal(focusImpact.coreLosses.length,1,'A major core-stat loss must also be rejected');
 assert.equal(focusImpact.coreLosses[0].name,'Defense');
 
-const noSources=runSearch(glTarget,[],[],kyber);
+const noSources=await runSearch(glTarget,[],[],kyber);
 assert.equal(noSources.proposals.length,0);
 assert.match(noSources.reason,/Aucun donneur vérifié/i,'Missing verified donor data must be explained, not reported as a generic no-result');
 buildSandbox.window.__SWGOH_GAC_USAGE__.sourceStatus='unavailable';
-const unavailableSources=runSearch(glTarget,[],[],kyber);
+const unavailableSources=await runSearch(glTarget,[],[],kyber);
 assert.match(unavailableSources.reason,/collecteur navigateur/i,'Unavailable GAC source must direct the user to the browser collector');
