@@ -4,7 +4,7 @@
   const SLOTS = ['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const LABELS = {Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'};
   const FIXED = {Square:'Offense',Diamond:'Defense'};
-  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),loading:false,faction:'ALL',progress:{done:0,total:0,profiles:0,failures:0,lastError:''}};
+  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),loading:false,faction:'ALL',factionOpen:false,progress:{done:0,total:0,profiles:0,failures:0,lastError:''}};
   const $ = id => document.getElementById(id);
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -186,14 +186,13 @@
     const root=$('visionnaireRoot');if(!root)return;
     if(root.dataset.factionFilterBound!=='true'){
       root.dataset.factionFilterBound='true';
-      // Delegated listener: it survives every innerHTML refresh of the audit.
-      root.addEventListener('change',event=>{
-        if(event.target?.id!=='visionnaireFaction')return;
-        state.faction=event.target.value||'ALL';
-        state.selected=null;
-        state.slots.clear();
-        render();
+      root.addEventListener('click',event=>{
+        const toggle=event.target?.closest?.('[data-faction-toggle]');
+        if(toggle){event.preventDefault();event.stopPropagation();state.factionOpen=!state.factionOpen;render();return;}
+        const option=event.target?.closest?.('[data-faction-option]');
+        if(option){event.preventDefault();event.stopPropagation();state.faction=option.dataset.factionOption||'ALL';state.factionOpen=false;state.selected=null;state.slots.clear();render();}
       },true);
+      document.addEventListener('click',event=>{if(state.factionOpen&&!root.contains(event.target)){state.factionOpen=false;render();}});
     }
     const rows=visibleRows();
     const knownSets=state.rows.filter(r=>r.setVerifiable).length;
@@ -215,7 +214,13 @@
         <div class="visionnaire-kpis"><span><b>${state.loading?state.progress.done:state.rows.length}${state.loading?' / '+state.progress.total:''}</b> personnages analysés</span><span><b>${state.progress.profiles}</b> profils Kyber exploitables</span><span><b>${knownSets}</b> références de sets</span><span><b>${knownPrimaries}</b> références de primaires</span><span><b>${nonverifiable}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
       </section>
       <section class="visionnaire-list">
-        <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><label class="visionnaire-faction-filter" for="visionnaireFaction"><span>FACTION</span><select id="visionnaireFaction"><option value="ALL">Toutes les factions</option>${factionOptions().map(f=>`<option value="${esc(f)}" ${state.faction===f?'selected':''}>${esc(f)}</option>`).join('')}</select></label></div>
+        <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><div class="visionnaire-faction-filter">
+            <span class="visionnaire-faction-label">FACTION</span>
+            <button type="button" class="visionnaire-faction-toggle" data-faction-toggle aria-expanded="\${state.factionOpen?'true':'false'}" aria-haspopup="listbox">
+              <span>\${esc(state.faction==='ALL'?'Toutes les factions':state.faction)}</span><b aria-hidden="true">\${state.factionOpen?'⌃':'⌄'}</b>
+            </button>
+            \${state.factionOpen?'<div class="visionnaire-faction-menu" role="listbox" aria-label="Choisir une faction"><button type="button" role="option" aria-selected="'+(state.faction==='ALL')+'" data-faction-option="ALL" class="'+(state.faction==='ALL'?'active':'')+'">Toutes les factions</button>'+factionOptions().map(f=>'<button type="button" role="option" aria-selected="'+(state.faction===f)+'" data-faction-option="'+esc(f)+'" class="'+(state.faction===f?'active':'')+'">'+esc(f)+'</button>').join('')+'</div>':''}
+          </div></div>
         ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber : '+state.progress.done+' / '+state.progress.total+' personnages traités · '+state.progress.profiles+' profils complets · '+state.progress.failures+' erreurs'+(state.progress.lastError?' · Dernier signal : '+esc(state.progress.lastError):'')+'. Les résultats apparaissent progressivement.</p>':rows.length?rows.map(row=>{
           const c=row.character;const selected=state.selected?.character===c;
           const mismatch=activeIssues(row);
