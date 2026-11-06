@@ -1,3 +1,12 @@
+## V4.1.42 — Comparaison réelle aux recommandations Kyber dominantes
+
+- Les primaires sont comparées à la recommandation dominante de chaque slot, au lieu d'accepter toutes les primaires observées, même marginales.
+- Une primaire dont la distribution Kyber n'a pas de dominante claire (moins de 50 %) reste non vérifiable.
+- Les sets sont comparés comme une répartition complète des six mods, en privilégiant les combinaisons spécifiques Kyber lorsqu'elles existent.
+- Les références sets et primaires sont comptabilisées séparément.
+- Les profils sans provenance Kyber/SWGOH.GG explicite sont exclus de l'audit.
+- Cache PWA et versions d'assets incrémentés.
+
 ## V4.1.41 — Filtre de faction et résultats directs du Visionnaire
 
 - Suppression de la recherche nominative à l'étape 2 : les personnages ne sont plus à retrouver un par un.
