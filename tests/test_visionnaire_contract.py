@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.48-custom-faction-dropdown", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.48-custom-faction-dropdown", sw)
-        self.assertIn("visionnaire.css?v=4.1.48-custom-faction-dropdown", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.49-coordinated-exchange-proposals", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.49-coordinated-exchange-proposals", sw)
+        self.assertIn("visionnaire.css?v=4.1.49-coordinated-exchange-proposals", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -94,6 +94,26 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("window.__kyberLastParseDiagnostic", core)
         self.assertIn("ranked.some(config=>config.exact&&config.distance===0)", js)
         self.assertIn("profils Kyber exploitables", js)
+
+
+    def test_exchange_search_is_coordinated_and_guarded(self):
+        js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
+        self.assertIn("function buildExchangeProposals", js)
+        self.assertIn("const current=getCharacterMods(character)", js)
+        self.assertIn("current.length!==6", js)
+        self.assertIn("forgeAllSourceMods(character)", js)
+        self.assertIn("forgeSourceAllowedForSearch(mod,character)", js)
+        self.assertIn("isGalacticLegendCharacter(owner)", js)
+        self.assertIn("mod._sourcePriorityKnown!==true", js)
+        self.assertIn("exchangeSetBonusesPreserved(before,after)", js)
+        self.assertIn("afterSpeed+1e-9<beforeSpeed", js)
+        self.assertIn("beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet", js)
+        self.assertIn("afterSetDistance>=beforeSetDistance", js)
+        self.assertIn("targetPrimarySafe(chosen)", js)
+        self.assertIn("data-search-exchanges", js)
+        self.assertIn("renderExchangeProposals()", js)
+        self.assertIn("Aucun déplacement n’est effectué", js)
+        self.assertNotIn("disabled>RECHERCHER DES ÉCHANGES — PROCHAINE ÉTAPE", js)
 
 
 if __name__ == "__main__":
