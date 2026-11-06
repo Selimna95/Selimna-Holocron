@@ -89,6 +89,7 @@ def clean_name(raw: str) -> str:
     # Tier movement badges (A→S, S→A, B→A, etc.) are not part of unit names.
     name = re.sub(r"^[SABCD]\s*→\s*[SABCD]\s+", "", name, flags=re.I).strip()
     name = re.sub(r"\s+(?:Datacron dependent|NEW)$", "", name, flags=re.I).strip()
+    name = re.sub(r"^—\\s*", "", name).strip()
     return name
 
 UNIT_ROW = re.compile(
