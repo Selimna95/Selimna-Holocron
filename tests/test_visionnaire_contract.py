@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.55-gac-source-status", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.55-gac-source-status", sw)
-        self.assertIn("visionnaire.css?v=4.1.55-gac-source-status", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.56-gac-source-diagnostic-v2", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.56-gac-source-diagnostic-v2", sw)
+        self.assertIn("visionnaire.css?v=4.1.56-gac-source-diagnostic-v2", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -122,6 +122,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("Pondération : 45% référence Kyber", js)
         self.assertIn("Aucun mod source éligible", js)
         self.assertIn("Les données GAC datent de plus de 35 jours", js)
+        self.assertIn("function exchangeGacSourceDiagnostic", js)
+        self.assertIn("Aucune collecte GAC complète exploitable", js)
         self.assertIn("collecteur navigateur", js)
         self.assertIn("tools/gac-collector.html", js)
         self.assertIn("utilisation GAC vérifiée", js)
