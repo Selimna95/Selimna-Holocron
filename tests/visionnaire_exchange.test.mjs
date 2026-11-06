@@ -11,6 +11,9 @@ assert.ok(js.includes('b.score.score-a.score.score'),'Scenarios must rank by str
 assert.ok(js.includes('isGalacticLegendCharacter(owner)'),'GL donors must be excluded');
 assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bonuses must be preserved');
 assert.ok(js.includes('options.slice(0,24)'), 'Search must keep a broad enough donor pool before validating donor set preservation');
+assert.ok(js.includes('modTotalSpeed(b)-modTotalSpeed(a)'), 'Candidate search must prioritize speed-preserving mods before donor-usage tie breaks');
+assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
+assert.ok(js.includes('speedLoss:beforeSpeed-afterSpeed'), 'Rejected speed exchanges must report the measured speed loss');
 assert.ok(js.includes('afterSpeed+1e-9<beforeSpeed'),'Target speed must never decrease');
 assert.ok(js.includes('RECOMMANDÉ'),'Scenario verdict must be explicit');
 assert.ok(js.includes('const diagnostics={limit:15000'),'Search diagnostics must expose the safety limit and candidate counts');
