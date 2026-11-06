@@ -1,3 +1,14 @@
+## V4.1.43 — Extraction et analyse complètes des références Kyber SWGOH.GG
+
+- Le parseur conserve toutes les configurations de sets du tableau « Specific Mod Sets » et fusionne les configurations complémentaires listées dans le détail « Best Mod Set ».
+- Extraction séparée des distributions de sets principaux et secondaires, des primaires de chaque slot, de la taille de l'échantillon et de l'indication de fraîcheur.
+- La comparaison des sets teste toutes les configurations publiées, et non plus uniquement la première ; les pièces isolées sans bonus de set ne faussent plus le diagnostic.
+- Les primaires sont comparées à toute leur distribution : une alternative utilisée par les joueurs Kyber n'est plus rejetée simplement parce qu'elle n'est pas majoritaire.
+- Les builds inférés à partir des distributions séparées sont identifiés comme tels et ne sont pas utilisés pour déclarer un écart strict sans configuration exacte.
+- Invalidation du cache Kyber antérieur pour forcer une nouvelle extraction avec le parseur complet.
+- Tests de régression ajoutés pour les compositions Double/Triple, les configurations secondaires et les répartitions de primaires.
+- Versions des ressources et cache PWA incrémentés.
+
 ## V4.1.42 — Comparaison réelle aux recommandations Kyber dominantes
 
 - Les primaires sont comparées à la recommandation dominante de chaque slot, au lieu d'accepter toutes les primaires observées, même marginales.
