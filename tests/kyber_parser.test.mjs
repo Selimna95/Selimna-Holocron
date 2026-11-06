@@ -24,19 +24,19 @@ const splitRows = [
   'Triangle', 'Offense', '52.87%'
 ];
 assert.deepEqual(
-  JSON.parse(JSON.stringify(sandbox.parseRows(splitRows, 1, 5))),
+  JSON.parse(JSON.stringify(sandbox.parseRows(splitRows, 1, 5).map(x => ({ ...x, weight: Number(x.weight.toFixed(6)) })))),
   [{ name: 'Speed', weight: 0.787 }, { name: 'Offense', weight: 0.044 }]
 );
 assert.deepEqual(
-  JSON.parse(JSON.stringify(sandbox.parseRows(splitRows, 9, 13))),
+  JSON.parse(JSON.stringify(sandbox.parseRows(splitRows, 9, 13).map(x => ({ ...x, weight: Number(x.weight.toFixed(6)) })))),
   [{ name: 'Speed + Tenacity', weight: 0.396 }, { name: 'Speed + Potency', weight: 0.208 }]
 );
 assert.deepEqual(
-  JSON.parse(JSON.stringify(sandbox.parsePrimaries(splitRows, 'Arrow'))),
+  Object.fromEntries(Object.entries(sandbox.parsePrimaries(splitRows, 'Arrow')).map(([k, v]) => [k, Number(v.toFixed(6))])),
   { Speed: 0.9597, Offense: 0.0172 }
 );
 assert.deepEqual(
-  JSON.parse(JSON.stringify(sandbox.parseRows(['Primary Set', 'Speed78.7%', 'Offense4.4%'], 1, 3))),
+  JSON.parse(JSON.stringify(sandbox.parseRows(['Primary Set', 'Speed78.7%', 'Offense4.4%'], 1, 3).map(x => ({ ...x, weight: Number(x.weight.toFixed(6)) })))),
   [{ name: 'Speed', weight: 0.787 }, { name: 'Offense', weight: 0.044 }]
 );
 console.log('Kyber split-percentage parser tests passed.');
