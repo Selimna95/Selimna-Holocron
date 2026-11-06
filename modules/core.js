@@ -175,12 +175,13 @@ function normalizeKyberKey(value){return String(value||'').toLowerCase().normali
 function kyberCharacterLabel(value){const text=String(value||'').replace(/\s+/g,' ').trim();return text.split(/\s+(?=(?:Attacker|Tank|Support|Healer)\b)/i)[0]||text;}
 function kyberProfileValid(p){
   if(!p||typeof p!=='object')return false;
+  const provenance=`${p.source||''} ${p.url||''}`;
+  if(!/kyber|swgoh\.gg/i.test(provenance))return false;
   const sets=(Array.isArray(p.sets)&&p.sets.length>0)||(Array.isArray(p.specific_sets)&&p.specific_sets.length>0);
   const variableSlots=['Arrow','Triangle','Circle','Cross'];
   const primaries=variableSlots.some(name=>Object.keys(p.slots?.[name]?.primaries||{}).length>0);
   const secondaries=Object.keys(p.secondary_focus||{}).length>0;
-  // SWGOH.GG's average-stat block is not consistently exposed in its HTML.
-  // Validate the actual mod recommendations rather than three unrelated averages.
+  // Only explicitly sourced SWGOH.GG/Kyber profiles may drive this comparison.
   return sets&&(primaries||secondaries);
 }
 function cleanLinesFromDoc(doc){const body=doc?.body;if(!body)return[];const clone=body.cloneNode(true);clone.querySelectorAll('script,style,noscript').forEach(n=>n.remove());clone.querySelectorAll('br').forEach(n=>n.replaceWith(document.createTextNode('\n')));clone.querySelectorAll('div,p,li,tr,h1,h2,h3,h4,h5,h6,section,article,table,thead,tbody,th,td').forEach(n=>n.insertBefore(document.createTextNode('\n'),n.firstChild));return String(clone.textContent||'').split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);}
