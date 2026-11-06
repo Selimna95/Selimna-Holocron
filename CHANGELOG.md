@@ -1,3 +1,8 @@
+## V4.1.56 — diagnostic de collecte dans tous les cas sans donneur
+
+- Le message sur la fraîcheur et l'indisponibilité de la source GAC est partagé par tous les chemins de recherche, y compris lorsqu'aucun slot ne trouve de donneur.
+- Le collecteur navigateur est proposé directement lorsque la source complète est absente ; une base périmée ou limitée aux défenses est explicitement signalée.
+
 ## V4.1.55 — diagnostic GAC dans le Visionnaire
 
 - Le Visionnaire distingue maintenant une base GAC périmée, partielle ou indisponible.
