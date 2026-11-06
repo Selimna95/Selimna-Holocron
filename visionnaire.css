@@ -87,10 +87,10 @@
 .visionnaire-proposal-donors details{margin-top:8px}
 .visionnaire-proposal-donors summary{cursor:pointer;color:#d7b5a5;font-size:10px}
 @media(max-width:720px){
- .visionnaire-score-breakdown{grid-template-columns:1fr}
- .visionnaire-stat-table>div{grid-template-columns:1fr auto;gap:4px}
- .visionnaire-stat-table>div>b{grid-column:1;text-align:left}
- .visionnaire-stat-table>div>em{grid-column:2;grid-row:1/3}
+ .visionnaire-proposal .visionnaire-score-breakdown{grid-template-columns:1fr}
+ .visionnaire-stat-section .visionnaire-stat-table>div{grid-template-columns:1fr auto;gap:4px}
+ .visionnaire-stat-section .visionnaire-stat-table>div>b{grid-column:1;text-align:left}
+ .visionnaire-stat-section .visionnaire-stat-table>div>em{grid-column:2;grid-row:1/3}
 }
 
 .visionnaire-score-method{margin:0 0 12px;padding:8px 10px;background:#151416;border-left:2px solid #80656a;color:#a99fa1;font-size:10px;line-height:1.5}
