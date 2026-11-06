@@ -1,3 +1,13 @@
+## V4.1.49 — Recherche coordonnée des échanges du Visionnaire
+
+- Activation de la recherche depuis les slots explicitement sélectionnés ; les transferts d'un même scénario sont évalués ensemble.
+- Les donneurs équipés doivent avoir un usage GAC vérifié, sont classés par usage croissant et les GL sont exclues.
+- Chaque donneur reçoit le mod remplacé sur le même slot ; le scénario est rejeté si un bonus de set actif du donneur disparaît après l'ensemble des restitutions.
+- Le personnage cible doit conserver ses six slots et sa vitesse totale ; si la vitesse de base est inconnue, la protection du bonus 4 pièces Speed reste stricte.
+- En mode Sets, le scénario doit réduire la distance à une composition complète SWGOH.GG ; en mode Primaires, les primaires reçues doivent être observées dans la distribution Kyber.
+- Aucun mod n'est déplacé automatiquement ; les propositions restent des scénarios à appliquer manuellement.
+- Cache navigateur et versions des ressources incrémentés.
+
 ## V4.1.48 — Menu déroulant de faction reconstruit
 
 - Remplacement du contrôle natif non sélectionnable par un menu déroulant accessible composé de boutons de faction.
