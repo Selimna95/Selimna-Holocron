@@ -135,10 +135,12 @@
         let row;
         try{
           let profile=typeof profileForCharacter==='function'?profileForCharacter(character):null;
-          if(typeof kyberProfileHasFullDistribution==='function'&&!kyberProfileHasFullDistribution(profile)) profile=null;
-          else if(typeof kyberProfileValid==='function'&&!kyberProfileValid(profile)) profile=null;
-          if(!profile && typeof fetchKyberProfile==='function') profile=await fetchKyberProfile(character);
-          if(profile && (typeof kyberProfileHasFullDistribution==='function'?kyberProfileHasFullDistribution(profile):(typeof kyberProfileValid!=='function'||kyberProfileValid(profile)))) {
+          if(typeof kyberProfileValid==='function'&&!kyberProfileValid(profile)) profile=null;
+          if(!profile || (typeof kyberProfileHasFullDistribution==='function'&&!kyberProfileHasFullDistribution(profile))){
+            const fetched=typeof fetchKyberProfile==='function'?await fetchKyberProfile(character):null;
+            if(fetched)profile=fetched;
+          }
+          if(profile && (typeof kyberProfileValid!=='function'||kyberProfileValid(profile))) {
             row=inspectCharacter(character,profile);
             state.progress.profiles++;
           } else {
