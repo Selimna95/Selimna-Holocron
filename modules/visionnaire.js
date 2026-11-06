@@ -4,7 +4,7 @@
   const SLOTS = ['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const LABELS = {Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'};
   const FIXED = {Square:'Offense',Diamond:'Defense'};
-  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),loading:false,faction:'ALL',factionOpen:false,progress:{done:0,total:0,profiles:0,failures:0,lastError:''}};
+  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),proposals:[],searching:false,searchError:'',loading:false,faction:'ALL',factionOpen:false,progress:{done:0,total:0,profiles:0,failures:0,lastError:''}};
   const $ = id => document.getElementById(id);
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -160,7 +160,7 @@
     };
     await Promise.all(Array.from({length:Math.min(4,roster.length)},worker));
     state.rows=rows.sort((a,b)=>String(a.character?.name||'').localeCompare(String(b.character?.name||''),'fr'));
-    state.loading=false;state.selected=null;state.slots.clear();render();
+    state.loading=false;state.selected=null;state.slots.clear();state.proposals=[];state.searchError='';render();
   }
   const factionsOf = row => {
     const id=typeof characterKey==='function'?characterKey(row.character):key(row.character?.baseId||row.character?.name);
@@ -182,6 +182,159 @@
   const modeCount = mode => state.rows.filter(row => mode==='sets' ? row.setVerifiable&&row.setMismatch :
     mode==='primaries' ? row.primaryVerifiable&&row.primaryMismatch :
     row.setVerifiable&&row.setMismatch&&row.primaryVerifiable&&row.primaryMismatch).length;
+  const exchangeSetCounts = list => {
+    const counts={};
+    (Array.isArray(list)?list:[]).forEach(mod=>{
+      const name=labelSet(mod?.set_name??mod?.set??'');
+      if(name)counts[name]=(counts[name]||0)+1;
+    });
+    return counts;
+  };
+  const exchangeSetDistance = (list,profile) => {
+    const configs=rankedSetConfigurations(profile).filter(x=>x.exact);
+    if(!configs.length)return null;
+    const actual=exchangeSetCounts(list);
+    Object.keys(actual).forEach(name=>{if(actual[name]<2)delete actual[name];});
+    return Math.min(...configs.map(config=>{
+      const names=new Set([...Object.keys(config.counts),...Object.keys(actual)]);
+      return [...names].reduce((sum,name)=>sum+Math.abs((config.counts[name]||0)-(actual[name]||0)),0)/2;
+    }));
+  };
+  const exchangeSetBonusesPreserved = (before,after) => {
+    const a=exchangeSetCounts(before),b=exchangeSetCounts(after);
+    return Object.entries(a).every(([name,count])=>{
+      const tiers=Math.min(2,Math.floor(count/2));
+      return Math.min(2,Math.floor((b[name]||0)/2))>=tiers;
+    });
+  };
+  const exchangeModId = mod => String(mod?.game_id??mod?.id??mod?.uid??'');
+  const exchangeModSummary = mod => {
+    if(!mod)return 'Aucun mod';
+    const secondary=[];
+    for(let i=1;i<=4;i++){
+      const stat=mod[`secondary_${i}_stat`],value=mod[`secondary_${i}_value`];
+      if(stat)secondary.push(stat+(value==null?'':' '+value));
+    }
+    return [mod.set_name||mod.set||'Set inconnu',mod.primary_stat||'Primaire inconnue',
+      mod.primary_value==null?'':String(mod.primary_value),modTotalSpeed(mod)+' V',
+      secondary.join(' · ')].filter(Boolean).join(' · ');
+  };
+  function buildExchangeProposals(row,selectedSlots){
+    const character=row.character,profile=row.profile;
+    const current=getCharacterMods(character);
+    const currentBySlot=new Map(current.map(mod=>[slotOf(mod),mod]));
+    const slots=SLOTS.filter(slot=>selectedSlots.includes(slot));
+    if(!slots.length)return {proposals:[],reason:'Sélectionne au moins un slot.'};
+    if(slots.some(slot=>!currentBySlot.has(slot)))return {proposals:[],reason:'Un slot sélectionné ne contient pas de mod à remplacer.'};
+    if(typeof forgeAllSourceMods!=='function'||typeof forgeSourceAllowedForSearch!=='function'||
+       typeof forgeProjectedModSpeed!=='function'||typeof isGalacticLegendCharacter!=='function')
+      return {proposals:[],reason:'Les services partagés de donneurs ou de calcul de vitesse ne sont pas disponibles.'};
+    const targetKey=characterKey(character);
+    const source=forgeAllSourceMods(character).filter(mod=>{
+      const ownerKey=mod?._sourceOwnerKey;
+      if(!ownerKey||ownerKey===targetKey||!forgeSourceAllowedForSearch(mod,character))return false;
+      const owner=rosterCharacters.find(c=>characterKey(c)===ownerKey);
+      if(!owner||isGalacticLegendCharacter(owner))return false;
+      if(mod._sourcePriorityKnown!==true||!Number.isFinite(Number(mod._sourceUsage)))return false;
+      return true;
+    });
+    const optionsBySlot=new Map();
+    for(const slot of slots){
+      const options=source.filter(mod=>slotOf(mod)===slot&&exchangeModId(mod)!==exchangeModId(currentBySlot.get(slot)))
+        .map(mod=>({...mod,_visionnaireDonor:rosterCharacters.find(c=>characterKey(c)===mod._sourceOwnerKey)}))
+        .filter(mod=>mod._visionnaireDonor)
+        .sort((a,b)=>Number(a._sourceUsage)-Number(b._sourceUsage)||
+          modTotalSpeed(b)-modTotalSpeed(a));
+      optionsBySlot.set(slot,options.slice(0,6));
+    }
+    const empty=slots.filter(slot=>!(optionsBySlot.get(slot)||[]).length);
+    if(empty.length)return {proposals:[],reason:'Aucun donneur vérifié pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.'};
+    const beforeSetDistance=exchangeSetDistance(current,profile);
+    const beforeSpeed=forgeProjectedModSpeed(character,profile,current).total;
+    const targetPrimarySafe=chosen=>slots.every(slot=>{
+      const mod=chosen.find(x=>slotOf(x)===slot);
+      return primaryDistribution(profile,slot).some(entry=>statKey(entry.name)===statKey(mod?.primary_stat));
+    });
+    const proposals=[];
+    let tested=0;
+    const chosen=[];
+    const walk=index=>{
+      if(proposals.length>=30||tested>=15000)return;
+      if(index===slots.length){
+        tested++;
+        const finalTarget=current.filter(mod=>!slots.includes(slotOf(mod))).concat(chosen);
+        const afterSpeed=forgeProjectedModSpeed(character,profile,finalTarget).total;
+        if(afterSpeed+1e-9<beforeSpeed)return;
+        const afterSetDistance=exchangeSetDistance(finalTarget,profile);
+        if(state.mode!=='primaries'){
+          if(beforeSetDistance===null||afterSetDistance===null||afterSetDistance>=beforeSetDistance)return;
+        } else if(beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>beforeSetDistance)return;
+        if(state.mode==='both'&&!targetPrimarySafe(chosen))return;
+        if(state.mode==='primaries'&&!targetPrimarySafe(chosen))return;
+        const donorGroups=new Map();
+        for(const candidate of chosen){
+          const owner=candidate._visionnaireDonor,key=characterKey(owner);
+          if(!donorGroups.has(key))donorGroups.set(key,{owner,transfers:[]});
+          donorGroups.get(key).transfers.push(candidate);
+        }
+        const donors=[];
+        for(const {owner,transfers} of donorGroups.values()){
+          const before=getCharacterMods(owner);
+          const after=before.slice();
+          for(const candidate of transfers){
+            const slot=slotOf(candidate),index=after.findIndex(mod=>slotOf(mod)===slot);
+            const returned=currentBySlot.get(slot);
+            if(index<0||!returned){return;}
+            after[index]=returned;
+          }
+          if(after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after))return;
+          const donorProfile=optimizerProfileForCharacter(owner)||{};
+          donors.push({owner,transfers,beforeSpeed:forgeProjectedModSpeed(owner,donorProfile,before).total,
+            afterSpeed:forgeProjectedModSpeed(owner,donorProfile,after).total,
+            beforeSets:exchangeSetCounts(before),afterSets:exchangeSetCounts(after)});
+        }
+        const ids=chosen.map(exchangeModId).join('|');
+        if(proposals.some(item=>item.signature===ids))return;
+        proposals.push({signature:ids,transfers:chosen.slice(),donors,beforeSpeed,afterSpeed,
+          speedGain:afterSpeed-beforeSpeed,beforeSetDistance,afterSetDistance,
+          usage:chosen.reduce((sum,m)=>sum+Number(m._sourceUsage||0),0)});
+        return;
+      }
+      const slot=slots[index];
+      for(const candidate of optionsBySlot.get(slot)||[]){
+        if(chosen.some(item=>exchangeModId(item)===exchangeModId(candidate)))continue;
+        chosen.push(candidate);walk(index+1);chosen.pop();
+        if(proposals.length>=30||tested>=15000)return;
+      }
+    };
+    walk(0);
+    proposals.sort((a,b)=>a.donors.length-b.donors.length||a.usage-b.usage||b.speedGain-a.speedGain);
+    return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,
+      reason:proposals.length?'':tested>=15000?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.'};
+  }
+  function renderExchangeProposals(){
+    if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours…</div>';
+    if(!state.proposals.length)return state.searchError?'<div class="visionnaire-empty">'+esc(state.searchError)+'</div>':'';
+    return '<div class="visionnaire-proposals"><div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS SÛRS</div>'+
+      state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+'</b><span>'+proposal.transfers.length+' transfert(s) · '+proposal.donors.length+' donneur(s)</span></header>'+
+      '<div class="visionnaire-proposal-speed"><span>VITESSE CIBLE</span><b>'+proposal.beforeSpeed.toFixed(1)+' → '+proposal.afterSpeed.toFixed(1)+' ('+(proposal.speedGain>=0?'+':'')+proposal.speedGain.toFixed(1)+')</b></div>'+
+      '<div class="visionnaire-proposal-transfers">'+proposal.transfers.map(mod=>{
+        const slot=slotOf(mod),current=state.selected.slotRows.find(x=>x.slot===slot)?.mod;
+        return '<div><b>'+LABELS[slot]+'</b><span>ACTUEL · '+esc(exchangeModSummary(current))+'</span><span>REÇU · '+esc(exchangeModSummary(mod))+'</span><small>Donneur : '+esc(mod._visionnaireDonor?.name||mod._sourceOwner)+' · GAC '+Number(mod._sourceUsage||0)+' utilisation(s)</small></div>';
+      }).join('')+'</div>'+
+      '<div class="visionnaire-proposal-donors">'+proposal.donors.map(d=>'<div><b>'+esc(d.owner.name||d.owner.baseId)+'</b><span>'+d.transfers.length+' mod(s) cédé(s) · vitesse '+d.beforeSpeed.toFixed(1)+' → '+d.afterSpeed.toFixed(1)+'</span><small>Bonus de sets conservés · retour des mods remplacés sur les mêmes slots</small></div>').join('')+'</div>'+
+      '<p>Aucun déplacement n’est effectué. Ce scénario est une proposition à examiner et à appliquer manuellement dans le jeu.</p></article>').join('')+'</div>';
+  }
+  async function runExchangeSearch(){
+    if(state.searching||!state.selected||!state.slots.size)return;
+    state.searching=true;state.searchError='';state.proposals=[];render();
+    try{
+      const result=buildExchangeProposals(state.selected,[...state.slots]);
+      state.proposals=result.proposals||[];
+      state.searchError=result.reason||'';
+    }catch(error){state.searchError='Recherche interrompue : '+String(error?.message||error);}
+    finally{state.searching=false;render();}
+  }
   function render(){
     const root=$('visionnaireRoot');if(!root)return;
     if(root.dataset.factionFilterBound!=='true'){
@@ -239,11 +392,12 @@
     root.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{state.mode=btn.dataset.mode;state.selected=null;state.slots.clear();render();}));
     root.querySelectorAll('[data-character]').forEach(btn=>btn.addEventListener('click',()=>{
       const row=state.rows.find(r=>String(characterKey(r.character))===btn.dataset.character);
-      if(!row)return;state.selected=row;state.slots.clear();render();
+      if(!row)return;state.selected=row;state.slots.clear();state.proposals=[];state.searchError='';render();
     }));
     root.querySelectorAll('[data-slot]').forEach(btn=>btn.addEventListener('click',()=>{
-      const slot=btn.dataset.slot;if(state.slots.has(slot))state.slots.delete(slot);else state.slots.add(slot);render();
+      const slot=btn.dataset.slot;if(state.slots.has(slot))state.slots.delete(slot);else state.slots.add(slot);state.proposals=[];state.searchError='';render();
     }));
+    root.querySelector('[data-search-exchanges]')?.addEventListener('click',runExchangeSearch);
   }
   function renderSelected(){
     const row=state.selected;if(!row)return '';
@@ -264,8 +418,9 @@
           <span>${LABELS[item.slot]}</span><b>${esc(m?.set_name||'Slot vide')}</b><small>${esc(m?.primary_stat||'—')} ${m?.primary_value??''}</small><em>${esc(detail)}</em>
         </button>`;
       }).join('')}</div>
-      <div class="visionnaire-next"><span>${state.slots.size} slot(s) sélectionné(s)</span><button type="button" disabled>RECHERCHER DES ÉCHANGES — PROCHAINE ÉTAPE</button></div>
-      <p class="visionnaire-note">Cette première version installe l’audit complet et la sélection des slots. La recherche d’échanges et le bilan des statistiques seront ajoutés dans l’incrément suivant ; aucune proposition non vérifiée n’est affichée.</p>
+      <div class="visionnaire-next"><span>${state.slots.size} slot(s) sélectionné(s)</span><button type="button" data-search-exchanges ${state.slots.size?'':'disabled'} ${state.searching?'disabled':''}> ${state.searching?'RECHERCHE…':'RECHERCHER DES ÉCHANGES'} </button></div>
+      <p class="visionnaire-note">Les donneurs sont classés par usage GAC connu croissant. Les GL et les usages inconnus sont exclus. Chaque donneur doit conserver ses bonus de sets après restitution des mods remplacés ; la vitesse totale de la cible ne peut pas diminuer.</p>
+      ${renderExchangeProposals()}
     </section>`;
   }
   window.renderVisionnaire=()=>{
