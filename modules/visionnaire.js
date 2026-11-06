@@ -293,11 +293,18 @@
     return scores.reduce((sum,value)=>sum+value,0)/scores.length*100;
   }
   const exchangeClamp = value => Math.max(0,Math.min(100,Number(value)||0));
-  function exchangeScenarioScore({mode,beforeSetDistance,afterSetDistance,primaryShare,targetBalance,donors}){
+  function exchangeScenarioScore({mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,targetBalance,donors}){
     const hasSet=Number.isFinite(beforeSetDistance)&&Number.isFinite(afterSetDistance);
     const setFit=hasSet?exchangeClamp(50+50*(beforeSetDistance-afterSetDistance)/Math.max(1,beforeSetDistance)):50;
     const primaryFit=Number.isFinite(primaryShare)?exchangeClamp(primaryShare*100):50;
-    const reference=mode==='primaries'?primaryFit:mode==='both'?(setFit+primaryFit)/2:hasSet?setFit:50;
+    const secondaryFit=Number.isFinite(secondaryFocus)?exchangeClamp(secondaryFocus):null;
+    const parts=mode==='primaries'
+      ? [{value:primaryFit,weight:.7},{value:secondaryFit,weight:.3}]
+      : mode==='both'
+        ? [{value:setFit,weight:.45},{value:primaryFit,weight:.25},{value:secondaryFit,weight:.30}]
+        : [{value:setFit,weight:.60},{value:primaryFit,weight:.15},{value:secondaryFit,weight:.25}];
+    const availableParts=parts.filter(part=>part.value!==null);
+    const reference=availableParts.length?availableParts.reduce((sum,part)=>sum+part.value*part.weight,0)/availableParts.reduce((sum,part)=>sum+part.weight,0):50;
     const targetStats=targetBalance===null?50:exchangeClamp(50+targetBalance*250);
     const donorUsage=donors.length?donors.reduce((sum,d)=>sum+100/(1+Math.max(0,Number(d.uses)||0)/50),0)/donors.length:100;
     const donorStats=donors.length?donors.reduce((sum,d)=>sum+(d.statBalance===null?50:exchangeClamp(50+d.statBalance*250)),0)/donors.length:100;
@@ -307,7 +314,7 @@
     const complete=targetBalance!==null&&donors.every(d=>d.statBalance!==null);
     const statusSafe=donors.every(d=>!d.statusWorsened);
     const verdict=score>=75&&complete&&statusSafe?'RECOMMANDÉ':score>=55?'À EXAMINER':'PRUDENCE';
-    return {score,verdict,reference:Math.round(reference),targetStats:Math.round(targetStats),donorCost:Math.round(donorCost),complete};
+    return {score,verdict,reference:Math.round(reference),secondaryFocus:secondaryFit===null?null:Math.round(secondaryFit),targetStats:Math.round(targetStats),donorCost:Math.round(donorCost),complete};
   }
   const exchangeFormatStat = value => Number(value).toLocaleString('fr-FR',{maximumFractionDigits:1});
   function exchangeStatsMarkup(before,after){
