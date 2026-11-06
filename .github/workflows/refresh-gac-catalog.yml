@@ -1,13 +1,17 @@
-name: Import GAC data
+name: Refresh GAC usage database
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * *"
   push:
     paths:
       - "gac-browser-export.json"
       - "scripts/update_gac_usage.py"
       - "tests/test_gac_usage.py"
       - ".github/workflows/refresh-gac-catalog.yml"
+      - "gac-usage.json"
+      - "gac-usage.js"
 
 permissions:
   contents: write
@@ -19,7 +23,7 @@ concurrency:
 jobs:
   import:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,14 +33,22 @@ jobs:
           python-version: "3.12"
       - name: Test GAC parsers and importer
         run: python tests/test_gac_usage.py
-      - name: Require a browser-collected export
-        run: |
-          test -s gac-browser-export.json || {
-            echo "::error::Add gac-browser-export.json from the SWGOH.GG browser collector to the repository root."
-            exit 1
-          }
-      - name: Build and validate GAC usage database
+      - name: Refresh from live SWGOH.GG, browser export or last-known-good snapshot
         run: python scripts/update_gac_usage.py
+      - name: Report published source health
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("gac-usage.json").read_text(encoding="utf-8"))
+          count = sum(len(season.get("characters", {})) for season in data.get("seasons", []))
+          print("GAC source status:", data.get("sourceStatus", "unavailable"))
+          print("Evidence type:", data.get("evidenceType", "unknown"))
+          print("Updated:", data.get("updatedAt"))
+          print("Character records:", count)
+          if data.get("sourceStatus") == "observed":
+              assert count > 0, "Observed GAC source cannot have an empty character dataset"
+          PY
       - name: Publish generated usage snapshots
         run: |
           git config user.name "github-actions[bot]"
