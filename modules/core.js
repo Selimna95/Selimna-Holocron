@@ -214,10 +214,10 @@ function kyberPrimaryDistribution(lines,heading){
 function kyberSetComposition(value){
   const raw=String(value||'').trim();
   if(!raw||/^(none|no set|n\/a)$/i.test(raw))return {};
-  const parts=raw.split(/\\s*\\+\\s*/).map(x=>x.trim()).filter(Boolean);
+  const parts=raw.split(/\s*\+\s*/).map(x=>x.trim()).filter(Boolean);
   const counts={};
   parts.forEach((part,index)=>{
-    const match=part.match(/^(Triple|Double)\\s+(.+)$/i);
+    const match=part.match(/^(Triple|Double)\s+(.+)$/i);
     const modifier=match?.[1]?.toLowerCase()||'';
     const name=String(match?.[2]||part).trim()
       .replace(/^Crit Chance$/i,'Critical Chance')
@@ -235,9 +235,9 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   // distribution, sample size and freshness metadata. Never collapse to TLDR.
   const doc=parseHTML(text);
   const lines=cleanLinesFromDoc(doc);
-  const normalized=lines.map(x=>x.replace(/\\s+/g,' ').trim()).filter(Boolean);
+  const normalized=lines.map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
   const profile={character:String(character||''),source:'SWGOH.GG Units / Best Mods / Kyber',url:`https://swgoh.gg/units/${kyberSlug}/best-mods/`,data_slice:'Kyber',sets:[],secondary_sets:[],specific_sets:[],slots:{},averages:{},secondary_focus:{},sample_size:null,updated_label:null};
-  const pct=/^(.+?)\\s+([0-9]+(?:[.,][0-9]+)?)%$/;
+  const pct=/^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)%$/;
   const pctLine=line=>String(line||'').match(pct);
   const nextIndex=(pred,start)=>{for(let i=start;i<normalized.length;i++)if(pred(normalized[i]))return i;return -1;};
   const idx=needle=>normalized.findIndex(x=>x===needle||x.startsWith(needle));
@@ -259,9 +259,9 @@ function parseKyberProfileHTML(text,character,kyberSlug){
 
   const based=normalized.find(line=>/^Based on [0-9,]+ fully-modded units/i.test(line));
   if(based){const match=based.match(/^Based on ([0-9,]+)/i);if(match)profile.sample_size=Number(match[1].replace(/,/g,''))||null;}
-  profile.updated_label=normalized.find(line=>/^Updated\\s+/i.test(line))||null;
+  profile.updated_label=normalized.find(line=>/^Updated\s+/i.test(line))||null;
   const sliceLine=normalized.find(line=>/^Data Slice:/i.test(line));
-  if(sliceLine)profile.data_slice=sliceLine.replace(/^Data Slice:\\s*/i,'').trim()||'Kyber';
+  if(sliceLine)profile.data_slice=sliceLine.replace(/^Data Slice:\s*/i,'').trim()||'Kyber';
 
   // Four-piece set distribution.
   let i=idx('Primary Set');
@@ -285,7 +285,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   // Complete configurations shown in the grouped-set table.
   i=idx('Specific Mod Sets');
   if(i>=0){
-    const j=nextIndex(x=>/^Arrow\\b/i.test(x),i+1);
+    const j=nextIndex(x=>/^Arrow\b/i.test(x),i+1);
     for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
       const match=pctLine(line);if(match)addSpecific(match[1].trim(),number(match[2])/100,'specific-table');
     }
@@ -293,7 +293,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
 
   // The explanatory text below the chart often lists additional grouped
   // configurations. Merge it with the table instead of ignoring the tail.
-  i=nextIndex(x=>/^Best Mod Set for\\b/i.test(x),0);
+  i=nextIndex(x=>/^Best Mod Set for\b/i.test(x),0);
   if(i>=0){
     const j=nextIndex(x=>/^Note that there are always/i.test(x),i+1);
     for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
@@ -313,7 +313,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   // Secondary-stat focus: retain all available average values.
   i=idx('Secondary Stat Focus');
   if(i>=0){
-    const j=nextIndex(x=>/^Relic\\b/i.test(x),i+1);
+    const j=nextIndex(x=>/^Relic\b/i.test(x),i+1);
     const labels=new Set(['Speed','Health','Protection','Offense','Defense','Potency','Tenacity','Critical Chance %','Critical Damage','Critical Chance','Offense %','Health %','Protection %','Defense %','Armor','Resistance','Physical Damage','Special Damage']);
     for(let k=i+1;k<(j>=0?j:normalized.length)-1;k++){
       if(!labels.has(normalized[k]))continue;
