@@ -120,6 +120,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("exchangeSecondaryFocusScore(profile,finalTarget)", js)
         self.assertIn("proposal.score.secondaryFocus", js)
         self.assertIn("Pondération : 45% référence Kyber", js)
+        self.assertIn("Aucun mod source éligible", js)
+        self.assertIn("utilisation GAC vérifiée", js)
         self.assertIn("usage GAC 45% · statistiques 35% · statut 20%", js)
         self.assertIn("const isFree=!ownerKey", js)
         self.assertIn("targetStatsBefore,targetStatsAfter,targetStatDeltas", js)
