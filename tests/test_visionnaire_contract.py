@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.49-coordinated-exchange-proposals", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.49-coordinated-exchange-proposals", sw)
-        self.assertIn("visionnaire.css?v=4.1.49-coordinated-exchange-proposals", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.50-global-impact-strategic-score", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.50-global-impact-strategic-score", sw)
+        self.assertIn("visionnaire.css?v=4.1.50-global-impact-strategic-score", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -114,6 +114,14 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("renderExchangeProposals()", js)
         self.assertIn("Aucun déplacement n’est effectué", js)
         self.assertNotIn("disabled>RECHERCHER DES ÉCHANGES — PROCHAINE ÉTAPE", js)
+        self.assertIn("function exchangeFinalStats", js)
+        self.assertIn("function exchangeScenarioScore", js)
+        self.assertIn("const isFree=!ownerKey", js)
+        self.assertIn("targetStatsBefore,targetStatsAfter,targetStatDeltas", js)
+        self.assertIn("beforeStats,afterStats,statDeltas", js)
+        self.assertIn("b.score.score-a.score.score", js)
+        self.assertIn("RECOMMANDÉ", js)
+        self.assertIn("exchangeStatsMarkup(proposal.targetStatsBefore,proposal.targetStatsAfter)", js)
 
 
 if __name__ == "__main__":
