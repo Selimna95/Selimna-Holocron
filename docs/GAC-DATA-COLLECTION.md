@@ -10,13 +10,18 @@ Le catalogue des compositions défensives est collecté automatiquement depuis l
 - Priorité des saisons : le collecteur enregistre explicitement la saison en cours pour chaque format, même si une ligue ne contient aucune composition ou seulement quelques compositions. Padawan trie d'abord par saison décroissante ; les combats, le taux de tenue et le rang ne départagent qu'à l'intérieur d'une même saison. Les saisons précédentes ne complètent que les places encore vacantes et chaque carte conserve sa saison d'origine. Une page inaccessible ou incohérente fait échouer la collecte afin de ne pas remplacer le dernier snapshot fiable. Les vues vides ou partielles, elles, sont acceptées et signalées.
 - Publication : GitHub Actions ajoute explicitement le fichier généré avant de vérifier les différences Git, puis le publie dans `blue-gac/gac-catalog.json`.
 
-Le workflow **Refresh public GAC defense catalogue** est actuellement manuel : les requêtes serveur sont bloquées par Cloudflare. Il peut être lancé depuis GitHub Actions lorsque l'accès à la source est rétabli.
+Le workflow **Refresh public GAC defense catalogue** reste déclenché manuellement : il conserve le dernier catalogue valide si SWGOH.GG bloque la collecte serveur.
+
+Le workflow **Refresh GAC usage database** se lance automatiquement chaque jour à 07:17 UTC et à chaque ajout d'un export navigateur. Il tente d'abord les pages publiques via Jina Reader. Si l'accès serveur est bloqué, il importe l'export navigateur versionné ; si aucun export n'est disponible, il conserve le dernier snapshot valide sans jamais publier une base vide. Une base de plus de 35 jours est marquée `stale` et n'est plus utilisable pour classer les donneurs de mods. Une nouvelle collecte complète rétablit le statut `observed`.
 
 ## Collecte des statistiques d'unités et des flottes
 
-Le fichier `gac-usage.json` est une base distincte. Son importeur accepte deux modes :
-1. une collecte depuis les pages publiques SWGOH.GG lorsqu'elles sont accessibles au collecteur ;
-2. un export de session navigateur `gac-browser-export.json`, utilisé lorsque le relais public bloque les requêtes automatisées.
+Le fichier `gac-usage.json` est une base distincte. Son importeur utilise trois niveaux de récupération :
+1. collecte complète depuis les pages publiques SWGOH.GG via Jina Reader ;
+2. export complet de session navigateur `gac-browser-export.json` lorsque le serveur est bloqué ;
+3. conservation du dernier snapshot complet, avec statut de fraîcheur explicite, si les deux sources sont temporairement indisponibles.
+
+Le collecteur navigateur est résumable : les vues déjà collectées sont conservées 12 heures dans la session. Les erreurs transitoires (429/5xx) sont retentées ; un défi Cloudflare est signalé immédiatement. Avant publication, les 20 vues personnages et 10 vues flottes sont contrôlées, et les saisons doivent être cohérentes par format.
 
 Les statistiques d'unités sont des observations de combats de première tentative en escouades complètes. Les vues distinguent format, côté et ligue. Les flottes sont des apparitions dans les compositions publiées, pas un recensement exhaustif.
 
