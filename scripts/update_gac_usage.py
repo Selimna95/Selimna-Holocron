@@ -48,12 +48,25 @@ def fetch(url: str) -> str:
         try:
             with urlopen(request, timeout=45) as response:
                 if response.status != 200:
-                    raise ValueError(f"HTTP {response.status}")
-                return response.read().decode("utf-8", errors="replace")
-        except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+                    raise ValueError(f"Reader HTTP {response.status}")
+                body = response.read().decode("utf-8", errors="replace")
+                lowered = body[:12000].lower()
+                if (not body.strip() or "target url returned error 403" in lowered
+                        or "attention required! | cloudflare" in lowered
+                        or "sorry, you have been blocked" in lowered
+                        or "just a moment..." in lowered):
+                    raise RuntimeError(f"SWGOH.GG/Reader returned a block or challenge page for {url}")
+                if len(body) < 500:
+                    raise RuntimeError(f"Reader response is unexpectedly short ({len(body)} chars) for {url}")
+                return body
+        except (HTTPError, URLError, TimeoutError, ValueError, RuntimeError) as exc:
             last_error = exc
+            if isinstance(exc, HTTPError) and exc.code in (401, 403):
+                break
             if attempt < 3:
-                time.sleep(2 ** attempt)
+                delay = 2 ** attempt
+                print(f"Fetch attempt {attempt + 1}/4 failed for {url}: {exc}; retrying in {delay}s")
+                time.sleep(delay)
     raise RuntimeError(f"Cannot fetch {url}: {last_error}")
 
 def page_season(text: str, fmt: str | None = None) -> int:
