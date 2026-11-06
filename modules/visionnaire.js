@@ -445,8 +445,17 @@
     walk(0);
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||
       (a.afterSetDistance??99)-(b.afterSetDistance??99));
+    const usageData=window.__SWGOH_GAC_USAGE__||{};
+    const usageStatus=usageData.sourceStatus||'unavailable';
+    const noSourceReason=usageStatus==='stale'
+      ? 'Les données GAC datent de plus de 35 jours : elles sont conservées, mais exclues du classement des donneurs. Relance le collecteur navigateur pour actualiser la base.'
+      : usageStatus==='partial'
+        ? 'La source GAC disponible est partielle (défenses uniquement). Elle ne suffit pas à classer les donneurs du Visionnaire. Utilise le collecteur navigateur pour obtenir les statistiques complètes.'
+        : usageStatus==='unavailable'||usageStatus==='awaiting-source-access'
+          ? 'Aucune collecte GAC complète exploitable. SWGOH.GG bloque actuellement les requêtes serveur ; lance le collecteur navigateur : https://selimna95.github.io/Selimna-Holocron/tools/gac-collector.html'
+          : 'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs.';
     return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,
-      reason:proposals.length?'':!source.length?'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs. La source GAC doit être rétablie avant de pouvoir tester un échange équipé.':tested>=15000?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.'};
+      reason:proposals.length?'':!source.length?noSourceReason:tested>=15000?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.'};
   }
   function renderExchangeProposals(){
     if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours…</div>';
