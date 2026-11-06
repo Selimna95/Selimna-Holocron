@@ -10,6 +10,7 @@ assert.ok(js.includes('beforeStats,afterStats,statDeltas'),'Donor full stat impa
 assert.ok(js.includes('b.score.score-a.score.score'),'Scenarios must rank by strategic score');
 assert.ok(js.includes('isGalacticLegendCharacter(owner)'),'GL donors must be excluded');
 assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bonuses must be preserved');
+assert.ok(js.includes('options.slice(0,24)'), 'Search must keep a broad enough donor pool before validating donor set preservation');
 assert.ok(js.includes('afterSpeed+1e-9<beforeSpeed'),'Target speed must never decrease');
 assert.ok(js.includes('RECOMMANDÉ'),'Scenario verdict must be explicit');
 console.log('Visionnaire exchange contract tests passed.');
