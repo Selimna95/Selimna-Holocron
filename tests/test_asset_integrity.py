@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.37-visionnaire-donor-diagnostic", self.sw)
+        self.assertIn("holocron-static-v4.4.38-gac-refresh-reliability", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -92,8 +92,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("_sourceFleetKnown", seigneur)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.html)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.sw)
-        self.assertIn("modules/seigneur.js?v=3.9.4-slot-comparison", self.html)
-        self.assertIn("modules/seigneur.js?v=3.9.4-slot-comparison", self.sw)
+        self.assertIn("modules/seigneur.js?v=3.9.5-gac-freshness", self.html)
+        self.assertIn("modules/seigneur.js?v=3.9.5-gac-freshness", self.sw)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.sw)
         self.assertIn("app.css?v=4.1.3-visionnaire-cleanup", self.html)
@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.15-kyber-split-percentages", self.html)
         self.assertIn("modules/core.js?v=4.2.15-kyber-split-percentages", self.sw)
-        self.assertIn("holocron-static-v4.4.37-visionnaire-donor-diagnostic", self.sw)
+        self.assertIn("holocron-static-v4.4.38-gac-refresh-reliability", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
