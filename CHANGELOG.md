@@ -1,3 +1,9 @@
+## V4.1.46 — Extraction des distributions Kyber
+
+- Le parseur accepte les lignes de données où SWGOH.GG sépare le nom d'un set ou d'une primaire et son pourcentage dans deux éléments HTML distincts.
+- Les distributions Primary Set, Secondary Set, Specific Mod Sets et les primaires par slot utilisent désormais le même extracteur tolérant.
+- Les configurations détaillées du tableau et du texte explicatif sont conservées ; aucun seuil de conformité n'est assoupli.
+
 ## V4.1.45 — Récupération et validation des références Kyber
 
 - Le chargement des profils ne dépend plus exclusivement de l'index SWGOH.GG : en cas d'index indisponible ou incomplet, le Visionnaire tente aussi le slug déterministe du personnage.
