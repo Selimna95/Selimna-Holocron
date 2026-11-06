@@ -1,3 +1,10 @@
+## V4.1.48 — Menu déroulant de faction reconstruit
+
+- Remplacement du contrôle natif non sélectionnable par un menu déroulant accessible composé de boutons de faction.
+- Ouverture/fermeture, choix de faction, fermeture au clic extérieur et filtrage immédiat sans relancer l'audit Kyber.
+- Menu placé dans une couche dédiée au-dessus de la liste pour éviter les problèmes de superposition.
+- Cache navigateur et versions des ressources incrémentés.
+
 ## V4.1.47 — Filtre de faction interactif
 
 - Le filtre de faction utilise désormais un gestionnaire d'événement délégué persistant, indépendant des reconstructions successives de la liste.
