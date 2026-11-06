@@ -66,3 +66,29 @@
 .visionnaire-proposal-donors{margin-top:12px}
 .visionnaire-proposal>p{font-size:11px;color:#c4aaaa;line-height:1.5;margin:12px 0 0}
 @media(max-width:720px){.visionnaire-proposal>header,.visionnaire-proposal-speed{align-items:flex-start;flex-direction:column}}
+
+/* V4.1.50 — complete roster impact and transparent strategic ranking */
+.visionnaire-score{font-size:16px!important;font-weight:800;color:#f0d6d7!important;white-space:nowrap}
+.visionnaire-score-breakdown{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 12px}
+.visionnaire-score-breakdown span{display:flex;justify-content:space-between;gap:8px;padding:8px;background:#171617;border:1px solid #302a2d;color:#aaa;font-size:10px}
+.visionnaire-score-breakdown b{color:#eee;font-size:11px}
+.visionnaire-stat-section{margin:12px 0;padding:12px;background:#151416;border:1px solid #302a2d}
+.visionnaire-stat-section> b{display:block;margin-bottom:9px;font-size:10px;letter-spacing:.12em;color:#d49aa0}
+.visionnaire-stat-table{display:grid;gap:1px;max-height:330px;overflow:auto}
+.visionnaire-stat-table>div{display:grid;grid-template-columns:minmax(90px,1fr) minmax(130px,1fr) minmax(100px,auto);gap:10px;align-items:center;padding:6px 8px;background:#1c1a1c;font-size:11px}
+.visionnaire-stat-table>div>span{color:#bbb}
+.visionnaire-stat-table>div>b{text-align:right;color:#eee;font-variant-numeric:tabular-nums}
+.visionnaire-stat-table>div>em{text-align:right;font-style:normal;font-variant-numeric:tabular-nums}
+.visionnaire-stat-table .gain{color:#8fc6a2}
+.visionnaire-stat-table .loss{color:#d88989}
+.visionnaire-stat-table .neutral{color:#aaa}
+.visionnaire-stats-unavailable{margin:8px 0;color:#d8ad7d;font-size:11px}
+.visionnaire-score-note{padding:9px;background:#211d19;border-left:2px solid #a77d58}
+.visionnaire-proposal-donors details{margin-top:8px}
+.visionnaire-proposal-donors summary{cursor:pointer;color:#d7b5a5;font-size:10px}
+@media(max-width:720px){
+ .visionnaire-score-breakdown{grid-template-columns:1fr}
+ .visionnaire-stat-table>div{grid-template-columns:1fr auto;gap:4px}
+ .visionnaire-stat-table>div>b{grid-column:1;text-align:left}
+ .visionnaire-stat-table>div>em{grid-column:2;grid-row:1/3}
+}
