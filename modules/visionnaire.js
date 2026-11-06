@@ -152,9 +152,13 @@
       <div class="visionnaire-section-kicker">ÉTAPE 3 · CHOISIR LES SLOTS</div><h3>${esc(row.character.name||row.character.baseId)}</h3>
       <p>Sélectionne explicitement les emplacements que tu souhaites travailler. Aucun mod ne sera déplacé automatiquement.</p>
       <div class="visionnaire-slots">${row.slotRows.map(item=>{
-        const m=item.mod;const mismatch=criteria.some(x=>x.slot===item.slot);
+        const m=item.mod;
+        const setIssue=row.setSlots.some(x=>x.slot===item.slot);
+        const primaryIssue=row.primarySlots.some(x=>x.slot===item.slot);
+        const mismatch=criteria.some(x=>x.slot===item.slot);
+        const issueLabel=state.mode==='both' ? [setIssue?'Set incorrect':'',primaryIssue?'Primaire incorrecte':''].filter(Boolean).join(' · ') : state.mode==='sets'?'Set incorrect':'Primaire incorrecte';
         return `<button type="button" data-slot="${item.slot}" class="${state.slots.has(item.slot)?'selected':''} ${mismatch?'mismatch':''}">
-          <span>${LABELS[item.slot]}</span><b>${esc(m?.set_name||'Slot vide')}</b><small>${esc(m?.primary_stat||'—')} ${m?.primary_value??''}</small><em>${mismatch?'Écart Kyber':'Référence respectée / non signalée'}</em>
+          <span>${LABELS[item.slot]}</span><b>${esc(m?.set_name||'Slot vide')}</b><small>${esc(m?.primary_stat||'—')} ${m?.primary_value??''}</small><em>${mismatch?esc(issueLabel):'Référence respectée / non signalée'}</em>
         </button>`;
       }).join('')}</div>
       <div class="visionnaire-next"><span>${state.slots.size} slot(s) sélectionné(s)</span><button type="button" disabled>RECHERCHER DES ÉCHANGES — PROCHAINE ÉTAPE</button></div>
