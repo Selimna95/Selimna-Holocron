@@ -19,14 +19,17 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.43-kyber-full-distributions", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.43-kyber-full-distributions", sw)
-        self.assertIn("visionnaire.css?v=4.1.43-kyber-full-distributions", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.44-kyber-progress-timeout", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.44-kyber-progress-timeout", sw)
+        self.assertIn("visionnaire.css?v=4.1.44-kyber-progress-timeout", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
         self.assertIn("rosterCharacters", js)
         self.assertIn("Math.min(4,roster.length)", js)
+        self.assertIn("state.progress.done", js)
+        self.assertIn("résultats apparaissent progressivement", js)
+        self.assertIn("state.progress.profiles", js)
         self.assertIn("document.body.dataset.page==='visionnaire'", js)
         self.assertIn('data-mode="sets"', js)
         self.assertIn('data-mode="primaries"', js)
@@ -66,6 +69,7 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("sample_size", core)
         self.assertIn("updated_label", core)
         self.assertIn("kyberProfileHasFullDistribution", core)
+        self.assertIn("AbortSignal.timeout(12000)", core)
         self.assertIn("kyberProfileHasFullDistribution", js)
         self.assertIn("if(!/kyber|swgoh", core)
 
