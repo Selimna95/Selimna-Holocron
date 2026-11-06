@@ -1,7 +1,7 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
-const CACHE_NAME = 'holocron-static-v4.4.40-gac-source-diagnostic-v2';
+const CACHE_NAME = 'holocron-static-v4.4.41-gac-freshness-legacy';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -23,7 +23,7 @@ const STATIC_ASSETS = [
   './modules/core.js?v=4.2.15-kyber-split-percentages',
   './modules/acolyte.js?v=3.4.5-candidate-score',
   './modules/disciple.js?v=3.5.2-ranked-candidates',
-  './modules/seigneur.js?v=3.9.5-gac-freshness',
+  './modules/seigneur.js?v=3.9.6-gac-freshness-legacy',
   './modules/seigneur-impact.js?v=1.0.0-roster-impact',
   './modules/visionnaire.js?v=4.1.56-gac-source-diagnostic-v2',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
