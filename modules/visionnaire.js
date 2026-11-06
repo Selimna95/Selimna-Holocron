@@ -189,7 +189,7 @@
           const mismatch=activeIssues(row);
           const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):state.mode==='primaries'?'Répartition Kyber par slot':'Sets et primaires Kyber';
           const sample=(row.profile?.sample_size?' · '+row.profile.sample_size+' unités':'')+(row.profile?.updated_label?' · '+row.profile.updated_label:'');
-          const referenceMeta=state.mode==='sets'?(row.setConfigurations?.length||0)+' configurations'+sample:sample;
+          const referenceMeta=state.mode==='sets'?(row.setConfigurations?.length||0)+' configurations · couverture '+Math.round(Math.min(1,row.setCoverage||0)*100)+'%'+sample:sample;
           return `<button type="button" class="visionnaire-character ${selected?'active':''}" data-character="${esc(characterKey(c))}">
             <span class="visionnaire-avatar">${esc(String(c.name||c.baseId||'?').slice(0,1))}</span>
             <span class="visionnaire-character-main"><b>${esc(c.name||c.baseId||'Personnage')}</b><small>${mismatch.length} slot(s) concernés · ${esc(slotSummary(row))} · ${esc(factionsOf(row).join(' / ')||'Faction non identifiée')}</small></span>
@@ -220,11 +220,12 @@
         const setIssue=row.setSlots.some(x=>x.slot===item.slot);
         const primaryIssue=row.primarySlots.some(x=>x.slot===item.slot);
         const mismatch=criteria.some(x=>x.slot===item.slot);
-        const primaryRef=item.primaryReference;
         const alternatives=item.primaryDistribution.slice(0,3).map(x=>x.name+' '+(x.weight*100).toFixed(1)+'%').join(' · ');
-        const issueLabel=state.mode==='both' ? [setIssue?'Set incorrect':'',primaryIssue?'Primaire incorrecte':''].filter(Boolean).join(' · ') : state.mode==='sets'?'Set incorrect':'Primaire incorrecte';
+        const setLabel=setIssue?'Set hors de la configuration Kyber la plus proche':item.hasSetReference?'Composition comparée à toutes les configurations Kyber':'Set non vérifiable';
+        const primaryLabel=!item.hasPrimaryReference?'Primaire non vérifiable':primaryIssue?'Primaire non observée en Kyber':('Primaire observée '+(item.primaryShare*100).toFixed(1)+'%');
+        const detail=[setLabel,primaryLabel,alternatives].filter(Boolean).join(' · ');
         return `<button type="button" data-slot="${item.slot}" class="${state.slots.has(item.slot)?'selected':''} ${mismatch?'mismatch':''}">
-          <span>${LABELS[item.slot]}</span><b>${esc(m?.set_name||'Slot vide')}</b><small>${esc(m?.primary_stat||'—')} ${m?.primary_value??''}</small><em>${mismatch?esc(issueLabel):item.hasPrimaryReference?`Kyber : ${Math.round(item.primaryShare*1000)/10}% · ${esc(alternatives)}`:item.hasSetReference?'Sets comparés à toutes les configurations Kyber':'Référence partielle / non vérifiable'}</em>
+          <span>${LABELS[item.slot]}</span><b>${esc(m?.set_name||'Slot vide')}</b><small>${esc(m?.primary_stat||'—')} ${m?.primary_value??''}</small><em>${esc(detail)}</em>
         </button>`;
       }).join('')}</div>
       <div class="visionnaire-next"><span>${state.slots.size} slot(s) sélectionné(s)</span><button type="button" disabled>RECHERCHER DES ÉCHANGES — PROCHAINE ÉTAPE</button></div>
