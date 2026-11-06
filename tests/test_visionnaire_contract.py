@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.46-kyber-split-percentages", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.46-kyber-split-percentages", sw)
-        self.assertIn("visionnaire.css?v=4.1.46-kyber-split-percentages", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.47-faction-filter-interaction", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.47-faction-filter-interaction", sw)
+        self.assertIn("visionnaire.css?v=4.1.47-faction-filter-interaction", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -47,6 +47,17 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertNotIn("slice(0,50)", js)
         self.assertNotIn("transferMod", js)
         self.assertNotIn("moveMod", js)
+
+    def test_faction_filter_uses_persistent_interaction(self):
+        js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
+        css = (ROOT / "visionnaire.css").read_text(encoding="utf-8")
+        self.assertIn("root.dataset.factionFilterBound!=='true'", js)
+        self.assertIn("root.addEventListener('change'", js)
+        self.assertIn("event.target?.id!=='visionnaireFaction'", js)
+        self.assertIn("state.faction=event.target.value||'ALL'", js)
+        self.assertNotIn("$('visionnaireFaction')?.addEventListener", js)
+        self.assertIn("pointer-events:auto!important", css)
+        self.assertIn("cursor:pointer", css)
 
     def test_incomplete_kyber_data_is_not_counted_as_a_mismatch(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
