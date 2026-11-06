@@ -1,3 +1,9 @@
+## V4.1.47 — Filtre de faction interactif
+
+- Le filtre de faction utilise désormais un gestionnaire d'événement délégué persistant, indépendant des reconstructions successives de la liste.
+- Le contrôle natif est explicitement interactif, accessible au pointeur et prioritaire dans la pile d'affichage ; le changement de faction filtre les résultats immédiatement sans relancer l'audit Kyber.
+- Cache navigateur et versions des ressources incrémentés.
+
 ## V4.1.46 — Extraction des distributions Kyber
 
 - Le parseur accepte les lignes de données où SWGOH.GG sépare le nom d'un set ou d'une primaire et son pourcentage dans deux éléments HTML distincts.
