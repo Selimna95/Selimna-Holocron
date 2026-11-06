@@ -1,3 +1,11 @@
+## V4.1.41 — Filtre de faction et résultats directs du Visionnaire
+
+- Suppression de la recherche nominative à l'étape 2 : les personnages ne sont plus à retrouver un par un.
+- Ajout d'un filtre de faction, réglé par défaut sur « Toutes les factions », alimenté par le référentiel partagé du roster.
+- Les personnages présentant les écarts Kyber du domaine choisi s'affichent directement ; changer de faction réduit immédiatement cette liste.
+- Les résultats conservent le détail des slots et restent sélectionnables pour poursuivre l'analyse.
+- Version des assets et cache PWA incrémentés.
+
 ## V4.1.40 — Filtres d'écarts Kyber du Visionnaire
 
 - Remplacement du grand choix de domaine par trois filtres compacts : mauvais sets, mauvaises primaires, sets + primaires.
