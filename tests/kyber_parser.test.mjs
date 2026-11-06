@@ -35,4 +35,8 @@ assert.deepEqual(
   JSON.parse(JSON.stringify(sandbox.parsePrimaries(splitRows, 'Arrow'))),
   { Speed: 0.9597, Offense: 0.0172 }
 );
+assert.deepEqual(
+  JSON.parse(JSON.stringify(sandbox.parseRows(['Primary Set', 'Speed78.7%', 'Offense4.4%'], 1, 3))),
+  [{ name: 'Speed', weight: 0.787 }, { name: 'Offense', weight: 0.044 }]
+);
 console.log('Kyber split-percentage parser tests passed.');
