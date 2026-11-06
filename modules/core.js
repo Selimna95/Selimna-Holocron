@@ -39,7 +39,7 @@ function esc(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':
 function num(value, digits=0) { const n=Number(value); return Number.isFinite(n) ? n.toLocaleString('fr-FR',{maximumFractionDigits:digits}) : '0'; }
 // Valeur numérique dédiée aux calculs : num() est un formateur d'affichage et renvoie une chaîne localisée.
 function numericValue(value, fallback=0) { if(typeof value==='number')return Number.isFinite(value)?value:fallback; const raw=String(value??'').trim().replace(/[\s\u00a0\u202f]/g,'').replace(',','.'); if(!raw)return fallback; const n=Number(raw); return Number.isFinite(n)?n:fallback; }
-function parseLabeledNumber(text,label){const escaped=String(label).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const m=String(text||'').match(new RegExp(escaped+'\\s*([0-9][0-9,]*)','i'));return m?Number(String(m[1]).replace(/,/g,'')):0;}
+function parseLabeledNumber(text,label){const escaped=String(label).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const m=String(text||'').match(new RegExp(escaped+'\s*([0-9][0-9,]*)','i'));return m?Number(String(m[1]).replace(/,/g,'')):0;}
 function extractGalacticPowerFromProfile(text){const body=String(text||'');let total=parseLabeledNumber(body,'Galactic Power');const characters=parseLabeledNumber(body,'Galactic Power (Characters)');const ships=parseLabeledNumber(body,'Galactic Power (Ships)');if(!total)total=characters+ships;return {total,characters,ships};}
 function renderGalacticPower(){const gp=accountGalacticPower||{total:0,characters:0,ships:0};setText('gpTotal',gp.total?num(gp.total):'0');setText('gpCharacters',gp.characters?num(gp.characters):'0');setText('gpShips',gp.ships?num(gp.ships):'0');setText('gpBreakdown',gp.total?`${num(gp.characters)} terrestre · ${num(gp.ships)} spatial`:'En attente de synchronisation');}
 
@@ -207,9 +207,9 @@ function kyberPercentageEntries(lines,start=0,end=lines.length){
   };
   for(let i=start;i<end;i++){
     const line=String(lines[i]||'').trim();
-    const inline=line.match(/^(.+?)\\s+([0-9]+(?:[.,][0-9]+)?)\\s*%$/);
+    const inline=line.match(/^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)\s*%$/);
     if(inline){add(inline[1],inline[2]);continue;}
-    let value=line.match(/^([0-9]+(?:[.,][0-9]+)?)\\s*%$/);
+    let value=line.match(/^([0-9]+(?:[.,][0-9]+)?)\s*%$/);
     if(!value&&/^[0-9]+(?:[.,][0-9]+)?$/.test(line)&&i+1<end&&/^%$/.test(String(lines[i+1]||'').trim())){value=[line,line];i++;}
     if(value&&i>start){
       const label=String(lines[i-1]||'').trim();
@@ -225,7 +225,7 @@ function kyberPrimaryDistribution(lines,heading){
   let end=lines.length;
   for(let i=start+1;i<lines.length;i++){
     const line=String(lines[i]||'').trim();
-    if(headings.some(label=>label.toLowerCase()===line.toLowerCase())||/^Average Stats for\\b/i.test(line)){end=i;break;}
+    if(headings.some(label=>label.toLowerCase()===line.toLowerCase())||/^Average Stats for\b/i.test(line)){end=i;break;}
   }
   return Object.fromEntries(kyberPercentageEntries(lines,start+1,end).map(item=>[item.name,item.weight]));
 }
