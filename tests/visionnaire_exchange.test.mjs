@@ -13,6 +13,10 @@ assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bo
 assert.ok(js.includes('options.slice(0,24)'), 'Search must keep a broad enough donor pool before validating donor set preservation');
 assert.ok(js.includes('modTotalSpeed(b)-modTotalSpeed(a)'), 'Candidate search must prioritize speed-preserving mods before donor-usage tie breaks');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
+assert.ok(js.includes('async function buildExchangeProposals'), 'Six-slot search must run asynchronously');
+assert.ok(js.includes('await new Promise(resolve=>setTimeout(resolve,0))'), 'Search must yield to the browser while evaluating combinations');
+assert.ok(js.includes('await buildExchangeProposals'), 'UI must await the responsive search routine');
+assert.ok(js.includes('searchProgress.tested'), 'UI must expose live search progress');
 assert.ok(js.includes('speedLoss:beforeSpeed-afterSpeed'), 'Rejected speed exchanges must report the measured speed loss');
 assert.ok(js.includes('afterSpeed+1e-9<beforeSpeed'),'Target speed must never decrease');
 assert.ok(js.includes('RECOMMANDÉ'),'Scenario verdict must be explicit');
