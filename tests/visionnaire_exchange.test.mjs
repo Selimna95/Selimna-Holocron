@@ -29,7 +29,7 @@ console.log('Visionnaire exchange contract tests passed.');
 import vm from 'node:vm';
 
 const start=js.indexOf('  const exchangeSetCounts =');
-const end=js.indexOf('  function buildExchangeProposals',start);
+const end=js.indexOf('  async function buildExchangeProposals',start);
 const sandbox={
   key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
@@ -52,7 +52,7 @@ const worse=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:3,pr
 assert.ok(better.score>worse.score);
 assert.equal(better.verdict,'RECOMMANDÉ');
 
-const buildStart=js.indexOf('  function buildExchangeProposals');
+const buildStart=js.indexOf('  async function buildExchangeProposals');
 const buildEnd=js.indexOf('  function renderExchangeProposals',buildStart);
 const buildSandbox={
   SLOTS:['Square','Arrow','Diamond','Triangle','Circle','Cross'],
