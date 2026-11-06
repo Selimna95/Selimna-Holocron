@@ -1,3 +1,10 @@
+## V4.1.40 — Filtres d'écarts Kyber du Visionnaire
+
+- Remplacement du grand choix de domaine par trois filtres compacts : mauvais sets, mauvaises primaires, sets + primaires.
+- Chaque filtre affiche le nombre de personnages concernés ; la liste et les slots détaillés suivent le filtre actif.
+- En mode combiné, les personnages doivent présenter les deux types d'écarts et les slots indiquent précisément la nature de chaque anomalie.
+- Version des assets et cache PWA incrémentés.
+
 ## V4.1.39 — Chargement à l'ouverture du Visionnaire
 
 - Le scan Kyber complet démarre uniquement lorsque la page Visionnaire est ouverte, pas pendant la synchronisation du profil sur le Sanctuaire.
