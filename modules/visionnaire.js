@@ -142,6 +142,7 @@
             row=inspectCharacter(character,profile);
             state.progress.profiles++;
           } else {
+            if(window.__kyberLastFetchError)state.progress.lastError=String(window.__kyberLastFetchError);
             row={character,profile:null,slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[]};
           }
         }catch(error){
@@ -202,7 +203,7 @@
       </section>
       <section class="visionnaire-list">
         <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><label class="visionnaire-faction-filter" for="visionnaireFaction"><span>FACTION</span><select id="visionnaireFaction"><option value="ALL">Toutes les factions</option>${factionOptions().map(f=>`<option value="${esc(f)}" ${state.faction===f?'selected':''}>${esc(f)}</option>`).join('')}</select></label></div>
-        ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber : '+state.progress.done+' / '+state.progress.total+' personnages traités · '+state.progress.profiles+' profils complets · '+state.progress.failures+' erreurs. Les résultats apparaissent progressivement.</p>':rows.length?rows.map(row=>{
+        ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber : '+state.progress.done+' / '+state.progress.total+' personnages traités · '+state.progress.profiles+' profils complets · '+state.progress.failures+' erreurs'+(state.progress.lastError?' · Dernier signal : '+esc(state.progress.lastError):'')+'. Les résultats apparaissent progressivement.</p>':rows.length?rows.map(row=>{
           const c=row.character;const selected=state.selected?.character===c;
           const mismatch=activeIssues(row);
           const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):state.mode==='primaries'?'Répartition Kyber par slot':'Sets et primaires Kyber';
