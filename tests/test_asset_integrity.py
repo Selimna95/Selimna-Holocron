@@ -195,7 +195,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn('id="visionnaire"', self.html)
         self.assertIn('data-page="visionnaire"', self.html)
         self.assertIn("modules/visionnaire.js?v=4.1.43-kyber-full-distributions", self.html)
-        self.assertIn("visionnaire.css?v=4.1.42-kyber-dominant-reference", self.html)
+        self.assertIn("visionnaire.css?v=4.1.43-kyber-full-distributions", self.html)
         self.assertIn("rosterCharacters", js)
         self.assertIn('data-mode="sets"', js)
         self.assertIn('data-mode="primaries"', js)
