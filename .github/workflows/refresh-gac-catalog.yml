@@ -10,8 +10,6 @@ on:
       - "scripts/update_gac_usage.py"
       - "tests/test_gac_usage.py"
       - ".github/workflows/refresh-gac-catalog.yml"
-      - "gac-usage.json"
-      - "gac-usage.js"
 
 permissions:
   contents: write
