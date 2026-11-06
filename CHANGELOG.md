@@ -1,3 +1,8 @@
+## V4.1.53 — diagnostic des donneurs indisponibles
+
+- Si aucun mod source n'est éligible, le Visionnaire distingue désormais explicitement l'absence de mods libres de l'absence d'utilisation GAC vérifiée.
+- Le moteur ne présente plus ce cas comme une simple absence de permutation stratégique.
+
 ## V4.1.52 — transparence du score stratégique
 
 - La fiche de scénario affiche désormais la pondération complète du score : 45% référence Kyber, 25% équilibre statistique cible, 30% coût des donneurs.
