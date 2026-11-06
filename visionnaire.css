@@ -21,7 +21,7 @@
 .visionnaire-character-main,.visionnaire-character-reference{display:flex;flex-direction:column;gap:5px;min-width:0}.visionnaire-character-main small,.visionnaire-character-reference small{color:#999;font-size:10px}.visionnaire-character-reference b{font-size:11px;font-weight:500;color:#d8b4a8;overflow-wrap:anywhere}
 .visionnaire-character>i{font-style:normal;color:#d58b8e}
 .visionnaire-empty{padding:20px;color:#aaa;background:#111;border:1px dashed #393235;line-height:1.6}
-.visionnaire-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:18px 0}
+.visionnaire-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:18px 0}
 .visionnaire-slots button{display:flex;flex-direction:column;gap:6px;text-align:left;padding:13px;background:#111;border:1px solid #343034;color:#eee;cursor:pointer;min-width:0}
 .visionnaire-slots button.mismatch{border-left:3px solid #a94d59}.visionnaire-slots button.selected{outline:1px solid #e0a0a5;background:#241519}
 .visionnaire-slots button span{font-size:10px;letter-spacing:.12em;color:#c58b76}.visionnaire-slots button b{font-size:13px}.visionnaire-slots button small{color:#aaa}.visionnaire-slots button em{font-size:10px;color:#999;font-style:normal}
