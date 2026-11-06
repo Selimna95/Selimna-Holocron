@@ -269,10 +269,9 @@
       .filter(row=>Math.abs(row.delta)>1e-8).sort((a,b)=>Math.abs(b.relative??0)-Math.abs(a.relative??0)||Math.abs(b.delta)-Math.abs(a.delta));
   };
   const exchangeStatBalance = (before,after) => {
-    const rows=exchangeStatsDelta(before,after);
-    if(!rows?.length)return null;
-    const measurable=rows.filter(row=>row.relative!==null);
-    return measurable.length?measurable.reduce((sum,row)=>sum+row.relative,0)/measurable.length:null;
+    if(!before||!after)return null;
+    const measurable=Object.keys(before).filter(name=>Object.prototype.hasOwnProperty.call(after,name)&&Number(before[name])!==0);
+    return measurable.length?measurable.reduce((sum,name)=>sum+((Number(after[name])||0)-(Number(before[name])||0))/Math.abs(Number(before[name])),0)/measurable.length:null;
   };
   const exchangeClamp = value => Math.max(0,Math.min(100,Number(value)||0));
   function exchangeScenarioScore({mode,beforeSetDistance,afterSetDistance,primaryShare,targetBalance,donors}){
@@ -293,10 +292,13 @@
   }
   const exchangeFormatStat = value => Number(value).toLocaleString('fr-FR',{maximumFractionDigits:1});
   function exchangeStatsMarkup(before,after){
-    const rows=exchangeStatsDelta(before,after);
-    if(!rows)return '<p class="visionnaire-stats-unavailable">Calcul non vérifiable : statistiques de base indisponibles pour ce personnage.</p>';
-    if(!rows.length)return '<p class="visionnaire-stats-unavailable">Aucune variation de statistique calculée.</p>';
-    return '<div class="visionnaire-stat-table">'+rows.map(row=>'<div><span>'+esc(row.name)+'</span><b>'+exchangeFormatStat(row.before)+' → '+exchangeFormatStat(row.after)+'</b><em class="'+(row.delta>0?'gain':row.delta<0?'loss':'neutral')+'">'+(row.delta>0?'+':'')+exchangeFormatStat(row.delta)+(row.relative===null?'':' · '+(row.relative>0?'+':'')+(row.relative*100).toFixed(1)+'%')+'</em></div>').join('')+'</div>';
+    if(!before||!after)return '<p class="visionnaire-stats-unavailable">Calcul non vérifiable : statistiques de base indisponibles pour ce personnage.</p>';
+    const names=[...new Set([...Object.keys(before),...Object.keys(after)])].sort((a,b)=>a.localeCompare(b,'fr'));
+    if(!names.length)return '<p class="visionnaire-stats-unavailable">Aucune statistique de base disponible.</p>';
+    return '<div class="visionnaire-stat-table">'+names.map(name=>{
+      const from=Number(before[name])||0,to=Number(after[name])||0,delta=to-from,relative=from?delta/Math.abs(from):null;
+      return '<div><span>'+esc(name)+'</span><b>'+exchangeFormatStat(from)+' → '+exchangeFormatStat(to)+'</b><em class="'+(delta>0?'gain':delta<0?'loss':'neutral')+'">'+(delta>0?'+':'')+exchangeFormatStat(delta)+(relative===null?'':' · '+(relative>0?'+':'')+(relative*100).toFixed(1)+'%')+'</em></div>';
+    }).join('')+'</div>';
   }
   function buildExchangeProposals(row,selectedSlots){
     const character=row.character,profile=row.profile;
