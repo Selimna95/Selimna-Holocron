@@ -28,3 +28,10 @@
 .visionnaire-next{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.visionnaire-next span{color:#d5b6b6}.visionnaire-next button{padding:12px 15px;background:#292326;border:1px solid #55444a;color:#aaa}
 .visionnaire-note{font-size:12px;color:#b7a4a4;margin-top:15px}
 @media(max-width:720px){.visionnaire-page .visionnaire-header,.visionnaire-list-head{flex-direction:column;align-items:stretch}.visionnaire-domain-options{grid-template-columns:1fr}.visionnaire-character{grid-template-columns:36px minmax(0,1fr) 16px}.visionnaire-character-reference{grid-column:2;grid-row:2}.visionnaire-character>i{grid-column:3;grid-row:1/3}.visionnaire-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Filtres compacts du Visionnaire */
+.visionnaire-filters{display:flex;flex-wrap:wrap;gap:8px;margin:13px 0 4px}
+.visionnaire-filters button{display:inline-flex;align-items:center;gap:12px;padding:10px 14px;background:#111;color:#c9c1c1;border:1px solid #393235;cursor:pointer;letter-spacing:.06em;font-size:11px}
+.visionnaire-filters button.active{border-color:#bd5965;background:#251519;color:#fff}
+.visionnaire-filters button span{display:grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:12px;background:#292326;color:#e6c4c5;font-size:11px}
+@media(max-width:520px){.visionnaire-filters{display:grid;grid-template-columns:1fr}.visionnaire-filters button{justify-content:space-between}}
