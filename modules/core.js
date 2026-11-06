@@ -431,46 +431,58 @@ async function fetchKyberProfile(character){
   const requestKey=normalizeKyberKey(display)||slug(character.baseId||character.base_id||'');
   if(kyberProfileInflight.has(requestKey))return kyberProfileInflight.get(requestKey);
   const request=(async()=>{
-    const existing=profileForCharacter(character); if(kyberProfileHasFullDistribution(existing))return existing;
+    const existing=profileForCharacter(character);
+    if(kyberProfileHasFullDistribution(existing))return existing;
+    let fallback=kyberProfileValid(existing)?existing:null;
     const cache=readKyberPersistentCache(),cached=cache[requestKey];
-    if(cached&&kyberProfileHasFullDistribution(cached.profile)){
-      profiles[cached.slug||requestKey]=cached.profile;
-      return cached.profile;
+    if(cached&&kyberProfileValid(cached.profile)){
+      if(kyberProfileHasFullDistribution(cached.profile)){
+        profiles[cached.slug||requestKey]=cached.profile;
+        return cached.profile;
+      }
+      fallback=fallback||cached.profile;
     }
     const tryCandidate=async candidate=>{
       try{
         const response=await fetchKyberThroughRelay(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`);
         if(!response.ok){
           const upstreamStatus=Number(response.headers.get('X-Upstream-Status')||0);
+          const effectiveStatus=upstreamStatus||response.status;
+          window.__kyberLastFetchError=`SWGOH.GG HTTP ${effectiveStatus} pour ${candidate}`;
           log(`Référence Kyber ${candidate} : Worker HTTP ${response.status}${upstreamStatus?` (SWGOH.GG ${upstreamStatus})`:''}.`);
-          const terminalStatus=upstreamStatus||response.status;
-          return {profile:null,terminal:terminalStatus>=500||terminalStatus===403||terminalStatus===429};
+          return {profile:null,terminal:effectiveStatus>=500||effectiveStatus===403||effectiveStatus===429};
         }
-        const html=await response.text();
-        const parsed=parseKyberProfileHTML(html,display,candidate);
+        const parsed=parseKyberProfileHTML(await response.text(),display,candidate);
+        if(!parsed)log(`Référence Kyber ${candidate} ignorée : ${window.__kyberLastFetchError||'contenu non reconnu'}.`);
         return {profile:kyberProfileValid(parsed)?parsed:null,terminal:false};
       }catch(error){
-        log(`Référence Kyber ${candidate}: ${error?.message||error}`);
+        const message=String(error?.message||error);
+        window.__kyberLastFetchError=message;
+        log(`Référence Kyber ${candidate}: ${message}`);
         return {profile:null,terminal:true};
       }
     };
+    let indexed='';
     try{
       const index=await loadKyberUnitIndex();
-      const indexed=index.get(normalizeKyberKey(display));
-      if(indexed){
-        const result=await tryCandidate(indexed);
-        if(result.profile){
-          profiles[indexed]=result.profile;
-          persistKyberProfile(requestKey,indexed,result.profile);
-          return result.profile;
-        }
-        if(result.terminal)return null;
-      }
+      indexed=index.get(normalizeKyberKey(display))||'';
     }catch(error){
-      log(`Index personnages Kyber indisponible : ${error?.message||error}`);
-      // Sans index fiable, ne pas essayer des slugs devinés pour chaque unité.
-      return null;
+      const message=String(error?.message||error);
+      window.__kyberLastFetchError='Index SWGOH.GG indisponible : '+message;
+      log(`Index personnages Kyber indisponible : ${message}. Tentative avec le slug du personnage.`);
     }
+    const directCandidate=slug(display);
+    const candidates=[...new Set([indexed,directCandidate].filter(Boolean))];
+    for(const candidate of candidates){
+      const result=await tryCandidate(candidate);
+      if(result.profile){
+        profiles[candidate]=result.profile;
+        persistKyberProfile(requestKey,candidate,result.profile);
+        return result.profile;
+      }
+      if(result.terminal)break;
+    }
+    if(fallback)return fallback;
     return null;
   })();
   kyberProfileInflight.set(requestKey,request);
