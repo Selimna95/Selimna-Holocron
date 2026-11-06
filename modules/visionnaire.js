@@ -216,10 +216,10 @@
       <section class="visionnaire-list">
         <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><div class="visionnaire-faction-filter">
             <span class="visionnaire-faction-label">FACTION</span>
-            <button type="button" class="visionnaire-faction-toggle" data-faction-toggle aria-expanded="\${state.factionOpen?'true':'false'}" aria-haspopup="listbox">
-              <span>\${esc(state.faction==='ALL'?'Toutes les factions':state.faction)}</span><b aria-hidden="true">\${state.factionOpen?'⌃':'⌄'}</b>
+            <button type="button" class="visionnaire-faction-toggle" data-faction-toggle aria-expanded="${state.factionOpen?'true':'false'}" aria-haspopup="listbox">
+              <span>${esc(state.faction==='ALL'?'Toutes les factions':state.faction)}</span><b aria-hidden="true">${state.factionOpen?'⌃':'⌄'}</b>
             </button>
-            \${state.factionOpen?'<div class="visionnaire-faction-menu" role="listbox" aria-label="Choisir une faction"><button type="button" role="option" aria-selected="'+(state.faction==='ALL')+'" data-faction-option="ALL" class="'+(state.faction==='ALL'?'active':'')+'">Toutes les factions</button>'+factionOptions().map(f=>'<button type="button" role="option" aria-selected="'+(state.faction===f)+'" data-faction-option="'+esc(f)+'" class="'+(state.faction===f?'active':'')+'">'+esc(f)+'</button>').join('')+'</div>':''}
+            ${state.factionOpen?'<div class="visionnaire-faction-menu" role="listbox" aria-label="Choisir une faction"><button type="button" role="option" aria-selected="'+(state.faction==='ALL')+'" data-faction-option="ALL" class="'+(state.faction==='ALL'?'active':'')+'">Toutes les factions</button>'+factionOptions().map(f=>'<button type="button" role="option" aria-selected="'+(state.faction===f)+'" data-faction-option="'+esc(f)+'" class="'+(state.faction===f?'active':'')+'">'+esc(f)+'</button>').join('')+'</div>':''}
           </div></div>
         ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber : '+state.progress.done+' / '+state.progress.total+' personnages traités · '+state.progress.profiles+' profils complets · '+state.progress.failures+' erreurs'+(state.progress.lastError?' · Dernier signal : '+esc(state.progress.lastError):'')+'. Les résultats apparaissent progressivement.</p>':rows.length?rows.map(row=>{
           const c=row.character;const selected=state.selected?.character===c;
