@@ -119,7 +119,7 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("function exchangeScenarioScore", js)
         self.assertIn("function exchangeTargetFocusImpact", js)
         self.assertIn("if(targetFocusImpact?.losses.length)return", js)
-        self.assertIn("aucune secondaire prioritaire ne perd plus de 25%", js)
+        self.assertIn("aucune secondaire Kyber prioritaire ne perd plus de 25%", js)
         self.assertIn("function exchangeSecondaryFocusScore", js)
         self.assertIn("exchangeSecondaryFocusScore(profile,finalTarget)", js)
         self.assertIn("proposal.score.secondaryFocus", js)
