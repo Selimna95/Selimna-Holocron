@@ -29,37 +29,64 @@
     });
     return SLOTS.map(slot=>({slot,mod:bySlot.get(slot)||null}));
   };
-  const profileSets = profile => {
-    const names=[];
-    (Array.isArray(profile?.sets)?profile.sets:[]).forEach(item=>{
-      const name=typeof item==='string'?item:item?.name;
-      if(name) names.push(name);
+  const expectedSetCounts = profile => {
+    const specific=(Array.isArray(profile?.specific_sets)?profile.specific_sets:[])
+      .filter(item=>item?.counts&&Object.keys(item.counts).length)
+      .sort((a,b)=>Number(b.weight||0)-Number(a.weight||0));
+    if(specific.length){
+      return Object.fromEntries(Object.entries(specific[0].counts)
+        .map(([name,count])=>[labelSet(name),Number(count)||0]).filter(([name,count])=>name&&count>0));
+    }
+    const entries=(Array.isArray(profile?.sets)?profile.sets:[])
+      .map(item=>typeof item==='string'?{name:item}:item)
+      .filter(item=>item?.name&&Number(item.count)>0)
+      .sort((a,b)=>Number(b.weight||0)-Number(a.weight||0));
+    const byCount=new Map();
+    entries.forEach(item=>{
+      const count=Number(item.count),weight=Number(item.weight||0);
+      if(weight<0.20)return;
+      const previous=byCount.get(count);
+      if(!previous||weight>previous.weight)byCount.set(count,{name:labelSet(item.name),weight});
     });
-    (Array.isArray(profile?.specific_sets)?profile.specific_sets:[]).forEach(item=>{
-      Object.keys(item?.counts||{}).forEach(name=>names.push(name));
-    });
-    return [...new Set(names.map(labelSet).filter(Boolean))];
+    return Object.fromEntries([...byCount.entries()].map(([count,item])=>[item.name,count]).filter(([name,count])=>name&&count>0));
   };
-  const primaryOptions = (profile,slot) => {
-    if(FIXED[slot]) return [FIXED[slot]];
-    const entries=Object.entries(profile?.slots?.[slot]?.primaries||{});
-    return entries.sort((a,b)=>Number(b[1]||0)-Number(a[1]||0)).map(([name])=>name);
+  const profileSets = profile => Object.entries(expectedSetCounts(profile)||{}).map(([name,count])=>`${name} ×${count}`);
+  const dominantPrimary = (profile,slot) => {
+    if(FIXED[slot])return null;
+    const entries=Object.entries(profile?.slots?.[slot]?.primaries||{})
+      .map(([name,weight])=>({name,weight:Number(weight)||0}))
+      .sort((a,b)=>b.weight-a.weight);
+    if(!entries.length||entries[0].weight<0.5)return null;
+    return entries[0];
   };
   const inspectCharacter = (character,profile) => {
-    const allowedSets=profileSets(profile);
-    const slotRows=modsOf(character).map(({slot,mod})=>{
-      const setOk=!!mod && allowedSets.includes(labelSet(mod.set_name??mod.set??''));
-      const primaries=primaryOptions(profile,slot);
-      const primaryOk=!!mod && primaries.length>0 && primaries.some(name=>key(name)===key(mod.primary_stat));
-      return {slot,mod,setOk,primaryOk,hasSetReference:allowedSets.length>0,hasPrimaryReference:primaries.length>0};
+    const expected=expectedSetCounts(profile);
+    const equipped=modsOf(character);
+    const equippedMods=equipped.filter(x=>x.mod);
+    const currentCounts={};
+    equippedMods.forEach(({mod})=>{
+      const name=labelSet(mod.set_name??mod.set??'');
+      if(name)currentCounts[name]=(currentCounts[name]||0)+1;
     });
-    const setSlots=slotRows.filter(x=>x.hasSetReference&&x.mod&&!x.setOk);
+    const setVerifiable=!!expected&&equippedMods.length===6;
+    const differingSets=setVerifiable
+      ? [...new Set([...Object.keys(expected),...Object.keys(currentCounts)])]
+          .filter(name=>(Number(expected[name])||0)!==(Number(currentCounts[name])||0))
+      : [];
+    const slotRows=equipped.map(({slot,mod})=>{
+      const setName=labelSet(mod?.set_name??mod?.set??'');
+      const primary=dominantPrimary(profile,slot);
+      const primaryOk=!primary||!!mod&&key(primary.name)===key(mod.primary_stat);
+      return {slot,mod,setOk:setVerifiable&&!differingSets.includes(setName),primaryOk,primaryReference:primary,hasSetReference:setVerifiable,hasPrimaryReference:!!primary};
+    });
+    const setSlots=setVerifiable&&differingSets.length
+      ? slotRows.filter(x=>x.mod&&differingSets.includes(labelSet(x.mod.set_name??x.mod.set??'')))
+      : [];
     const primarySlots=slotRows.filter(x=>x.hasPrimaryReference&&x.mod&&!x.primaryOk);
-    const setMismatch=slotRows.some(x=>x.hasSetReference&&x.mod&&!x.setOk);
-    const primaryMismatch=slotRows.some(x=>x.hasPrimaryReference&&x.mod&&!x.primaryOk);
-    const setVerifiable=allowedSets.length>0;
+    const setMismatch=setVerifiable&&differingSets.length>0;
     const primaryVerifiable=slotRows.some(x=>x.hasPrimaryReference);
-    return {character,profile,slotRows,setSlots,primarySlots,setMismatch,primaryMismatch,setVerifiable,primaryVerifiable};
+    const primaryMismatch=primarySlots.length>0;
+    return {character,profile,slotRows,setSlots,primarySlots,setMismatch,primaryMismatch,setVerifiable,primaryVerifiable,expectedSetCounts:expected};
   };
   const characters = () => (Array.isArray(rosterCharacters)?rosterCharacters:[]).filter(c=>typeof rosterUnitType!=='function'||rosterUnitType(c)!=='ship');
   async function buildAudit(){
@@ -110,8 +137,9 @@
   function render(){
     const root=$('visionnaireRoot');if(!root)return;
     const rows=visibleRows();
-    const known=state.rows.filter(r=>r.profile).length;
-    const nonverifiable=state.rows.length-known;
+    const knownSets=state.rows.filter(r=>r.setVerifiable).length;
+    const knownPrimaries=state.rows.filter(r=>r.primaryVerifiable).length;
+    const nonverifiable=state.rows.length-Math.max(knownSets,knownPrimaries);
     root.innerHTML=`
       <header class="visionnaire-header">
         <div><small>HOLOCRON // LE VISIONNAIRE</small><h2>LE VISIONNAIRE</h2><p>Repère les écarts avec Kyber, choisis les slots à travailler et décide des échanges en connaissance de cause.</p></div>
@@ -124,14 +152,14 @@
           <button type="button" data-mode="primaries" class="${state.mode==='primaries'?'active':''}"><b>PRIMAIRES</b><span>${modeCount('primaries')}</span></button>
           <button type="button" data-mode="both" class="${state.mode==='both'?'active':''}"><b>SETS + PRIMAIRES</b><span>${modeCount('both')}</span></button>
         </div>
-        <div class="visionnaire-kpis"><span><b>${state.rows.length}</b> personnages analysés</span><span><b>${known}</b> références Kyber exploitables</span><span><b>${nonverifiable}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
+        <div class="visionnaire-kpis"><span><b>${state.rows.length}</b> personnages analysés</span><span><b>${knownSets}</b> références de sets</span><span><b>${knownPrimaries}</b> références de primaires</span><span><b>${nonverifiable}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
       </section>
       <section class="visionnaire-list">
         <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><label class="visionnaire-faction-filter" for="visionnaireFaction"><span>FACTION</span><select id="visionnaireFaction"><option value="ALL">Toutes les factions</option>${factionOptions().map(f=>`<option value="${esc(f)}" ${state.faction===f?'selected':''}>${esc(f)}</option>`).join('')}</select></label></div>
         ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber sur l’ensemble du roster…</p>':rows.length?rows.map(row=>{
           const c=row.character;const selected=state.selected?.character===c;
           const mismatch=activeIssues(row);
-          const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):state.mode==='primaries'?'Primaires par slot':'Sets et primaires Kyber';
+          const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):state.mode==='primaries'?'Primaires Kyber dominantes':'Sets et primaires Kyber';
           return `<button type="button" class="visionnaire-character ${selected?'active':''}" data-character="${esc(characterKey(c))}">
             <span class="visionnaire-avatar">${esc(String(c.name||c.baseId||'?').slice(0,1))}</span>
             <span class="visionnaire-character-main"><b>${esc(c.name||c.baseId||'Personnage')}</b><small>${mismatch.length} slot(s) concernés · ${esc(slotSummary(row))} · ${esc(factionsOf(row).join(' / ')||'Faction non identifiée')}</small></span>
@@ -162,9 +190,10 @@
         const setIssue=row.setSlots.some(x=>x.slot===item.slot);
         const primaryIssue=row.primarySlots.some(x=>x.slot===item.slot);
         const mismatch=criteria.some(x=>x.slot===item.slot);
+        const primaryRef=item.primaryReference;
         const issueLabel=state.mode==='both' ? [setIssue?'Set incorrect':'',primaryIssue?'Primaire incorrecte':''].filter(Boolean).join(' · ') : state.mode==='sets'?'Set incorrect':'Primaire incorrecte';
         return `<button type="button" data-slot="${item.slot}" class="${state.slots.has(item.slot)?'selected':''} ${mismatch?'mismatch':''}">
-          <span>${LABELS[item.slot]}</span><b>${esc(m?.set_name||'Slot vide')}</b><small>${esc(m?.primary_stat||'—')} ${m?.primary_value??''}</small><em>${mismatch?esc(issueLabel):'Référence respectée / non signalée'}</em>
+          <span>${LABELS[item.slot]}</span><b>${esc(m?.set_name||'Slot vide')}</b><small>${esc(m?.primary_stat||'—')} ${m?.primary_value??''}</small><em>${mismatch?esc(issueLabel):primaryRef?`Kyber : ${esc(primaryRef.name)} · ${Math.round(primaryRef.weight*100)} %`:'Référence respectée / non signalée'}</em>
         </button>`;
       }).join('')}</div>
       <div class="visionnaire-next"><span>${state.slots.size} slot(s) sélectionné(s)</span><button type="button" disabled>RECHERCHER DES ÉCHANGES — PROCHAINE ÉTAPE</button></div>
