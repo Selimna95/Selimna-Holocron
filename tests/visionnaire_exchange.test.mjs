@@ -61,13 +61,15 @@ const buildSandbox={
 vm.createContext(buildSandbox);
 vm.runInContext(js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,speed,primary_stat:primary,primary_value:value});
-function runSearch(target,donorMods,freeMods,profile,mode='sets'){
+function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
   const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
   donor.mods=donorMods;
-  const roster=[target,...(donorMods.length?[donor]:[])];
+  const glDonor={baseId:'GLDONOR',name:'Donneur GL',base_stats:{Speed:100},mods:glDonorMods};
+  const roster=[target,...(donorMods.length?[donor]:[]),...(glDonorMods.length?[glDonor]:[])];
   const byOwner=new Map(roster.map(c=>[c.baseId,c.mods||[]]));
   const sources=[
     ...donorMods.map(m=>({...m,_sourceOwnerKey:'DONOR',_sourceOwner:'Donneur',_sourcePriorityKnown:true,_sourceUsage:12})),
+    ...glDonorMods.map(m=>({...m,_sourceOwnerKey:'GLDONOR',_sourceOwner:'Donneur GL',_sourcePriorityKnown:true,_sourceUsage:0})),
     ...freeMods.map(m=>({...m,_sourceOwnerKey:null,_sourceOwner:'Libre',_sourcePriorityKnown:true,_sourceUsage:0}))
   ];
   Object.assign(buildSandbox,{
@@ -91,7 +93,8 @@ glTarget.mods=[
 ];
 const kyber={specific_sets:[{name:'4 Speed + 2 Offense',counts:{Speed:4,Offense:2},weight:1}]};
 const weakDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('d'+i,slot,'Speed',10,'Speed',10));
-const glSearch=runSearch(glTarget,weakDonor,[],kyber);
+const dangerousGlDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('g'+i,slot,'Speed',25,'Speed',25));
+const glSearch=runSearch(glTarget,weakDonor,[],kyber,'sets',dangerousGlDonor);
 assert.ok(glSearch.proposals.length>0,'A Galactic Legend is a valid recipient');
 assert.equal(glSearch.proposals[0].donors[0].owner.baseId,'DONOR','The non-GL donor is selected');
 assert.ok(glSearch.proposals[0].targetStatsAfter,'Recipient global stats are calculated');
