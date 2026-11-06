@@ -250,10 +250,15 @@ function seigneurCharacterFleetUsage(character,season=seigneurLatestGacUsageSeas
   return {uses:total,known:true,shipCount:assigned.length,reason:'Utilisation GAC des vaisseaux vérifiée'};
 }
 function seigneurDonorPriority(character,season=seigneurLatestGacUsageSeason()){
-  const characterUses=seigneurCharacterGacUsage(character,season);
-  const fleet=seigneurCharacterFleetUsage(character,season);
   const sourceStatus=season?.sourceStatus||'unavailable';
   const formatSeasons=season?.formatSeasons||{};
+  if(['stale','unavailable','awaiting-source-access'].includes(sourceStatus)){
+    return {known:false,uses:null,characterUses:null,fleetUses:null,fleetKnown:false,
+      shipCount:0,reason:sourceStatus==='stale'?'Données GAC périmées · collecte à actualiser':'Source GAC indisponible',
+      sourceStatus,formatSeasons};
+  }
+  const characterUses=seigneurCharacterGacUsage(character,season);
+  const fleet=seigneurCharacterFleetUsage(character,season);
   // Les données terrestres suffisent à classer un donneur. L'absence de
   // métadonnées pilote/vaisseau ne doit pas neutraliser tout le vivier.
   // En revanche, une association pilote connue sans statistique de flotte
