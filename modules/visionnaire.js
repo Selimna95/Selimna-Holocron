@@ -362,7 +362,9 @@
         .filter(mod=>!mod._sourceOwnerKey||mod._visionnaireDonor)
         .sort((a,b)=>Number(a._sourceUsage)-Number(b._sourceUsage)||
           modTotalSpeed(b)-modTotalSpeed(a));
-      optionsBySlot.set(slot,options.slice(0,6));
+      // Keep a wider donor pool: the first six low-usage mods may all fail donor set preservation.
+      // The coordinated search still caps complete combinations at 15,000 tests.
+      optionsBySlot.set(slot,options.slice(0,24));
     }
     const empty=slots.filter(slot=>!(optionsBySlot.get(slot)||[]).length);
     if(empty.length)return {proposals:[],reason:exchangeGacSourceDiagnostic()||('Aucun donneur vérifié pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.')};
