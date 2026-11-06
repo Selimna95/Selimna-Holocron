@@ -45,3 +45,24 @@
 .visionnaire-faction-menu button:hover,.visionnaire-faction-menu button.active{background:#382027!important;color:#fff!important}
 .visionnaire-faction-menu button.active{box-shadow:inset 2px 0 #d16b7b}
 
+
+
+/* Le Visionnaire — scénarios d'échange coordonnés et contrôles de sécurité */
+.visionnaire-next button:not(:disabled){background:#3a1820;border:1px solid #a34b5a;color:#fff;cursor:pointer}
+.visionnaire-next button:disabled{opacity:.45;cursor:not-allowed}
+.visionnaire-proposals{margin-top:22px;display:grid;gap:14px}
+.visionnaire-proposal{padding:16px;background:#101010;border:1px solid #514047;border-left:3px solid #a94d59}
+.visionnaire-proposal>header{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
+.visionnaire-proposal>header b{font-size:11px;letter-spacing:.14em;color:#e3b2b6}
+.visionnaire-proposal>header span{font-size:11px;color:#aaa}
+.visionnaire-proposal-speed{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px;background:#1b1517;margin-bottom:12px}
+.visionnaire-proposal-speed span{font-size:10px;letter-spacing:.12em;color:#c58b76}
+.visionnaire-proposal-speed b{font-size:14px;color:#f0d6d7}
+.visionnaire-proposal-transfers,.visionnaire-proposal-donors{display:grid;gap:8px}
+.visionnaire-proposal-transfers>div,.visionnaire-proposal-donors>div{display:grid;gap:5px;padding:11px;background:#171617;border:1px solid #302a2d;min-width:0}
+.visionnaire-proposal-transfers>div>b{font-size:11px;color:#d49aa0;letter-spacing:.1em}
+.visionnaire-proposal-transfers span,.visionnaire-proposal-donors span{font-size:11px;color:#ddd;overflow-wrap:anywhere}
+.visionnaire-proposal-transfers small,.visionnaire-proposal-donors small{font-size:10px;color:#aaa}
+.visionnaire-proposal-donors{margin-top:12px}
+.visionnaire-proposal>p{font-size:11px;color:#c4aaaa;line-height:1.5;margin:12px 0 0}
+@media(max-width:720px){.visionnaire-proposal>header,.visionnaire-proposal-speed{align-items:flex-start;flex-direction:column}}
