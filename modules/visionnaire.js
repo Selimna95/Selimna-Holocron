@@ -292,7 +292,7 @@
     });
     return scores.reduce((sum,value)=>sum+value,0)/scores.length*100;
   }
-  function exchangeTargetFocusImpact(profile,beforeBuild,afterBuild){
+  function exchangeTargetFocusImpact(profile,beforeBuild,afterBuild,beforeStats,afterStats){
     const focus=Object.entries(profile?.secondary_focus||{}).filter(([,expected])=>Number(expected)>0);
     if(!focus.length)return null;
     const totals=build=>{
@@ -314,7 +314,12 @@
       return {name,before:from,after:to,expected:reference,delta,relative:delta/reference};
     });
     const losses=rows.filter(row=>row.delta < -Math.max(1,row.expected*.25));
-    return {balance:rows.reduce((sum,row)=>sum+row.relative,0)/rows.length,rows,losses};
+    const protectedStats=new Set(['health','protection','offense','defense']);
+    const coreLosses=beforeStats&&afterStats?Object.keys(beforeStats).filter(name=>protectedStats.has(key(name))).map(name=>{
+      const from=Number(beforeStats[name])||0,to=Number(afterStats[name])||0;
+      return {name,before:from,after:to,delta:to-from,relative:from?(to-from)/Math.abs(from):null};
+    }).filter(row=>row.relative!==null&&row.relative<-.35):[];
+    return {balance:rows.reduce((sum,row)=>sum+row.relative,0)/rows.length,rows,losses:[...losses,...coreLosses],coreLosses};
   }
   const exchangeClamp = value => Math.max(0,Math.min(100,Number(value)||0));
   function exchangeScenarioScore({mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,targetBalance,donors}){
@@ -458,7 +463,7 @@
         const knownPrimaryShares=primaryShares.filter(value=>Number.isFinite(value));
         const primaryShare=knownPrimaryShares.length?knownPrimaryShares.reduce((sum,value)=>sum+value,0)/knownPrimaryShares.length:null;
         const secondaryFocus=exchangeSecondaryFocusScore(profile,finalTarget);
-        const targetFocusImpact=exchangeTargetFocusImpact(profile,current,finalTarget);
+        const targetFocusImpact=exchangeTargetFocusImpact(profile,current,finalTarget,targetStatsBefore,targetStatsAfter);
         // Never trade away a major part of a Kyber-prioritized secondary for a cosmetic score gain.
         if(targetFocusImpact?.losses.length)return;
         const score=exchangeScenarioScore({mode:state.mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,
@@ -495,7 +500,7 @@
       '<p class="visionnaire-score-method">Pondération : 45% référence Kyber ('+(state.mode==='primaries'?'primaires 70% · secondaires 30%':state.mode==='both'?'sets 45% · primaires 25% · secondaires 30%':'sets 60% · primaires 15% · secondaires 25%')+') · 25% équilibre statistique cible · 30% coût donneurs (usage GAC 45% · statistiques 35% · statut 20%). La vitesse reste un garde-fou, pas un bonus de score.</p>'+
       '<div class="visionnaire-proposal-speed"><span>VITESSE CIBLE · PLANCHER RESPECTÉ</span><b>'+proposal.beforeSpeed.toFixed(1)+' → '+proposal.afterSpeed.toFixed(1)+' ('+(proposal.speedGain>=0?'+':'')+proposal.speedGain.toFixed(1)+')</b></div>'+
       '<div class="visionnaire-stat-section"><b>IMPACT COMPLET · PERSONNAGE CIBLE</b>'+exchangeStatsMarkup(proposal.targetStatsBefore,proposal.targetStatsAfter)+'</div>'+
-      '<p class="visionnaire-focus-note">'+(proposal.targetFocusImpact?'Garde-fou Kyber : aucune secondaire prioritaire ne perd plus de 25% de sa valeur observée.':'Référence sans secondaires prioritaires exploitables : score statistique incomplet.')+'</p>'+
+      '<p class="visionnaire-focus-note">'+(proposal.targetFocusImpact?'Garde-fou : aucune secondaire Kyber prioritaire ne perd plus de 25%, ni aucune statistique majeure (santé, protection, offense, défense) plus de 35%.':'Référence sans secondaires prioritaires exploitables : score statistique incomplet.')+'</p>'+
       '<div class="visionnaire-proposal-transfers">'+proposal.transfers.map(mod=>{
         const slot=slotOf(mod),current=state.selected.slotRows.find(x=>x.slot===slot)?.mod;
         const sourceName=mod._visionnaireDonor?.name||mod._sourceOwner||'Inventaire libre';
