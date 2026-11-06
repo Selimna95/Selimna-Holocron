@@ -70,6 +70,50 @@ const trianglePrimary=kyberParserContext.kyberPrimaryDistribution([
 ],'Triangle');
 assert.deepEqual(Object.keys(trianglePrimary).sort(),['Critical Damage','Protection']);
 assert.ok(Math.abs(trianglePrimary.Protection-0.6124)<1e-9);
+load(core,['kyberSetComposition'],kyberParserContext);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(kyberParserContext.kyberSetComposition('Double Tenacity + Health'))),
+  {Tenacity:4,Health:2},
+  'A Double prefix assigns four mods to the named set'
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(kyberParserContext.kyberSetComposition('Health + Double Tenacity'))),
+  {Health:2,Tenacity:4},
+  'A Double prefix on the second set must not reverse the composition'
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(kyberParserContext.kyberSetComposition('Triple Health'))),
+  {Health:6},
+  'Triple sets occupy all six mods'
+);
+const kyberPageLines=[
+  'Data Slice: Kyber','Based on 950 fully-modded units','Updated 13h ago',
+  'Primary Set','Offense 74.4%','Speed 6%','Triple Health 3.3%',
+  'Secondary Set','Health 35.2%','Defense 27%',
+  'Specific Mod Sets','Offense + Health 35.2%','Offense + Defense 27%',
+  'Speed + Health 6%','Triple Health 3.3%',
+  'Arrow','Protection 65.67%','Speed 30.14%','Triangle','Protection 61.49%',
+  'Critical Damage 33.43%','Circle','Protection 97.01%','Cross','Protection 84.47%',
+  'Offense 13.73%','Secondary Stat Focus','Speed','+19.9 avg 23.69%',
+  'Relic','9.06','Average Stats for General Skywalker','Speed','281',
+  'Best Mod Set for General Skywalker','Offense + Potency 5.26%',
+  'Note that there are always special use cases'
+];
+Object.assign(kyberParserContext,{
+  parseHTML:()=>({}),
+  cleanLinesFromDoc:()=>kyberPageLines,
+  kyberProfileValid:()=>true
+});
+load(core,['parseKyberProfileHTML'],kyberParserContext);
+const parsedKyber=kyberParserContext.parseKyberProfileHTML('<html></html>','General Skywalker','general-skywalker');
+assert.equal(parsedKyber.sample_size,950,'The fully-modded sample size is retained');
+assert.equal(parsedKyber.updated_label,'Updated 13h ago','The SWGOH.GG freshness label is retained');
+assert.equal(parsedKyber.data_slice,'Kyber','The Kyber data slice is explicit');
+assert.equal(parsedKyber.specific_sets.length,5,'The parser retains table configurations and additional popular builds');
+assert.ok(parsedKyber.specific_sets.some(x=>x.name==='Offense + Potency'&&Math.abs(x.weight-0.0526)<1e-9));
+assert.ok(Math.abs(parsedKyber.slots.Arrow.primaries.Protection-0.6567)<1e-9);
+assert.ok(Math.abs(parsedKyber.slots.Arrow.primaries.Speed-0.3014)<1e-9);
+
 assert.ok(Math.abs(trianglePrimary['Critical Damage']-0.3313)<1e-9);
 const collisionRoster = [
   { name: 'Ahsoka Tano (Snips)', baseId: 'AHSOKATANO' },
