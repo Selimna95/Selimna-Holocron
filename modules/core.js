@@ -334,7 +334,22 @@ function parseKyberProfileHTML(text,character,kyberSlug){
       const k=block.findIndex(x=>x===stat);if(k>=0&&block[k+1])profile.averages[stat]=number(block[k+1]);
     }
   }
-  return kyberProfileValid(profile)?profile:null;
+  window.__kyberLastParseDiagnostic=[
+    'lignes '+normalized.length,
+    'Primary Set '+(normalized.includes('Primary Set')?'oui':'non'),
+    'Secondary Set '+(normalized.includes('Secondary Set')?'oui':'non'),
+    'Specific Mod Sets '+(normalized.includes('Specific Mod Sets')?'oui':'non'),
+    'sets '+profile.sets.length,
+    'configurations '+profile.specific_sets.length,
+    'slots primaires '+Object.keys(profile.slots).length,
+    'échantillon '+(profile.sample_size||'inconnu'),
+    'data slice '+profile.data_slice
+  ].join(' · ');
+  if(!kyberProfileValid(profile)){
+    window.__kyberLastFetchError='Page reçue mais structure Kyber non reconnue : '+window.__kyberLastParseDiagnostic;
+    return null;
+  }
+  return profile;
 }
 let kyberUnitIndexPromise=null;
 let kyberUnitIndexFailureUntil=0;
