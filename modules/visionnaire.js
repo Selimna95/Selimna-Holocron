@@ -389,10 +389,12 @@
       const options=source.filter(mod=>slotOf(mod)===slot&&exchangeModId(mod)!==exchangeModId(currentBySlot.get(slot)))
         .map(mod=>({...mod,_visionnaireDonor:mod._sourceOwnerKey?rosterCharacters.find(c=>characterKey(c)===mod._sourceOwnerKey):null}))
         .filter(mod=>!mod._sourceOwnerKey||mod._visionnaireDonor)
-        .sort((a,b)=>Number(a._sourceUsage)-Number(b._sourceUsage)||
-          modTotalSpeed(b)-modTotalSpeed(a));
-      // Keep a wider donor pool: the first six low-usage mods may all fail donor set preservation.
-      // The coordinated search still caps complete combinations at 15,000 tests.
+        .sort((a,b)=>modTotalSpeed(b)-modTotalSpeed(a)||
+          Number(a._sourceUsage)-Number(b._sourceUsage)||
+          String(a._visionnaireDonor?.name||'').localeCompare(String(b._visionnaireDonor?.name||''),'fr'));
+      // Prioritize speed-preserving candidates before donor usage. A low-use mod with
+      // 3 speed cannot be a useful first choice when the target is already fast.
+      // Usage remains the tie-breaker, and every donor is still validated below.
       optionsBySlot.set(slot,options.slice(0,24));
     }
     const empty=slots.filter(slot=>!(optionsBySlot.get(slot)||[]).length);
@@ -405,16 +407,23 @@
     });
     const proposals=[];
     let tested=0;
-    const diagnostics={limit:15000,sourceCount:source.length,optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),rejected:{},examples:[],rejectedCandidates:[]};
-    const reject=(reason,detail='',score=null)=>{
+    const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
+    const retainedSpeed=current.filter(mod=>!slots.includes(slotOf(mod))).reduce((sum,mod)=>sum+modTotalSpeed(mod),0);
+    const candidateSpeedCeiling=retainedSpeed+slots.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0);
+    const diagnostics={limit:15000,sourceCount:source.length,beforeSpeed:beforeProjectionSummary.total,
+      retainedSpeed,candidateSpeedCeiling,
+      optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),
+      bestCandidateSpeedBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed))])),
+      rejected:{},examples:[],rejectedCandidates:[]};
+    const reject=(reason,detail='',score=null,metrics={})=>{
       diagnostics.rejected[reason]=(diagnostics.rejected[reason]||0)+1;
       if(detail&&diagnostics.examples.length<8&&!diagnostics.examples.some(item=>item.reason===reason))diagnostics.examples.push({reason,detail});
-      const candidate={reason,detail,score:Number.isFinite(score)?score:null,
-        transfers:chosen.map(mod=>({slot:LABELS[slotOf(mod)],set:mod.set_name||mod.set||'Set inconnu',
-          speed:modTotalSpeed(mod),source:mod._visionnaireDonor?.name||mod._sourceOwner||'Libre'}))};
-      diagnostics.rejectedCandidates.push(candidate);
-      diagnostics.rejectedCandidates.sort((a,b)=>(b.score??-1)-(a.score??-1));
-      diagnostics.rejectedCandidates=diagnostics.rejectedCandidates.slice(0,5);
+      // Keep a bounded sample without sorting 15,000 times on the hot path.
+      if(diagnostics.rejectedCandidates.length<5){
+        diagnostics.rejectedCandidates.push({reason,detail,score:Number.isFinite(score)?score:null,...metrics,
+          transfers:chosen.map(mod=>({slot:LABELS[slotOf(mod)],set:mod.set_name||mod.set||'Set inconnu',
+            speed:modTotalSpeed(mod),source:mod._visionnaireDonor?.name||mod._sourceOwner||'Libre'}))});
+      }
     };
     const chosen=[];
     const walk=index=>{
@@ -426,7 +435,7 @@
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
         const afterSpeed=afterProjection.total;
         if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet){reject('bonus_vitesse_cible','Perte du bonus de set Vitesse');return;}
-        if(afterSpeed+1e-9<beforeSpeed){reject('vitesse_cible','La vitesse totale de la cible diminuerait');return;}
+        if(afterSpeed+1e-9<beforeSpeed){reject('vitesse_cible','La vitesse totale de la cible diminuerait',null,{targetSpeedBefore:beforeSpeed,targetSpeedAfter:afterSpeed,speedLoss:beforeSpeed-afterSpeed});return;}
         const afterSetDistance=exchangeSetDistance(finalTarget,profile);
         if(state.mode!=='primaries'){
           if(beforeSetDistance===null||afterSetDistance===null||afterSetDistance>=beforeSetDistance){reject('reference_sets','La composition de sets ne se rapproche pas de Kyber');return;}
@@ -510,6 +519,8 @@
     const rejected=Object.entries(diagnostics.rejected||{}).sort((a,b)=>b[1]-a[1]);
     return '<details class="visionnaire-search-diagnostics" open><summary>DIAGNOSTIC DE RECHERCHE · '+diagnostics.tested.toLocaleString('fr-FR')+' combinaisons testées · '+diagnostics.sourceCount+' mods sources</summary>'+
       '<p>Mods candidats par slot : '+Object.entries(diagnostics.optionsBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
+      '<p>Vitesse actuelle cible : '+Number(diagnostics.beforeSpeed||0).toFixed(1)+' · plafond des candidats (hors bonus de set) : '+Number(diagnostics.candidateSpeedCeiling||0).toFixed(1)+'</p>'+
+      (diagnostics.rejectedCandidates?.some(item=>item.targetSpeedBefore!=null)?'<p>Premier contrôle vitesse : '+Number(diagnostics.rejectedCandidates.find(item=>item.targetSpeedBefore!=null).targetSpeedBefore).toFixed(1)+' → '+Number(diagnostics.rejectedCandidates.find(item=>item.targetSpeedBefore!=null).targetSpeedAfter).toFixed(1)+' (−'+Number(diagnostics.rejectedCandidates.find(item=>item.targetSpeedBefore!=null).speedLoss).toFixed(1)+')</p>':'')+
       (rejected.length?'<ul>'+rejected.map(([reason,count])=>'<li><b>'+esc(labels[reason]||reason)+'</b> : '+count.toLocaleString('fr-FR')+'</li>').join('')+'</ul>':'<p>Aucun rejet comptabilisé.</p>')+
       (diagnostics.examples?.length?'<div class="visionnaire-search-examples"><b>Exemples de motifs</b>'+diagnostics.examples.map(item=>'<p>'+esc(labels[item.reason]||item.reason)+' : '+esc(item.detail)+'</p>').join('')+'</div>':'')+
       (diagnostics.rejectedCandidates?.length?'<div class="visionnaire-search-examples"><b>Meilleurs échanges écartés</b>'+diagnostics.rejectedCandidates.map(item=>'<p>'+(item.score===null?'Score non calculable':'Score indicatif '+item.score+'/100')+' · '+esc(labels[item.reason]||item.reason)+' — '+esc(item.detail)+' · '+item.transfers.map(t=>esc(t.slot)+': '+esc(t.set)+' ('+t.speed+' V, '+esc(t.source)+')').join(' / ')+'</p>').join('')+'</div>':'')+
