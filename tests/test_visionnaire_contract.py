@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.44-kyber-progress-timeout", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.44-kyber-progress-timeout", sw)
-        self.assertIn("visionnaire.css?v=4.1.44-kyber-progress-timeout", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.45-kyber-slug-fallback", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.45-kyber-slug-fallback", sw)
+        self.assertIn("visionnaire.css?v=4.1.45-kyber-slug-fallback", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -72,6 +72,13 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("AbortSignal.timeout(12000)", core)
         self.assertIn("kyberProfileHasFullDistribution", js)
         self.assertIn("if(!/kyber|swgoh", core)
+        self.assertIn("Array.isArray(p.specific_sets)&&p.specific_sets.length>0", core)
+        self.assertIn("const directCandidate=slug(display)", core)
+        self.assertIn("Tentative avec le slug du personnage", core)
+        self.assertIn("if(fallback)return fallback", core)
+        self.assertIn("window.__kyberLastParseDiagnostic", core)
+        self.assertIn("ranked.some(config=>config.exact&&config.distance===0)", js)
+        self.assertIn("profils Kyber exploitables", js)
 
 
 if __name__ == "__main__":
