@@ -24,11 +24,11 @@ const splitRows = [
   'Triangle', 'Offense', '52.87%'
 ];
 assert.deepEqual(
-  JSON.parse(JSON.stringify(sandbox.parseRows(splitRows, 1, 4))),
+  JSON.parse(JSON.stringify(sandbox.parseRows(splitRows, 1, 5))),
   [{ name: 'Speed', weight: 0.787 }, { name: 'Offense', weight: 0.044 }]
 );
 assert.deepEqual(
-  JSON.parse(JSON.stringify(sandbox.parseRows(splitRows, 10, 14))),
+  JSON.parse(JSON.stringify(sandbox.parseRows(splitRows, 9, 13))),
   [{ name: 'Speed + Tenacity', weight: 0.396 }, { name: 'Speed + Potency', weight: 0.208 }]
 );
 assert.deepEqual(
