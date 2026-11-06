@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.45-kyber-slug-fallback", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.45-kyber-slug-fallback", sw)
-        self.assertIn("visionnaire.css?v=4.1.45-kyber-slug-fallback", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.46-kyber-split-percentages", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.46-kyber-split-percentages", sw)
+        self.assertIn("visionnaire.css?v=4.1.46-kyber-split-percentages", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -65,6 +65,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertNotIn("entries[0].weight<0.5", js)
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
         self.assertIn("kyberSetComposition", core)
+        self.assertIn("function kyberPercentageEntries", core)
+        self.assertIn("kyberPercentageEntries(normalized,i+1,j>=0?j:normalized.length)", core)
         self.assertIn("secondary_sets", core)
         self.assertIn("sample_size", core)
         self.assertIn("updated_label", core)
