@@ -139,7 +139,8 @@
     const rows=visibleRows();
     const knownSets=state.rows.filter(r=>r.setVerifiable).length;
     const knownPrimaries=state.rows.filter(r=>r.primaryVerifiable).length;
-    const nonverifiable=state.rows.length-Math.max(knownSets,knownPrimaries);
+    const knownAny=state.rows.filter(r=>r.setVerifiable||r.primaryVerifiable).length;
+    const nonverifiable=state.rows.length-knownAny;
     root.innerHTML=`
       <header class="visionnaire-header">
         <div><small>HOLOCRON // LE VISIONNAIRE</small><h2>LE VISIONNAIRE</h2><p>Repère les écarts avec Kyber, choisis les slots à travailler et décide des échanges en connaissance de cause.</p></div>
