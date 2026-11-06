@@ -4,7 +4,7 @@
   const SLOTS = ['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const LABELS = {Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'};
   const FIXED = {Square:'Offense',Diamond:'Defense'};
-  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),loading:false,filter:''};
+  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),loading:false,faction:'ALL'};
   const $ = id => document.getElementById(id);
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -87,8 +87,14 @@
     rows.sort((a,b)=>String(a.character?.name||'').localeCompare(String(b.character?.name||''),'fr'));
     state.rows=rows;state.loading=false;state.selected=null;state.slots.clear();render();
   }
+  const factionsOf = row => {
+    const id=typeof characterKey==='function'?characterKey(row.character):key(row.character?.baseId||row.character?.name);
+    if(typeof factionMap==='object'&&factionMap&&Array.isArray(factionMap[id]))return factionMap[id];
+    return typeof factionsForCharacter==='function'?factionsForCharacter(row.character):[];
+  };
+  const factionOptions = () => typeof allFactions==='function'?allFactions():[...new Set(state.rows.flatMap(factionsOf))].sort((a,b)=>a.localeCompare(b,'fr'));
   const visibleRows = () => state.rows.filter(row=>{
-    if(state.filter&&!key(row.character?.name||row.character?.baseId).includes(key(state.filter)))return false;
+    if(state.faction!=='ALL'&&!factionsOf(row).includes(state.faction))return false;
     if(state.mode==='sets') return row.setVerifiable&&row.setMismatch;
     if(state.mode==='primaries') return row.primaryVerifiable&&row.primaryMismatch;
     return row.setVerifiable&&row.setMismatch&&row.primaryVerifiable&&row.primaryMismatch;
@@ -121,14 +127,14 @@
         <div class="visionnaire-kpis"><span><b>${state.rows.length}</b> personnages analysés</span><span><b>${known}</b> références Kyber exploitables</span><span><b>${nonverifiable}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
       </section>
       <section class="visionnaire-list">
-        <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · PERSONNAGES À EXAMINER</div><h3>${modeLabel()}</h3></div><input id="visionnaireSearch" type="search" placeholder="Rechercher un personnage…" value="${esc(state.filter)}"></div>
+        <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><label class="visionnaire-faction-filter" for="visionnaireFaction"><span>FACTION</span><select id="visionnaireFaction"><option value="ALL">Toutes les factions</option>${factionOptions().map(f=>`<option value="${esc(f)}" ${state.faction===f?'selected':''}>${esc(f)}</option>`).join('')}</select></label></div>
         ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber sur l’ensemble du roster…</p>':rows.length?rows.map(row=>{
           const c=row.character;const selected=state.selected?.character===c;
           const mismatch=activeIssues(row);
           const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):state.mode==='primaries'?'Primaires par slot':'Sets et primaires Kyber';
           return `<button type="button" class="visionnaire-character ${selected?'active':''}" data-character="${esc(characterKey(c))}">
             <span class="visionnaire-avatar">${esc(String(c.name||c.baseId||'?').slice(0,1))}</span>
-            <span class="visionnaire-character-main"><b>${esc(c.name||c.baseId||'Personnage')}</b><small>${mismatch.length} slot(s) concernés · ${esc(slotSummary(row))}</small></span>
+            <span class="visionnaire-character-main"><b>${esc(c.name||c.baseId||'Personnage')}</b><small>${mismatch.length} slot(s) concernés · ${esc(slotSummary(row))} · ${esc(factionsOf(row).join(' / ')||'Faction non identifiée')}</small></span>
             <span class="visionnaire-character-reference"><small>RÉFÉRENCE KYBER</small><b>${esc(reference||'Référence partielle')}</b></span><i>↗</i>
           </button>`;
         }).join(''):'<p class="visionnaire-empty">Aucun personnage non conforme vérifiable dans ce domaine. Les profils absents ou incomplets sont comptés séparément et ne sont pas considérés comme incorrects.</p>'}
@@ -136,7 +142,7 @@
       ${state.selected?renderSelected():''}
     `;
     root.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{state.mode=btn.dataset.mode;state.selected=null;state.slots.clear();render();}));
-    $('visionnaireSearch')?.addEventListener('input',e=>{state.filter=e.target.value;const pos=e.target.selectionStart;render();const input=$('visionnaireSearch');input?.focus();input?.setSelectionRange(pos,pos);});
+    $('visionnaireFaction')?.addEventListener('change',e=>{state.faction=e.target.value||'ALL';state.selected=null;state.slots.clear();render();});
     root.querySelectorAll('[data-character]').forEach(btn=>btn.addEventListener('click',()=>{
       const row=state.rows.find(r=>String(characterKey(r.character))===btn.dataset.character);
       if(!row)return;state.selected=row;state.slots.clear();render();
