@@ -246,7 +246,7 @@ assert.deepEqual(
 const seigneur = read('../modules/seigneur.js');
 const donorContext = vm.createContext({
   compactKey,
-  window: { __SWGOH_GAC_USAGE__: { seasons: [{
+  window: { __SWGOH_GAC_USAGE__: { sourceStatus: 'observed', seasons: [{
     season: 84,
     characters: { LOWLAND: { uses: 10 }, HIGHLAND: { uses: 100 }, PILOTLOW: { uses: 2 }, PILOTHIGH: { uses: 2 } },
     ships: { LOWSHIP: { uses: 3 }, HIGHSHIP: { uses: 90 } }
