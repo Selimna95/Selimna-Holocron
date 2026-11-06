@@ -1,3 +1,8 @@
+## V4.1.55 — diagnostic GAC dans le Visionnaire
+
+- Le Visionnaire distingue maintenant une base GAC périmée, partielle ou indisponible.
+- En cas d'absence de source complète, le message donne directement accès au collecteur navigateur au lieu de laisser croire qu'aucun donneur n'existe.
+
 ## V4.1.54 — récupération GAC fiabilisée
 
 - La collecte GAC tente désormais la source SWGOH.GG en direct, puis utilise un export navigateur complet si le serveur est bloqué ; à défaut, elle conserve le dernier snapshot valide.
