@@ -1,3 +1,11 @@
+## V4.1.54 — récupération GAC fiabilisée
+
+- La collecte GAC tente désormais la source SWGOH.GG en direct, puis utilise un export navigateur complet si le serveur est bloqué ; à défaut, elle conserve le dernier snapshot valide.
+- Les snapshots de plus de 35 jours sont explicitement marqués périmés et ne peuvent plus classer les donneurs de mods.
+- Le workflow GitHub Actions retente automatiquement la collecte chaque jour et à chaque nouvel export navigateur.
+- Le collecteur navigateur v1.2 retente les erreurs réseau transitoires, reprend les vues déjà collectées pendant 12 heures et refuse les exports incomplets ou mélangeant plusieurs saisons.
+- Les noms de personnages nettoient désormais les badges de progression de rang (A→S, S→A, etc.) avant agrégation.
+
 ## V4.1.53 — diagnostic des donneurs indisponibles
 
 - Si aucun mod source n'est éligible, le Visionnaire distingue désormais explicitement l'absence de mods libres de l'absence d'utilisation GAC vérifiée.
