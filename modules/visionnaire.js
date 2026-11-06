@@ -511,7 +511,7 @@
   function renderExchangeProposals(){
     if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours…</div>';
     if(!state.proposals.length)return (state.searchError?'<div class="visionnaire-empty">'+esc(state.searchError)+'</div>':'')+renderExchangeDiagnostics(state.diagnostics);
-    return '<div class="visionnaire-proposals">'+renderExchangeDiagnostics(state.diagnostics)+<div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR QUALITÉ STRATÉGIQUE</div>'+
+    return '<div class="visionnaire-proposals">'+renderExchangeDiagnostics(state.diagnostics)+'<div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR QUALITÉ STRATÉGIQUE</div>'+
       state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+' · '+proposal.score.verdict+'</b><span class="visionnaire-score">'+proposal.score.score+'/100</span></header>'+
       '<div class="visionnaire-score-breakdown"><span>Référence sets / primaires <b>'+proposal.score.reference+'/100</b></span><span>Secondaires Kyber <b>'+(proposal.score.secondaryFocus===null?'ND':proposal.score.secondaryFocus+'/100')+'</b></span><span>Stats cible <b>'+proposal.score.targetStats+'/100</b></span><span>Coût donneurs <b>'+proposal.score.donorCost+'/100</b></span></div>'+
       '<p class="visionnaire-score-method">Pondération : 45% référence Kyber ('+(state.mode==='primaries'?'primaires 70% · secondaires 30%':state.mode==='both'?'sets 45% · primaires 25% · secondaires 30%':'sets 60% · primaires 15% · secondaires 25%')+') · 25% équilibre statistique cible · 30% coût donneurs (usage GAC 45% · statistiques 35% · statut 20%). La vitesse reste un garde-fou, pas un bonus de score.</p>'+
