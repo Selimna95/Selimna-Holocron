@@ -10,6 +10,64 @@ SPEC.loader.exec_module(MODULE)
 
 
 class GacUsageParserTests(unittest.TestCase):
+    def test_clean_name_removes_tier_movement_badges(self):
+        self.assertEqual(MODULE.clean_name("6▲3 A→S Rey"), "Rey")
+        self.assertEqual(MODULE.clean_name("15▼2 S→A Darth Bane"), "Darth Bane")
+
+    def test_reader_http_200_cloudflare_block_is_rejected(self):
+        from unittest.mock import patch
+
+        class Response:
+            status = 200
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return b"Target URL returned error 403: Forbidden"
+
+        with patch.object(MODULE, "urlopen", return_value=Response()), patch.object(MODULE.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "Cannot fetch"):
+                MODULE.fetch("https://swgoh.gg/tier-list/units/")
+
+    def test_build_keeps_last_good_snapshot_when_live_source_is_blocked(self):
+        import json
+        import tempfile
+        from datetime import datetime, timedelta, timezone
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot = Path(directory) / "gac-usage.json"
+            export = Path(directory) / "missing-export.json"
+            previous = {
+                "schemaVersion": 1, "source": "SWGOH.GG browser session",
+                "sourceStatus": "observed", "evidenceType": "unit-usage",
+                "updatedAt": datetime.now(timezone.utc).isoformat(),
+                "seasons": [{"season": 84, "characters": {"Rey": {"uses": 120, "byFormat": {"5v5": 120}}}, "ships": {}, "fleets": []}]
+            }
+            snapshot.write_text(json.dumps(previous), encoding="utf-8")
+            with patch.object(MODULE, "JSON_OUTPUT", snapshot), patch.object(MODULE, "BROWSER_EXPORT", export), patch.object(MODULE, "build_live", side_effect=RuntimeError("HTTP 403")):
+                result = MODULE.build()
+            self.assertEqual(result["sourceStatus"], "observed")
+            self.assertEqual(result["seasons"][0]["characters"]["Rey"]["uses"], 120)
+            self.assertIn("403", result["lastRefreshError"])
+
+    def test_stale_last_good_snapshot_is_retained_but_marked_stale(self):
+        import json
+        import tempfile
+        from datetime import datetime, timedelta, timezone
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot = Path(directory) / "gac-usage.json"
+            export = Path(directory) / "missing-export.json"
+            old_date = (datetime.now(timezone.utc) - timedelta(days=MODULE.FRESHNESS_DAYS + 1)).isoformat()
+            snapshot.write_text(json.dumps({
+                "schemaVersion": 1, "updatedAt": old_date,
+                "seasons": [{"season": 84, "characters": {"Rey": {"uses": 120}}, "ships": {}, "fleets": []}]
+            }), encoding="utf-8")
+            with patch.object(MODULE, "JSON_OUTPUT", snapshot), patch.object(MODULE, "BROWSER_EXPORT", export), patch.object(MODULE, "build_live", side_effect=RuntimeError("HTTP 403")):
+                result = MODULE.build()
+            self.assertEqual(result["sourceStatus"], "stale")
+            self.assertEqual(result["seasons"][0]["characters"]["Rey"]["uses"], 120)
+
     def test_unit_rows_keep_name_and_split_counts_by_role(self):
         text = """
 # Leaders — best squad anchors
