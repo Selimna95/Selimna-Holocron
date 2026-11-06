@@ -1,4 +1,4 @@
-/* Holocron GAC browser collector v1.0
+/* Holocron GAC browser collector v1.2
  * Run on a normal, successfully loaded https://swgoh.gg/tier-list/ page.
  * It fetches same-origin tier-list views using the browser session and downloads
  * gac-browser-export.json. Missing rows are never interpreted as zero.
@@ -41,7 +41,7 @@
       const rowFormat = m[2] === "5" ? "5v5" : "3v3";
       const rowSide = m[3].toLowerCase();
       if (rowFormat !== fmt || rowSide !== side) continue;
-      let name = m[1].trim().replace(/^[A-D]→[A-D]\s*/i, "");
+      let name = m[1].trim().replace(/^[SABCD]→[SABCD]\s*/i, "");
       if (!name) continue;
       rows.push({ name, format: rowFormat, side: rowSide, role, rating: Number(m[4].replace(/,/g, "")), battles: numberValue(m[5]) });
     }
@@ -86,12 +86,50 @@
     return { side, league, season: Number(seasonMatch[1]), url, fleets };
   };
   const fetchPage = async url => {
-    const response = await fetch(url, { credentials: "include", cache: "no-store" });
-    if (!response.ok) throw new Error("HTTP " + response.status + " sur " + url);
-    return response.text();
+    let lastError = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const response = await fetch(url, { credentials: "include", cache: "no-store" });
+        if (!response.ok) {
+          const error = new Error("HTTP " + response.status + " sur " + url);
+          error.status = response.status;
+          if (response.status === 403 || response.status === 401 || (response.status < 500 && response.status !== 429)) throw error;
+          lastError = error;
+        } else {
+          const html = await response.text();
+          if (/Sorry, you have been blocked|Just a moment\.\.\.|Attention Required! \| Cloudflare/i.test(html.slice(0, 12000))) {
+            throw new Error("Défi Cloudflare reçu pour " + url);
+          }
+          if (html.length < 1000) throw new Error("Réponse anormalement courte (" + html.length + " caractères) pour " + url);
+          return html;
+        }
+      } catch (error) {
+        lastError = error;
+        if (error.status === 403 || error.status === 401 || /Défi Cloudflare/.test(error.message || "")) throw error;
+      }
+      if (attempt < 3) {
+        const delay = Math.min(8000, 1000 * (2 ** attempt));
+        status.textContent = "Holocron : nouvelle tentative " + (attempt + 2) + "/4 dans " + (delay / 1000) + " s…";
+        await sleep(delay);
+      }
+    }
+    throw new Error("Échec après 4 tentatives : " + (lastError?.message || url));
   };
-  const views = [];
-  const fleetViews = [];
+  const CACHE_KEY = "holocron-gac-collector-v1.2";
+  const CACHE_TTL = 12 * 60 * 60 * 1000;
+  let checkpoint = { views: [], fleetViews: [], savedAt: Date.now() };
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(CACHE_KEY) || "null");
+    if (saved && Date.now() - Number(saved.savedAt || 0) < CACHE_TTL) checkpoint = saved;
+  } catch (_) {}
+  const views = Array.isArray(checkpoint.views) ? checkpoint.views : [];
+  const fleetViews = Array.isArray(checkpoint.fleetViews) ? checkpoint.fleetViews : [];
+  const saveCheckpoint = () => {
+    checkpoint = { views, fleetViews, savedAt: Date.now() };
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(checkpoint)); } catch (_) {}
+  };
+  const viewIsValid = view => view && Number(view.season) > 0 && Array.isArray(view.rows) && view.rows.length >= 8;
+  const fleetViewIsValid = view => view && Number(view.season) > 0 && Array.isArray(view.fleets);
   const total = FORMATS.length * SIDES.length * LEAGUES.length + SIDES.length * LEAGUES.length;
   let done = 0;
   const status = document.createElement("div");
@@ -102,23 +140,37 @@
   const update = label => { done++; status.textContent = "Holocron : " + label + " (" + done + "/" + total + ")"; };
   try {
     for (const fmt of FORMATS) for (const side of SIDES) for (const league of LEAGUES) {
+      const existing = views.find(view => view.format === fmt && view.side === side && view.league === league && viewIsValid(view));
+      if (existing) {
+        update(fmt + " · " + side + " · " + league + " : " + existing.rows.length + " personnages (repris)");
+        continue;
+      }
       const params = new URLSearchParams({ fmt, side, league });
       const url = BASE + "/tier-list/units/?" + params.toString();
       const html = await fetchPage(url);
       const view = parseUnitView(html, url, fmt, side, league);
       if (view.rows.length < 8) throw new Error("Seulement " + view.rows.length + " personnages détectés dans " + fmt + "/" + side + "/" + league + ". Export annulé.");
-      views.push(view);
+      const index = views.findIndex(item => item.format === fmt && item.side === side && item.league === league);
+      if (index >= 0) views.splice(index, 1, view); else views.push(view);
+      saveCheckpoint();
       update(fmt + " · " + side + " · " + league + " : " + view.rows.length + " personnages");
-      await sleep(350);
+      await sleep(500);
     }
     for (const side of SIDES) for (const league of LEAGUES) {
+      const existing = fleetViews.find(view => view.side === side && view.league === league && fleetViewIsValid(view));
+      if (existing) {
+        update("Flottes · " + side + " · " + league + " : " + existing.fleets.length + " compositions (reprises)");
+        continue;
+      }
       const params = new URLSearchParams({ side, league });
       const url = BASE + "/tier-list/fleet/?" + params.toString();
       const html = await fetchPage(url);
       const view = parseFleetView(html, url, side, league);
-      fleetViews.push(view);
+      const index = fleetViews.findIndex(item => item.side === side && item.league === league);
+      if (index >= 0) fleetViews.splice(index, 1, view); else fleetViews.push(view);
+      saveCheckpoint();
       update("Flottes · " + side + " · " + league + " : " + view.fleets.length + " compositions");
-      await sleep(350);
+      await sleep(500);
     }
     const seasons = {};
     for (const view of views) seasons[view.format] = Math.max(seasons[view.format] || 0, view.season);
@@ -144,6 +196,7 @@
     link.click();
     link.remove();
     URL.revokeObjectURL(link.href);
+    try { sessionStorage.removeItem(CACHE_KEY); } catch (_) {}
     status.textContent = "Collecte terminée : " + views.length + " vues personnages et " + fleetViews.length + " vues flottes. Fichier gac-browser-export.json téléchargé.";
     status.style.borderColor = "#4f9b73";
     setTimeout(() => status.remove(), 12000);
