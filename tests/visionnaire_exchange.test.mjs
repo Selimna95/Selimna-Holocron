@@ -13,6 +13,10 @@ assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bo
 assert.ok(js.includes('options.slice(0,24)'), 'Search must keep a broad enough donor pool before validating donor set preservation');
 assert.ok(js.includes('afterSpeed+1e-9<beforeSpeed'),'Target speed must never decrease');
 assert.ok(js.includes('RECOMMANDÉ'),'Scenario verdict must be explicit');
+assert.ok(js.includes('const diagnostics={limit:15000'),'Search diagnostics must expose the safety limit and candidate counts');
+assert.ok(js.includes('perte_stat_cible'),'Search must count target-stat rejections');
+assert.ok(js.includes('bonus_sets_donneur'),'Search must count donor set-bonus rejections');
+assert.ok(js.includes('renderExchangeDiagnostics'),'Search diagnostics must be visible in the UI');
 console.log('Visionnaire exchange contract tests passed.');
 
 import vm from 'node:vm';
