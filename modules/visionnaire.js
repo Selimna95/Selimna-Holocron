@@ -405,6 +405,11 @@
     });
     const proposals=[];
     let tested=0;
+    const diagnostics={limit:15000,sourceCount:source.length,optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),rejected:{},examples:[]};
+    const reject=(reason,detail='')=>{
+      diagnostics.rejected[reason]=(diagnostics.rejected[reason]||0)+1;
+      if(detail&&diagnostics.examples.length<8&&!diagnostics.examples.some(item=>item.reason===reason))diagnostics.examples.push({reason,detail});
+    };
     const chosen=[];
     const walk=index=>{
       if(proposals.length>=30||tested>=15000)return;
@@ -414,14 +419,14 @@
         const beforeProjection=forgeProjectedModSpeed(character,profile,current);
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
         const afterSpeed=afterProjection.total;
-        if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return;
-        if(afterSpeed+1e-9<beforeSpeed)return;
+        if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet){reject('bonus_vitesse_cible','Perte du bonus de set Vitesse');return;}
+        if(afterSpeed+1e-9<beforeSpeed){reject('vitesse_cible','La vitesse totale de la cible diminuerait');return;}
         const afterSetDistance=exchangeSetDistance(finalTarget,profile);
         if(state.mode!=='primaries'){
-          if(beforeSetDistance===null||afterSetDistance===null||afterSetDistance>=beforeSetDistance)return;
-        } else if(beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>beforeSetDistance)return;
-        if(state.mode==='both'&&!targetPrimarySafe(chosen))return;
-        if(state.mode==='primaries'&&!targetPrimarySafe(chosen))return;
+          if(beforeSetDistance===null||afterSetDistance===null||afterSetDistance>=beforeSetDistance){reject('reference_sets','La composition de sets ne se rapproche pas de Kyber');return;}
+        } else if(beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>beforeSetDistance){reject('reference_sets','La composition de sets s’éloigne de Kyber');return;}
+        if(state.mode==='both'&&!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
+        if(state.mode==='primaries'&&!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
         const donorGroups=new Map();
         for(const candidate of chosen){
           const owner=candidate._visionnaireDonor;
@@ -437,10 +442,10 @@
           for(const candidate of transfers){
             const slot=slotOf(candidate),donorIndex=after.findIndex(mod=>slotOf(mod)===slot);
             const returned=currentBySlot.get(slot);
-            if(donorIndex<0||!returned){return;}
+            if(donorIndex<0||!returned){reject('donneur_incomplet','Le mod de retour du donneur est introuvable');return;}
             after[donorIndex]=returned;
           }
-          if(before.length!==6||after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after))return;
+          if(before.length!==6||after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after)){reject('bonus_sets_donneur','Le donneur perdrait un bonus de set ou son build est incomplet',owner.name||owner.baseId);return;}
           const donorProfile=optimizerProfileForCharacter(owner)||{};
           const beforeStats=exchangeFinalStats(owner,before),afterStats=exchangeFinalStats(owner,after);
           const donorImpact=exchangeStatsDelta(beforeStats,afterStats);
@@ -465,11 +470,11 @@
         const secondaryFocus=exchangeSecondaryFocusScore(profile,finalTarget);
         const targetFocusImpact=exchangeTargetFocusImpact(profile,current,finalTarget,targetStatsBefore,targetStatsAfter);
         // Never trade away a major part of a Kyber-prioritized secondary for a cosmetic score gain.
-        if(targetFocusImpact?.losses.length)return;
+        if(targetFocusImpact?.losses.length){const loss=targetFocusImpact.losses[0];reject('perte_stat_cible',loss.name+' : '+Number(loss.relative*100).toFixed(1)+'%');return;}
         const score=exchangeScenarioScore({mode:state.mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,
           targetBalance:targetFocusImpact?.balance??null,donors});
         const ids=chosen.map(exchangeModId).join('|');
-        if(proposals.some(item=>item.signature===ids))return;
+        if(proposals.some(item=>item.signature===ids)){reject('doublon','Combinaison déjà retenue');return;}
         proposals.push({signature:ids,transfers:chosen.slice(),donors,beforeSpeed,afterSpeed,
           speedGain:afterSpeed-beforeSpeed,beforeSetDistance,afterSetDistance,
           targetStatsBefore,targetStatsAfter,targetStatDeltas,targetFocusImpact,primaryShare,secondaryFocus,score,
@@ -487,14 +492,26 @@
     walk(0);
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||
       (a.afterSetDistance??99)-(b.afterSetDistance??99));
+    diagnostics.tested=tested;
+    diagnostics.hitLimit=tested>=diagnostics.limit;
     const noSourceReason=exchangeGacSourceDiagnostic()||'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs.';
-    return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,
-      reason:proposals.length?'':!source.length?noSourceReason:tested>=15000?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.'};
+    const reason=proposals.length?'':!source.length?noSourceReason:tested>=diagnostics.limit?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.';
+    return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,diagnostics,reason};
+  }
+  function renderExchangeDiagnostics(diagnostics){
+    if(!diagnostics)return '';
+    const labels={bonus_vitesse_cible:'Bonus Vitesse cible',vitesse_cible:'Vitesse cible',reference_sets:'Référence des sets',primaire_cible:'Primaires Kyber',donneur_incomplet:'Donneur incomplet',bonus_sets_donneur:'Bonus de sets donneur',perte_stat_cible:'Pertes statistiques cible',doublon:'Doublons'};
+    const rejected=Object.entries(diagnostics.rejected||{}).sort((a,b)=>b[1]-a[1]);
+    return '<details class="visionnaire-search-diagnostics" open><summary>DIAGNOSTIC DE RECHERCHE · '+diagnostics.tested.toLocaleString('fr-FR')+' combinaisons testées · '+diagnostics.sourceCount+' mods sources</summary>'+
+      '<p>Mods candidats par slot : '+Object.entries(diagnostics.optionsBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
+      (rejected.length?'<ul>'+rejected.map(([reason,count])=>'<li><b>'+esc(labels[reason]||reason)+'</b> : '+count.toLocaleString('fr-FR')+'</li>').join('')+'</ul>':'<p>Aucun rejet comptabilisé.</p>')+
+      (diagnostics.examples?.length?'<div class="visionnaire-search-examples"><b>Exemples de motifs</b>'+diagnostics.examples.map(item=>'<p>'+esc(labels[item.reason]||item.reason)+' : '+esc(item.detail)+'</p>').join('')+'</div>':'')+
+      (diagnostics.hitLimit?'<p class="visionnaire-search-limit">Limite atteinte : les résultats sont partiels. Le moteur ne prétend pas avoir exploré toutes les combinaisons.</p>':'')+'</details>';
   }
   function renderExchangeProposals(){
     if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours…</div>';
-    if(!state.proposals.length)return state.searchError?'<div class="visionnaire-empty">'+esc(state.searchError)+'</div>':'';
-    return '<div class="visionnaire-proposals"><div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR QUALITÉ STRATÉGIQUE</div>'+
+    if(!state.proposals.length)return (state.searchError?'<div class="visionnaire-empty">'+esc(state.searchError)+'</div>':'')+renderExchangeDiagnostics(state.diagnostics);
+    return '<div class="visionnaire-proposals">'+renderExchangeDiagnostics(state.diagnostics)+<div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR QUALITÉ STRATÉGIQUE</div>'+
       state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+' · '+proposal.score.verdict+'</b><span class="visionnaire-score">'+proposal.score.score+'/100</span></header>'+
       '<div class="visionnaire-score-breakdown"><span>Référence sets / primaires <b>'+proposal.score.reference+'/100</b></span><span>Secondaires Kyber <b>'+(proposal.score.secondaryFocus===null?'ND':proposal.score.secondaryFocus+'/100')+'</b></span><span>Stats cible <b>'+proposal.score.targetStats+'/100</b></span><span>Coût donneurs <b>'+proposal.score.donorCost+'/100</b></span></div>'+
       '<p class="visionnaire-score-method">Pondération : 45% référence Kyber ('+(state.mode==='primaries'?'primaires 70% · secondaires 30%':state.mode==='both'?'sets 45% · primaires 25% · secondaires 30%':'sets 60% · primaires 15% · secondaires 25%')+') · 25% équilibre statistique cible · 30% coût donneurs (usage GAC 45% · statistiques 35% · statut 20%). La vitesse reste un garde-fou, pas un bonus de score.</p>'+
@@ -515,6 +532,7 @@
     try{
       const result=buildExchangeProposals(state.selected,[...state.slots]);
       state.proposals=result.proposals||[];
+      state.diagnostics=result.diagnostics||null;
       state.searchError=result.reason||'';
     }catch(error){state.searchError='Recherche interrompue : '+String(error?.message||error);}
     finally{state.searching=false;render();}
