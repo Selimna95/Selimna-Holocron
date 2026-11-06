@@ -356,10 +356,11 @@ async function fetchKyberThroughRelay(url){
     const wait=Math.max(0,kyberNextFetchAt-Date.now());
     if(wait)await kyberSleep(wait);
     let response;
-    try{response=await fetch(url,{headers:{'Accept':'text/html,application/xhtml+xml'}});}
-    catch(error){kyberCircuitOpenUntil=Date.now()+60000;kyberNextFetchAt=kyberCircuitOpenUntil;throw error;}
+    try{response=await fetch(url,{headers:{'Accept':'text/html,application/xhtml+xml'},signal:AbortSignal.timeout(12000)});}
+    catch(error){window.__kyberLastFetchError=String(error?.message||error);kyberCircuitOpenUntil=Date.now()+60000;kyberNextFetchAt=kyberCircuitOpenUntil;throw error;}
     const upstreamStatus=Number(response.headers.get('X-Upstream-Status')||0);
     const effectiveStatus=upstreamStatus||response.status;
+    if(!response.ok)window.__kyberLastFetchError='SWGOH.GG HTTP '+effectiveStatus;
     if(response.ok){kyberCircuitOpenUntil=0;kyberNextFetchAt=Date.now()+500;return response;}
     if([500,502,503,504].includes(effectiveStatus)){
       kyberCircuitOpenUntil=Date.now()+60000;kyberNextFetchAt=kyberCircuitOpenUntil;
