@@ -446,7 +446,7 @@
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||
       (a.afterSetDistance??99)-(b.afterSetDistance??99));
     return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,
-      reason:proposals.length?'':tested>=15000?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.'};
+      reason:proposals.length?'':!source.length?'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs. La source GAC doit être rétablie avant de pouvoir tester un échange équipé.':tested>=15000?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.'};
   }
   function renderExchangeProposals(){
     if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours…</div>';
