@@ -326,6 +326,14 @@
       return '<div><span>'+esc(name)+'</span><b>'+exchangeFormatStat(from)+' → '+exchangeFormatStat(to)+'</b><em class="'+(delta>0?'gain':delta<0?'loss':'neutral')+'">'+(delta>0?'+':'')+exchangeFormatStat(delta)+(relative===null?'':' · '+(relative>0?'+':'')+(relative*100).toFixed(1)+'%')+'</em></div>';
     }).join('')+'</div>';
   }
+  function exchangeGacSourceDiagnostic(){
+    const usageData=typeof window!=='undefined'?(window.__SWGOH_GAC_USAGE__||{}):{};
+    const usageStatus=usageData.sourceStatus||'unavailable';
+    if(usageStatus==='stale')return 'Les données GAC datent de plus de 35 jours : elles sont conservées, mais exclues du classement des donneurs. Relance le collecteur navigateur pour actualiser la base.';
+    if(usageStatus==='partial')return 'La source GAC disponible est partielle (défenses uniquement). Elle ne suffit pas à classer les donneurs du Visionnaire. Utilise le collecteur navigateur pour obtenir les statistiques complètes.';
+    if(usageStatus==='unavailable'||usageStatus==='awaiting-source-access')return 'Aucune collecte GAC complète exploitable. SWGOH.GG bloque actuellement les requêtes serveur ; lance le collecteur navigateur : https://selimna95.github.io/Selimna-Holocron/tools/gac-collector.html';
+    return '';
+  }
   function buildExchangeProposals(row,selectedSlots){
     const character=row.character,profile=row.profile;
     const current=getCharacterMods(character);
@@ -357,7 +365,7 @@
       optionsBySlot.set(slot,options.slice(0,6));
     }
     const empty=slots.filter(slot=>!(optionsBySlot.get(slot)||[]).length);
-    if(empty.length)return {proposals:[],reason:'Aucun donneur vérifié pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.'};
+    if(empty.length)return {proposals:[],reason:exchangeGacSourceDiagnostic()||('Aucun donneur vérifié pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.')};
     const beforeSetDistance=exchangeSetDistance(current,profile);
     const beforeSpeed=forgeProjectedModSpeed(character,profile,current).total;
     const targetPrimarySafe=chosen=>slots.every(slot=>{
@@ -445,15 +453,7 @@
     walk(0);
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||
       (a.afterSetDistance??99)-(b.afterSetDistance??99));
-    const usageData=window.__SWGOH_GAC_USAGE__||{};
-    const usageStatus=usageData.sourceStatus||'unavailable';
-    const noSourceReason=usageStatus==='stale'
-      ? 'Les données GAC datent de plus de 35 jours : elles sont conservées, mais exclues du classement des donneurs. Relance le collecteur navigateur pour actualiser la base.'
-      : usageStatus==='partial'
-        ? 'La source GAC disponible est partielle (défenses uniquement). Elle ne suffit pas à classer les donneurs du Visionnaire. Utilise le collecteur navigateur pour obtenir les statistiques complètes.'
-        : usageStatus==='unavailable'||usageStatus==='awaiting-source-access'
-          ? 'Aucune collecte GAC complète exploitable. SWGOH.GG bloque actuellement les requêtes serveur ; lance le collecteur navigateur : https://selimna95.github.io/Selimna-Holocron/tools/gac-collector.html'
-          : 'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs.';
+    const noSourceReason=exchangeGacSourceDiagnostic()||'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs.';
     return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,
       reason:proposals.length?'':!source.length?noSourceReason:tested>=15000?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.'};
   }
