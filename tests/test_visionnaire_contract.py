@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.41-faction-filter", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.41-faction-filter", sw)
-        self.assertIn("visionnaire.css?v=4.1.41-faction-filter", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.42-kyber-dominant-reference", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.42-kyber-dominant-reference", sw)
+        self.assertIn("visionnaire.css?v=4.1.42-kyber-dominant-reference", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -51,6 +51,12 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("primaryVerifiable:false", js)
         self.assertIn("x.hasPrimaryReference&&x.mod&&!x.primaryOk", js)
         self.assertIn("x.hasSetReference&&x.mod&&!x.setOk", js)
+        self.assertIn("expectedSetCounts", js)
+        self.assertIn("differingSets", js)
+        self.assertIn("dominantPrimary", js)
+        self.assertIn("entries[0].weight<0.5", js)
+        core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        self.assertIn("if(!/kyber|swgoh", core)
 
 
 if __name__ == "__main__":
