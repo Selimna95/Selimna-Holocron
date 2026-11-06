@@ -1,3 +1,10 @@
+## V4.1.51 — secondaires Kyber dans le classement
+
+- Le score intègre les valeurs « Secondary Stat Focus » extraites des profils SWGOH.GG.
+- La contribution des secondaires est affichée séparément des sets/primaires, des statistiques globales et du coût des donneurs.
+- Les références secondaires absentes restent non disponibles ; les poids sont renormalisés sur les signaux présents.
+- Tests dynamiques couvrant les statistiques, les sets, les échanges coordonnés, les cibles GL, les donneurs GL, les mods libres et le plancher de vitesse.
+
 ## V4.1.50 — validation stratégique du Visionnaire
 
 - Les mods libres de l'inventaire sont désormais candidats aux échanges ; le mod remplacé retourne à l'inventaire sans créer de faux donneur.
