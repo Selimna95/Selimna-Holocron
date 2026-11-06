@@ -184,6 +184,17 @@
     row.setVerifiable&&row.setMismatch&&row.primaryVerifiable&&row.primaryMismatch).length;
   function render(){
     const root=$('visionnaireRoot');if(!root)return;
+    if(root.dataset.factionFilterBound!=='true'){
+      root.dataset.factionFilterBound='true';
+      // Delegated listener: it survives every innerHTML refresh of the audit.
+      root.addEventListener('change',event=>{
+        if(event.target?.id!=='visionnaireFaction')return;
+        state.faction=event.target.value||'ALL';
+        state.selected=null;
+        state.slots.clear();
+        render();
+      },true);
+    }
     const rows=visibleRows();
     const knownSets=state.rows.filter(r=>r.setVerifiable).length;
     const knownPrimaries=state.rows.filter(r=>r.primaryVerifiable).length;
@@ -221,7 +232,6 @@
       ${state.selected?renderSelected():''}
     `;
     root.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{state.mode=btn.dataset.mode;state.selected=null;state.slots.clear();render();}));
-    $('visionnaireFaction')?.addEventListener('change',e=>{state.faction=e.target.value||'ALL';state.selected=null;state.slots.clear();render();});
     root.querySelectorAll('[data-character]').forEach(btn=>btn.addEventListener('click',()=>{
       const row=state.rows.find(r=>String(characterKey(r.character))===btn.dataset.character);
       if(!row)return;state.selected=row;state.slots.clear();render();
