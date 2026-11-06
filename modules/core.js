@@ -224,7 +224,7 @@ function kyberSetComposition(value){
       .replace(/^Crit Damage$/i,'Critical Damage');
     if(!name)return;
     let count=modifier==='triple'?6:modifier==='double'?4:
-      parts.length>=3?2:parts.length===2?(index===0?4:2):4;
+      parts.length>=3||(parts.length===2&&parts.some(x=>/^(?:Triple|Double)\\s+/i.test(x)))?2:parts.length===2?(index===0?4:2):4;
     counts[name]=(counts[name]||0)+count;
   });
   const total=Object.values(counts).reduce((sum,count)=>sum+count,0);
