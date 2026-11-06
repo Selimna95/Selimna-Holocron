@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.27-visionnaire-kyber-full-distributions", self.sw)
+        self.assertIn("holocron-static-v4.4.28-visionnaire-progress-timeout", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -180,9 +180,9 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.12-kyber-full-distributions", self.html)
-        self.assertIn("modules/core.js?v=4.2.12-kyber-full-distributions", self.sw)
-        self.assertIn("holocron-static-v4.4.27-visionnaire-kyber-full-distributions", self.sw)
+        self.assertIn("modules/core.js?v=4.2.13-visionnaire-progress-timeout", self.html)
+        self.assertIn("modules/core.js?v=4.2.13-visionnaire-progress-timeout", self.sw)
+        self.assertIn("holocron-static-v4.4.28-visionnaire-progress-timeout", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
@@ -194,8 +194,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertFalse((ROOT / "sithari-strategy.css").exists())
         self.assertIn('id="visionnaire"', self.html)
         self.assertIn('data-page="visionnaire"', self.html)
-        self.assertIn("modules/visionnaire.js?v=4.1.43-kyber-full-distributions", self.html)
-        self.assertIn("visionnaire.css?v=4.1.43-kyber-full-distributions", self.html)
+        self.assertIn("modules/visionnaire.js?v=4.1.44-kyber-progress-timeout", self.html)
+        self.assertIn("visionnaire.css?v=4.1.44-kyber-progress-timeout", self.html)
         self.assertIn("rosterCharacters", js)
         self.assertIn('data-mode="sets"', js)
         self.assertIn('data-mode="primaries"', js)
@@ -212,6 +212,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("kyberFetchQueue=operation.then", core)
         self.assertIn("X-Upstream-Status", core)
         self.assertIn("KYBER_PROFILE_CACHE_TTL", core)
+        self.assertIn("AbortSignal.timeout(12000)", core)
         self.assertIn("kyberCircuitOpenUntil=Date.now()+60000", core)
         self.assertIn("Sans index fiable, ne pas essayer des slugs devinés", core)
         self.assertIn("persistKyberProfile(requestKey,indexed,result.profile)", core)
