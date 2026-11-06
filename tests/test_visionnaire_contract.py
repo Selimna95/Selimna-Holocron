@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.58-gac-source-diagnostic-v2", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.58-gac-source-diagnostic-v2", sw)
-        self.assertIn("visionnaire.css?v=4.1.58-gac-source-diagnostic-v2", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.59-kyber-stat-guard-v1", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.59-kyber-stat-guard-v1", sw)
+        self.assertIn("visionnaire.css?v=4.1.59-kyber-stat-guard-v1", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
