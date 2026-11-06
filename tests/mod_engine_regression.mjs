@@ -400,7 +400,8 @@ assert.equal(verdictContext.optimizerVerdictForBuild({
 const kyberValidationContext=vm.createContext({});
 load(core,['kyberProfileValid'],kyberValidationContext);
 assert.equal(kyberValidationContext.kyberProfileValid({
-  sets:[{name:'Health',weight:0.8}],
+  source:'SWGOH.GG Kyber / Top 1000 GAC',
+  sets:[{name:'Health',count:6,weight:0.8}],
   slots:{Arrow:{primaries:{Speed:0.9}}},
   secondary_focus:{Speed:20}
 }),true,'A usable Kyber reference remains valid when SWGOH.GG omits average stats');
@@ -410,9 +411,14 @@ assert.equal(kyberValidationContext.kyberProfileValid({
   averages:{Speed:260,Health:100000,Protection:50000}
 }),false,'Fixed Square/Diamond primaries must not make a set-only page look like a parsed Kyber reference');
 assert.equal(kyberValidationContext.kyberProfileValid({
-  sets:[{name:'Health',weight:0.8}],
+  source:'SWGOH.GG Kyber / Top 1000 GAC',
+  sets:[{name:'Health',count:6,weight:0.8}],
   slots:{Arrow:{primaries:{Speed:0.9}}}
 }),true,'A variable-slot primary distribution is real Kyber guidance');
+assert.equal(kyberValidationContext.kyberProfileValid({
+  sets:[{name:'Health',count:6,weight:0.8}],
+  slots:{Arrow:{primaries:{Speed:0.9}}}
+}),false,'A profile without Kyber provenance must not be used as a reference');
 assert.equal(kyberValidationContext.kyberProfileValid({
   averages:{Speed:260,Health:100000,Protection:50000}
 }),false,'Character averages alone must never masquerade as a mod reference');
