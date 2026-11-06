@@ -120,3 +120,7 @@ const focusScore=sandbox.focus({secondary_focus:{Speed:20,Health:10}},[
  {secondary_1_stat:'Speed',secondary_1_value:20,secondary_2_stat:'Health',secondary_2_value:10}
 ]);
 assert.equal(focusScore,100,'Kyber secondary-focus score must use observed secondary totals');
+
+const noSources=runSearch(glTarget,[],[],kyber);
+assert.equal(noSources.proposals.length,0);
+assert.match(noSources.reason,/aucun mod source éligible/i,'Missing verified donor data must be explained, not reported as a generic no-result');
