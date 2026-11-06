@@ -222,6 +222,7 @@
   function buildExchangeProposals(row,selectedSlots){
     const character=row.character,profile=row.profile;
     const current=getCharacterMods(character);
+    if(current.length!==6||new Set(current.map(slotOf)).size!==6)return {proposals:[],reason:'Le personnage cible doit disposer de ses six mods équipés avant tout échange.'};
     const currentBySlot=new Map(current.map(mod=>[slotOf(mod),mod]));
     const slots=SLOTS.filter(slot=>selectedSlots.includes(slot));
     if(!slots.length)return {proposals:[],reason:'Sélectionne au moins un slot.'};
@@ -263,7 +264,10 @@
       if(index===slots.length){
         tested++;
         const finalTarget=current.filter(mod=>!slots.includes(slotOf(mod))).concat(chosen);
-        const afterSpeed=forgeProjectedModSpeed(character,profile,finalTarget).total;
+        const beforeProjection=forgeProjectedModSpeed(character,profile,current);
+        const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
+        const afterSpeed=afterProjection.total;
+        if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return;
         if(afterSpeed+1e-9<beforeSpeed)return;
         const afterSetDistance=exchangeSetDistance(finalTarget,profile);
         if(state.mode!=='primaries'){
@@ -389,7 +393,7 @@
       </section>
       ${state.selected?renderSelected():''}
     `;
-    root.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{state.mode=btn.dataset.mode;state.selected=null;state.slots.clear();render();}));
+    root.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{state.mode=btn.dataset.mode;state.selected=null;state.slots.clear();state.proposals=[];state.searchError='';render();}));
     root.querySelectorAll('[data-character]').forEach(btn=>btn.addEventListener('click',()=>{
       const row=state.rows.find(r=>String(characterKey(r.character))===btn.dataset.character);
       if(!row)return;state.selected=row;state.slots.clear();state.proposals=[];state.searchError='';render();
@@ -427,6 +431,6 @@
     if(document.body.dataset.page==='visionnaire'&&!state.rows.length&&!state.loading&&characters().length)buildAudit();
     else render();
   };
-  window.addEventListener('holocron:data-updated',()=>{state.rows=[];state.selected=null;state.slots.clear();if(document.body.dataset.page==='visionnaire')buildAudit();});
+  window.addEventListener('holocron:data-updated',()=>{state.rows=[];state.selected=null;state.slots.clear();state.proposals=[];state.searchError='';if(document.body.dataset.page==='visionnaire')buildAudit();});
   window.addEventListener('holocron:gac-usage-ready',()=>{});
 })();
