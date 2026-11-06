@@ -34,4 +34,3 @@
 .visionnaire-filters button{display:inline-flex;align-items:center;gap:12px;padding:10px 14px;background:#111;color:#c9c1c1;border:1px solid #393235;cursor:pointer;letter-spacing:.06em;font-size:11px}
 .visionnaire-filters button.active{border-color:#bd5965;background:#251519;color:#fff}
 .visionnaire-filters button span{display:grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:12px;background:#292326;color:#e6c4c5;font-size:11px}
-@media(max-width:520px){.visionnaire-filters{display:grid;grid-template-columns:1fr}.visionnaire-filters button{justify-content:space-between}}
