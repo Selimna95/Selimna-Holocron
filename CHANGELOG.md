@@ -1,3 +1,8 @@
+## V4.1.57 — compatibilité des snapshots GAC
+
+- Les snapshots GAC historiques sans ventilation par format conservent désormais leur provenance et leur statut de fraîcheur.
+- Les instantanés marqués périmés restent exclus du classement des donneurs ; les données explicitement observées restent compatibles avec l'ancien format.
+
 ## V4.1.56 — diagnostic de collecte dans tous les cas sans donneur
 
 - Le message sur la fraîcheur et l'indisponibilité de la source GAC est partagé par tous les chemins de recherche, y compris lorsqu'aucun slot ne trouve de donneur.
