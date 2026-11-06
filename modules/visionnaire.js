@@ -87,7 +87,7 @@
     const best=ranked[0]||null;
     const exactMatch=!!best&&best.distance===0;
     const coverage=configurations.filter(x=>x.exact).reduce((sum,x)=>sum+x.weight,0);
-    const setVerifiable=complete&&configurations.length>0&&(exactMatch||coverage>=0.5);
+    const setVerifiable=complete&&configurations.length>0&&(ranked.some(config=>config.exact&&config.distance===0)||coverage>=0.5);
     const expected=best?.counts||{};
     const differingSets=setVerifiable&&!exactMatch
       ? [...new Set([...Object.keys(expected),...Object.keys(currentCounts)])]
