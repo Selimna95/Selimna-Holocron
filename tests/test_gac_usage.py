@@ -182,7 +182,7 @@ Battles 12.4K
                 result = MODULE.build()
         self.assertEqual(result["sourceStatus"], "observed")
         self.assertEqual(result["evidenceType"], "unit-usage")
-        self.assertEqual(result["currentSeasons"], {"5v5": 84, "3v3": 83})
+        self.assertEqual(result["currentSeasons"], {"5v5": 84, "3v3": 83, "fleet": 84})
         self.assertIn("403", result["fallbackReason"])
         self.assertGreater(len(result["seasons"][0]["characters"]), 0)
 
