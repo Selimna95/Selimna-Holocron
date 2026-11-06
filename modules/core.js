@@ -198,6 +198,26 @@ function kyberAverageFromFocusLine(value){
   const match=String(value??'').match(/^\s*([+-]?\d[\d,]*(?:\.\d+)?)%?\s+avg\b/i);
   return match?kyberNumber(match[1]):null;
 }
+function kyberPercentageEntries(lines,start=0,end=lines.length){
+  const entries=[];
+  const add=(name,value)=>{
+    const label=String(name||'').trim();
+    const weight=kyberNumber(value)/100;
+    if(label&&weight>0&&weight<=1)entries.push({name:label,weight});
+  };
+  for(let i=start;i<end;i++){
+    const line=String(lines[i]||'').trim();
+    const inline=line.match(/^(.+?)\\s+([0-9]+(?:[.,][0-9]+)?)\\s*%$/);
+    if(inline){add(inline[1],inline[2]);continue;}
+    let value=line.match(/^([0-9]+(?:[.,][0-9]+)?)\\s*%$/);
+    if(!value&&/^[0-9]+(?:[.,][0-9]+)?$/.test(line)&&i+1<end&&/^%$/.test(String(lines[i+1]||'').trim())){value=[line,line];i++;}
+    if(value&&i>start){
+      const label=String(lines[i-1]||'').trim();
+      if(label&&!/^(Primary Set|Secondary Set|Specific Mod Sets|Arrow|Triangle|Circle|Cross|Secondary Stat Focus|Relic)$/i.test(label))add(label,value[1]);
+    }
+  }
+  return entries;
+}
 function kyberPrimaryDistribution(lines,heading){
   const headings=['Arrow','Triangle','Circle','Cross','Secondary Stat Focus','Relic'];
   const start=lines.findIndex(line=>String(line).trim().toLowerCase()===String(heading).toLowerCase());
@@ -205,14 +225,9 @@ function kyberPrimaryDistribution(lines,heading){
   let end=lines.length;
   for(let i=start+1;i<lines.length;i++){
     const line=String(lines[i]||'').trim();
-    if(headings.some(label=>label.toLowerCase()===line.toLowerCase())||/^Average Stats for\b/i.test(line)){end=i;break;}
+    if(headings.some(label=>label.toLowerCase()===line.toLowerCase())||/^Average Stats for\\b/i.test(line)){end=i;break;}
   }
-  const out={};
-  for(const line of lines.slice(start+1,end)){
-    const match=String(line).match(/^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)%$/);
-    if(match)out[match[1].trim()]=kyberNumber(match[2])/100;
-  }
-  return out;
+  return Object.fromEntries(kyberPercentageEntries(lines,start+1,end).map(item=>[item.name,item.weight]));
 }
 function kyberSetComposition(value){
   const raw=String(value||'').trim();
@@ -270,18 +285,16 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   let i=idx('Primary Set');
   if(i>=0){
     const j=nextIndex(x=>x==='Secondary Set'||x.startsWith('Secondary Set'),i+1);
-    for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
-      const match=pctLine(line);if(match)addPrimarySet(match[1],number(match[2])/100);
-    }
+    for(const entry of kyberPercentageEntries(normalized,i+1,j>=0?j:normalized.length))addPrimarySet(entry.name,entry.weight);
   }
 
   // Two-piece set distribution, retained independently as a fallback signal.
   i=idx('Secondary Set');
   if(i>=0){
     const j=nextIndex(x=>x==='Specific Mod Sets'||x.startsWith('Specific Mod Sets'),i+1);
-    for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
-      const match=pctLine(line);if(!match||/^(none|no set)$/i.test(match[1]))continue;
-      profile.secondary_sets.push({name:canonicalSet(match[1]),count:2,weight:number(match[2])/100});
+    for(const entry of kyberPercentageEntries(normalized,i+1,j>=0?j:normalized.length)){
+      if(/^(none|no set)$/i.test(entry.name))continue;
+      profile.secondary_sets.push({name:canonicalSet(entry.name),count:2,weight:entry.weight});
     }
   }
 
@@ -289,9 +302,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   i=idx('Specific Mod Sets');
   if(i>=0){
     const j=nextIndex(x=>/^Arrow\b/i.test(x),i+1);
-    for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
-      const match=pctLine(line);if(match)addSpecific(match[1].trim(),number(match[2])/100,'specific-table');
-    }
+    for(const entry of kyberPercentageEntries(normalized,i+1,j>=0?j:normalized.length))addSpecific(entry.name,entry.weight,'specific-table');
   }
 
   // The explanatory text below the chart often lists additional grouped
@@ -299,9 +310,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   i=nextIndex(x=>/^Best Mod Set for\b/i.test(x),0);
   if(i>=0){
     const j=nextIndex(x=>/^Note that there are always/i.test(x),i+1);
-    for(const line of normalized.slice(i+1,j>=0?j:normalized.length)){
-      const match=pctLine(line);if(match)addSpecific(match[1].trim(),number(match[2])/100,'popular-build-list');
-    }
+    for(const entry of kyberPercentageEntries(normalized,i+1,j>=0?j:normalized.length))addSpecific(entry.name,entry.weight,'popular-build-list');
   }
   profile.specific_sets.sort((a,b)=>b.weight-a.weight);
 
