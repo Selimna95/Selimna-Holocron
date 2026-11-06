@@ -13,7 +13,7 @@
 .visionnaire-toggle{display:flex;align-items:center;gap:10px;color:#cfc6c6;font-size:13px;margin:8px 0 18px}
 .visionnaire-kpis{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
 .visionnaire-kpis span{padding:10px 13px;background:#191719;color:#aaa;font-size:11px}.visionnaire-kpis b{color:#f1e6e4;font-size:17px;margin-right:5px}
-.visionnaire-list-head{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:14px}.visionnaire-list h3,.visionnaire-selected h3{font-size:22px;margin:7px 0}
+.visionnaire-list-head{position:relative;z-index:30;isolation:isolate;display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:14px}.visionnaire-list h3,.visionnaire-selected h3{font-size:22px;margin:7px 0}
 .visionnaire-list-head input{background:#111;border:1px solid #393235;color:#fff;padding:11px 13px;min-width:min(280px,100%)}
 .visionnaire-character{display:grid;grid-template-columns:42px minmax(0,1fr) minmax(150px,.7fr) 18px;gap:13px;align-items:center;width:100%;text-align:left;padding:12px 10px;background:#0e0e0e;border:1px solid #242124;color:#eee;margin-top:7px;cursor:pointer}
 .visionnaire-character.active,.visionnaire-character:hover{border-color:#a64b57;background:#171113}
@@ -36,7 +36,6 @@
 .visionnaire-filters button span{display:grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:12px;background:#292326;color:#e6c4c5;font-size:11px}
 /* Filtre de faction du Visionnaire */
 .visionnaire-list{position:relative;z-index:2;overflow:visible}
-.visionnaire-list-head{position:relative;z-index:30;isolation:isolate}
 .visionnaire-faction-filter{position:relative;z-index:40;display:flex;flex-direction:column;gap:6px;min-width:min(260px,100%);color:#c58b76;font-size:10px;letter-spacing:.14em;pointer-events:auto}
 .visionnaire-faction-label{display:block}
 .visionnaire-faction-toggle{position:relative;z-index:41;display:flex!important;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;margin:0!important;padding:10px 13px!important;background:#111!important;border:1px solid #76505a!important;border-radius:6px!important;color:#fff!important;font-size:13px!important;letter-spacing:normal!important;text-align:left;cursor:pointer!important;pointer-events:auto!important}
@@ -46,4 +45,3 @@
 .visionnaire-faction-menu button:hover,.visionnaire-faction-menu button.active{background:#382027!important;color:#fff!important}
 .visionnaire-faction-menu button.active{box-shadow:inset 2px 0 #d16b7b}
 
-.visionnaire-faction-filter select{position:relative;z-index:5;display:block;width:100%;min-height:44px;padding:10px 36px 10px 13px;margin-top:0;background:#111!important;border:1px solid #76505a!important;border-radius:6px!important;color:#fff!important;font-size:13px;letter-spacing:normal;pointer-events:auto!important;cursor:pointer;appearance:auto;-webkit-appearance:menulist;touch-action:manipulation}
