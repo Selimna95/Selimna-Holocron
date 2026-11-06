@@ -32,7 +32,7 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn('data-mode="primaries"', js)
         self.assertIn('data-mode="both"', js)
         self.assertIn("modeCount('both')", js)
-        self.assertIn("state.faction==='ALL'", js)
+        self.assertIn("faction:'ALL'", js)
         self.assertIn("Toutes les factions", js)
         self.assertIn("ÉTAPE 2 · FILTRER PAR FACTION", js)
         self.assertIn("factionsOf(row).includes(state.faction)", js)
