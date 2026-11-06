@@ -75,6 +75,8 @@
       const name=labelSet(mod.set_name??mod.set??'');
       if(name)currentCounts[name]=(currentCounts[name]||0)+1;
     });
+    // A singleton set has no active bonus and must not invalidate a Kyber build.
+    Object.keys(currentCounts).forEach(name=>{if(currentCounts[name]<2)delete currentCounts[name];});
     const complete=equippedMods.length===6;
     const configDistance=config=>{
       const names=new Set([...Object.keys(config.counts),...Object.keys(currentCounts)]);
