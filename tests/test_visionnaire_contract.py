@@ -65,6 +65,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("secondary_sets", core)
         self.assertIn("sample_size", core)
         self.assertIn("updated_label", core)
+        self.assertIn("kyberProfileHasFullDistribution", core)
+        self.assertIn("kyberProfileHasFullDistribution", js)
         self.assertIn("if(!/kyber|swgoh", core)
 
 
