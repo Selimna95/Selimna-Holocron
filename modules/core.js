@@ -207,7 +207,7 @@ function kyberPercentageEntries(lines,start=0,end=lines.length){
   };
   for(let i=start;i<end;i++){
     const line=String(lines[i]||'').trim();
-    const inline=line.match(/^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)\s*%$/);
+    const inline=line.match(/^(.+?)(?:\s+|(?<=[A-Za-z]))([0-9]+(?:[.,][0-9]+)?)\s*%$/);
     if(inline){add(inline[1],inline[2]);continue;}
     let value=line.match(/^([0-9]+(?:[.,][0-9]+)?)\s*%$/);
     if(!value&&/^[0-9]+(?:[.,][0-9]+)?$/.test(line)&&i+1<end&&/^%$/.test(String(lines[i+1]||'').trim())){value=[line,line];i++;}
