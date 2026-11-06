@@ -50,7 +50,7 @@ const prioritySandbox=vm.createContext({
   seigneurCharacterGacUsage:()=>10,
   seigneurCharacterFleetUsage:()=>({uses:0,known:true,shipCount:0,reason:'No assigned ship'}),
 });
-vm.runInContext(seigneurSource.slice(priorityStart,priorityEnd)+'\\nthis.priority=seigneurDonorPriority;',prioritySandbox);
+vm.runInContext(seigneurSource.slice(priorityStart,priorityEnd)+'\nthis.priority=seigneurDonorPriority;',prioritySandbox);
 const stalePriority=prioritySandbox.priority({baseId:'REY'},{sourceStatus:'stale',formatSeasons:{}});
 assert.equal(stalePriority.known,false,'Stale GAC snapshots must never rank donors');
 assert.match(stalePriority.reason,/périmées/i);
