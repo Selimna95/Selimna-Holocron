@@ -122,14 +122,19 @@
     const saved = JSON.parse(sessionStorage.getItem(CACHE_KEY) || "null");
     if (saved && Date.now() - Number(saved.savedAt || 0) < CACHE_TTL) checkpoint = saved;
   } catch (_) {}
-  const views = Array.isArray(checkpoint.views) ? checkpoint.views : [];
-  const fleetViews = Array.isArray(checkpoint.fleetViews) ? checkpoint.fleetViews : [];
+  const viewIsValid = view => view && FORMATS.includes(view.format) && SIDES.includes(view.side)
+    && LEAGUES.includes(view.league) && Number(view.season) > 0
+    && Array.isArray(view.rows) && view.rows.length >= 8;
+  const fleetViewIsValid = view => view && SIDES.includes(view.side) && LEAGUES.includes(view.league)
+    && Number(view.season) > 0 && Array.isArray(view.fleets);
+  const views = Array.from(new Map((Array.isArray(checkpoint.views) ? checkpoint.views : [])
+    .filter(viewIsValid).map(view => [view.format + "|" + view.side + "|" + view.league, view])).values());
+  const fleetViews = Array.from(new Map((Array.isArray(checkpoint.fleetViews) ? checkpoint.fleetViews : [])
+    .filter(fleetViewIsValid).map(view => [view.side + "|" + view.league, view])).values());
   const saveCheckpoint = () => {
     checkpoint = { views, fleetViews, savedAt: Date.now() };
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(checkpoint)); } catch (_) {}
   };
-  const viewIsValid = view => view && Number(view.season) > 0 && Array.isArray(view.rows) && view.rows.length >= 8;
-  const fleetViewIsValid = view => view && Number(view.season) > 0 && Array.isArray(view.fleets);
   const total = FORMATS.length * SIDES.length * LEAGUES.length + SIDES.length * LEAGUES.length;
   let done = 0;
   const status = document.createElement("div");
@@ -171,6 +176,21 @@
       saveCheckpoint();
       update("Flottes · " + side + " · " + league + " : " + view.fleets.length + " compositions");
       await sleep(500);
+    }
+    if (views.length !== FORMATS.length * SIDES.length * LEAGUES.length || fleetViews.length !== SIDES.length * LEAGUES.length) {
+      throw new Error("Couverture incomplète : " + views.length + "/20 vues personnages et " + fleetViews.length + "/10 vues flottes.");
+    }
+    for (const fmt of FORMATS) {
+      const formatSeasons = new Set(views.filter(view => view.format === fmt).map(view => Number(view.season)));
+      if (formatSeasons.size !== 1) {
+        try { sessionStorage.removeItem(CACHE_KEY); } catch (_) {}
+        throw new Error("La saison " + fmt + " a changé pendant la collecte. Le cache a été réinitialisé : relance le favori.");
+      }
+    }
+    const fleetSeasons = new Set(fleetViews.map(view => Number(view.season)));
+    if (fleetSeasons.size !== 1) {
+      try { sessionStorage.removeItem(CACHE_KEY); } catch (_) {}
+      throw new Error("La saison des flottes a changé pendant la collecte. Le cache a été réinitialisé : relance le favori.");
     }
     const seasons = {};
     for (const view of views) seasons[view.format] = Math.max(seasons[view.format] || 0, view.season);
