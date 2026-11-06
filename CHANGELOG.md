@@ -1,3 +1,13 @@
+## V4.1.50 — validation stratégique du Visionnaire
+
+- Les mods libres de l'inventaire sont désormais candidats aux échanges ; le mod remplacé retourne à l'inventaire sans créer de faux donneur.
+- Calcul des statistiques complètes avant/après pour la cible et chaque donneur, à partir des statistiques de base et des bonus de sets du moteur d'optimisation.
+- Si les statistiques de base d'un personnage manquent, le calcul est explicitement déclaré non vérifiable ; aucune valeur de remplacement n'est inventée.
+- Les donneurs doivent conserver leurs six slots et leurs bonus de sets après restitution des mods remplacés ; les GL restent interdites comme donneurs, mais restent éligibles comme cibles.
+- Classement transparent sur 100 : adéquation Kyber, équilibre statistique de la cible, coût stratégique des donneurs (usage GAC, statistiques et statut). La vitesse n'est pas utilisée comme récompense de score : elle reste un garde-fou dur.
+- Ajout de tests de contrat pour l'impact statistique, les sources libres, la protection des GL, les bonus de sets et le classement.
+- Aucun déplacement automatique ; application manuelle uniquement.
+
 ## V4.1.49 — Recherche coordonnée des échanges du Visionnaire
 
 - Activation de la recherche depuis les slots explicitement sélectionnés ; les transferts d'un même scénario sont évalués ensemble.
