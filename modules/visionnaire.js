@@ -295,8 +295,8 @@
   const exchangeClamp = value => Math.max(0,Math.min(100,Number(value)||0));
   function exchangeScenarioScore({mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,targetBalance,donors}){
     const hasSet=Number.isFinite(beforeSetDistance)&&Number.isFinite(afterSetDistance);
-    const setFit=hasSet?exchangeClamp(50+50*(beforeSetDistance-afterSetDistance)/Math.max(1,beforeSetDistance)):50;
-    const primaryFit=Number.isFinite(primaryShare)?exchangeClamp(primaryShare*100):50;
+    const setFit=hasSet?exchangeClamp(50+50*(beforeSetDistance-afterSetDistance)/Math.max(1,beforeSetDistance)):null;
+    const primaryFit=Number.isFinite(primaryShare)?exchangeClamp(primaryShare*100):null;
     const secondaryFit=Number.isFinite(secondaryFocus)?exchangeClamp(secondaryFocus):null;
     const parts=mode==='primaries'
       ? [{value:primaryFit,weight:.7},{value:secondaryFit,weight:.3}]
