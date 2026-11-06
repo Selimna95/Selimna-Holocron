@@ -34,7 +34,7 @@ const healthMods=[
 ];
 assert.equal(sandbox.project(fixture,healthMods).Health,1200);
 const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',primary_stat:'Speed',primary_value:5}));
-assert.equal(sandbox.project(fixture,speedMods).Speed,120);
+assert.equal(sandbox.project(fixture,speedMods).Speed,130);
 const better=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:0,primaryShare:.9,targetBalance:.02,donors:[{uses:5,statBalance:.01,statusWorsened:false}]});
 const worse=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:3,primaryShare:.2,targetBalance:-.03,donors:[{uses:100,statBalance:-.05,statusWorsened:true}]});
 assert.ok(better.score>worse.score);
