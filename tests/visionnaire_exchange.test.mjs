@@ -125,4 +125,7 @@ assert.equal(focusScore,100,'Kyber secondary-focus score must use observed secon
 
 const noSources=runSearch(glTarget,[],[],kyber);
 assert.equal(noSources.proposals.length,0);
-assert.match(noSources.reason,/aucun mod source éligible/i,'Missing verified donor data must be explained, not reported as a generic no-result');
+assert.match(noSources.reason,/Aucun donneur vérifié/i,'Missing verified donor data must be explained, not reported as a generic no-result');
+buildSandbox.window.__SWGOH_GAC_USAGE__.sourceStatus='unavailable';
+const unavailableSources=runSearch(glTarget,[],[],kyber);
+assert.match(unavailableSources.reason,/collecteur navigateur/i,'Unavailable GAC source must direct the user to the browser collector');
