@@ -42,3 +42,17 @@ const missing=window.holocronGacPriorityForCharacter({baseId:'NOTINCATALOG',name
 assert.equal(missing.known,false);
 assert.equal(missing.uses,null,'Missing characters remain unknown, never zero');
 console.log('Seigneur GAC bridge tests passed.');
+const seigneurSource=fs.readFileSync(new URL('../modules/seigneur.js',import.meta.url),'utf8');
+const priorityStart=seigneurSource.indexOf('function seigneurDonorPriority(');
+const priorityEnd=seigneurSource.indexOf('function forgeSourceStatusAllowed(',priorityStart);
+assert.ok(priorityStart>=0&&priorityEnd>priorityStart,'Donor priority function must remain testable');
+const prioritySandbox=vm.createContext({
+  seigneurCharacterGacUsage:()=>10,
+  seigneurCharacterFleetUsage:()=>({uses:0,known:true,shipCount:0,reason:'No assigned ship'}),
+});
+vm.runInContext(seigneurSource.slice(priorityStart,priorityEnd)+'\\nthis.priority=seigneurDonorPriority;',prioritySandbox);
+const stalePriority=prioritySandbox.priority({baseId:'REY'},{sourceStatus:'stale',formatSeasons:{}});
+assert.equal(stalePriority.known,false,'Stale GAC snapshots must never rank donors');
+assert.match(stalePriority.reason,/périmées/i);
+const freshPriority=prioritySandbox.priority({baseId:'REY'},{sourceStatus:'observed',formatSeasons:{}});
+assert.equal(freshPriority.known,true,'Fresh observed GAC data remains eligible for donor ranking');
