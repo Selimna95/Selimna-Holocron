@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.39-audit-on-entry", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.39-audit-on-entry", sw)
-        self.assertIn("visionnaire.css?v=4.1.39-visionnaire-filters", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.40-compact-filters", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.40-compact-filters", sw)
+        self.assertIn("visionnaire.css?v=4.1.40-compact-filters", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -33,6 +33,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn('data-mode="both"', js)
         self.assertIn("modeCount('both')", js)
         self.assertIn("const criteria=activeIssues(row)", js)
+        self.assertIn("Set incorrect", js)
+        self.assertIn("Primaire incorrecte", js)
         self.assertIn("data-slot", js)
         self.assertNotIn("slice(0,50)", js)
         self.assertNotIn("transferMod", js)
