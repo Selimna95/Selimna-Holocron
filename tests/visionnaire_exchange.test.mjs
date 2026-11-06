@@ -39,3 +39,76 @@ const better=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:0,p
 const worse=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:3,primaryShare:.2,targetBalance:-.03,donors:[{uses:100,statBalance:-.05,statusWorsened:true}]});
 assert.ok(better.score>worse.score);
 assert.equal(better.verdict,'RECOMMANDÉ');
+
+const buildStart=js.indexOf('  function buildExchangeProposals');
+const buildEnd=js.indexOf('  function renderExchangeProposals',buildStart);
+const buildSandbox={
+  SLOTS:['Square','Arrow','Diamond','Triangle','Circle','Cross'],
+  LABELS:{Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'},
+  state:{mode:'sets'},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
+  labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
+  statKey:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
+  modTotalSpeed:mod=>Number(mod.speed||0),
+  characterKey:c=>String(c.baseId),
+  optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
+  baseStatsForCharacter:c=>c.base_stats||{},
+  isGalacticLegendCharacter:c=>String(c.baseId).startsWith('GL'),
+  forgeSourceAllowedForSearch:()=>true,
+  rankedSetConfigurations:p=>(p.specific_sets||[]).map(x=>({name:x.name,counts:Object.fromEntries(Object.entries(x.counts).map(([k,v])=>[String(k).toLowerCase(),v])),weight:x.weight||1,exact:true})),
+  primaryDistribution:(p,s)=>Object.entries(p?.slots?.[s]?.primaries||{}).map(([name,weight])=>({name,weight})),
+  v176ModStatus:mods=>({status:mods.length===6?'FAIBLES':'INCOMPLETS'})
+};
+vm.createContext(buildSandbox);
+vm.runInContext(js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
+const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,speed,primary_stat:primary,primary_value:value});
+function runSearch(target,donorMods,freeMods,profile,mode='sets'){
+  const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
+  donor.mods=donorMods;
+  const roster=[target,...(donorMods.length?[donor]:[])];
+  const byOwner=new Map(roster.map(c=>[c.baseId,c.mods||[]]));
+  const sources=[
+    ...donorMods.map(m=>({...m,_sourceOwnerKey:'DONOR',_sourceOwner:'Donneur',_sourcePriorityKnown:true,_sourceUsage:12})),
+    ...freeMods.map(m=>({...m,_sourceOwnerKey:null,_sourceOwner:'Libre',_sourcePriorityKnown:true,_sourceUsage:0}))
+  ];
+  Object.assign(buildSandbox,{
+    state:{mode},rosterCharacters:roster,
+    getCharacterMods:c=>byOwner.get(c.baseId)||[],
+    forgeAllSourceMods:()=>sources,
+    forgeProjectedModSpeed:(c,_p,list)=>{
+      const speed=list.reduce((sum,m)=>sum+Number(m.speed||0),0);
+      const four=list.filter(m=>m.set_name==='Speed').length>=4;
+      const base=Number(c.base_stats?.Speed||0);
+      return {total:speed+(four&&base?base*.1:0),baseSpeed:base,hasFourPieceSpeedSet:four};
+    }
+  });
+  return buildSandbox.search({character:target,profile},['Square','Circle']);
+}
+const glTarget={baseId:'GLREY',name:'Rey',base_stats:{Speed:100,Health:1000,Offense:500}};
+glTarget.mods=[
+ makeMod('t1','Square','Health',1,'Health %',5),makeMod('t2','Arrow','Speed',1),
+ makeMod('t3','Diamond','Health',1,'Health %',5),makeMod('t4','Triangle','Speed',1),
+ makeMod('t5','Circle','Health',1,'Health %',5),makeMod('t6','Cross','Health',1,'Health %',5)
+];
+const kyber={specific_sets:[{name:'4 Speed + 2 Offense',counts:{Speed:4,Offense:2},weight:1}]};
+const weakDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('d'+i,slot,'Speed',10,'Speed',10));
+const glSearch=runSearch(glTarget,weakDonor,[],kyber);
+assert.ok(glSearch.proposals.length>0,'A Galactic Legend is a valid recipient');
+assert.equal(glSearch.proposals[0].donors[0].owner.baseId,'DONOR','The non-GL donor is selected');
+assert.ok(glSearch.proposals[0].targetStatsAfter,'Recipient global stats are calculated');
+assert.ok(glSearch.proposals[0].donors[0].afterStats,'Donor global stats are calculated');
+
+// A non-GL recipient can use free inventory mods without creating a donor.
+const normalTarget={...glTarget,baseId:'JEDIKNIGHTLUKE',name:'Jedi Knight Luke',mods:glTarget.mods.map(m=>({...m,game_id:'n-'+m.game_id}))};
+const freeChoices=[makeMod('free-s','Square','Speed',10,'Speed',10),makeMod('free-c','Circle','Speed',10,'Speed',10)];
+const freeSearch=runSearch(normalTarget,[],freeChoices,kyber);
+assert.ok(freeSearch.proposals.length>0,'A normal character can receive free inventory mods');
+assert.equal(freeSearch.proposals[0].freeMods,2);
+assert.equal(freeSearch.proposals[0].donors.length,0);
+
+// The hard speed floor rejects a primary-only exchange that would lower total speed.
+const speedTarget={baseId:'GLLEIA',name:'Leia',base_stats:{Speed:100,Health:1000}};
+speedTarget.mods=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('sp'+i,slot,'Speed',10,'Speed',5));
+const slowFree=[makeMod('slow-s','Square','Health',0,'Speed',5),makeMod('slow-c','Circle','Health',0,'Speed',5)];
+const primaryProfile={slots:{Square:{primaries:{Speed:1}},Circle:{primaries:{Speed:1}}}};
+const rejected=runSearch(speedTarget,[],slowFree,primaryProfile,'primaries');
+assert.equal(rejected.proposals.length,0,'No scenario may lower the target total speed');
