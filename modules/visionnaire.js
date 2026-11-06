@@ -4,7 +4,7 @@
   const SLOTS = ['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const LABELS = {Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'};
   const FIXED = {Square:'Offense',Diamond:'Defense'};
-  const state = {mode:'sets',both:false,rows:[],selected:null,slots:new Set(),loading:false,filter:''};
+  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),loading:false,filter:''};
   const $ = id => document.getElementById(id);
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -89,16 +89,18 @@
   }
   const visibleRows = () => state.rows.filter(row=>{
     if(state.filter&&!key(row.character?.name||row.character?.baseId).includes(key(state.filter)))return false;
-    if(state.mode==='sets'){
-      if(!row.setVerifiable)return false;
-      return state.both ? row.setMismatch&&row.primaryVerifiable&&row.primaryMismatch : row.setMismatch;
-    }
-    return row.primaryVerifiable&&row.primaryMismatch;
+    if(state.mode==='sets') return row.setVerifiable&&row.setMismatch;
+    if(state.mode==='primaries') return row.primaryVerifiable&&row.primaryMismatch;
+    return row.setVerifiable&&row.setMismatch&&row.primaryVerifiable&&row.primaryMismatch;
   });
-  const slotSummary = row => {
-    const list=state.mode==='sets'?row.setSlots:row.primarySlots;
-    return list.map(x=>LABELS[x.slot]).join(', ')||'—';
-  };
+  const activeIssues = row => state.mode==='sets' ? row.setSlots :
+    state.mode==='primaries' ? row.primarySlots :
+    [...new Map([...row.setSlots,...row.primarySlots].map(item=>[item.slot,item])).values()];
+  const slotSummary = row => activeIssues(row).map(x=>LABELS[x.slot]).join(', ')||'—';
+  const modeLabel = () => state.mode==='sets' ? 'Mauvais sets' : state.mode==='primaries' ? 'Mauvaises primaires' : 'Sets + primaires';
+  const modeCount = mode => state.rows.filter(row => mode==='sets' ? row.setVerifiable&&row.setMismatch :
+    mode==='primaries' ? row.primaryVerifiable&&row.primaryMismatch :
+    row.setVerifiable&&row.setMismatch&&row.primaryVerifiable&&row.primaryMismatch).length;
   function render(){
     const root=$('visionnaireRoot');if(!root)return;
     const rows=visibleRows();
@@ -110,20 +112,20 @@
         <div class="visionnaire-state">${state.loading?'ANALYSE KYBER EN COURS':'AUDIT '+state.rows.length+' PERSONNAGES'}</div>
       </header>
       <section class="visionnaire-domain">
-        <div class="visionnaire-section-kicker">ÉTAPE 1 · CHOISIR LE DOMAINE</div>
-        <div class="visionnaire-domain-options">
-          <button type="button" data-mode="sets" class="${state.mode==='sets'?'active':''}"><b>SETS</b><span>Identifier les sets qui s'écartent des références Kyber</span></button>
-          <button type="button" data-mode="primaries" class="${state.mode==='primaries'?'active':''}"><b>PRIMAIRES</b><span>Identifier les primaires qui s'écartent des références Kyber</span></button>
+        <div class="visionnaire-section-kicker">ÉTAPE 1 · FILTRER LES ÉCARTS KYBER</div>
+        <div class="visionnaire-filters" role="group" aria-label="Filtrer les personnages selon les écarts Kyber">
+          <button type="button" data-mode="sets" class="${state.mode==='sets'?'active':''}"><b>SETS</b><span>${modeCount('sets')}</span></button>
+          <button type="button" data-mode="primaries" class="${state.mode==='primaries'?'active':''}"><b>PRIMAIRES</b><span>${modeCount('primaries')}</span></button>
+          <button type="button" data-mode="both" class="${state.mode==='both'?'active':''}"><b>SETS + PRIMAIRES</b><span>${modeCount('both')}</span></button>
         </div>
-        ${state.mode==='sets'?'<label class="visionnaire-toggle"><input type="checkbox" id="visionnaireBoth" '+(state.both?'checked':'')+'>Afficher uniquement les personnages dont les sets ET les primaires sont différents de Kyber</label>':''}
         <div class="visionnaire-kpis"><span><b>${state.rows.length}</b> personnages analysés</span><span><b>${known}</b> références Kyber exploitables</span><span><b>${nonverifiable}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
       </section>
       <section class="visionnaire-list">
-        <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · PERSONNAGES À EXAMINER</div><h3>${state.mode==='sets'?'Écarts de sets':'Écarts de primaires'}</h3></div><input id="visionnaireSearch" type="search" placeholder="Rechercher un personnage…" value="${esc(state.filter)}"></div>
+        <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · PERSONNAGES À EXAMINER</div><h3>${modeLabel()}</h3></div><input id="visionnaireSearch" type="search" placeholder="Rechercher un personnage…" value="${esc(state.filter)}"></div>
         ${state.loading?'<p class="visionnaire-empty">Lecture des références Kyber sur l’ensemble du roster…</p>':rows.length?rows.map(row=>{
           const c=row.character;const selected=state.selected?.character===c;
-          const mismatch=state.mode==='sets'?row.setSlots:row.primarySlots;
-          const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):'Primaires par slot';
+          const mismatch=activeIssues(row);
+          const reference=state.mode==='sets'?profileSets(row.profile).join(' · '):state.mode==='primaries'?'Primaires par slot':'Sets et primaires Kyber';
           return `<button type="button" class="visionnaire-character ${selected?'active':''}" data-character="${esc(characterKey(c))}">
             <span class="visionnaire-avatar">${esc(String(c.name||c.baseId||'?').slice(0,1))}</span>
             <span class="visionnaire-character-main"><b>${esc(c.name||c.baseId||'Personnage')}</b><small>${mismatch.length} slot(s) concernés · ${esc(slotSummary(row))}</small></span>
@@ -134,7 +136,6 @@
       ${state.selected?renderSelected():''}
     `;
     root.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{state.mode=btn.dataset.mode;state.selected=null;state.slots.clear();render();}));
-    $('visionnaireBoth')?.addEventListener('change',e=>{state.both=e.target.checked;state.selected=null;state.slots.clear();render();});
     $('visionnaireSearch')?.addEventListener('input',e=>{state.filter=e.target.value;const pos=e.target.selectionStart;render();const input=$('visionnaireSearch');input?.focus();input?.setSelectionRange(pos,pos);});
     root.querySelectorAll('[data-character]').forEach(btn=>btn.addEventListener('click',()=>{
       const row=state.rows.find(r=>String(characterKey(r.character))===btn.dataset.character);
@@ -146,7 +147,7 @@
   }
   function renderSelected(){
     const row=state.selected;if(!row)return '';
-    const criteria=state.mode==='sets'?row.setSlots:row.primarySlots;
+    const criteria=activeIssues(row);
     return `<section class="visionnaire-selected">
       <div class="visionnaire-section-kicker">ÉTAPE 3 · CHOISIR LES SLOTS</div><h3>${esc(row.character.name||row.character.baseId)}</h3>
       <p>Sélectionne explicitement les emplacements que tu souhaites travailler. Aucun mod ne sera déplacé automatiquement.</p>
