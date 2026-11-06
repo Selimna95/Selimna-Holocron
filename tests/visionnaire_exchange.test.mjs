@@ -44,6 +44,8 @@ const buildStart=js.indexOf('  function buildExchangeProposals');
 const buildEnd=js.indexOf('  function renderExchangeProposals',buildStart);
 const buildSandbox={
   SLOTS:['Square','Arrow','Diamond','Triangle','Circle','Cross'],
+  slotOf:mod=>mod?.slot||'',
+  window:{__SWGOH_GAC_USAGE__:{sourceStatus:'observed'}},
   LABELS:{Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'},
   state:{mode:'sets'},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
