@@ -1,7 +1,7 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
-const CACHE_NAME = 'holocron-static-v4.4.38-gac-refresh-reliability';
+const CACHE_NAME = 'holocron-static-v4.4.39-gac-source-status';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -13,7 +13,7 @@ const STATIC_ASSETS = [
   './assets/image/padawan.png',
   './assets/image/jpeg.jpg',
   './app.css?v=4.1.3-visionnaire-cleanup',
-  './visionnaire.css?v=4.1.53-donor-source-diagnostic',
+  './visionnaire.css?v=4.1.55-gac-source-status',
   './holocron-system.css?v=4.0.0-disciple-clarity',
   './entrance.css?v=4.0.46-crawl-restart',
   './holocron-static.css?v=4.0.45',
