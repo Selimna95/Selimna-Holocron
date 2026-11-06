@@ -1,3 +1,9 @@
+## V4.1.52 — transparence du score stratégique
+
+- La fiche de scénario affiche désormais la pondération complète du score : 45% référence Kyber, 25% équilibre statistique cible, 30% coût des donneurs.
+- La pondération interne des sets, primaires et secondaires varie selon le mode choisi ; le coût donneur détaille usage GAC, impact statistique et évolution du statut.
+- La vitesse reste un garde-fou obligatoire et ne rapporte aucun point.
+
 ## V4.1.51 — secondaires Kyber dans le classement
 
 - Le score intègre les valeurs « Secondary Stat Focus » extraites des profils SWGOH.GG.
