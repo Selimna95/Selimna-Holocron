@@ -109,6 +109,7 @@ const parsedKyber=kyberParserContext.parseKyberProfileHTML('<html></html>','Gene
 assert.equal(parsedKyber.sample_size,950,'The fully-modded sample size is retained');
 assert.equal(parsedKyber.updated_label,'Updated 13h ago','The SWGOH.GG freshness label is retained');
 assert.equal(parsedKyber.data_slice,'Kyber','The Kyber data slice is explicit');
+assert.equal(parsedKyber.schema_version,2,'The parser marks the full-distribution profile schema');
 assert.equal(parsedKyber.specific_sets.length,5,'The parser retains table configurations and additional popular builds');
 assert.ok(parsedKyber.specific_sets.some(x=>x.name==='Offense + Potency'&&Math.abs(x.weight-0.0526)<1e-9));
 assert.ok(Math.abs(parsedKyber.slots.Arrow.primaries.Protection-0.6567)<1e-9);
