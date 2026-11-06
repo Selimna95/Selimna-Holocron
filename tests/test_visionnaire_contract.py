@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.50-global-impact-strategic-score", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.50-global-impact-strategic-score", sw)
-        self.assertIn("visionnaire.css?v=4.1.50-global-impact-strategic-score", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.51-kyber-secondary-focus-score", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.51-kyber-secondary-focus-score", sw)
+        self.assertIn("visionnaire.css?v=4.1.51-kyber-secondary-focus-score", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -116,6 +116,9 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertNotIn("disabled>RECHERCHER DES ÉCHANGES — PROCHAINE ÉTAPE", js)
         self.assertIn("function exchangeFinalStats", js)
         self.assertIn("function exchangeScenarioScore", js)
+        self.assertIn("function exchangeSecondaryFocusScore", js)
+        self.assertIn("exchangeSecondaryFocusScore(profile,finalTarget)", js)
+        self.assertIn("proposal.score.secondaryFocus", js)
         self.assertIn("const isFree=!ownerKey", js)
         self.assertIn("targetStatsBefore,targetStatsAfter,targetStatDeltas", js)
         self.assertIn("beforeStats,afterStats,statDeltas", js)
