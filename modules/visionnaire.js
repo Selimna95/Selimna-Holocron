@@ -423,13 +423,14 @@
         });
         const knownPrimaryShares=primaryShares.filter(value=>Number.isFinite(value));
         const primaryShare=knownPrimaryShares.length?knownPrimaryShares.reduce((sum,value)=>sum+value,0)/knownPrimaryShares.length:null;
-        const score=exchangeScenarioScore({mode:state.mode,beforeSetDistance,afterSetDistance,primaryShare,
+        const secondaryFocus=exchangeSecondaryFocusScore(profile,finalTarget);
+        const score=exchangeScenarioScore({mode:state.mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,
           targetBalance:exchangeStatBalance(targetStatsBefore,targetStatsAfter),donors});
         const ids=chosen.map(exchangeModId).join('|');
         if(proposals.some(item=>item.signature===ids))return;
         proposals.push({signature:ids,transfers:chosen.slice(),donors,beforeSpeed,afterSpeed,
           speedGain:afterSpeed-beforeSpeed,beforeSetDistance,afterSetDistance,
-          targetStatsBefore,targetStatsAfter,targetStatDeltas,primaryShare,score,
+          targetStatsBefore,targetStatsAfter,targetStatDeltas,primaryShare,secondaryFocus,score,
           freeMods:chosen.filter(item=>!item._visionnaireDonor).length,
           usage:chosen.reduce((sum,m)=>sum+Number(m._sourceUsage||0),0)});
         return;
