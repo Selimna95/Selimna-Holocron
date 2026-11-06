@@ -127,9 +127,10 @@
         const character=roster[cursor++];
         try{
           let profile=typeof profileForCharacter==='function'?profileForCharacter(character):null;
-          if(typeof kyberProfileValid==='function'&&!kyberProfileValid(profile)) profile=null;
+          if(typeof kyberProfileHasFullDistribution==='function'&&!kyberProfileHasFullDistribution(profile)) profile=null;
+          else if(typeof kyberProfileValid==='function'&&!kyberProfileValid(profile)) profile=null;
           if(!profile && typeof fetchKyberProfile==='function') profile=await fetchKyberProfile(character);
-          if(profile && (typeof kyberProfileValid!=='function'||kyberProfileValid(profile))) rows.push(inspectCharacter(character,profile));
+          if(profile && (typeof kyberProfileHasFullDistribution==='function'?kyberProfileHasFullDistribution(profile):(typeof kyberProfileValid!=='function'||kyberProfileValid(profile)))) rows.push(inspectCharacter(character,profile));
           else rows.push({character,profile:null,slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[]});
         }catch(error){
           rows.push({character,profile:null,slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[],error:String(error?.message||error)});
