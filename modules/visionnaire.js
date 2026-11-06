@@ -273,6 +273,25 @@
     const measurable=Object.keys(before).filter(name=>Object.prototype.hasOwnProperty.call(after,name)&&Number(before[name])!==0);
     return measurable.length?measurable.reduce((sum,name)=>sum+((Number(after[name])||0)-(Number(before[name])||0))/Math.abs(Number(before[name])),0)/measurable.length:null;
   };
+  function exchangeSecondaryFocusScore(profile,build){
+    const focus=profile?.secondary_focus||{};
+    const entries=Object.entries(focus).filter(([,value])=>Number(value)>0);
+    if(!entries.length)return null;
+    const totals={};
+    for(const mod of Array.isArray(build)?build:[]){
+      for(let i=1;i<=4;i++){
+        const stat=mod['secondary_'+i+'_stat'],value=Number(mod['secondary_'+i+'_value']);
+        if(!stat||!Number.isFinite(value))continue;
+        const normalized=key(exchangeStatName(stat));
+        totals[normalized]=(totals[normalized]||0)+value;
+      }
+    }
+    const scores=entries.map(([name,expected])=>{
+      const actual=totals[key(exchangeStatName(name))]||0;
+      return Math.max(0,Math.min(1,actual/Number(expected)));
+    });
+    return scores.reduce((sum,value)=>sum+value,0)/scores.length*100;
+  }
   const exchangeClamp = value => Math.max(0,Math.min(100,Number(value)||0));
   function exchangeScenarioScore({mode,beforeSetDistance,afterSetDistance,primaryShare,targetBalance,donors}){
     const hasSet=Number.isFinite(beforeSetDistance)&&Number.isFinite(afterSetDistance);
