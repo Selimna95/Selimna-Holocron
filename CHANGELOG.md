@@ -1,3 +1,12 @@
+## V4.1.45 — Récupération et validation des références Kyber
+
+- Le chargement des profils ne dépend plus exclusivement de l'index SWGOH.GG : en cas d'index indisponible ou incomplet, le Visionnaire tente aussi le slug déterministe du personnage.
+- Les références locales Kyber partielles restent exploitables pour leurs distributions de primaires pendant que la configuration combinée complète est recherchée.
+- Une référence partielle ne peut plus être présentée comme une configuration exacte de six mods ; les sets restent non vérifiables tant que SWGOH.GG ne fournit pas les configurations combinées.
+- Le parseur expose un diagnostic des sections reconnues : sets principaux/secondaires, configurations combinées, slots de primaires, échantillon et data slice.
+- Le compteur distingue les profils Kyber exploitables des seules références complètes.
+- Cache navigateur, ressources et versions incrémentés.
+
 ## V4.1.44 — Audit Kyber progressif et requêtes protégées
 
 - L'audit du roster complet publie maintenant les résultats par lots au lieu d'attendre la fin des 342 personnages.
