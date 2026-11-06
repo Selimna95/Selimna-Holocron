@@ -219,6 +219,85 @@
       mod.primary_value==null?'':String(mod.primary_value),modTotalSpeed(mod)+' V',
       secondary.join(' · ')].filter(Boolean).join(' · ');
   };
+  const exchangeStatName = value => {
+    const raw=String(value??'').trim().replace(/%$/,'').trim();
+    const aliases={critdamage:'Critical Damage',criticaldamage:'Critical Damage',critchance:'Critical Chance',criticalchance:'Critical Chance',critavoidance:'Critical Avoidance',criticalavoidance:'Critical Avoidance'};
+    return aliases[key(raw)]||raw;
+  };
+  function exchangeFinalStats(character,build){
+    const profile=typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{};
+    const base=typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):profile.base_stats;
+    if(!base||typeof base!=='object'||!Object.keys(base).length)return null;
+    const result=Object.fromEntries(Object.entries(base).map(([name,value])=>[exchangeStatName(name),Number(value)||0]));
+    const flat={},percent={};
+    for(const mod of Array.isArray(build)?build:[]){
+      let raw=mod?.stats;
+      if(typeof raw==='string'){try{raw=JSON.parse(raw);}catch{raw=null;}}
+      const entries=raw&&typeof raw==='object'&&!Array.isArray(raw)?Object.entries(raw):
+        [[mod?.primary_stat,mod?.primary_value],...Array.from({length:4},(_,i)=>[mod?.[`secondary_${i+1}_stat`],mod?.[`secondary_${i+1}_value`]])];
+      for(const [label,value] of entries){
+        if(!label||value==null)continue;
+        const text=String(label).trim(),name=exchangeStatName(text),amount=Number(value)||0;
+        if(text.endsWith('%'))percent[name]=(percent[name]||0)+amount/100;
+        else flat[name]=(flat[name]||0)+amount;
+      }
+    }
+    const counts=exchangeSetCounts(build);
+    const display={health:'Health',protection:'Protection',offense:'Offense',speed:'Speed',defense:'Defense',
+      criticaldamage:'Critical Damage',criticalchance:'Critical Chance',potency:'Potency',tenacity:'Tenacity',criticalavoidance:'Critical Avoidance'};
+    const relative={health:[2,.10],protection:[2,.10],offense:[4,.15],speed:[4,.10],defense:[2,.25]};
+    const additive={criticaldamage:[4,.30],criticalchance:[2,.08],potency:[2,.15],tenacity:[2,.20],criticalavoidance:[2,.20]};
+    for(const [name,[required,bonus]] of Object.entries(relative)){
+      const count=counts[name]||0;if(count>=required)percent[display[name]]=(percent[display[name]]||0)+bonus*Math.floor(count/required);
+    }
+    for(const [name,[required,bonus]] of Object.entries(additive)){
+      const count=counts[name]||0;if(count>=required)percent[display[name]]=(percent[display[name]]||0)+bonus*Math.floor(count/required);
+    }
+    for(const [name,value] of Object.entries(flat))result[name]=(Number(result[name])||0)+value;
+    for(const [name,ratio] of Object.entries(percent)){
+      if(['Potency','Tenacity','Critical Chance','Critical Damage','Critical Avoidance'].includes(name))result[name]=(Number(result[name])||0)+ratio;
+      else result[name]=(Number(result[name])||0)+(Number(base[name])||0)*ratio;
+    }
+    return result;
+  }
+  const exchangeStatsDelta = (before,after) => {
+    if(!before||!after)return null;
+    const names=[...new Set([...Object.keys(before),...Object.keys(after)])];
+    return names.map(name=>({name,before:Number(before[name])||0,after:Number(after[name])||0,
+      delta:(Number(after[name])||0)-(Number(before[name])||0),
+      relative:Number(before[name])?((Number(after[name])||0)-(Number(before[name])||0))/Math.abs(Number(before[name])):null}))
+      .filter(row=>Math.abs(row.delta)>1e-8).sort((a,b)=>Math.abs(b.relative??0)-Math.abs(a.relative??0)||Math.abs(b.delta)-Math.abs(a.delta));
+  };
+  const exchangeStatBalance = (before,after) => {
+    const rows=exchangeStatsDelta(before,after);
+    if(!rows?.length)return null;
+    const measurable=rows.filter(row=>row.relative!==null);
+    return measurable.length?measurable.reduce((sum,row)=>sum+row.relative,0)/measurable.length:null;
+  };
+  const exchangeClamp = value => Math.max(0,Math.min(100,Number(value)||0));
+  function exchangeScenarioScore({mode,beforeSetDistance,afterSetDistance,primaryShare,targetBalance,donors}){
+    const hasSet=Number.isFinite(beforeSetDistance)&&Number.isFinite(afterSetDistance);
+    const setFit=hasSet?exchangeClamp(50+50*(beforeSetDistance-afterSetDistance)/Math.max(1,beforeSetDistance)):50;
+    const primaryFit=Number.isFinite(primaryShare)?exchangeClamp(primaryShare*100):50;
+    const reference=mode==='primaries'?primaryFit:mode==='both'?(setFit+primaryFit)/2:hasSet?setFit:50;
+    const targetStats=targetBalance===null?50:exchangeClamp(50+targetBalance*250);
+    const donorUsage=donors.length?donors.reduce((sum,d)=>sum+100/(1+Math.max(0,Number(d.uses)||0)/50),0)/donors.length:100;
+    const donorStats=donors.length?donors.reduce((sum,d)=>sum+(d.statBalance===null?50:exchangeClamp(50+d.statBalance*250)),0)/donors.length:100;
+    const donorStatus=donors.length?100-donors.filter(d=>d.statusWorsened).length/donors.length*100:100;
+    const donorCost=donorUsage*.45+donorStats*.35+donorStatus*.20;
+    const score=Math.round(reference*.45+targetStats*.25+donorCost*.30);
+    const complete=targetBalance!==null&&donors.every(d=>d.statBalance!==null);
+    const statusSafe=donors.every(d=>!d.statusWorsened);
+    const verdict=score>=75&&complete&&statusSafe?'RECOMMANDÉ':score>=55?'À EXAMINER':'PRUDENCE';
+    return {score,verdict,reference:Math.round(reference),targetStats:Math.round(targetStats),donorCost:Math.round(donorCost),complete};
+  }
+  const exchangeFormatStat = value => Number(value).toLocaleString('fr-FR',{maximumFractionDigits:1});
+  function exchangeStatsMarkup(before,after){
+    const rows=exchangeStatsDelta(before,after);
+    if(!rows)return '<p class="visionnaire-stats-unavailable">Calcul non vérifiable : statistiques de base indisponibles pour ce personnage.</p>';
+    if(!rows.length)return '<p class="visionnaire-stats-unavailable">Aucune variation de statistique calculée.</p>';
+    return '<div class="visionnaire-stat-table">'+rows.map(row=>'<div><span>'+esc(row.name)+'</span><b>'+exchangeFormatStat(row.before)+' → '+exchangeFormatStat(row.after)+'</b><em class="'+(row.delta>0?'gain':row.delta<0?'loss':'neutral')+'">'+(row.delta>0?'+':'')+exchangeFormatStat(row.delta)+(row.relative===null?'':' · '+(row.relative>0?'+':'')+(row.relative*100).toFixed(1)+'%')+'</em></div>').join('')+'</div>';
+  }
   function buildExchangeProposals(row,selectedSlots){
     const character=row.character,profile=row.profile;
     const current=getCharacterMods(character);
@@ -233,17 +312,18 @@
     const targetKey=characterKey(character);
     const source=forgeAllSourceMods(character).filter(mod=>{
       const ownerKey=mod?._sourceOwnerKey;
-      if(!ownerKey||ownerKey===targetKey||!forgeSourceAllowedForSearch(mod,character))return false;
-      const owner=rosterCharacters.find(c=>characterKey(c)===ownerKey);
-      if(!owner||isGalacticLegendCharacter(owner))return false;
-      if(mod._sourcePriorityKnown!==true||!Number.isFinite(Number(mod._sourceUsage)))return false;
+      const isFree=!ownerKey&&(!mod?._sourceOwner||mod._sourceOwner==='Libre')&&mod?._sourcePriorityKnown===true;
+      if(!forgeSourceAllowedForSearch(mod,character)||(!isFree&&!ownerKey)||ownerKey===targetKey)return false;
+      const owner=isFree?null:rosterCharacters.find(c=>characterKey(c)===ownerKey);
+      if(!isFree&&(!owner||isGalacticLegendCharacter(owner)))return false;
+      if(!isFree&&(mod._sourcePriorityKnown!==true||!Number.isFinite(Number(mod._sourceUsage))))return false;
       return true;
     });
     const optionsBySlot=new Map();
     for(const slot of slots){
       const options=source.filter(mod=>slotOf(mod)===slot&&exchangeModId(mod)!==exchangeModId(currentBySlot.get(slot)))
-        .map(mod=>({...mod,_visionnaireDonor:rosterCharacters.find(c=>characterKey(c)===mod._sourceOwnerKey)}))
-        .filter(mod=>mod._visionnaireDonor)
+        .map(mod=>({...mod,_visionnaireDonor:mod._sourceOwnerKey?rosterCharacters.find(c=>characterKey(c)===mod._sourceOwnerKey):null}))
+        .filter(mod=>!mod._sourceOwnerKey||mod._visionnaireDonor)
         .sort((a,b)=>Number(a._sourceUsage)-Number(b._sourceUsage)||
           modTotalSpeed(b)-modTotalSpeed(a));
       optionsBySlot.set(slot,options.slice(0,6));
@@ -277,30 +357,52 @@
         if(state.mode==='primaries'&&!targetPrimarySafe(chosen))return;
         const donorGroups=new Map();
         for(const candidate of chosen){
-          const owner=candidate._visionnaireDonor,key=characterKey(owner);
-          if(!donorGroups.has(key))donorGroups.set(key,{owner,transfers:[]});
-          donorGroups.get(key).transfers.push(candidate);
+          const owner=candidate._visionnaireDonor;
+          if(!owner)continue;
+          const ownerId=characterKey(owner);
+          if(!donorGroups.has(ownerId))donorGroups.set(ownerId,{owner,transfers:[]});
+          donorGroups.get(ownerId).transfers.push(candidate);
         }
         const donors=[];
         for(const {owner,transfers} of donorGroups.values()){
           const before=getCharacterMods(owner);
           const after=before.slice();
           for(const candidate of transfers){
-            const slot=slotOf(candidate),index=after.findIndex(mod=>slotOf(mod)===slot);
+            const slot=slotOf(candidate),donorIndex=after.findIndex(mod=>slotOf(mod)===slot);
             const returned=currentBySlot.get(slot);
-            if(index<0||!returned){return;}
-            after[index]=returned;
+            if(donorIndex<0||!returned){return;}
+            after[donorIndex]=returned;
           }
-          if(after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after))return;
+          if(before.length!==6||after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after))return;
           const donorProfile=optimizerProfileForCharacter(owner)||{};
+          const beforeStats=exchangeFinalStats(owner,before),afterStats=exchangeFinalStats(owner,after);
+          const donorImpact=exchangeStatsDelta(beforeStats,afterStats);
+          const beforeStatus=typeof v176ModStatus==='function'?v176ModStatus(before).status:'INCONNU';
+          const afterStatus=typeof v176ModStatus==='function'?v176ModStatus(after).status:'INCONNU';
+          const statusRank={'BONS':0,'MOYENS':1,'FAIBLES':2,'TRÈS FAIBLES':3,'INCOMPLETS':4,'SANS MODS':5,'SANS MOD':5};
           donors.push({owner,transfers,beforeSpeed:forgeProjectedModSpeed(owner,donorProfile,before).total,
             afterSpeed:forgeProjectedModSpeed(owner,donorProfile,after).total,
-            beforeSets:exchangeSetCounts(before),afterSets:exchangeSetCounts(after)});
+            beforeSets:exchangeSetCounts(before),afterSets:exchangeSetCounts(after),
+            beforeStats,afterStats,statDeltas:donorImpact,statBalance:exchangeStatBalance(beforeStats,afterStats),
+            uses:Number(transfers[0]._sourceUsage)||0,beforeStatus,afterStatus,
+            statusWorsened:(statusRank[afterStatus]??0)>(statusRank[beforeStatus]??0)});
         }
+        const targetStatsBefore=exchangeFinalStats(character,current),targetStatsAfter=exchangeFinalStats(character,finalTarget);
+        const targetStatDeltas=exchangeStatsDelta(targetStatsBefore,targetStatsAfter);
+        const primaryShares=slots.map(slot=>{
+          const mod=chosen.find(item=>slotOf(item)===slot);
+          return primaryDistribution(profile,slot).find(entry=>statKey(entry.name)===statKey(mod?.primary_stat))?.weight??null;
+        });
+        const knownPrimaryShares=primaryShares.filter(value=>Number.isFinite(value));
+        const primaryShare=knownPrimaryShares.length?knownPrimaryShares.reduce((sum,value)=>sum+value,0)/knownPrimaryShares.length:null;
+        const score=exchangeScenarioScore({mode:state.mode,beforeSetDistance,afterSetDistance,primaryShare,
+          targetBalance:exchangeStatBalance(targetStatsBefore,targetStatsAfter),donors});
         const ids=chosen.map(exchangeModId).join('|');
         if(proposals.some(item=>item.signature===ids))return;
         proposals.push({signature:ids,transfers:chosen.slice(),donors,beforeSpeed,afterSpeed,
           speedGain:afterSpeed-beforeSpeed,beforeSetDistance,afterSetDistance,
+          targetStatsBefore,targetStatsAfter,targetStatDeltas,primaryShare,score,
+          freeMods:chosen.filter(item=>!item._visionnaireDonor).length,
           usage:chosen.reduce((sum,m)=>sum+Number(m._sourceUsage||0),0)});
         return;
       }
@@ -312,22 +414,26 @@
       }
     };
     walk(0);
-    proposals.sort((a,b)=>a.donors.length-b.donors.length||a.usage-b.usage||b.speedGain-a.speedGain);
+    proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||
+      (a.afterSetDistance??99)-(b.afterSetDistance??99));
     return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,
       reason:proposals.length?'':tested>=15000?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.'};
   }
   function renderExchangeProposals(){
     if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours…</div>';
     if(!state.proposals.length)return state.searchError?'<div class="visionnaire-empty">'+esc(state.searchError)+'</div>':'';
-    return '<div class="visionnaire-proposals"><div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS SÛRS</div>'+
-      state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+'</b><span>'+proposal.transfers.length+' transfert(s) · '+proposal.donors.length+' donneur(s)</span></header>'+
-      '<div class="visionnaire-proposal-speed"><span>VITESSE CIBLE</span><b>'+proposal.beforeSpeed.toFixed(1)+' → '+proposal.afterSpeed.toFixed(1)+' ('+(proposal.speedGain>=0?'+':'')+proposal.speedGain.toFixed(1)+')</b></div>'+
+    return '<div class="visionnaire-proposals"><div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR QUALITÉ STRATÉGIQUE</div>'+
+      state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+' · '+proposal.score.verdict+'</b><span class="visionnaire-score">'+proposal.score.score+'/100</span></header>'+
+      '<div class="visionnaire-score-breakdown"><span>Référence Kyber <b>'+proposal.score.reference+'/100</b></span><span>Stats cible <b>'+proposal.score.targetStats+'/100</b></span><span>Coût donneurs <b>'+proposal.score.donorCost+'/100</b></span></div>'+
+      '<div class="visionnaire-proposal-speed"><span>VITESSE CIBLE · PLANCHER RESPECTÉ</span><b>'+proposal.beforeSpeed.toFixed(1)+' → '+proposal.afterSpeed.toFixed(1)+' ('+(proposal.speedGain>=0?'+':'')+proposal.speedGain.toFixed(1)+')</b></div>'+
+      '<div class="visionnaire-stat-section"><b>IMPACT COMPLET · PERSONNAGE CIBLE</b>'+exchangeStatsMarkup(proposal.targetStatsBefore,proposal.targetStatsAfter)+'</div>'+
       '<div class="visionnaire-proposal-transfers">'+proposal.transfers.map(mod=>{
         const slot=slotOf(mod),current=state.selected.slotRows.find(x=>x.slot===slot)?.mod;
-        return '<div><b>'+LABELS[slot]+'</b><span>ACTUEL · '+esc(exchangeModSummary(current))+'</span><span>REÇU · '+esc(exchangeModSummary(mod))+'</span><small>Donneur : '+esc(mod._visionnaireDonor?.name||mod._sourceOwner)+' · GAC '+Number(mod._sourceUsage||0)+' utilisation(s)</small></div>';
+        const sourceName=mod._visionnaireDonor?.name||mod._sourceOwner||'Inventaire libre';
+        return '<div><b>'+LABELS[slot]+'</b><span>ACTUEL · '+esc(exchangeModSummary(current))+'</span><span>REÇU · '+esc(exchangeModSummary(mod))+'</span><small>Source : '+esc(sourceName)+(mod._visionnaireDonor?' · GAC '+Number(mod._sourceUsage||0)+' utilisation(s)':' · mod libre, aucun donneur dépouillé')+'</small></div>';
       }).join('')+'</div>'+
-      '<div class="visionnaire-proposal-donors">'+proposal.donors.map(d=>'<div><b>'+esc(d.owner.name||d.owner.baseId)+'</b><span>'+d.transfers.length+' mod(s) cédé(s) · vitesse '+d.beforeSpeed.toFixed(1)+' → '+d.afterSpeed.toFixed(1)+'</span><small>Bonus de sets conservés · retour des mods remplacés sur les mêmes slots</small></div>').join('')+'</div>'+
-      '<p>Aucun déplacement n’est effectué. Ce scénario est une proposition à examiner et à appliquer manuellement dans le jeu.</p></article>').join('')+'</div>';
+      '<div class="visionnaire-proposal-donors">'+proposal.donors.map(d=>'<div><b>'+esc(d.owner.name||d.owner.baseId)+'</b><span>'+d.transfers.length+' mod(s) cédé(s) · vitesse '+d.beforeSpeed.toFixed(1)+' → '+d.afterSpeed.toFixed(1)+' · '+esc(d.beforeStatus)+' → '+esc(d.afterStatus)+'</span><small>GAC '+d.uses+' · bonus de sets conservés · retour des mods remplacés</small><details><summary>Voir les statistiques complètes du donneur</summary>'+exchangeStatsMarkup(d.beforeStats,d.afterStats)+'</details></div>').join('')+'</div>'+
+      '<p class="visionnaire-score-note">'+(proposal.score.complete?'Calcul statistique complet disponible.':'Attention : une ou plusieurs bases de statistiques manquent ; le score reste provisoire.')+' Aucun déplacement n’est effectué : application manuelle uniquement.</p></article>').join('')+'</div>';
   }
   async function runExchangeSearch(){
     if(state.searching||!state.selected||!state.slots.size)return;
