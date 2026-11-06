@@ -184,6 +184,9 @@ function kyberProfileValid(p){
   // Only explicitly sourced SWGOH.GG/Kyber profiles may drive this comparison.
   return sets&&(primaries||secondaries);
 }
+function kyberProfileHasFullDistribution(p){
+  return kyberProfileValid(p)&&Number(p.schema_version)>=2&&String(p.data_slice||'').toLowerCase()==='kyber';
+}
 function cleanLinesFromDoc(doc){const body=doc?.body;if(!body)return[];const clone=body.cloneNode(true);clone.querySelectorAll('script,style,noscript').forEach(n=>n.remove());clone.querySelectorAll('br').forEach(n=>n.replaceWith(document.createTextNode('\n')));clone.querySelectorAll('div,p,li,tr,h1,h2,h3,h4,h5,h6,section,article,table,thead,tbody,th,td').forEach(n=>n.insertBefore(document.createTextNode('\n'),n.firstChild));return String(clone.textContent||'').split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);}
 function numberFromText(value){const m=String(value??'').match(/[-+]?[0-9]+(?:\.[0-9]+)?/);return m?Number(m[0].replace(',','.')):0;}
 function kyberNumber(value){
@@ -236,7 +239,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   const doc=parseHTML(text);
   const lines=cleanLinesFromDoc(doc);
   const normalized=lines.map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
-  const profile={character:String(character||''),source:'SWGOH.GG Units / Best Mods / Kyber',url:`https://swgoh.gg/units/${kyberSlug}/best-mods/`,data_slice:'Kyber',sets:[],secondary_sets:[],specific_sets:[],slots:{},averages:{},secondary_focus:{},sample_size:null,updated_label:null};
+  const profile={schema_version:2,character:String(character||''),source:'SWGOH.GG Units / Best Mods / Kyber',url:`https://swgoh.gg/units/${kyberSlug}/best-mods/`,data_slice:'Kyber',sets:[],secondary_sets:[],specific_sets:[],slots:{},averages:{},secondary_focus:{},sample_size:null,updated_label:null};
   const pct=/^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)%$/;
   const pctLine=line=>String(line||'').match(pct);
   const nextIndex=(pred,start)=>{for(let i=start;i<normalized.length;i++)if(pred(normalized[i]))return i;return -1;};
@@ -344,7 +347,7 @@ let kyberFetchQueue=Promise.resolve();
 let kyberNextFetchAt=0;
 let kyberCircuitOpenUntil=0;
 let kyberPersistentCache=null;
-const KYBER_PROFILE_CACHE_KEY='holocron-kyber-profile-cache-v2-full-distributions';
+const KYBER_PROFILE_CACHE_KEY='holocron-kyber-profile-cache-v3-full-distributions';
 const KYBER_PROFILE_CACHE_TTL=12*60*60*1000;
 function kyberSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 async function fetchKyberThroughRelay(url){
@@ -427,9 +430,9 @@ async function fetchKyberProfile(character){
   const requestKey=normalizeKyberKey(display)||slug(character.baseId||character.base_id||'');
   if(kyberProfileInflight.has(requestKey))return kyberProfileInflight.get(requestKey);
   const request=(async()=>{
-    const existing=profileForCharacter(character); if(kyberProfileValid(existing))return existing;
+    const existing=profileForCharacter(character); if(kyberProfileHasFullDistribution(existing))return existing;
     const cache=readKyberPersistentCache(),cached=cache[requestKey];
-    if(cached&&kyberProfileValid(cached.profile)){
+    if(cached&&kyberProfileHasFullDistribution(cached.profile)){
       profiles[cached.slug||requestKey]=cached.profile;
       return cached.profile;
     }
