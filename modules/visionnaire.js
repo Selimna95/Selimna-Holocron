@@ -4,7 +4,7 @@
   const SLOTS = ['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const LABELS = {Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'};
   const FIXED = {Square:'Offense',Diamond:'Defense'};
-  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),proposals:[],searching:false,searchError:'',loading:false,faction:'ALL',factionOpen:false,progress:{done:0,total:0,profiles:0,failures:0,lastError:''}};
+  const state = {mode:'sets',rows:[],selected:null,slots:new Set(),proposals:[],searching:false,searchProgress:{tested:0,limit:15000},searchError:'',loading:false,faction:'ALL',factionOpen:false,progress:{done:0,total:0,profiles:0,failures:0,lastError:''}};
   const $ = id => document.getElementById(id);
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -363,7 +363,7 @@
     if(usageStatus==='unavailable'||usageStatus==='awaiting-source-access')return 'Aucune collecte GAC complète exploitable. SWGOH.GG bloque actuellement les requêtes serveur ; lance le collecteur navigateur : https://selimna95.github.io/Selimna-Holocron/tools/gac-collector.html';
     return '';
   }
-  function buildExchangeProposals(row,selectedSlots){
+  async function buildExchangeProposals(row,selectedSlots){
     const character=row.character,profile=row.profile;
     const current=getCharacterMods(character);
     if(current.length!==6||new Set(current.map(slotOf)).size!==6)return {proposals:[],reason:'Le personnage cible doit disposer de ses six mods équipés avant tout échange.'};
@@ -426,10 +426,17 @@
       }
     };
     const chosen=[];
-    const walk=index=>{
+    const walk=async index=>{
       if(proposals.length>=30||tested>=15000)return;
       if(index===slots.length){
         tested++;
+        // Keep the browser responsive during large six-slot searches. The previous
+        // synchronous recursion could monopolize the main thread for all 15,000 cases.
+        if(tested%50===0){
+          state.searchProgress={tested,limit:15000};
+          render();
+          await new Promise(resolve=>setTimeout(resolve,0));
+        }
         const finalTarget=current.filter(mod=>!slots.includes(slotOf(mod))).concat(chosen);
         const beforeProjection=forgeProjectedModSpeed(character,profile,current);
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
@@ -500,11 +507,12 @@
       const slot=slots[index];
       for(const candidate of optionsBySlot.get(slot)||[]){
         if(chosen.some(item=>exchangeModId(item)===exchangeModId(candidate)))continue;
-        chosen.push(candidate);walk(index+1);chosen.pop();
+        chosen.push(candidate);await walk(index+1);chosen.pop();
         if(proposals.length>=30||tested>=15000)return;
       }
     };
-    walk(0);
+    await walk(0);
+    state.searchProgress={tested,limit:15000};
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||
       (a.afterSetDistance??99)-(b.afterSetDistance??99));
     diagnostics.tested=tested;
@@ -527,7 +535,7 @@
       (diagnostics.hitLimit?'<p class="visionnaire-search-limit">Limite atteinte : les résultats sont partiels. Le moteur ne prétend pas avoir exploré toutes les combinaisons.</p>':'')+'</details>';
   }
   function renderExchangeProposals(){
-    if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours…</div>';
+    if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours… '+Number(state.searchProgress.tested||0).toLocaleString('fr-FR')+' / '+Number(state.searchProgress.limit||15000).toLocaleString('fr-FR')+' combinaisons examinées. Tu peux laisser cette page ouverte : le navigateur reste disponible pendant le calcul.</div>';
     if(!state.proposals.length)return (state.searchError?'<div class="visionnaire-empty">'+esc(state.searchError)+'</div>':'')+renderExchangeDiagnostics(state.diagnostics);
     return '<div class="visionnaire-proposals">'+renderExchangeDiagnostics(state.diagnostics)+'<div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR QUALITÉ STRATÉGIQUE</div>'+
       state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+' · '+proposal.score.verdict+'</b><span class="visionnaire-score">'+proposal.score.score+'/100</span></header>'+
@@ -547,8 +555,9 @@
   async function runExchangeSearch(){
     if(state.searching||!state.selected||!state.slots.size)return;
     state.searching=true;state.searchError='';state.proposals=[];render();
+    state.searchProgress={tested:0,limit:15000};
     try{
-      const result=buildExchangeProposals(state.selected,[...state.slots]);
+      const result=await buildExchangeProposals(state.selected,[...state.slots]);
       state.proposals=result.proposals||[];
       state.diagnostics=result.diagnostics||null;
       state.searchError=result.reason||'';
@@ -634,7 +643,7 @@
         const setLabel=setIssue?'Set hors de la configuration Kyber la plus proche':item.hasSetReference?'Composition comparée à toutes les configurations Kyber':'Set non vérifiable';
         const primaryLabel=!item.hasPrimaryReference?'Primaire non vérifiable':primaryIssue?'Primaire non observée en Kyber':('Primaire observée '+(item.primaryShare*100).toFixed(1)+'%');
         const detail=[setLabel,primaryLabel,alternatives].filter(Boolean).join(' · ');
-        return `<button type="button" data-slot="${item.slot}" class="${state.slots.has(item.slot)?'selected':''} ${mismatch?'mismatch':''}">
+        return `<button type="button" data-slot="${item.slot}" class="${state.slots.has(item.slot)?'selected':''} ${mismatch?'mismatch':''}" ${state.searching?'disabled':''}>
           <span>${LABELS[item.slot]}</span><b>${esc(m?.set_name||'Slot vide')}</b><small>${esc(m?.primary_stat||'—')} ${m?.primary_value??''}</small><em>${esc(detail)}</em>
         </button>`;
       }).join('')}</div>
