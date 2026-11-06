@@ -1,7 +1,7 @@
 // Retired cache identifier: holocron-static-v4.0.19-padawan-seasonal-defense
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
-const CACHE_NAME = 'holocron-static-v4.4.31-faction-filter-interaction';
+const CACHE_NAME = 'holocron-static-v4.4.32-custom-faction-dropdown';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -13,7 +13,7 @@ const STATIC_ASSETS = [
   './assets/image/padawan.png',
   './assets/image/jpeg.jpg',
   './app.css?v=4.1.3-visionnaire-cleanup',
-  './visionnaire.css?v=4.1.47-faction-filter-interaction',
+  './visionnaire.css?v=4.1.48-custom-faction-dropdown',
   './holocron-system.css?v=4.0.0-disciple-clarity',
   './entrance.css?v=4.0.46-crawl-restart',
   './holocron-static.css?v=4.0.45',
@@ -25,7 +25,7 @@ const STATIC_ASSETS = [
   './modules/disciple.js?v=3.5.2-ranked-candidates',
   './modules/seigneur.js?v=3.9.4-slot-comparison',
   './modules/seigneur-impact.js?v=1.0.0-roster-impact',
-  './modules/visionnaire.js?v=4.1.47-faction-filter-interaction',
+  './modules/visionnaire.js?v=4.1.48-custom-faction-dropdown',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
   './optimizer-worker.mjs?v=3.5.3-seigneur-speed-floor',
   './python/optimizer.py?v=3.5.1-seigneur-speed-floor',
