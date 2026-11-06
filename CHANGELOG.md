@@ -1,3 +1,10 @@
+## V4.1.44 — Audit Kyber progressif et requêtes protégées
+
+- L'audit du roster complet publie maintenant les résultats par lots au lieu d'attendre la fin des 342 personnages.
+- L'interface indique la progression, le nombre de profils Kyber complets et les erreurs de récupération.
+- Chaque requête SWGOH.GG est interrompue après 12 secondes afin qu'une réponse bloquée ne fige plus la file de récupération.
+- Aucun plafond de roster ajouté ; les profils absents restent non vérifiables et ne sont pas déclarés non conformes.
+
 ## V4.1.43 — Extraction et analyse complètes des références Kyber SWGOH.GG
 
 - Le parseur conserve toutes les configurations de sets du tableau « Specific Mod Sets » et fusionne les configurations complémentaires listées dans le détail « Best Mod Set ».
