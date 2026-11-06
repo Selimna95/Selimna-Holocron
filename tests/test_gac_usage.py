@@ -13,6 +13,7 @@ class GacUsageParserTests(unittest.TestCase):
     def test_clean_name_removes_tier_movement_badges(self):
         self.assertEqual(MODULE.clean_name("6▲3 A→S Rey"), "Rey")
         self.assertEqual(MODULE.clean_name("15▼2 S→A Darth Bane"), "Darth Bane")
+        self.assertEqual(MODULE.clean_name("— Lord Vader"), "Lord Vader")
 
     def test_reader_http_200_cloudflare_block_is_rejected(self):
         from unittest.mock import patch
@@ -229,6 +230,47 @@ Battles 12.4K
             with patch.object(MODULE, "BROWSER_EXPORT", Path(handle.name)):
                 with self.assertRaisesRegex(ValueError, "missing 20 character views"):
                     MODULE.build_from_browser_export()
+
+
+    def test_browser_export_accepts_character_only_collection_and_marks_fleets_missing(self):
+        import json
+        import tempfile
+        from unittest.mock import patch
+
+        views = []
+        for fmt in ("5v5", "3v3"):
+            for side in MODULE.SIDES:
+                for league in MODULE.LEAGUES:
+                    views.append({
+                        "format": fmt, "side": side, "league": league,
+                        "season": 84 if fmt == "5v5" else 83,
+                        "url": "https://swgoh.gg/tier-list/units/",
+                        "rows": [
+                            {"name": "— Lord Vader" if i == 0 else f"Character {i}",
+                             "battles": 100 + i, "role": "leader" if i == 0 else "member"}
+                            for i in range(8)
+                        ],
+                    })
+        payload = {
+            "schemaVersion": 1, "source": "SWGOH.GG browser session",
+            "collectedAt": "2026-11-06T12:15:23.516Z",
+            "seasons": {"5v5": 84, "3v3": 83, "fleet": 84},
+            "views": views,
+        }
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json") as handle:
+            json.dump(payload, handle)
+            handle.flush()
+            with patch.object(MODULE, "BROWSER_EXPORT", Path(handle.name)):
+                result = MODULE.build_from_browser_export()
+
+        season_5v5 = next(item for item in result["seasons"] if item["season"] == 84)
+        self.assertIn("Lord Vader", season_5v5["characters"])
+        self.assertNotIn("— Lord Vader", season_5v5["characters"])
+        self.assertEqual(result["currentSeasons"], {"5v5": 84, "3v3": 83, "fleet": 84})
+        self.assertEqual(result["fleetCoverageStatus"], "not-collected")
+        self.assertFalse(season_5v5["ships"])
+        self.assertTrue(any(item.get("format") == "fleet" and item.get("status") == "not-collected"
+                            for item in result["coverage"]))
 
 
 if __name__ == "__main__":
