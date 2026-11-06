@@ -149,6 +149,71 @@ Battles 12.4K
         self.assertNotIn("Unobserved Ship", season_5v5["ships"])
         self.assertEqual(len(result["coverage"]), 20)
 
+    def test_build_uses_fresh_browser_export_after_live_403(self):
+        import json
+        import tempfile
+        from datetime import datetime, timezone
+        from unittest.mock import patch
+
+        views = []
+        for fmt in ("5v5", "3v3"):
+            for side in MODULE.SIDES:
+                for league in MODULE.LEAGUES:
+                    views.append({
+                        "format": fmt, "side": side, "league": league,
+                        "season": 84 if fmt == "5v5" else 83,
+                        "url": "https://swgoh.gg/tier-list/units/",
+                        "rows": [{"name": f"Character {i}", "battles": 100 + i, "role": "member"} for i in range(8)]
+                    })
+        fleet_views = [
+            {"side": side, "league": league, "season": 84, "url": "https://swgoh.gg/tier-list/fleet/", "fleets": []}
+            for side in MODULE.SIDES for league in MODULE.LEAGUES
+        ]
+        payload = {
+            "schemaVersion": 1, "source": "SWGOH.GG browser session",
+            "collectedAt": datetime.now(timezone.utc).isoformat(),
+            "views": views, "fleetViews": fleet_views,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            export = Path(directory) / "gac-browser-export.json"
+            output = Path(directory) / "gac-usage.json"
+            export.write_text(json.dumps(payload), encoding="utf-8")
+            with patch.object(MODULE, "BROWSER_EXPORT", export), patch.object(MODULE, "JSON_OUTPUT", output), patch.object(MODULE, "build_live", side_effect=RuntimeError("HTTP 403")):
+                result = MODULE.build()
+        self.assertEqual(result["sourceStatus"], "observed")
+        self.assertEqual(result["evidenceType"], "unit-usage")
+        self.assertEqual(result["currentSeasons"], {"5v5": 84, "3v3": 83})
+        self.assertIn("403", result["fallbackReason"])
+        self.assertGreater(len(result["seasons"][0]["characters"]), 0)
+
+    def test_browser_export_rejects_mixed_seasons_within_format(self):
+        import json
+        import tempfile
+        from unittest.mock import patch
+
+        views = []
+        for fmt in ("5v5", "3v3"):
+            for side in MODULE.SIDES:
+                for league in MODULE.LEAGUES:
+                    views.append({
+                        "format": fmt, "side": side, "league": league,
+                        "season": 84 if fmt == "5v5" else 83,
+                        "url": "https://swgoh.gg/tier-list/units/",
+                        "rows": [{"name": f"Character {i}", "battles": 100 + i} for i in range(8)]
+                    })
+        views[1]["season"] = 82
+        fleet_views = [
+            {"side": side, "league": league, "season": 84, "url": "https://swgoh.gg/tier-list/fleet/", "fleets": []}
+            for side in MODULE.SIDES for league in MODULE.LEAGUES
+        ]
+        payload = {"schemaVersion": 1, "source": "SWGOH.GG browser session", "views": views, "fleetViews": fleet_views}
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json") as handle:
+            json.dump(payload, handle)
+            handle.flush()
+            with patch.object(MODULE, "BROWSER_EXPORT", Path(handle.name)):
+                with self.assertRaisesRegex(ValueError, "Inconsistent 5v5 seasons"):
+                    MODULE.build_from_browser_export()
+
     def test_browser_export_rejects_missing_views(self):
         import json
         import tempfile
