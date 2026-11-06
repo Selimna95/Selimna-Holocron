@@ -26,7 +26,7 @@ const sandbox={
   modTotalSpeed:mod=>Number(mod.speed||0)
 };
 vm.createContext(sandbox);
-vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;',sandbox);
+vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;this.focus=exchangeSecondaryFocusScore;',sandbox);
 const fixture={baseId:'GLREY',base_stats:{Health:1000,Speed:100,Potency:0.1}};
 const healthMods=[
  {set_name:'Health',primary_stat:'Health %',primary_value:5},
@@ -115,3 +115,8 @@ const slowFree=[makeMod('slow-s','Square','Health',0,'Speed',5),makeMod('slow-c'
 const primaryProfile={slots:{Square:{primaries:{Speed:1}},Circle:{primaries:{Speed:1}}}};
 const rejected=runSearch(speedTarget,[],slowFree,primaryProfile,'primaries');
 assert.equal(rejected.proposals.length,0,'No scenario may lower the target total speed');
+
+const focusScore=sandbox.focus({secondary_focus:{Speed:20,Health:10}},[
+ {secondary_1_stat:'Speed',secondary_1_value:20,secondary_2_stat:'Health',secondary_2_value:10}
+]);
+assert.equal(focusScore,100,'Kyber secondary-focus score must use observed secondary totals');
