@@ -104,7 +104,7 @@ Object.assign(kyberParserContext,{
   cleanLinesFromDoc:()=>kyberPageLines,
   kyberProfileValid:()=>true
 });
-load(core,['parseKyberProfileHTML'],kyberParserContext);
+load(core,['kyberPageHasNoReference','parseKyberProfileHTML'],kyberParserContext);
 const parsedKyber=kyberParserContext.parseKyberProfileHTML('<html></html>','General Skywalker','general-skywalker');
 assert.equal(parsedKyber.sample_size,950,'The fully-modded sample size is retained');
 assert.equal(parsedKyber.updated_label,'Updated 13h ago','The SWGOH.GG freshness label is retained');
