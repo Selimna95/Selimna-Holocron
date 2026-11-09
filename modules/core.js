@@ -177,6 +177,7 @@ function kyberProfileValid(p){
   if(!p||typeof p!=='object')return false;
   const provenance=`${p.source||''} ${p.url||''}`;
   if(!/kyber|swgoh\.gg/i.test(provenance))return false;
+  if(String(p.data_slice||'').toLowerCase()!=='kyber')return false;
   const sets=(Array.isArray(p.sets)&&p.sets.length>0)||(Array.isArray(p.specific_sets)&&p.specific_sets.length>0);
   const variableSlots=['Arrow','Triangle','Circle','Cross'];
   const primaries=variableSlots.some(name=>Object.keys(p.slots?.[name]?.primaries||{}).length>0);
@@ -280,7 +281,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   };
 
   const based=normalized.find(line=>/^Based on [0-9,]+ fully-modded units/i.test(line));
-  if(based){const match=based.match(/^Based on ([0-9,]+)/i);if(match)profile.sample_size=Number(match[1].replace(/,/g,''))||null;}
+  if(based){const match=based.match(/^Based on ([0-9,]+)/i);if(match)profile.sample_size=Number(match[1].replace(/,/g,''));}
   profile.updated_label=normalized.find(line=>/^Updated\s+/i.test(line))||null;
   const sliceLine=normalized.find(line=>/^Data Slice:/i.test(line));
   if(sliceLine)profile.data_slice=sliceLine.replace(/^Data Slice:\s*/i,'').trim()||'Kyber';
@@ -468,6 +469,7 @@ async function fetchKyberProfile(character){
   const requestKey=normalizeKyberKey(display)||slug(character.baseId||character.base_id||'');
   if(kyberProfileInflight.has(requestKey))return kyberProfileInflight.get(requestKey);
   const request=(async()=>{
+    window.__kyberLastFetchError='';
     window.__kyberReferenceStatuses[requestKey]={status:'checking',label:'Vérification de la référence Kyber sur SWGOH.GG'};
     const tryCandidate=async candidate=>{
       try{
