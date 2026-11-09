@@ -181,7 +181,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.16-live-kyber-only", self.html)
-        self.assertIn("modules/core.js?v=4.2.15-kyber-split-percentages", self.sw)
+        self.assertIn("modules/core.js?v=4.2.16-live-kyber-only", self.sw)
         self.assertIn("holocron-static-v4.4.44-visionnaire-responsive", self.sw)
 
 
@@ -194,7 +194,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertFalse((ROOT / "sithari-strategy.css").exists())
         self.assertIn('id="visionnaire"', self.html)
         self.assertIn('data-page="visionnaire"', self.html)
-        self.assertIn("modules/visionnaire.js?v=4.1.62-responsive-search-v1", self.html)
+        self.assertIn("modules/visionnaire.js?v=4.1.63-no-kyber-fallback", self.html)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", self.html)
         self.assertIn("rosterCharacters", js)
         self.assertIn('data-mode="sets"', js)
