@@ -66,7 +66,7 @@ const buildSandbox={
   slotOf:mod=>mod?.slot||'',
   window:{__SWGOH_GAC_USAGE__:{sourceStatus:'observed'}},
   LABELS:{Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'},
-  state:{mode:'sets'},render:()=>{},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
+  state:{mode:'sets'},render:()=>{},setTimeout:fn=>{fn();return 0;},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   statKey:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   modTotalSpeed:mod=>Number(mod.speed||0),
