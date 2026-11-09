@@ -248,6 +248,10 @@ function kyberSetComposition(value){
   const total=Object.values(counts).reduce((sum,count)=>sum+count,0);
   return total>0&&total<=6?counts:{};
 }
+function kyberPageHasNoReference(lines,sampleSize){
+  const body=(Array.isArray(lines)?lines:[]).join(' ').toLowerCase();
+  return Number(sampleSize)===0 || /there are no units found for this data slice|no units found for this data slice|no fully-modded units found/.test(body);
+}
 function parseKyberProfileHTML(text,character,kyberSlug){
   // Parse the full visible Kyber page: every grouped set build, every slot
   // distribution, sample size and freshness metadata. Never collapse to TLDR.
@@ -280,6 +284,13 @@ function parseKyberProfileHTML(text,character,kyberSlug){
   profile.updated_label=normalized.find(line=>/^Updated\s+/i.test(line))||null;
   const sliceLine=normalized.find(line=>/^Data Slice:/i.test(line));
   if(sliceLine)profile.data_slice=sliceLine.replace(/^Data Slice:\s*/i,'').trim()||'Kyber';
+
+  if(String(profile.data_slice).toLowerCase()==='kyber'&&kyberPageHasNoReference(normalized,profile.sample_size)){
+    profile.reference_status='unavailable';
+    profile.unavailable_reason='SWGOH.GG indique qu’aucune unité entièrement modée ne possède de référence dans la tranche Kyber.';
+    if(typeof window!=='undefined')window.__kyberLastFetchError='Pas de référence Kyber disponible sur SWGOH.GG.';
+    return profile;
+  }
 
   // Four-piece set distribution.
   let i=idx('Primary Set');
@@ -364,6 +375,7 @@ function parseKyberProfileHTML(text,character,kyberSlug){
 let kyberUnitIndexPromise=null;
 let kyberUnitIndexFailureUntil=0;
 const kyberProfileInflight=new Map();
+if(typeof window!=='undefined')window.__kyberReferenceStatuses=window.__kyberReferenceStatuses||{};
 
 // Toutes les lectures SWGOH.GG passent par une file unique : le Worker ne reçoit
 // jamais plusieurs pages best-mods en rafale. Les erreurs temporaires sont
@@ -456,17 +468,7 @@ async function fetchKyberProfile(character){
   const requestKey=normalizeKyberKey(display)||slug(character.baseId||character.base_id||'');
   if(kyberProfileInflight.has(requestKey))return kyberProfileInflight.get(requestKey);
   const request=(async()=>{
-    const existing=profileForCharacter(character);
-    if(kyberProfileHasFullDistribution(existing))return existing;
-    let fallback=kyberProfileValid(existing)?existing:null;
-    const cache=readKyberPersistentCache(),cached=cache[requestKey];
-    if(cached&&kyberProfileValid(cached.profile)){
-      if(kyberProfileHasFullDistribution(cached.profile)){
-        profiles[cached.slug||requestKey]=cached.profile;
-        return cached.profile;
-      }
-      fallback=fallback||cached.profile;
-    }
+    window.__kyberReferenceStatuses[requestKey]={status:'checking',label:'Vérification de la référence Kyber sur SWGOH.GG'};
     const tryCandidate=async candidate=>{
       try{
         const response=await fetchKyberThroughRelay(`${workerUrl()}/?path=best-mods&slug=${encodeURIComponent(candidate)}`);
@@ -478,6 +480,11 @@ async function fetchKyberProfile(character){
           return {profile:null,terminal:effectiveStatus>=500||effectiveStatus===403||effectiveStatus===429};
         }
         const parsed=parseKyberProfileHTML(await response.text(),display,candidate);
+        if(parsed?.reference_status==='unavailable'){
+          window.__kyberReferenceStatuses[requestKey]={status:'unavailable',label:'Pas de référence Kyber disponible',reason:parsed.unavailable_reason||''};
+          log(`${display} : pas de référence Kyber disponible sur SWGOH.GG (${candidate}).`);
+          return {profile:null,unavailable:true,terminal:false};
+        }
         if(!parsed)log(`Référence Kyber ${candidate} ignorée : ${window.__kyberLastFetchError||'contenu non reconnu'}.`);
         return {profile:kyberProfileValid(parsed)?parsed:null,terminal:false};
       }catch(error){
@@ -502,12 +509,14 @@ async function fetchKyberProfile(character){
       const result=await tryCandidate(candidate);
       if(result.profile){
         profiles[candidate]=result.profile;
+        window.__kyberReferenceStatuses[requestKey]={status:'available',label:'Référence Kyber disponible'};
         persistKyberProfile(requestKey,candidate,result.profile);
         return result.profile;
       }
+      if(result.unavailable)return null;
       if(result.terminal)break;
     }
-    if(fallback)return fallback;
+    window.__kyberReferenceStatuses[requestKey]={status:'error',label:'Référence Kyber non vérifiable',reason:window.__kyberLastFetchError||'SWGOH.GG ou le relais ne répond pas.'};
     return null;
   })();
   kyberProfileInflight.set(requestKey,request);
@@ -537,11 +546,10 @@ async function ensureSelectedKyberProfile(){
   const seq=++kyberRequestSeq;
   $('characterInfo').innerHTML=`<span class="tag">${esc(c.baseId||c.base_id||'')}</span> <strong>${esc(c.name||c.character||c.baseId||'')}</strong> · récupération de la référence d’optimisation…`;
   const p=await fetchKyberProfile(c);
-  const fallback=p||buildLocalOptimizerReference(c);
   if(seq===kyberRequestSeq)updateCharacterInfo();
   if(p) log(`Référence Kyber récupérée : ${c.name||c.baseId}.`);
-  else log(`SWGOH.GG indisponible pour ${c.name||c.baseId} : utilisation du profil Optimizer local comme référence de secours.`);
-  return fallback;
+  else log(`${c.name||c.baseId} : aucune référence Kyber exploitable. Aucune référence locale de substitution ne sera utilisée.`);
+  return p;
 }
 function fillCharacters(names) {
   rosterCharacters = Array.isArray(names) ? names : [];
