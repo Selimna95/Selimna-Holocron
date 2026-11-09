@@ -56,7 +56,8 @@ assert.ok(better.score>worse.score);
 assert.equal(better.verdict,'RECOMMANDÉ');
 
 const sampleStart=js.indexOf('  function visionnaireSampleIndex(');
-const sampleEnd=js.indexOf('\n  const 
+const sampleEnd=js.indexOf('  const $ =',sampleStart);
+const buildStart=js.indexOf('  async function buildExchangeProposals');
 const buildEnd=js.indexOf('  function renderExchangeProposals',buildStart);
 const buildSandbox={
   SLOTS:['Square','Arrow','Diamond','Triangle','Circle','Cross'],
@@ -77,7 +78,7 @@ const buildSandbox={
   v176ModStatus:mods=>({status:mods.length===6?'FAIBLES':'INCOMPLETS'})
 };
 vm.createContext(buildSandbox);
-vm.runInContext(js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
+vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,speed,primary_stat:primary,primary_value:value});
 async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
   const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
