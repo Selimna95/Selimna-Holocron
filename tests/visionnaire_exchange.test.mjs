@@ -13,6 +13,8 @@ assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bo
 assert.ok(js.includes('diverse.length>=24'), 'Candidate selection must preserve set and primary diversity');
 assert.ok(js.includes('visionnaireSampleIndex'), 'Search must sample across all slot dimensions');
 assert.ok(js.includes('searchSpace'), 'Search diagnostics must expose the complete candidate space');
+assert.ok(js.includes('acceptedCount++'), 'The engine must count every valid scenario in the explored sample');
+assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not terminate the search before the sample is exhausted');
 assert.ok(js.includes('return !reference.length||reference.some'), 'Missing primary reference data must not reject every candidate');
 assert.ok(js.includes('modTotalSpeed(b)-modTotalSpeed(a)'), 'Candidate search must prioritize speed-preserving mods before donor-usage tie breaks');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
@@ -152,6 +154,17 @@ assert.equal(focusImpact.coreLosses[0].name,'Defense');
 
 const unknownPrimarySearch=await runSearch(normalTarget,[],freeChoices,{specific_sets:kyber.specific_sets,slots:{}},'primaries');
 assert.ok(unknownPrimarySearch.proposals.length>0,'An unreported Kyber primary distribution must remain unknown, not block all proposals');
+
+// The engine must finish the whole small search space even after it has
+// already found more than 30 valid scenarios, retaining the best 30 by score.
+const manyChoices=Array.from({length:6},(_,i)=>[
+  makeMod('wide-s-'+i,'Square','Speed',10,'Speed',10),
+  makeMod('wide-c-'+i,'Circle','Speed',10,'Speed',10)
+]).flat();
+const broadSearch=await runSearch(normalTarget,[],manyChoices,kyber);
+assert.equal(broadSearch.tested,36,'All 36 combinations in a small search space must be evaluated');
+assert.equal(broadSearch.diagnostics.accepted,36,'All valid scenarios must be counted');
+assert.equal(broadSearch.diagnostics.retainedProposals,30,'Only the top 30 scenarios are retained after full evaluation');
 
 const noSources=await runSearch(glTarget,[],[],kyber);
 assert.equal(noSources.proposals.length,0);

@@ -19,8 +19,8 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.64-balanced-search-v1", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.64-balanced-search-v1", sw)
+        self.assertIn("modules/visionnaire.js?v=4.1.65-balanced-search-ranked-v1", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.65-balanced-search-ranked-v1", sw)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
@@ -118,6 +118,9 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("visionnaireSampleIndex", js)
         self.assertIn("Échantillonnage équilibré et déterministe", js)
         self.assertIn("primaryFilteredBySlot", js)
+        self.assertIn("acceptedCount++", js)
+        self.assertIn("diagnostics.accepted=acceptedCount", js)
+        self.assertNotIn("proposals.length<30", js)
         self.assertIn("return !reference.length||reference.some", js)
         self.assertIn("afterSpeed+1e-9<beforeSpeed", js)
         self.assertIn("beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet", js)
