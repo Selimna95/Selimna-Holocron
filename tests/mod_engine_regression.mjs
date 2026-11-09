@@ -446,6 +446,7 @@ const kyberValidationContext=vm.createContext({});
 load(core,['kyberProfileValid'],kyberValidationContext);
 assert.equal(kyberValidationContext.kyberProfileValid({
   source:'SWGOH.GG Kyber / Top 1000 GAC',
+  data_slice:'Kyber',
   sets:[{name:'Health',count:6,weight:0.8}],
   slots:{Arrow:{primaries:{Speed:0.9}}},
   secondary_focus:{Speed:20}
@@ -457,9 +458,16 @@ assert.equal(kyberValidationContext.kyberProfileValid({
 }),false,'Fixed Square/Diamond primaries must not make a set-only page look like a parsed Kyber reference');
 assert.equal(kyberValidationContext.kyberProfileValid({
   source:'SWGOH.GG Kyber / Top 1000 GAC',
+  data_slice:'Kyber',
   sets:[{name:'Health',count:6,weight:0.8}],
   slots:{Arrow:{primaries:{Speed:0.9}}}
 }),true,'A variable-slot primary distribution is real Kyber guidance');
+assert.equal(kyberValidationContext.kyberProfileValid({
+  source:'SWGOH.GG Kyber / Top 1000 GAC',
+  data_slice:'All',
+  sets:[{name:'Health',count:6,weight:0.8}],
+  slots:{Arrow:{primaries:{Speed:0.9}}}
+}),false,'Non-Kyber slices cannot be treated as Kyber references');
 assert.equal(kyberValidationContext.kyberProfileValid({
   sets:[{name:'Health',count:6,weight:0.8}],
   slots:{Arrow:{primaries:{Speed:0.9}}}
