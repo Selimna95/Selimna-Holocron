@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.16-live-kyber-only", self.html)
         self.assertIn("modules/core.js?v=4.2.16-live-kyber-only", self.sw)
-        self.assertIn("holocron-static-v4.4.49-ranked-search-coverage", self.sw)
+        self.assertIn("holocron-static-v4.4.50-speed-pruned-search", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
