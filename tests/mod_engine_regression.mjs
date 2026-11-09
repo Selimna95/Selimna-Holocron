@@ -42,35 +42,10 @@ const numericValue = (value, fallback = 0) => {
 };
 const speed = (mod) => Number(mod?.speed ?? 0);
 
-// Visionnaire search sampling must distribute exploration across every slot.
+// Visionnaire now uses exact speed-bound pruning rather than random slot sampling.
 const visionnaire = read('../modules/visionnaire.js');
-const visionnaireContext = vm.createContext({});
-load(visionnaire, ['visionnaireSampleIndex'], visionnaireContext);
-for (let slotIndex = 0; slotIndex < 6; slotIndex++) {
-  const counts = Array(24).fill(0);
-  for (let sample = 0; sample < 15000; sample++) {
-    const index = visionnaireContext.visionnaireSampleIndex(sample, slotIndex, 24, 123456);
-    assert.ok(index >= 0 && index < 24);
-    counts[index]++;
-  }
-  assert.ok(Math.min(...counts) > 400, 'Every candidate in every slot must be explored');
-  assert.ok(Math.max(...counts) < 850, 'No candidate may dominate the sample');
-}
-assert.equal(visionnaireContext.visionnaireSampleIndex(42, 3, 0, 1), 0);
-// For 24 candidates in each slot, the 15,000-sample design must cover
-// every pair of candidate choices across every pair of slots.
-for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
-  for (let secondSlot = firstSlot + 1; secondSlot < 6; secondSlot++) {
-    const pairs = new Set();
-    for (let sample = 0; sample < 15000; sample++) {
-      const first = visionnaireContext.visionnaireSampleIndex(sample, firstSlot, 24, 123456);
-      const second = visionnaireContext.visionnaireSampleIndex(sample, secondSlot, 24, 123456);
-      pairs.add(first + ':' + second);
-    }
-    assert.equal(pairs.size, 576, 'Every pairwise combination must be represented');
-  }
-}
-
+assert.ok(visionnaire.includes('theoreticalMaximum+1e-9<beforeSpeed'));
+assert.ok(visionnaire.includes('searchProgress.speedPruned'));
 
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');

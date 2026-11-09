@@ -5,16 +5,6 @@
   const LABELS = {Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'};
   const FIXED = {Square:'Offense',Diamond:'Defense'};
   const state = {mode:'sets',rows:[],selected:null,slots:new Set(),proposals:[],searching:false,searchProgress:{tested:0,limit:15000},searchError:'',loading:false,faction:'ALL',factionOpen:false,progress:{done:0,total:0,profiles:0,failures:0,lastError:''}};
-  function visionnaireSampleIndex(sample,slotIndex,count,seed=0){
-    if(!Number.isInteger(count)||count<=0)return 0;
-    let value=(Number(sample)+1)>>>0;
-    value^=(Number(seed)>>>0);
-    value^=Math.imul(Number(slotIndex)+1,0x9e3779b1);
-    value^=value>>>16;value=Math.imul(value,0x7feb352d);
-    value^=value>>>15;value=Math.imul(value,0x846ca68b);
-    value^=value>>>16;
-    return (value>>>0)%count;
-  }
   const $ = id => document.getElementById(id);
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -429,14 +419,14 @@
       // Missing Kyber data is unknown, not evidence that a primary is invalid.
       return !reference.length||reference.some(entry=>statKey(entry.name)===statKey(mod?.primary_stat));
     });
-    const proposals=[];let tested=0,acceptedCount=0,chosen=[];
+    const proposals=[];let tested=0,acceptedCount=0,chosen=[],hitLimit=false;const searchProgress={visitedNodes:0,speedPruned:0};
     const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
     const retainedSpeed=current.filter(mod=>!slots.includes(slotOf(mod))).reduce((sum,mod)=>sum+modTotalSpeed(mod),0);
     const candidateSpeedCeiling=retainedSpeed+slots.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0);
     const searchSpace=slots.reduce((product,slot)=>product*(optionsBySlot.get(slot)||[]).length,1);
     const diagnostics={limit:15000,sourceCount:source.length,beforeSpeed:beforeProjectionSummary.total,
       retainedSpeed,candidateSpeedCeiling,searchSpace,
-      searchMethod:'Échantillonnage équilibré et déterministe des combinaisons',
+      searchMethod:'Recherche par vitesse décroissante avec élagage des branches impossibles',
       primaryFilteredBySlot,optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),
       bestCandidateSpeedBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed))])),
       rejected:{},examples:[],rejectedCandidates:[]};
@@ -519,20 +509,43 @@
         if(proposals.length>30){proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||(a.afterSetDistance??99)-(b.afterSetDistance??99));proposals.length=30;}
         return;
     };
-    const seed=Array.from(String(targetKey||'visionnaire')).reduce((hash,char)=>(Math.imul(hash^char.charCodeAt(0),16777619)>>>0),2166136261);
-    const seen=new Set();
-    // The former DFS exhausted one early slot branch. This samples across every
-    // slot dimension and records the full search space versus the explored sample.
-    for(let sample=0;tested<15000&&sample<30000&&seen.size<searchSpace;sample++){
-      const combo=slots.map((slot,index)=>{const options=optionsBySlot.get(slot)||[];return options[visionnaireSampleIndex(sample,index,options.length,seed)];});
-      const signature=combo.map(exchangeModId).join('|');if(seen.has(signature))continue;
-      seen.add(signature);tested++;
-      if(tested%50===0){state.searchProgress={tested,limit:15000};render();await new Promise(resolve=>setTimeout(resolve,0));}
-      await evaluateCombination(combo);
+    // Explore speed-feasible branches first; prune only when the best possible
+    // remaining mods plus a possible Speed-set bonus still cannot preserve speed.
+    const searchSlots=slots.slice().sort((a,b)=>{
+      const aa=optionsBySlot.get(a)||[],bb=optionsBySlot.get(b)||[];
+      return aa.length-bb.length||Math.max(...bb.map(modTotalSpeed))-Math.max(...aa.map(modTotalSpeed));
+    });
+    const remainingMax=Array(searchSlots.length+1).fill(0),remainingProduct=Array(searchSlots.length+1).fill(1);
+    for(let i=searchSlots.length-1;i>=0;i--){
+      const options=optionsBySlot.get(searchSlots[i])||[];
+      remainingMax[i]=remainingMax[i+1]+Math.max(0,...options.map(modTotalSpeed));
+      remainingProduct[i]=remainingProduct[i+1]*options.length;
     }
-    state.searchProgress={tested,limit:15000};
+    const maximumSpeedSetBonus=beforeProjectionSummary.baseSpeed>0?beforeProjectionSummary.baseSpeed*.1:0;
+    const visit=async(index,combo,comboSpeed)=>{
+      if(index===searchSlots.length){
+        if(tested>=diagnostics.limit){hitLimit=true;return;}
+        tested++;chosen=combo;
+        if(tested%50===0){state.searchProgress={tested,limit:diagnostics.limit};render();await new Promise(resolve=>setTimeout(resolve,0));}
+        await evaluateCombination(combo);
+        return;
+      }
+      const slot=searchSlots[index],options=optionsBySlot.get(slot)||[];
+      const maxAfter=remainingMax[index+1],restProduct=remainingProduct[index+1];
+      for(let i=0;i<options.length;i++){
+        const candidate=options[i];
+        const theoreticalMaximum=retainedSpeed+comboSpeed+modTotalSpeed(candidate)+maxAfter+maximumSpeedSetBonus;
+        if(theoreticalMaximum+1e-9<beforeSpeed){searchProgress.speedPruned+=(options.length-i)*restProduct;break;}
+        searchProgress.visitedNodes++;
+        if(searchProgress.visitedNodes%1000===0){state.searchProgress={tested,limit:diagnostics.limit};render();await new Promise(resolve=>setTimeout(resolve,0));}
+        await visit(index+1,combo.concat(candidate),comboSpeed+modTotalSpeed(candidate));
+        if(hitLimit)return;
+      }
+    };
+    await visit(0,[],0);
+    state.searchProgress={tested,limit:diagnostics.limit};
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||(a.afterSetDistance??99)-(b.afterSetDistance??99));
-    diagnostics.tested=tested;diagnostics.accepted=acceptedCount;diagnostics.retainedProposals=proposals.length;diagnostics.sampleCoverage=searchSpace?tested/searchSpace:1;diagnostics.hitLimit=tested>=diagnostics.limit&&tested<searchSpace;
+    diagnostics.tested=tested;diagnostics.accepted=acceptedCount;diagnostics.retainedProposals=proposals.length;diagnostics.speedPruned=searchProgress.speedPruned;diagnostics.visitedNodes=searchProgress.visitedNodes;diagnostics.searchCoverage=searchSpace?Math.min(1,(tested+searchProgress.speedPruned)/searchSpace):1;diagnostics.hitLimit=hitLimit;
     const noSourceReason=exchangeGacSourceDiagnostic()||'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs.';
     const reason=proposals.length?'':!source.length?noSourceReason:diagnostics.hitLimit?'La recherche a atteint sa limite de sécurité sans scénario validé.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.';
     return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,diagnostics,reason};
@@ -543,7 +556,7 @@
     const rejected=Object.entries(diagnostics.rejected||{}).sort((a,b)=>b[1]-a[1]);
     return '<details class="visionnaire-search-diagnostics" open><summary>DIAGNOSTIC DE RECHERCHE · '+diagnostics.tested.toLocaleString('fr-FR')+' combinaisons testées · '+diagnostics.sourceCount+' mods sources</summary>'+
       '<p>Mods candidats par slot : '+Object.entries(diagnostics.optionsBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
-      '<p>'+esc(diagnostics.searchMethod||'')+' · '+Number(diagnostics.tested||0).toLocaleString('fr-FR')+' / '+Number(diagnostics.searchSpace||0).toLocaleString('fr-FR')+' combinaisons possibles · '+Number(diagnostics.accepted||0).toLocaleString('fr-FR')+' scénarios valides détectés · '+Number((Number(diagnostics.sampleCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'% de l’espace exploré</p>'+
+      '<p>'+esc(diagnostics.searchMethod||'')+' · '+Number(diagnostics.tested||0).toLocaleString('fr-FR')+' combinaisons compatibles avec le plafond de vitesse évaluées · '+Number(diagnostics.speedPruned||0).toLocaleString('fr-FR')+' écartées avant calcul car la vitesse était insuffisante · '+Number(diagnostics.accepted||0).toLocaleString('fr-FR')+' scénarios valides · '+Number((Number(diagnostics.searchCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'% de l’espace examiné ou élagué</p>'+
       '<p>Primaires non conformes éliminées avant recherche : '+Object.entries(diagnostics.primaryFilteredBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
       '<p>Vitesse actuelle cible : '+Number(diagnostics.beforeSpeed||0).toFixed(1)+' · plafond des candidats (hors bonus de set) : '+Number(diagnostics.candidateSpeedCeiling||0).toFixed(1)+'</p>'+
       (diagnostics.rejectedCandidates?.some(item=>item.targetSpeedBefore!=null)?'<p>Premier contrôle vitesse : '+Number(diagnostics.rejectedCandidates.find(item=>item.targetSpeedBefore!=null).targetSpeedBefore).toFixed(1)+' → '+Number(diagnostics.rejectedCandidates.find(item=>item.targetSpeedBefore!=null).targetSpeedAfter).toFixed(1)+' (−'+Number(diagnostics.rejectedCandidates.find(item=>item.targetSpeedBefore!=null).speedLoss).toFixed(1)+')</p>':'')+
@@ -641,7 +654,7 @@
     root.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{state.mode=btn.dataset.mode;state.selected=null;state.slots.clear();state.proposals=[];state.searchError='';render();}));
     root.querySelectorAll('[data-character]').forEach(btn=>btn.addEventListener('click',()=>{
       const row=state.rows.find(r=>String(characterKey(r.character))===btn.dataset.character);
-      if(!row)return;state.selected=row;state.slots.clear();state.proposals=[];state.searchError='';render();
+      if(!row)return;state.selected=row;state.slots=new Set(activeIssues(row).map(item=>item.slot));state.proposals=[];state.searchError='';render();
     }));
     root.querySelectorAll('[data-slot]').forEach(btn=>btn.addEventListener('click',()=>{
       const slot=btn.dataset.slot;if(state.slots.has(slot))state.slots.delete(slot);else state.slots.add(slot);state.proposals=[];state.searchError='';render();
@@ -653,7 +666,7 @@
     const criteria=activeIssues(row);
     return `<section class="visionnaire-selected">
       <div class="visionnaire-section-kicker">ÉTAPE 3 · CHOISIR LES SLOTS</div><h3>${esc(row.character.name||row.character.baseId)}</h3>
-      <p>Sélectionne explicitement les emplacements que tu souhaites travailler. Aucun mod ne sera déplacé automatiquement.</p>
+      <p>Les slots en écart Kyber sont présélectionnés. Tu peux en ajouter ou en retirer ; les autres mods restent en place. Aucun mod ne sera déplacé automatiquement.</p>
       <div class="visionnaire-slots">${row.slotRows.map(item=>{
         const m=item.mod;
         const setIssue=row.setSlots.some(x=>x.slot===item.slot);
@@ -668,7 +681,7 @@
         </button>`;
       }).join('')}</div>
       <div class="visionnaire-next"><span>${state.slots.size} slot(s) sélectionné(s)</span><button type="button" data-search-exchanges ${state.slots.size?'':'disabled'} ${state.searching?'disabled':''}> ${state.searching?'RECHERCHE…':'RECHERCHER DES ÉCHANGES'} </button></div>
-      <p class="visionnaire-note">Les donneurs sont classés par usage GAC connu croissant. Les GL et les usages inconnus sont exclus. Chaque donneur doit conserver ses bonus de sets après restitution des mods remplacés ; la vitesse totale de la cible ne peut pas diminuer.</p>
+      <p class="visionnaire-note">Les slots non sélectionnés restent intacts. Les donneurs sont classés par usage GAC connu croissant ; les GL et les usages inconnus sont exclus. Chaque donneur doit conserver ses bonus de sets après restitution des mods remplacés ; la vitesse totale de la cible ne peut pas diminuer.</p>
       ${renderExchangeProposals()}
     </section>`;
   }

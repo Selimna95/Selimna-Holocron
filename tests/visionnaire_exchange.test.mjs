@@ -11,7 +11,9 @@ assert.ok(js.includes('b.score.score-a.score.score'),'Scenarios must rank by str
 assert.ok(js.includes('isGalacticLegendCharacter(owner)'),'GL donors must be excluded');
 assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bonuses must be preserved');
 assert.ok(js.includes('diverse.length>=24'), 'Candidate selection must preserve set and primary diversity');
-assert.ok(js.includes('visionnaireSampleIndex'), 'Search must sample across all slot dimensions');
+assert.ok(js.includes('Recherche par vitesse décroissante avec élagage des branches impossibles'), 'Search must prioritize speed-feasible branches');
+assert.ok(js.includes('searchProgress.speedPruned'), 'Search must count combinations pruned by the speed upper bound');
+assert.ok(!js.includes('for(let sample=0;tested<15000'), 'Search must not waste its budget on random speed-invalid combinations');
 assert.ok(js.includes('searchSpace'), 'Search diagnostics must expose the complete candidate space');
 assert.ok(js.includes('acceptedCount++'), 'The engine must count every valid scenario in the explored sample');
 assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not terminate the search before the sample is exhausted');
@@ -57,8 +59,6 @@ const worse=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:3,pr
 assert.ok(better.score>worse.score);
 assert.equal(better.verdict,'RECOMMANDÉ');
 
-const sampleStart=js.indexOf('  function visionnaireSampleIndex(');
-const sampleEnd=js.indexOf('  const $ =',sampleStart);
 const buildStart=js.indexOf('  async function buildExchangeProposals');
 const buildEnd=js.indexOf('  function renderExchangeProposals',buildStart);
 const buildSandbox={
@@ -80,7 +80,7 @@ const buildSandbox={
   v176ModStatus:mods=>({status:mods.length===6?'FAIBLES':'INCOMPLETS'})
 };
 vm.createContext(buildSandbox);
-vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
+vm.runInContext(js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,speed,primary_stat:primary,primary_value:value});
 async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
   const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
@@ -136,6 +136,8 @@ const slowFree=[makeMod('slow-s','Square','Health',0,'Speed',5),makeMod('slow-c'
 const primaryProfile={slots:{Square:{primaries:{Speed:1}},Circle:{primaries:{Speed:1}}}};
 const rejected=await runSearch(speedTarget,[],slowFree,primaryProfile,'primaries');
 assert.equal(rejected.proposals.length,0,'No scenario may lower the target total speed');
+assert.equal(rejected.tested,0,'Impossible low-speed combinations must be pruned before full evaluation');
+assert.equal(rejected.diagnostics.speedPruned,rejected.diagnostics.searchSpace,'Every impossible combination must be pruned by the speed bound');
 
 const focusScore=sandbox.focus({secondary_focus:{Speed:20,Health:10}},[
  {secondary_1_stat:'Speed',secondary_1_value:20,secondary_2_stat:'Health',secondary_2_value:10}
