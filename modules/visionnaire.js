@@ -450,14 +450,6 @@
     const evaluateCombination=async combo=>{
       chosen=combo;
 
-        tested++;
-        // Keep the browser responsive during large six-slot searches. The previous
-        // synchronous recursion could monopolize the main thread for all 15,000 cases.
-        if(tested%50===0){
-          state.searchProgress={tested,limit:15000};
-          render();
-          await new Promise(resolve=>setTimeout(resolve,0));
-        }
         const finalTarget=current.filter(mod=>!slots.includes(slotOf(mod))).concat(chosen);
         const beforeProjection=forgeProjectedModSpeed(character,profile,current);
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);

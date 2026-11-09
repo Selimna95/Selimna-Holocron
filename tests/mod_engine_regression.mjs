@@ -57,6 +57,20 @@ for (let slotIndex = 0; slotIndex < 6; slotIndex++) {
   assert.ok(Math.max(...counts) < 850, 'No candidate may dominate the sample');
 }
 assert.equal(visionnaireContext.visionnaireSampleIndex(42, 3, 0, 1), 0);
+// For 24 candidates in each slot, the 15,000-sample design must cover
+// every pair of candidate choices across every pair of slots.
+for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
+  for (let secondSlot = firstSlot + 1; secondSlot < 6; secondSlot++) {
+    const pairs = new Set();
+    for (let sample = 0; sample < 15000; sample++) {
+      const first = visionnaireContext.visionnaireSampleIndex(sample, firstSlot, 24, 123456);
+      const second = visionnaireContext.visionnaireSampleIndex(sample, secondSlot, 24, 123456);
+      pairs.add(first + ':' + second);
+    }
+    assert.equal(pairs.size, 576, 'Every pairwise combination must be represented');
+  }
+}
+
 
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
