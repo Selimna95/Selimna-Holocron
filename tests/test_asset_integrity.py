@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.50-speed-pruned-search", self.sw)
+        self.assertIn("holocron-static-v4.4.51-balanced-speed-prefilter", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.16-live-kyber-only", self.html)
         self.assertIn("modules/core.js?v=4.2.16-live-kyber-only", self.sw)
-        self.assertIn("holocron-static-v4.4.50-speed-pruned-search", self.sw)
+        self.assertIn("holocron-static-v4.4.51-balanced-speed-prefilter", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
@@ -194,7 +194,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertFalse((ROOT / "sithari-strategy.css").exists())
         self.assertIn('id="visionnaire"', self.html)
         self.assertIn('data-page="visionnaire"', self.html)
-        self.assertIn("modules/visionnaire.js?v=4.1.68-speed-pruned-search-v1", self.html)
+        self.assertIn("modules/visionnaire.js?v=4.1.69-balanced-speed-prefilter-v1", self.html)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", self.html)
         self.assertIn("rosterCharacters", js)
         self.assertIn('data-mode="sets"', js)

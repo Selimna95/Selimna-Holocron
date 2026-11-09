@@ -19,8 +19,8 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.68-speed-pruned-search-v1", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.68-speed-pruned-search-v1", sw)
+        self.assertIn("modules/visionnaire.js?v=4.1.69-balanced-speed-prefilter-v1", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.69-balanced-speed-prefilter-v1", sw)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
@@ -115,11 +115,14 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("mod._sourcePriorityKnown!==true", js)
         self.assertIn("exchangeSetBonusesPreserved(before,after)", js)
         self.assertIn("diverse.length>=24", js)
-        self.assertIn("Recherche par vitesse décroissante avec élagage des branches impossibles", js)
-        self.assertIn("searchProgress.speedPruned", js)
-        self.assertIn("const theoreticalMaximum=retainedSpeed+comboSpeed+modTotalSpeed(candidate)+maxAfter+maximumSpeedSetBonus", js)
+        self.assertIn("Échantillonnage équilibré de tous les slots avec filtre vitesse préalable", js)
+        self.assertIn("attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000)", js)
+        self.assertIn("speedPruned++", js)
         self.assertIn("state.slots=new Set(activeIssues(row).map(item=>item.slot))", js)
-        self.assertNotIn("visionnaireSampleIndex", js)
+        self.assertIn("visionnaireSampleIndex", js)
+
+
+
         self.assertIn("primaryFilteredBySlot", js)
         self.assertIn("acceptedCount++", js)
         self.assertIn("diagnostics.accepted=acceptedCount", js)
