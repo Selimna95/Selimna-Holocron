@@ -3,6 +3,15 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source = fs.readFileSync(new URL('../modules/core.js', import.meta.url), 'utf8');
+const statusStart = source.indexOf('function kyberPageHasNoReference');
+const statusEnd = source.indexOf('\nfunction parseKyberProfileHTML', statusStart);
+assert.ok(statusStart >= 0 && statusEnd > statusStart, 'Kyber no-reference detector must exist');
+const statusSandbox = {};
+vm.runInNewContext(source.slice(statusStart, statusEnd) + '\nthis.detectNoReference = kyberPageHasNoReference;', statusSandbox);
+assert.equal(statusSandbox.detectNoReference(['Data Slice: Kyber', 'Based on 0 fully-modded units'], 0), true);
+assert.equal(statusSandbox.detectNoReference(['There are no units found for this data slice.'], null), true);
+assert.equal(statusSandbox.detectNoReference(['Based on 12 fully-modded units'], 12), false);
+
 const start = source.indexOf('function kyberPercentageEntries');
 const end = source.indexOf('\nfunction kyberSetComposition', start);
 assert.ok(start >= 0 && end > start, 'Kyber percentage parser must exist');
