@@ -2,7 +2,7 @@
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
-const CACHE_NAME = 'holocron-static-v4.4.44-visionnaire-responsive';
+const CACHE_NAME = 'holocron-static-v4.4.45-live-kyber-only';
 const STATIC_ASSETS = [
   './',
   './index.html',
