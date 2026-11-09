@@ -150,7 +150,7 @@
           const message=String(error?.message||error);
           state.progress.failures++;
           state.progress.lastError=message;
-          row={character,profile:null,slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[],error:message};
+          row={character,profile:null,referenceStatus:{status:'error',label:'Référence Kyber non vérifiable',reason:message},slotRows:modsOf(character),setVerifiable:false,primaryVerifiable:false,setMismatch:false,primaryMismatch:false,setSlots:[],primarySlots:[],error:message};
         }
         rows.push(row);
         state.progress.done++;
@@ -578,8 +578,8 @@
     const rows=visibleRows();
     const knownSets=state.rows.filter(r=>r.setVerifiable).length;
     const knownPrimaries=state.rows.filter(r=>r.primaryVerifiable).length;
-    const nonverifiable=state.rows.filter(r=>!r.profile).length;
-    const noReferenceRows=state.rows.filter(r=>!r.profile);
+    const noReferenceRows=state.rows.filter(r=>!r.profile&&r.referenceStatus?.status==='unavailable');
+    const unverifiableRows=state.rows.filter(r=>!r.profile&&r.referenceStatus?.status!=='unavailable');
     root.innerHTML=`
       <header class="visionnaire-header">
         <div><small>HOLOCRON // LE VISIONNAIRE</small><h2>LE VISIONNAIRE</h2><p>Repère les écarts avec Kyber, choisis les slots à travailler et décide des échanges en connaissance de cause.</p></div>
@@ -592,7 +592,7 @@
           <button type="button" data-mode="primaries" class="${state.mode==='primaries'?'active':''}"><b>PRIMAIRES</b><span>${modeCount('primaries')}</span></button>
           <button type="button" data-mode="both" class="${state.mode==='both'?'active':''}"><b>SETS + PRIMAIRES</b><span>${modeCount('both')}</span></button>
         </div>
-        <div class="visionnaire-kpis"><span><b>${state.loading?state.progress.done:state.rows.length}${state.loading?' / '+state.progress.total:''}</b> personnages analysés</span><span><b>${state.progress.profiles}</b> profils Kyber exploitables</span><span><b>${knownSets}</b> références de sets</span><span><b>${knownPrimaries}</b> références de primaires</span><span><b>${nonverifiable}</b> sans référence Kyber</span><span><b>${rows.length}</b> à examiner</span></div>
+        <div class="visionnaire-kpis"><span><b>${state.loading?state.progress.done:state.rows.length}${state.loading?' / '+state.progress.total:''}</b> personnages analysés</span><span><b>${state.progress.profiles}</b> profils Kyber exploitables</span><span><b>${knownSets}</b> références de sets</span><span><b>${knownPrimaries}</b> références de primaires</span><span><b>${noReferenceRows.length}</b> sans référence Kyber</span><span><b>${unverifiableRows.length}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
       </section>
       <section class="visionnaire-list">
         <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><div class="visionnaire-faction-filter">
@@ -614,7 +614,8 @@
             <span class="visionnaire-character-reference"><small>RÉFÉRENCE KYBER</small><b>${esc(reference||'Référence partielle')}</b><small>${esc(referenceMeta)}</small></span><i>↗</i>
           </button>`;
         }).join(''):'<p class="visionnaire-empty">Aucun personnage non conforme vérifiable dans ce domaine. Les profils absents ou incomplets sont comptés séparément et ne sont pas considérés comme incorrects.</p>'}
-        ${!state.loading&&noReferenceRows.length?`<div class="visionnaire-no-reference"><div class="visionnaire-section-kicker">RÉFÉRENCE KYBER ABSENTE · ${noReferenceRows.length} PERSONNAGE(S)</div>${noReferenceRows.map(row=>`<div class="visionnaire-character visionnaire-character-unavailable"><span class="visionnaire-avatar">${esc(String(row.character?.name||row.character?.baseId||'?').slice(0,1))}</span><span class="visionnaire-character-main"><b>${esc(row.character?.name||row.character?.baseId||'Personnage')}</b><small>Comparaison impossible : aucune donnée Kyber exploitable n’a été trouvée.</small></span><span class="visionnaire-character-reference"><small>STATUT</small><b>${esc(row.referenceStatus?.label||'Référence Kyber non vérifiable')}</b><small>${esc(row.referenceStatus?.reason||'SWGOH.GG ne fournit pas d’échantillon Kyber pour ce personnage.')}</small></span></div>`).join('')}</div>`:''}
+        ${!state.loading&&noReferenceRows.length?`<div class="visionnaire-no-reference"><div class="visionnaire-section-kicker">PAS DE RÉFÉRENCE KYBER DISPONIBLE · ${noReferenceRows.length} PERSONNAGE(S)</div>${noReferenceRows.map(row=>`<div class="visionnaire-character visionnaire-character-unavailable"><span class="visionnaire-avatar">${esc(String(row.character?.name||row.character?.baseId||'?').slice(0,1))}</span><span class="visionnaire-character-main"><b>${esc(row.character?.name||row.character?.baseId||'Personnage')}</b><small>SWGOH.GG ne fournit aucun échantillon dans la tranche Kyber.</small></span><span class="visionnaire-character-reference"><small>STATUT</small><b>Pas de référence Kyber disponible</b><small>${esc(row.referenceStatus?.reason||'Aucune unité entièrement modée ne constitue une référence Kyber.')}</small></span></div>`).join('')}</div>`:''}
+        ${!state.loading&&unverifiableRows.length?`<div class="visionnaire-no-reference"><div class="visionnaire-section-kicker">RÉFÉRENCE KYBER NON VÉRIFIABLE · ${unverifiableRows.length} PERSONNAGE(S)</div>${unverifiableRows.map(row=>`<div class="visionnaire-character visionnaire-character-unavailable"><span class="visionnaire-avatar">${esc(String(row.character?.name||row.character?.baseId||'?').slice(0,1))}</span><span class="visionnaire-character-main"><b>${esc(row.character?.name||row.character?.baseId||'Personnage')}</b><small>Comparaison suspendue : récupération SWGOH.GG incomplète.</small></span><span class="visionnaire-character-reference"><small>STATUT</small><b>Référence Kyber non vérifiable</b><small>${esc(row.referenceStatus?.reason||'Le relais ou SWGOH.GG n’a pas permis de confirmer la référence.')}</small></span></div>`).join('')}</div>`:''}
       </section>
       ${state.selected?renderSelected():''}
     `;
