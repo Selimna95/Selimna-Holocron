@@ -19,8 +19,8 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.63-no-kyber-fallback", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.63-no-kyber-fallback", sw)
+        self.assertIn("modules/visionnaire.js?v=4.1.64-balanced-search-v1", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.64-balanced-search-v1", sw)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
@@ -114,7 +114,11 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("isGalacticLegendCharacter(owner)", js)
         self.assertIn("mod._sourcePriorityKnown!==true", js)
         self.assertIn("exchangeSetBonusesPreserved(before,after)", js)
-        self.assertIn("options.slice(0,24)", js)
+        self.assertIn("diverse.length>=24", js)
+        self.assertIn("visionnaireSampleIndex", js)
+        self.assertIn("Échantillonnage équilibré et déterministe", js)
+        self.assertIn("primaryFilteredBySlot", js)
+        self.assertIn("return !reference.length||reference.some", js)
         self.assertIn("afterSpeed+1e-9<beforeSpeed", js)
         self.assertIn("beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet", js)
         self.assertIn("afterSetDistance>=beforeSetDistance", js)

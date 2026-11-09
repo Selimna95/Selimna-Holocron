@@ -42,6 +42,22 @@ const numericValue = (value, fallback = 0) => {
 };
 const speed = (mod) => Number(mod?.speed ?? 0);
 
+// Visionnaire search sampling must distribute exploration across every slot.
+const visionnaire = read('../modules/visionnaire.js');
+const visionnaireContext = vm.createContext({});
+load(visionnaire, ['visionnaireSampleIndex'], visionnaireContext);
+for (let slotIndex = 0; slotIndex < 6; slotIndex++) {
+  const counts = Array(24).fill(0);
+  for (let sample = 0; sample < 15000; sample++) {
+    const index = visionnaireContext.visionnaireSampleIndex(sample, slotIndex, 24, 123456);
+    assert.ok(index >= 0 && index < 24);
+    counts[index]++;
+  }
+  assert.ok(Math.min(...counts) > 400, 'Every candidate in every slot must be explored');
+  assert.ok(Math.max(...counts) < 850, 'No candidate may dominate the sample');
+}
+assert.equal(visionnaireContext.visionnaireSampleIndex(42, 3, 0, 1), 0);
+
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
 

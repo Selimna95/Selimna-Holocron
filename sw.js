@@ -2,7 +2,7 @@
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
-const CACHE_NAME = 'holocron-static-v4.4.45-live-kyber-only';
+const CACHE_NAME = 'holocron-static-v4.4.46-balanced-search';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -26,7 +26,7 @@ const STATIC_ASSETS = [
   './modules/disciple.js?v=3.5.2-ranked-candidates',
   './modules/seigneur.js?v=3.9.6-gac-freshness-legacy',
   './modules/seigneur-impact.js?v=1.0.0-roster-impact',
-  './modules/visionnaire.js?v=4.1.63-no-kyber-fallback',
+  './modules/visionnaire.js?v=4.1.64-balanced-search-v1',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
   './optimizer-worker.mjs?v=3.5.3-seigneur-speed-floor',
   './python/optimizer.py?v=3.5.1-seigneur-speed-floor',
