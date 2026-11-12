@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.55-unified-mod-engine", self.sw)
+        self.assertIn("holocron-static-v4.4.56-unified-mod-engine", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -182,7 +182,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.19-shared-mod-engine", self.html)
         self.assertIn("modules/core.js?v=4.2.19-shared-mod-engine", self.sw)
-        self.assertIn("holocron-static-v4.4.55-unified-mod-engine", self.sw)
+        self.assertIn("holocron-static-v4.4.56-unified-mod-engine", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
