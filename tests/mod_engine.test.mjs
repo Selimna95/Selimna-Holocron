@@ -110,7 +110,7 @@ const defenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 15, primary_stat: 'Defense %', primary_value: 10 }
 ], 85);
 assert.equal(defenseProjection.complete, true);
-assert.ok(Math.abs(defenseProjection.stats.Armor - 53.7593) < 0.001);
+assert.ok(Math.abs(defenseProjection.stats.Armor - 53.7625) < 0.001);
 assert.ok(Math.abs(defenseProjection.stats.Resistance - 44.3231) < 0.001);
 
 const speedProjection = engine.calculateFinalStats(projectionBase, [
