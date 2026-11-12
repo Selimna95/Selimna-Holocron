@@ -45,6 +45,8 @@ assert.equal(defensePercent.value, 5);
 
 assert.equal(engine.normalizeStat({ unitStatId: 16, unscaledDecimalValue: 30000000 }).key, 'criticalDamage');
 assert.equal(engine.normalizeStat({ unitStatId: 16, unscaledDecimalValue: 30000000 }).value, 30);
+assert.equal(engine.canonicalStatKey('Offense %'), 'OFFENSEPERCENT');
+assert.equal(engine.canonicalStatKey('Potency %'), 'POTENCY');
 assert.equal(engine.normalizeStat({ unitStatId: 31, unscaledDecimalValue: 3000000 }).key, 'physicalDamage');
 assert.equal(engine.normalizeStat({ unitStatId: 32, unscaledDecimalValue: 4000000 }).key, 'specialDamage');
 assert.equal(engine.normalizeStat({ unitStatId: 23, unscaledDecimalValue: 1000000 }).key, 'armor');
@@ -73,5 +75,16 @@ assert.equal(mod.complete, true);
 const unknown = engine.normalizeStat({ unitStatId: 999, unscaledDecimalValue: 123 });
 assert.equal(unknown.unit, 'unknown');
 assert.equal(unknown.complete, false);
+
+const scored = engine.scoreMod({
+  level: 15,
+  primary_stat: 'Offense %',
+  primary_value: 5.88,
+  secondary_1_stat: 'Speed',
+  secondary_1_value: 20,
+  secondary_2_stat: 'Potency %',
+  secondary_2_value: 2.5
+});
+assert.equal(scored, 37.35);
 
 console.log('Shared mod engine contract tests passed.');
