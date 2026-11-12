@@ -158,7 +158,7 @@
     }
     const setBonusPercent = calculateSetBonuses(mods).speed || 0;
     const setBonus = setBonusPercent ? Math.floor(base * setBonusPercent / 100) : 0;
-    const modPercent = speedPercent - setBonusPercent;
+    const modPercent = speedPercent;
     return {
       complete: true,
       total: base + modSpeed + setBonus + base * modPercent / 100,
