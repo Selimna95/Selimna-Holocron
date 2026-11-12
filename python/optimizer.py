@@ -160,13 +160,13 @@ def mod_id(mod):
 
 def normalize_set(value):
     normalized = _normalized_mod({"set": value})
-    return normalized.get("set")
+    return normalized.get("setName")
 
 
 def mod_set(mod):
     if not isinstance(mod, dict):
         return None
-    return _normalized_mod(mod).get("set")
+    return _normalized_mod(mod).get("setName")
 
 
 def mod_stats(mod):
