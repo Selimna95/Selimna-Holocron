@@ -351,6 +351,21 @@
     return Object.freeze(bonuses);
   }
 
+  function speedMetrics(mod) {
+    const normalized = mod?.primary?.key ? mod : normalizeMod(mod);
+    if (!normalized) return { secondary: null, primary: false, primarySpeed: 0, total: 0 };
+    const primary = normalized.primary?.key === 'speed' && normalized.primary.unit === 'flat';
+    const primarySpeed = primary ? (normalized.primary.value || 0) : 0;
+    const speedSecondary = (normalized.secondaries || []).find(stat => stat.key === 'speed' && stat.unit === 'flat');
+    const secondary = speedSecondary && Number.isFinite(speedSecondary.value) ? speedSecondary.value : null;
+    return {
+      secondary,
+      primary,
+      primarySpeed,
+      total: primarySpeed + (secondary || 0)
+    };
+  }
+
   function canonicalStatKey(value) {
     const stat = normalizeStat(value);
     if (!stat.key) return compact(value).toUpperCase();
@@ -425,6 +440,7 @@
     calculateSetBonuses,
     calculateFinalStats,
     scoreMod,
+    speedMetrics,
     canonicalStatKey,
     normalizeStat,
     normalizeMod
