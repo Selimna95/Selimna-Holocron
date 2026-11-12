@@ -76,6 +76,9 @@ assert.equal(mod.primary.value, 2.5);
 assert.equal(mod.secondaries[0].key, 'speed');
 assert.equal(mod.secondaries[0].value, 15);
 assert.equal(mod.complete, true);
+const explicitUnitMod = engine.normalizeMod({ primary_stat: 'Offense', primary_stat_unit: 'percentagePoints', primary_value: 2.5 });
+assert.equal(explicitUnitMod.primary.unit, 'percentagePoints');
+assert.equal(explicitUnitMod.primary.value, 2.5);
 
 const unknown = engine.normalizeStat({ unitStatId: 999, unscaledDecimalValue: 123 });
 assert.equal(unknown.unit, 'unknown');
