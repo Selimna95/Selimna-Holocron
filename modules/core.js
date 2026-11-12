@@ -1370,19 +1370,7 @@ function renderV18SpeedRecap(containerId='v18SpeedRecap'){
   }));
 }
 function holocronModScore(m){
-  // Score de comparaison indicatif : vitesse prioritaire, puis valeur des secondaires.
-  // Les valeurs sont normalisées pour éviter de comparer directement des unités différentes.
-  const weights={SPEED:1,OFFENSE:0.32,OFFENSEPERCENT:0.42,HEALTH:0.12,HEALTHPERCENT:0.22,PROTECTION:0.10,PROTECTIONPERCENT:0.18,POTENCY:0.24,TENACITY:0.20,CRITICALCHANCE:0.20,CRITICALDAMAGE:0.22,CRITICALAVOIDANCE:0.18};
-  let score=modTotalSpeed(m)*1.8;
-  for(let i=1;i<=4;i++){
-    const key=compactKey(m[`secondary_${i}_stat`]); const val=Number(m[`secondary_${i}_value`]||0);
-    if(!key||!Number.isFinite(val))continue;
-    let v=val;
-    if(key.endsWith('PERCENT')||['POTENCY','TENACITY','CRITICALCHANCE','CRITICALDAMAGE','CRITICALAVOIDANCE'].includes(key))v*=100;
-    score+=v*(weights[key]||0.08);
-  }
-  const level=Number(m.level||0); score+=Math.max(0,level-12)*0.25;
-  return score;
+  return window.HolocronModEngine.scoreMod(m);
 }
 function holocronKyberFit(mod, character){
   // Ajuste indicatif selon les préférences Kyber du personnage (sets, primaires et secondaires).
