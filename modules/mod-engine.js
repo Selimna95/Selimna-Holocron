@@ -500,7 +500,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.0',
+    version: '0.3.1',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
