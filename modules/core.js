@@ -72,9 +72,9 @@ function statValueFromAny(value) {
   }
   return 0;
 }
-function statObjectFromAny(value, explicitValue) {
+function statObjectFromAny(value, explicitValue, explicitUnit) {
   if (value == null) return {stat:'', value:0, unit:'unknown'};
-  const normalized = window.HolocronModEngine?.normalizeStat(value, explicitValue);
+  const normalized = window.HolocronModEngine?.normalizeStat(value, explicitValue, explicitUnit);
   if (normalized?.key) {
     const display = value && typeof value === 'object'
       ? (value.display_value ?? value.displayValue ?? value.stat?.display_value ?? value.stat?.displayValue ?? '')
@@ -104,14 +104,14 @@ function normalizeMod(m, index=0) {
   if (out.set_name && typeof out.set_name === 'object') out.set_name = out.set_name.name ?? out.set_name.id ?? out.set_name.setId ?? out.set_name.modSetId;
 
   const primaryRaw = out.primary_stat ?? out.primaryStat ?? out.primary ?? out.primaryStatValue;
-  const primary = statObjectFromAny(primaryRaw, typeof primaryRaw === 'string' ? (out.primary_value ?? out.primaryValue) : undefined);
+  const primary = statObjectFromAny(primaryRaw, typeof primaryRaw === 'string' ? (out.primary_value ?? out.primaryValue) : undefined, out.primary_stat_unit ?? out.primaryUnit);
   out.primary_stat = primary.stat || (typeof out.primary_stat === 'string' ? out.primary_stat : '');
   out.primary_stat_unit = primary.unit || out.primary_stat_unit;
   out.primary_value = primary.value ?? statValueFromAny(out.primary_value ?? out.primaryValue ?? primaryRaw?.value ?? primaryRaw?.amount ?? 0);
 
   const secs = out.secondary_stats ?? out.secondaryStats ?? out.secondaryStat ?? out.secondary ?? [];
   if (Array.isArray(secs)) secs.slice(0,4).forEach((raw,i)=>{
-    const s=statObjectFromAny(raw, typeof raw === 'string' ? out[`secondary_${i+1}_value`] : undefined);
+    const s=statObjectFromAny(raw, typeof raw === 'string' ? out[`secondary_${i+1}_value`] : undefined, out[`secondary_${i+1}_unit`]);
     out[`secondary_${i+1}_stat`] = s.stat;
     out[`secondary_${i+1}_unit`] = s.unit;
     out[`secondary_${i+1}_value`] = s.value ?? statValueFromAny(raw?.value ?? raw?.amount ?? raw?.unscaledDecimalValue ?? raw?.unscaled_decimal_value ?? 0);
@@ -119,7 +119,7 @@ function normalizeMod(m, index=0) {
   else for(let i=1;i<=4;i++){
     const raw=out[`secondary_${i}_stat`];
     if(!raw)continue;
-    const s=statObjectFromAny(raw,out[`secondary_${i}_value`]);
+    const s=statObjectFromAny(raw,out[`secondary_${i}_value`],out[`secondary_${i}_unit`]);
     out[`secondary_${i}_stat`]=s.stat;
     out[`secondary_${i}_unit`]=s.unit;
     out[`secondary_${i}_value`]=s.value ?? statValueFromAny(out[`secondary_${i}_value`]);
