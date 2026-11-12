@@ -92,8 +92,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("_sourceFleetKnown", seigneur)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.html)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.sw)
-        self.assertIn("modules/seigneur.js?v=3.9.6-gac-freshness-legacy", self.html)
-        self.assertIn("modules/seigneur.js?v=3.9.6-gac-freshness-legacy", self.sw)
+        self.assertIn("modules/seigneur.js?v=3.9.7-shared-mod-engine", self.html)
+        self.assertIn("modules/seigneur.js?v=3.9.7-shared-mod-engine", self.sw)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.sw)
         self.assertIn("app.css?v=4.1.3-visionnaire-cleanup", self.html)
@@ -180,8 +180,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.17-shared-mod-engine", self.html)
-        self.assertIn("modules/core.js?v=4.2.17-shared-mod-engine", self.sw)
+        self.assertIn("modules/core.js?v=4.2.18-shared-mod-engine", self.html)
+        self.assertIn("modules/core.js?v=4.2.18-shared-mod-engine", self.sw)
         self.assertIn("holocron-static-v4.4.53-unified-engine", self.sw)
 
 
