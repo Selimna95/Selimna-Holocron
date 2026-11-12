@@ -404,6 +404,7 @@
       id: String(mod.game_id ?? mod.id ?? mod.modId ?? mod.uid ?? ''),
       level: numeric(mod.level) ?? null,
       set: canonicalSetFromMod(mod),
+      setName: SET_DEFINITIONS[canonicalSetFromMod(mod)]?.name || null,
       slot: mod.slot ?? mod.slot_id ?? mod.slotId ?? null,
       pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
       primary,
