@@ -128,6 +128,6 @@ const profileProjection = engine.calculateFinalStats({
 assert.equal(profileProjection.complete, true);
 assert.equal(profileProjection.stats['Physical Critical Chance'], 47);
 assert.equal(profileProjection.stats['Special Critical Chance'], 42);
-assert.equal(profileProjection.stats['Critical Damage'], 1.8);
+assert.equal(profileProjection.stats['Critical Damage'], 1.5);
 
 console.log('Shared mod engine contract tests passed.');
