@@ -199,6 +199,26 @@ def primary_name(mod):
     return name
 
 
+def final_stats(build, base_stats=None, base_profile=None):
+    """Delegate every stat projection to the shared JavaScript engine."""
+    if _MOD_ENGINE_BRIDGE is None:
+        raise RuntimeError("Moteur de calcul partagé non initialisé dans l'Optimizer.")
+    source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
+    payload = _MOD_ENGINE_BRIDGE(
+        json.dumps(source, ensure_ascii=False, separators=(",", ":")),
+        json.dumps(list(build or []), ensure_ascii=False, separators=(",", ":")),
+        85,
+    )
+    try:
+        result = json.loads(str(payload))
+    except Exception as exc:
+        raise RuntimeError("Réponse invalide du moteur de calcul partagé.") from exc
+    if not isinstance(result, dict) or not result.get("complete") or not isinstance(result.get("stats"), dict):
+        missing = result.get("missing", []) if isinstance(result, dict) else []
+        raise RuntimeError("Calcul de statistiques incomplet : " + ", ".join(map(str, missing)))
+    return result["stats"]
+
+
 def _get_kyber_set_distribution(kyber):
     """Return set usage weights from either dict or Kyber's list format."""
     sets = kyber.get("sets", {}) if isinstance(kyber, dict) else {}
