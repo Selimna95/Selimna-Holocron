@@ -8,6 +8,7 @@
   const STAT_DEFINITIONS = Object.freeze({
     1:  { key: 'health', name: 'Health', unit: 'flat' },
     5:  { key: 'speed', name: 'Speed', unit: 'flat' },
+    16: { key: 'criticalDamage', name: 'Critical Damage', unit: 'percentagePoints' },
     17: { key: 'potency', name: 'Potency', unit: 'percentagePoints' },
     18: { key: 'tenacity', name: 'Tenacity', unit: 'percentagePoints' },
     23: { key: 'armor', name: 'Armor', unit: 'percentagePoints' },
