@@ -198,7 +198,7 @@
     const add = (key, value) => { totals[key] = (totals[key] || 0) + value; };
 
     for (const rawMod of Array.isArray(mods) ? mods : []) {
-      const mod = rawMod?.primary?.key ? rawMod : normalizeMod(rawMod);
+      const mod = isNormalizedMod(rawMod) ? rawMod : normalizeMod(rawMod);
       if (!mod) { missing.push('mod:invalid'); continue; }
       const entries = [mod.primary, ...(mod.secondaries || [])];
       for (const stat of entries) {
