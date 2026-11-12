@@ -19,16 +19,12 @@
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const labelSet = value => {
-    const k=key(value).replace(/^(double|triple)/,'');
-    const aliases={critchance:'criticalchance',critdamage:'criticaldamage'};
-    return aliases[k]||k;
+    const raw=key(value).replace(/^(double|triple)/,'');
+    return window.HolocronModEngine.canonicalSet(raw)||raw;
   };
-  const slotOf = mod => {
-    const raw=mod?.slot ?? mod?.slot_id ?? mod?.slotId ?? mod?.modSlot ?? '';
-    if(SLOTS.includes(raw)) return raw;
-    const n=Number(raw);
-    return SLOTS[n-1] || SLOTS[n] || '';
-  };
+  const slotOf = mod => window.HolocronModEngine.canonicalSlot(
+    mod?.slot ?? mod?.slot_id ?? mod?.slotId ?? mod?.modSlot ?? ''
+  ) || '';
   const modsOf = character => {
     const list=typeof getCharacterMods==='function' ? (getCharacterMods(character)||[]) : [];
     const bySlot=new Map();
@@ -39,7 +35,7 @@
     });
     return SLOTS.map(slot=>({slot,mod:bySlot.get(slot)||null}));
   };
-  const statKey = value => key(String(value??'').replace(/%/g,'').replace(/^Crit Damage$/i,'Critical Damage').replace(/^Crit Chance$/i,'Critical Chance'));
+  const statKey = value => window.HolocronModEngine.canonicalStatKey(value).replace(/PERCENT$/,'').toLowerCase();
   const normalizeCounts = counts => Object.fromEntries(Object.entries(counts||{})
     .map(([name,count])=>[labelSet(name),Number(count)||0]).filter(([name,count])=>name&&count>0));
   const rankedSetConfigurations = profile => {
