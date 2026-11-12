@@ -185,7 +185,11 @@ for (const baseId of ['REY', 'GRANDMASTERYODA', 'JEDIKNIGHTLUKE', 'STARKILLER', 
 
 // 3) Acolyte: the target must gain mod speed and total equipped speed.
 const acolyte = read('../modules/acolyte.js');
-const acContext = vm.createContext({ compactKey, numericValue, modTotalSpeed: speed });
+const engineSandbox = { module: { exports: {} } };
+vm.createContext(engineSandbox);
+vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
+const sharedEngine = engineSandbox.module.exports;
+const acContext = vm.createContext({ window: { HolocronModEngine: sharedEngine }, compactKey, numericValue, modTotalSpeed: speed });
 load(acolyte, ['holocronModSecondarySpeed', 'holocronAcolyteTransferPreservesSpeed'], acContext);
 const current = { speed: 4, secondary_1_stat: 'Speed', secondary_1_value: 4 };
 const faster = { speed: 12, secondary_1_stat: 'Speed', secondary_1_value: 12 };
