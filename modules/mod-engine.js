@@ -76,7 +76,9 @@
     armorpenetration: 'armorPenetration', resistancepenetration: 'resistancePenetration',
     physicalaccuracy: 'physicalAccuracy', specialaccuracy: 'specialAccuracy',
     physicalcriticalavoidance: 'physicalCriticalAvoidance',
-    specialcriticalavoidance: 'specialCriticalAvoidance'
+    specialcriticalavoidance: 'specialCriticalAvoidance',
+    physicalcriticalchance: 'physicalCriticalChance',
+    specialcriticalchance: 'specialCriticalChance'
   });
 
   function numeric(value) {
@@ -129,6 +131,151 @@
       source: id != null ? 'comlink' : 'label',
       complete: !!key && !!unit && value != null
     });
+  }
+
+  function canonicalBaseKey(name) {
+    return NAME_ALIASES[compact(name)] || null;
+  }
+
+  function calculateFinalStats(baseStats, mods, level = 85) {
+    if (!baseStats || typeof baseStats !== 'object' || Array.isArray(baseStats)) {
+      return { stats: null, complete: false, missing: ['base_stats'] };
+    }
+    const base = {};
+    for (const [name, value] of Object.entries(baseStats)) {
+      const key = canonicalBaseKey(name);
+      const amount = numeric(value);
+      if (key && amount != null) base[key] = amount;
+    }
+    const result = { ...baseStats };
+    const totals = {};
+    const missing = [];
+    const add = (key, value) => { totals[key] = (totals[key] || 0) + value; };
+
+    for (const rawMod of Array.isArray(mods) ? mods : []) {
+      const mod = rawMod?.primary?.key ? rawMod : normalizeMod(rawMod);
+      if (!mod) { missing.push('mod:invalid'); continue; }
+      const entries = [mod.primary, ...(mod.secondaries || [])];
+      for (const stat of entries) {
+        if (!stat || stat.value == null) continue;
+        if (!stat.key || !['flat', 'percentagePoints'].includes(stat.unit)) {
+          missing.push('stat:unknown');
+          continue;
+        }
+        add(stat.key + ':' + stat.unit, stat.value);
+      }
+    }
+
+    const setBonuses = calculateSetBonuses(mods);
+    for (const [set, value] of Object.entries(setBonuses)) {
+      const target = ({
+        health: 'health', offense: 'offense', defense: 'defense', speed: 'speed',
+        criticalChance: 'criticalChance', criticalDamage: 'criticalDamage',
+        potency: 'potency', tenacity: 'tenacity'
+      })[set];
+      if (target) add(target + ':percentagePoints', value);
+    }
+
+    const get = key => base[key];
+    const has = key => Number.isFinite(get(key));
+    const pct = key => (totals[key + ':percentagePoints'] || 0) / 100;
+    const flat = key => totals[key + ':flat'] || 0;
+    const setResult = (key, value) => {
+      const displayName = ({
+        health: 'Health', protection: 'Protection', speed: 'Speed',
+        physicalDamage: 'Physical Damage', specialDamage: 'Special Damage',
+        potency: 'Potency', tenacity: 'Tenacity', armor: 'Armor', resistance: 'Resistance',
+        criticalDamage: 'Critical Damage'
+      })[key];
+      if (displayName) result[displayName] = value;
+    };
+
+    for (const key of ['health', 'protection']) {
+      if (flat(key) || pct(key)) {
+        if (!has(key)) missing.push(key);
+        else setResult(key, get(key) + flat(key) + get(key) * pct(key));
+      }
+    }
+    if (flat('speed') || pct('speed')) {
+      if (!has('speed')) missing.push('speed');
+      else {
+        const setSpeedBonus = setBonuses.speed || 0;
+        const setSpeedFlat = setSpeedBonus ? Math.floor(get('speed') * setSpeedBonus / 100) : 0;
+        const modSpeedPercent = (totals['speed:percentagePoints'] || 0) - setSpeedBonus;
+        setResult('speed', get('speed') + flat('speed') + setSpeedFlat + get('speed') * modSpeedPercent / 100);
+      }
+    }
+
+    const offenseFlat = flat('offense');
+    const offenseRatio = pct('offense');
+    for (const key of ['physicalDamage', 'specialDamage']) {
+      const directFlat = flat(key);
+      const directRatio = pct(key);
+      if (offenseFlat || offenseRatio || directFlat || directRatio) {
+        if (!has(key)) missing.push(key);
+        else setResult(key, get(key) + offenseFlat + directFlat + get(key) * (offenseRatio + directRatio));
+      }
+    }
+
+    const defenseFlat = flat('defense');
+    const defenseRatio = pct('defense');
+    const characterLevel = numeric(level);
+    if (defenseFlat || defenseRatio) {
+      if (!Number.isFinite(characterLevel) || characterLevel <= 0) missing.push('level');
+      else {
+        const levelEffect = characterLevel * 7.5;
+        for (const key of ['armor', 'resistance']) {
+          if (!has(key)) { missing.push(key); continue; }
+          const displayPercent = get(key) > 1 ? get(key) : get(key) * 100;
+          const ratio = displayPercent / 100;
+          if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
+          const baseRating = ratio * levelEffect / (1 - ratio);
+          const finalRating = baseRating + defenseFlat + baseRating * defenseRatio;
+          const finalPercent = finalRating / (levelEffect + finalRating) * 100;
+          setResult(key, finalPercent);
+        }
+      }
+    }
+
+    for (const key of ['armor', 'resistance']) {
+      const direct = totals[key + ':percentagePoints'] || 0;
+      if (direct) {
+        if (!has(key)) missing.push(key);
+        else {
+          const name = key === 'armor' ? 'Armor' : 'Resistance';
+          const current = Number(result[name] ?? get(key));
+          result[name] = current + direct;
+        }
+      }
+    }
+
+    for (const key of ['potency', 'tenacity', 'criticalDamage']) {
+      if (pct(key) || flat(key)) {
+        if (!has(key)) missing.push(key);
+        else setResult(key, get(key) + flat(key) + pct(key));
+      }
+    }
+
+    for (const key of ['criticalChance', 'criticalAvoidance', 'physicalCriticalChance',
+      'specialCriticalChance', 'physicalCriticalAvoidance', 'specialCriticalAvoidance']) {
+      const amount = (totals[key + ':percentagePoints'] || 0);
+      if (!amount && !flat(key)) continue;
+      const baseKey = key === 'criticalChance' ? 'physicalCriticalChance' : key;
+      if (!has(baseKey)) { missing.push(baseKey); continue; }
+      const value = get(baseKey) + amount + flat(key);
+      const displayName = ({
+        physicalCriticalChance: 'Physical Critical Chance',
+        specialCriticalChance: 'Special Critical Chance',
+        physicalCriticalAvoidance: 'Physical Critical Avoidance',
+        specialCriticalAvoidance: 'Special Critical Avoidance'
+      })[baseKey];
+      result[displayName] = value;
+      if (key === 'criticalChance') {
+        if (has('specialCriticalChance')) result['Special Critical Chance'] = get('specialCriticalChance') + amount + flat(key);
+      }
+    }
+
+    return { stats: result, complete: missing.length === 0, missing: [...new Set(missing)] };
   }
 
   function canonicalSet(value) {
@@ -224,6 +371,7 @@
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
     calculateSetBonuses,
+    calculateFinalStats,
     scoreMod,
     canonicalStatKey,
     normalizeStat,
