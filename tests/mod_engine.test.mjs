@@ -117,9 +117,14 @@ const defenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 15, primary_stat: 'Defense', primary_value: 40 },
   { level: 15, primary_stat: 'Defense %', primary_value: 10 }
 ], 85);
-assert.equal(defenseProjection.complete, true);
-assert.ok(Math.abs(defenseProjection.stats.Armor - 53.7625) < 0.001);
-assert.ok(Math.abs(defenseProjection.stats.Resistance - 44.3231) < 0.001);
+assert.equal(defenseProjection.complete, false);
+assert.ok(defenseProjection.missing.includes('defense:gear_component_required'));
+const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
+  { level: 15, primary_stat: 'Defense', primary_value: 40 }
+], 85);
+assert.equal(flatDefenseProjection.complete, true);
+assert.ok(Math.abs(flatDefenseProjection.stats.Armor - 51.5209) < 0.001);
+assert.ok(Math.abs(flatDefenseProjection.stats.Resistance - 42.1769) < 0.001);
 
 const speedProjection = engine.calculateFinalStats(projectionBase, [
   ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))
