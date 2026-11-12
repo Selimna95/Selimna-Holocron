@@ -47,6 +47,11 @@ assert.equal(engine.normalizeStat({ unitStatId: 16, unscaledDecimalValue: 300000
 assert.equal(engine.normalizeStat({ unitStatId: 16, unscaledDecimalValue: 30000000 }).value, 30);
 assert.equal(engine.canonicalStatKey('Offense %'), 'OFFENSEPERCENT');
 assert.equal(engine.canonicalStatKey('Potency %'), 'POTENCY');
+const speedParts = engine.speedMetrics({ primary_stat: 'Speed', primary_value: 30, secondary_1_stat: 'Speed', secondary_1_value: 5 });
+assert.equal(speedParts.primary, true);
+assert.equal(speedParts.primarySpeed, 30);
+assert.equal(speedParts.secondary, 5);
+assert.equal(speedParts.total, 35);
 assert.equal(engine.normalizeStat({ unitStatId: 31, unscaledDecimalValue: 3000000 }).key, 'physicalDamage');
 assert.equal(engine.normalizeStat({ unitStatId: 32, unscaledDecimalValue: 4000000 }).key, 'specialDamage');
 assert.equal(engine.normalizeStat({ unitStatId: 23, unscaledDecimalValue: 1000000 }).key, 'armor');
