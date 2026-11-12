@@ -11,6 +11,8 @@
     16: { key: 'criticalDamage', name: 'Critical Damage', unit: 'percentagePoints' },
     17: { key: 'potency', name: 'Potency', unit: 'percentagePoints' },
     18: { key: 'tenacity', name: 'Tenacity', unit: 'percentagePoints' },
+    21: { key: 'physicalCriticalChance', name: 'Physical Critical Chance', unit: 'percentagePoints' },
+    22: { key: 'specialCriticalChance', name: 'Special Critical Chance', unit: 'percentagePoints' },
     23: { key: 'armor', name: 'Armor', unit: 'percentagePoints' },
     24: { key: 'resistance', name: 'Resistance', unit: 'percentagePoints' },
     25: { key: 'armorPenetration', name: 'Armor Penetration', unit: 'percentagePoints' },
@@ -20,6 +22,8 @@
     32: { key: 'specialDamage', name: 'Special Damage', unit: 'percentagePoints' },
     33: { key: 'physicalAccuracy', name: 'Physical Accuracy', unit: 'percentagePoints' },
     34: { key: 'specialAccuracy', name: 'Special Accuracy', unit: 'percentagePoints' },
+    35: { key: 'physicalCriticalAvoidance', name: 'Physical Critical Avoidance', unit: 'percentagePoints' },
+    36: { key: 'specialCriticalAvoidance', name: 'Special Critical Avoidance', unit: 'percentagePoints' },
     35: { key: 'physicalCriticalAvoidance', name: 'Physical Critical Avoidance', unit: 'percentagePoints' },
     36: { key: 'specialCriticalAvoidance', name: 'Special Critical Avoidance', unit: 'percentagePoints' },
     37: { key: 'physicalAccuracy', name: 'Physical Accuracy', unit: 'flat' },
@@ -256,23 +260,25 @@
       }
     }
 
-    for (const key of ['criticalChance', 'criticalAvoidance', 'physicalCriticalChance',
-      'specialCriticalChance', 'physicalCriticalAvoidance', 'specialCriticalAvoidance']) {
-      const amount = (totals[key + ':percentagePoints'] || 0);
+    const criticalChancePoints = (totals['criticalChance:percentagePoints'] || 0) + flat('criticalChance') / 24;
+    const criticalAvoidancePoints = (totals['criticalAvoidance:percentagePoints'] || 0) + flat('criticalAvoidance') / 24;
+    for (const [key, shared] of [
+      ['physicalCriticalChance', criticalChancePoints],
+      ['specialCriticalChance', criticalChancePoints],
+      ['physicalCriticalAvoidance', criticalAvoidancePoints],
+      ['specialCriticalAvoidance', criticalAvoidancePoints]
+    ]) {
+      const amount = shared + (totals[key + ':percentagePoints'] || 0);
       if (!amount && !flat(key)) continue;
-      const baseKey = key === 'criticalChance' ? 'physicalCriticalChance' : key;
-      if (!has(baseKey)) { missing.push(baseKey); continue; }
-      const value = get(baseKey) + amount + flat(key);
+      if (!has(key)) { missing.push(key); continue; }
+      const ratingPoints = flat(key) / 24;
       const displayName = ({
         physicalCriticalChance: 'Physical Critical Chance',
         specialCriticalChance: 'Special Critical Chance',
         physicalCriticalAvoidance: 'Physical Critical Avoidance',
         specialCriticalAvoidance: 'Special Critical Avoidance'
-      })[baseKey];
-      result[displayName] = value;
-      if (key === 'criticalChance') {
-        if (has('specialCriticalChance')) result['Special Critical Chance'] = get('specialCriticalChance') + amount + flat(key);
-      }
+      })[key];
+      result[displayName] = get(key) + amount + ratingPoints;
     }
 
     return { stats: result, complete: missing.length === 0, missing: [...new Set(missing)] };
