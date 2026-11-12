@@ -149,7 +149,7 @@
     let modSpeed = 0;
     let speedPercent = 0;
     for (const rawMod of Array.isArray(mods) ? mods : []) {
-      const mod = rawMod?.primary?.key ? rawMod : normalizeMod(rawMod);
+      const mod = isNormalizedMod(rawMod) ? rawMod : normalizeMod(rawMod);
       if (!mod) continue;
       modSpeed += speedMetrics(mod).total;
       for (const stat of [mod.primary, ...(mod.secondaries || [])]) {
@@ -371,8 +371,13 @@
     return Object.freeze(bonuses);
   }
 
+  function isNormalizedMod(mod) {
+    return !!(mod && mod.primary && Array.isArray(mod.secondaries) &&
+      Object.prototype.hasOwnProperty.call(mod.primary, 'unit'));
+  }
+
   function speedMetrics(mod) {
-    const normalized = mod?.primary?.key ? mod : normalizeMod(mod);
+    const normalized = isNormalizedMod(mod) ? mod : normalizeMod(mod);
     if (!normalized) return { secondary: null, primary: false, primarySpeed: 0, total: 0 };
     const primary = normalized.primary?.key === 'speed' && normalized.primary.unit === 'flat';
     const primarySpeed = primary ? (normalized.primary.value || 0) : 0;
@@ -395,7 +400,7 @@
   }
 
   function scoreMod(mod) {
-    const normalized = mod?.primary?.key ? mod : normalizeMod(mod);
+    const normalized = isNormalizedMod(mod) ? mod : normalizeMod(mod);
     if (!normalized) return 0;
     const weights = {
       'offense:flat': 0.32, 'offense:percentagePoints': 0.42,
