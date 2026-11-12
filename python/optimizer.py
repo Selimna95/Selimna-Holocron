@@ -48,24 +48,6 @@ def _normalized_mod(mod):
     serialized = json.dumps(mod or {}, ensure_ascii=False, separators=(",", ":"))
     return _normalized_mod_cached(serialized)
 
-SLOT_ALIASES = {
-    # SWGOH.GG / Comlink slot ids: 2=Square, 3=Arrow, 4=Diamond,
-    # 5=Triangle, 6=Circle, 7=Cross. 1 is kept as a legacy Square alias.
-    "1": "Square",
-    "2": "Square",
-    "3": "Arrow",
-    "4": "Diamond",
-    "5": "Triangle",
-    "6": "Circle",
-    "7": "Cross",
-    "square": "Square",
-    "arrow": "Arrow",
-    "diamond": "Diamond",
-    "triangle": "Triangle",
-    "circle": "Circle",
-    "cross": "Cross",
-}
-
 
 def to_float(value, default=0.0):
     try:
@@ -119,29 +101,11 @@ def resolve_character_base_stats(profiles, base_id="", name=""):
 
 
 def normalize_slot(slot):
-    """Return the canonical six SWGOH slot names.
-
-    Comlink/player exports seen in the wild use numeric ids (0..6 or 1..7),
-    strings, and occasionally labels such as ``slot_7``.  Be deliberately
-    permissive here because the optimizer must never reject a valid imported
-    mod merely because the exporter chose another representation.
-    """
-    if slot is None:
+    """Delegate slot identity to the shared JavaScript mod engine."""
+    if slot is None or isinstance(slot, bool):
         return None
-    if isinstance(slot, bool):
-        return None
-    value = str(slot).strip()
-    direct = SLOT_ALIASES.get(value)
-    if direct:
-        return direct
-    direct = SLOT_ALIASES.get(value.casefold())
-    if direct:
-        return direct
-    # Handle numeric-looking values such as 7.0 and labels such as slot_7.
-    m = re.search(r"(?:slot[_ -]?)?([0-7])(?:\.0+)?$", value.casefold())
-    if m:
-        return SLOT_ALIASES.get(m.group(1))
-    return value
+    normalized = _normalized_mod({"slot": slot})
+    return normalized.get("slot")
 
 
 def mod_slot_value(mod):
