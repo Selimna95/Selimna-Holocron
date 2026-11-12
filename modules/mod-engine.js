@@ -209,6 +209,12 @@
     const result = { ...expandedBase };
     const totals = {};
     const missing = [];
+    const supportedStatKeys = new Set([
+      'health','protection','speed','offense','defense','physicalDamage','specialDamage',
+      'armor','resistance','potency','tenacity','criticalDamage','criticalChance',
+      'criticalAvoidance','physicalCriticalChance','specialCriticalChance',
+      'physicalCriticalAvoidance','specialCriticalAvoidance'
+    ]);
     const add = (key, value) => { totals[key] = (totals[key] || 0) + value; };
 
     for (const rawMod of Array.isArray(mods) ? mods : []) {
@@ -219,6 +225,10 @@
         if (!stat || stat.value == null) continue;
         if (!stat.key || !['flat', 'percentagePoints'].includes(stat.unit)) {
           missing.push('stat:unknown');
+          continue;
+        }
+        if (!supportedStatKeys.has(stat.key)) {
+          missing.push('stat:' + stat.key + ':unsupported');
           continue;
         }
         add(stat.key + ':' + stat.unit, stat.value);
