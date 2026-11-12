@@ -2,7 +2,7 @@
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
-const CACHE_NAME = 'holocron-static-v4.4.54-unified-mod-engine';
+const CACHE_NAME = 'holocron-static-v4.4.55-unified-mod-engine';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -21,8 +21,8 @@ const STATIC_ASSETS = [
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.6.0-gac-freshness',
   './modules/seigneur-gac.js?v=1.1.0-history-fallback',
-  './modules/mod-engine.js?v=0.3.1',
-  './modules/core.js?v=4.2.18-shared-mod-engine',
+  './modules/mod-engine.js?v=0.3.2',
+  './modules/core.js?v=4.2.19-shared-mod-engine',
   './modules/acolyte.js?v=3.4.6-shared-mod-engine',
   './modules/disciple.js?v=3.5.4-shared-mod-engine',
   './modules/seigneur.js?v=3.9.7-shared-mod-engine',
