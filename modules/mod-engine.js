@@ -143,6 +143,31 @@
     return NAME_ALIASES[compact(name)] || null;
   }
 
+  function calculateSpeed(baseSpeed, mods) {
+    const base = numeric(baseSpeed);
+    if (base == null) return { complete: false, total: null, modSpeed: 0, setBonus: 0, hasFourPieceSpeedSet: false };
+    let modSpeed = 0;
+    let speedPercent = 0;
+    for (const rawMod of Array.isArray(mods) ? mods : []) {
+      const mod = rawMod?.primary?.key ? rawMod : normalizeMod(rawMod);
+      if (!mod) continue;
+      modSpeed += speedMetrics(mod).total;
+      for (const stat of [mod.primary, ...(mod.secondaries || [])]) {
+        if (stat?.key === 'speed' && stat.unit === 'percentagePoints') speedPercent += stat.value || 0;
+      }
+    }
+    const setBonusPercent = calculateSetBonuses(mods).speed || 0;
+    const setBonus = setBonusPercent ? Math.floor(base * setBonusPercent / 100) : 0;
+    const modPercent = speedPercent - setBonusPercent;
+    return {
+      complete: true,
+      total: base + modSpeed + setBonus + base * modPercent / 100,
+      modSpeed,
+      setBonus,
+      hasFourPieceSpeedSet: setBonusPercent > 0
+    };
+  }
+
   function calculateFinalStats(baseStats, mods, level = 85) {
     if (!baseStats || typeof baseStats !== 'object' || Array.isArray(baseStats)) {
       return { stats: null, complete: false, missing: ['base_stats'] };
@@ -218,12 +243,7 @@
     }
     if (flat('speed') || pct('speed')) {
       if (!has('speed')) missing.push('speed');
-      else {
-        const setSpeedBonus = setBonuses.speed || 0;
-        const setSpeedFlat = setSpeedBonus ? Math.floor(get('speed') * setSpeedBonus / 100) : 0;
-        const modSpeedPercent = (totals['speed:percentagePoints'] || 0) - setSpeedBonus;
-        setResult('speed', get('speed') + flat('speed') + setSpeedFlat + get('speed') * modSpeedPercent / 100);
-      }
+      else setResult('speed', calculateSpeed(get('speed'), mods).total);
     }
 
     const offenseFlat = flat('offense');
@@ -441,6 +461,7 @@
     calculateFinalStats,
     scoreMod,
     speedMetrics,
+    calculateSpeed,
     canonicalStatKey,
     normalizeStat,
     normalizeMod
