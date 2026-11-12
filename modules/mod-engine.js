@@ -101,7 +101,7 @@
       .toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
-  function normalizeStat(input, explicitValue) {
+  function normalizeStat(input, explicitValue, explicitUnit) {
     const raw = input && typeof input === 'object' ? input : { name: input, value: explicitValue };
     const nested = raw.stat && typeof raw.stat === 'object' ? raw.stat : raw;
     const rawId = nested.unitStatId ?? nested.statId ?? nested.stat_id ??
@@ -116,7 +116,9 @@
       raw.unscaled_decimal_value ?? display;
     let key = known?.key || NAME_ALIASES[compact(rawName)] || null;
     let unit = known?.unit || null;
-    if (!known && rawName && /%|percent|percentage/i.test(String(rawName))) unit = 'percentagePoints';
+    const suppliedUnit = nested.unit ?? raw.unit ?? explicitUnit;
+    if (!known && ['flat', 'percentagePoints'].includes(suppliedUnit)) unit = suppliedUnit;
+    if (!known && !unit && rawName && /%|percent|percentage/i.test(String(rawName))) unit = 'percentagePoints';
     if (!known && rawName && !unit) unit = 'flat';
     let value = numeric(sourceValue);
     const isUnscaled = nested.unscaledDecimalValue != null || nested.unscaled_decimal_value != null ||
@@ -428,16 +430,17 @@
     const cached = NORMALIZED_MOD_CACHE.get(cacheKey);
     if (cached) return cached;
     const primaryRaw = mod.primary_stat ?? mod.primaryStat ?? mod.primary;
-    const primary = normalizeStat(primaryRaw, mod.primary_value ?? mod.primaryValue);
+    const primary = normalizeStat(primaryRaw, mod.primary_value ?? mod.primaryValue, mod.primary_stat_unit ?? mod.primaryUnit);
     const secondaries = [];
     const rawSecondaries = mod.secondary_stats ?? mod.secondaryStats ?? mod.secondary;
     if (Array.isArray(rawSecondaries)) {
       rawSecondaries.slice(0, 4).forEach((entry, index) => secondaries.push(normalizeStat(entry,
-        entry?.value ?? entry?.amount ?? mod[`secondary_${index + 1}_value`])));
+        entry?.value ?? entry?.amount ?? mod[`secondary_${index + 1}_value`],
+        entry?.unit ?? mod[`secondary_${index + 1}_unit`])));
     } else {
       for (let i = 1; i <= 4; i++) {
         const name = mod[`secondary_${i}_stat`];
-        if (name) secondaries.push(normalizeStat(name, mod[`secondary_${i}_value`]));
+        if (name) secondaries.push(normalizeStat(name, mod[`secondary_${i}_value`], mod[`secondary_${i}_unit`]));
       }
     }
     const normalized = Object.freeze({
