@@ -121,6 +121,8 @@ assert.ok(Math.abs(defenseProjection.stats.Resistance - 44.3231) < 0.001);
 const speedProjection = engine.calculateFinalStats(projectionBase, [
   ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))
 ], 85);
+assert.equal(engine.calculateSetBonuses(Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))).speed, 10);
+assert.equal(engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))).total, 110);
 assert.equal(speedProjection.stats.Speed, 110);
 
 
