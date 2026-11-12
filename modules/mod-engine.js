@@ -59,7 +59,9 @@
   function numeric(value) {
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
     if (value == null || value === '') return null;
-    const parsed = Number(String(value).trim().replace(/\s/g, '').replace(',', '.'));
+    const text = String(value).trim().replace(/\s/g, '').replace(',', '.');
+    const match = text.match(/^[-+]?(?:\d+\.?\d*|\.\d+)/);
+    const parsed = match ? Number(match[0]) : NaN;
     return Number.isFinite(parsed) ? parsed : null;
   }
 
