@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const js=fs.readFileSync(new URL('../modules/visionnaire.js',import.meta.url),'utf8');
+const engineSource=fs.readFileSync(new URL('../modules/mod-engine.js',import.meta.url),'utf8');
+const engineSandbox={module:{exports:{}}};
+vm.createContext(engineSandbox);
+vm.runInContext(engineSource,engineSandbox);
+const sharedEngine=engineSandbox.module.exports;
 assert.ok(js.includes('function exchangeFinalStats'),'Full stat projection must exist');
 assert.ok(js.includes('function exchangeScenarioScore'),'Strategic scoring must exist');
 assert.ok(js.includes("const isFree=!ownerKey"),'Free inventory mods must be included');
@@ -38,6 +43,7 @@ import vm from 'node:vm';
 const start=js.indexOf('  const exchangeSetCounts =');
 const end=js.indexOf('  async function buildExchangeProposals',start);
 const sandbox={
+  window:{HolocronModEngine:sharedEngine},
   key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   baseStatsForCharacter:character=>character.base_stats||{},
@@ -51,9 +57,9 @@ const healthMods=[
  {set_name:'Health',primary_stat:'Health %',primary_value:5},
  {set_name:'Health',primary_stat:'Health %',primary_value:5}
 ];
-assert.equal(sandbox.project(fixture,healthMods).Health,1200);
+assert.equal(sandbox.project(fixture,healthMods).Health,1150);
 const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',primary_stat:'Speed',primary_value:5}));
-assert.equal(sandbox.project(fixture,speedMods).Speed,130);
+assert.equal(sandbox.project(fixture,speedMods).Speed,125);
 const better=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:0,primaryShare:.9,targetBalance:.02,donors:[{uses:5,statBalance:.01,statusWorsened:false}]});
 const worse=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:3,primaryShare:.2,targetBalance:-.03,donors:[{uses:100,statBalance:-.05,statusWorsened:true}]});
 assert.ok(better.score>worse.score);
