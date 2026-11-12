@@ -26,13 +26,17 @@ let pyodideReadyPromise = (async () => {
     const result = self.HolocronModEngine.calculateFinalStats(base, mods, Number(level) || 85);
     return JSON.stringify(result);
   };
+  const modNormalizeBridge = (modJson) => {
+    return JSON.stringify(self.HolocronModEngine.normalizeMod(JSON.parse(modJson)));
+  };
   pyodide.globals.set("holocron_mod_engine_bridge", modEngineBridge);
+  pyodide.globals.set("holocron_mod_normalize_bridge", modNormalizeBridge);
 
   pyodide.runPython(`
 import sys, json
 sys.path.append('/home/pyodide')
 import optimizer
-optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge)
+optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge)
 with open('/home/pyodide/optimizer_profiles.json', encoding='utf-8') as _f:
     _optimizer_profiles = json.load(_f)
 `);
