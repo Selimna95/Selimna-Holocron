@@ -217,7 +217,7 @@ const acolyteFixtureMods = [
 ];
 Object.assign(acContext, {
   rosterCharacters: acolyteFixture,
-  window: { __SWGOH_GAC_USAGE__: { seasons: [] } },
+  window: { HolocronModEngine: sharedEngine, __SWGOH_GAC_USAGE__: { seasons: [] } },
   HOLOCRON_GALACTIC_LEGENDS: new Set(),
   characterKey: c => String(c?.baseId || ''),
   rosterUnitType: () => 'character',
