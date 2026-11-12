@@ -72,7 +72,7 @@
     const raw = input && typeof input === 'object' ? input : { name: input, value: explicitValue };
     const nested = raw.stat && typeof raw.stat === 'object' ? raw.stat : raw;
     const rawId = nested.unitStatId ?? nested.statId ?? nested.stat_id ??
-      nested.unitStat ?? raw.unitStatId ?? raw.statId ?? raw.stat_id;
+      nested.unitStat?.id ?? nested.unitStat ?? raw.unitStatId ?? raw.statId ?? raw.stat_id;
     const id = numeric(rawId);
     const known = id != null ? STAT_DEFINITIONS[id] : null;
     const rawName = nested.name ?? (typeof nested.stat === 'string' ? nested.stat : null) ??
