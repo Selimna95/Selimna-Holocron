@@ -118,4 +118,16 @@ const speedProjection = engine.calculateFinalStats(projectionBase, [
 ], 85);
 assert.equal(speedProjection.stats.Speed, 110);
 
+
+const profileProjection = engine.calculateFinalStats({
+  level: 85,
+  base_stats: { Health: 1000, Speed: 100, 'Physical Damage': 500, 'Special Damage': 700, Armor: 50, Resistance: 40 },
+  current_stats: { 'Physical Critical Chance': 50, 'Special Critical Chance': 45, 'Critical Damage': 1.8, Potency: 0.12, Tenacity: 0.3 },
+  mod_stat_diffs: { 'Physical Critical Chance': 5, 'Special Critical Chance': 5, 'Critical Damage': 0.3, Potency: 0.02, Tenacity: 0.1 }
+}, [{ primary_stat: 'Critical Chance %', primary_value: 2 }], 85);
+assert.equal(profileProjection.complete, true);
+assert.equal(profileProjection.stats['Physical Critical Chance'], 47);
+assert.equal(profileProjection.stats['Special Critical Chance'], 42);
+assert.equal(profileProjection.stats['Critical Damage'], 1.8);
+
 console.log('Shared mod engine contract tests passed.');
