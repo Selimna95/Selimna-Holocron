@@ -62,7 +62,16 @@ def _test_normalize_bridge(mod_json):
         item = stat(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value"))
         if item:
             secondaries.append(item)
-    return json.dumps({"set": set_value, "setName": set_value, "primary": primary, "secondaries": secondaries})
+    raw_slot = mod.get("slot", mod.get("slot_id", mod.get("slotId")))
+    slot_names = {"1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
+                  "5": "Triangle", "6": "Circle", "7": "Cross",
+                  "square": "Square", "arrow": "Arrow", "diamond": "Diamond",
+                  "triangle": "Triangle", "circle": "Circle", "cross": "Cross"}
+    slot_text = str(raw_slot or "").strip()
+    slot_key = slot_text.casefold().removeprefix("slot_")
+    slot_value = slot_names.get(slot_key, slot_text or None)
+    return json.dumps({"set": set_value, "setName": set_value, "slot": slot_value,
+                       "primary": primary, "secondaries": secondaries})
 
 optimizer_module.set_mod_engine_bridge(_test_engine_bridge, _test_normalize_bridge)
 
