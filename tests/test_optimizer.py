@@ -62,7 +62,7 @@ def _test_normalize_bridge(mod_json):
         item = stat(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value"))
         if item:
             secondaries.append(item)
-    return json.dumps({"set": set_value, "primary": primary, "secondaries": secondaries})
+    return json.dumps({"set": set_value, "setName": set_value, "primary": primary, "secondaries": secondaries})
 
 optimizer_module.set_mod_engine_bridge(_test_engine_bridge, _test_normalize_bridge)
 
