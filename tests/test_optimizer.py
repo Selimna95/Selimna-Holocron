@@ -124,6 +124,9 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertEqual(normalize_set("speed"), "Speed")
         self.assertEqual(normalize_set("Crit Damage"), "Critical Damage")
         self.assertEqual(normalize_set("4"), "Speed")
+        self.assertIsNone(normalize_set("9"))
+        self.assertIsNone(normalize_set("10"))
+        self.assertIsNone(normalize_set("11"))
         self.assertIsNone(normalize_set(""))
 
     def test_slot_field_aliases(self):
