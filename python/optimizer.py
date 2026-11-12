@@ -105,7 +105,7 @@ def normalize_slot(slot):
     if slot is None or isinstance(slot, bool):
         return None
     normalized = _normalized_mod({"slot": slot})
-    return normalized.get("slot")
+    return normalized.get("slot") or str(slot)
 
 
 def mod_slot_value(mod):
