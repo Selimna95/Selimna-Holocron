@@ -1098,7 +1098,7 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.3-seigneur-speed-floor', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.4-shared-mod-engine', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
