@@ -930,7 +930,7 @@ function modIconTier(m){
   if(assetHit)return assetHit[1].toUpperCase();
   const text=String(m?.name??m?.displayName??m?.raw_alt??m?.alt??'');
   const hit=text.match(/(?:^|[\s_-])([A-E])(?:$|[\s_-])/i);
-  return hit?hit[1].toUpperCase():'E';
+  return hit?hit[1].toUpperCase():'';
 }
 function modDots(m){
   const candidates=[
@@ -947,15 +947,18 @@ function modDots(m){
   if(roman){
     return ({I:1,II:2,III:3,IV:4,V:5,VI:6}[roman[1].toUpperCase()]||5);
   }
-  return 5;
+  return null;
 }
 function modDotsClass(m){
-  return modDots(m)===6?'dots-6':'dots-1-5';
+  const dots=modDots(m);
+  return dots===6?'dots-6':dots?'dots-1-5':'dots-unknown';
 }
 function modAssetName(m){
   const set=modSetLabel(m?.set_name??m?.set??m?.setId??m?.set_id).trim();
   const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot).trim();
-  const shape={Square:'Transmitter',Arrow:'Receiver',Diamond:'Processor',Triangle:'Holo-Array',Circle:'Data-Bus',Cross:'Multiplexer'}[slot]||'Transmitter';
+  const shape={Square:'Transmitter',Arrow:'Receiver',Diamond:'Processor',Triangle:'Holo-Array',Circle:'Data-Bus',Cross:'Multiplexer'}[slot];
+  const tier=modIconTier(m);
+  if(!set||!shape||!tier)return '';
   const assetSet={
     'Crit Chance':'Critical Chance',
     'Crit Damage':'Critical Damage',
@@ -963,7 +966,7 @@ function modAssetName(m){
     'Critical Damage':'Critical Damage'
   }[set]||set;
   const safeSet=assetSet.replace(/\s+/g,'-');
-  return `Mod-${safeSet}-${shape}-${modIconTier(m)}.png`;
+  return `Mod-${safeSet}-${shape}-${tier}.png`;
 }
 function modIconUrl(m){ return ''; }
 function modDotsUrl(m){ return ''; }
@@ -973,9 +976,10 @@ function modIconHtml(m, size='56'){
   const tier=modIconTier(m);
   const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);
   const slotClass=slot.toLowerCase().replace(/[^a-z]+/g,'-');
-  const dotsColor=dots===6?'gold':'white';
-  const tierClass={A:'tier-a',B:'tier-b',C:'tier-c',D:'tier-d',E:'tier-e'}[tier]||'tier-e';
-  return `<span class="mod-visual slot-${slotClass}" data-dots="${dots}" data-tier="${tier}" data-slot="${esc(slot)}" title="${name} — ${dots} dots · Tier ${tier} · Niveau ${num(m?.level)}"><span class="mod-visual-grade"><span class="mod-visual-dots-number dots-${dotsColor}">${dots}</span><span class="mod-visual-tier ${tierClass}">${tier}</span></span><span class="mod-visual-level">Niv. ${num(m?.level)}</span></span>`;
+  const dotsColor=dots===6?'gold':dots?'white':'unknown';
+  const dotsLabel=dots==null?'?':String(dots),tierLabel=tier||'?';
+  const tierClass={A:'tier-a',B:'tier-b',C:'tier-c',D:'tier-d',E:'tier-e'}[tier]||'tier-unknown';
+  return `<span class="mod-visual slot-${slotClass}" data-dots="${dots??''}" data-tier="${tier}" data-slot="${esc(slot)}" title="${name} — ${dotsLabel} dots · ${tier?'Tier '+tier:'Tier inconnu'} · Niveau ${num(m?.level)}"><span class="mod-visual-grade"><span class="mod-visual-dots-number dots-${dotsColor}">${dotsLabel}</span><span class="mod-visual-tier ${tierClass}">${tierLabel}</span></span><span class="mod-visual-level">Niv. ${num(m?.level)}</span></span>`;
 }
 function normalizeModForDisplay(m){
   if(!m)return m;
