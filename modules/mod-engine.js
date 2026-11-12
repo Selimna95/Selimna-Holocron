@@ -110,9 +110,10 @@
     const rawName = nested.name ?? (typeof nested.stat === 'string' ? nested.stat : null) ??
       nested.displayName ?? raw.name ?? raw.displayName ?? '';
     const display = nested.displayValue ?? nested.display_value ?? raw.displayValue ?? raw.display_value;
-    const sourceValue = explicitValue ?? nested.value ?? nested.amount ?? nested.unscaledDecimalValue ??
+    const hasExplicitValue = explicitValue != null;
+    const sourceValue = hasExplicitValue ? explicitValue : (nested.value ?? nested.amount ?? nested.unscaledDecimalValue ??
       nested.unscaled_decimal_value ?? raw.value ?? raw.amount ?? raw.unscaledDecimalValue ??
-      raw.unscaled_decimal_value ?? display;
+      raw.unscaled_decimal_value ?? display);
     let key = known?.key || NAME_ALIASES[compact(rawName)] || null;
     let unit = known?.unit || null;
     const suppliedUnit = nested.unit ?? raw.unit ?? explicitUnit;
@@ -120,8 +121,8 @@
     if (!known && !unit && rawName && /%|percent|percentage/i.test(String(rawName))) unit = 'percentagePoints';
     if (!known && rawName && !unit) unit = 'flat';
     let value = numeric(sourceValue);
-    const isUnscaled = nested.unscaledDecimalValue != null || nested.unscaled_decimal_value != null ||
-      raw.unscaledDecimalValue != null || raw.unscaled_decimal_value != null;
+    const isUnscaled = !hasExplicitValue && (nested.unscaledDecimalValue != null || nested.unscaled_decimal_value != null ||
+      raw.unscaledDecimalValue != null || raw.unscaled_decimal_value != null);
     if (value != null && isUnscaled) {
       value /= 100000000;
       if (unit === 'percentagePoints') value *= 100;
