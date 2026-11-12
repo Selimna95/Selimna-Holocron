@@ -455,9 +455,10 @@ assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equippe
 
 
 // 5b) Seigneur: a Kyber set distribution is not an exact six-mod composition.
-const seigneurCoreContext = vm.createContext({ compactKey });
+const seigneurCoreContext = vm.createContext({ compactKey, window: { HolocronModEngine: sharedEngine } });
 load(core, ['optimizerRecommendationSummary', 'optimizerSlotKey', 'optimizerPrimaryReference'], seigneurCoreContext);
 const forgeReferenceContext = vm.createContext({
+  window: { HolocronModEngine: sharedEngine },
   compactKey, optimizerRecommendationSummary: seigneurCoreContext.optimizerRecommendationSummary,
   optimizerSlotKey: seigneurCoreContext.optimizerSlotKey,
   optimizerPrimaryReference: seigneurCoreContext.optimizerPrimaryReference
