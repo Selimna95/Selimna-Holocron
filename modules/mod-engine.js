@@ -417,7 +417,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.2.0',
+    version: '0.3.0',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
