@@ -1275,16 +1275,9 @@ function getCharacterMods(c){
   }
   return slots.map(slot=>bySlot.get(slot)).filter(Boolean);
 }
-function modSpeedMetrics(m){
-  const primary=['SPEED','VITESSE'].includes(compactKey(m.primary_stat));
-  let secondary=null;
-  for(let i=1;i<=4;i++){
-    if(['SPEED','VITESSE'].includes(compactKey(m[`secondary_${i}_stat`]))){ secondary=Number(m[`secondary_${i}_value`]); break; }
-  }
-  return {secondary:Number.isFinite(secondary)?secondary:null,primary};
-}
-function modPrimarySpeed(m){ return modSpeedMetrics(m).primary ? Number(m.primary_value||0) : 0; }
-function modTotalSpeed(m){ const x=modSpeedMetrics(m); return (x.secondary||0)+modPrimarySpeed(m); }
+function modSpeedMetrics(m){ return window.HolocronModEngine.speedMetrics(m); }
+function modPrimarySpeed(m){ return window.HolocronModEngine.speedMetrics(m).primarySpeed; }
+function modTotalSpeed(m){ return window.HolocronModEngine.speedMetrics(m).total; }
 function speedCategory(v){
   const n=Number(v||0);
   if(n<=0)return 'no_speed';
