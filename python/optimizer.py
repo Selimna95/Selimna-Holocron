@@ -559,7 +559,7 @@ def optimize_kyber(
         stats = final_stats(build, base_stats, base_profile)
         results.append({
             "build": list(build),
-            "score": build_score(build, kyber, weights, base_stats),
+            "score": build_score(build, kyber, weights, base_stats, base_profile),
             "stats": stats,
             "set_plan": applied_set_plan or {},
         })
@@ -631,8 +631,8 @@ def _tuple_mod_to_dict(mod):
         return out
     return {}
 
-def calculate_final_stats(build, base_stats=None):
-    return final_stats([_tuple_mod_to_dict(m) for m in build], base_stats)
+def calculate_final_stats(build, base_stats=None, base_profile=None):
+    return final_stats([_tuple_mod_to_dict(m) for m in build], base_stats, base_profile)
 
 def find_best_build(
     mods, weights=None, minimum_score=0, max_candidates_per_slot=50,
