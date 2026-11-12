@@ -160,6 +160,14 @@
     return Object.freeze(bonuses);
   }
 
+  function canonicalStatKey(value) {
+    const stat = normalizeStat(value);
+    if (!stat.key) return compact(value).toUpperCase();
+    const suffix = stat.unit === 'percentagePoints' &&
+      ['offense', 'defense', 'health', 'protection'].includes(stat.key) ? 'PERCENT' : '';
+    return (stat.key + suffix).toUpperCase();
+  }
+
   function scoreMod(mod) {
     const normalized = mod?.primary?.key ? mod : normalizeMod(mod);
     if (!normalized) return 0;
