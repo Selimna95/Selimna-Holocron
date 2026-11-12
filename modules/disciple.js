@@ -522,12 +522,7 @@ function discipleCanonicalSlot(value){
     '1':'SQUARE','2':'SQUARE','3':'ARROW','4':'DIAMOND','5':'TRIANGLE','6':'CIRCLE','7':'CROSS'})[k]||k;
 }
 function discipleCanonicalStat(value){
-  const raw=String(value??'');
-  const percent=/%|PERCENT|PCT|PERCENTAGE/i.test(raw);
-  const k=compactKey(raw).replace(/PERCENT|PCT|PERCENTAGE/g,'');
-  // compactKey retire les signes : détecter le « % » avant de le normaliser.
-  const canonical=({SPEED:'SPEED',OFFENSE:'OFFENSE',DEFENSE:'DEFENSE',HEALTH:'HEALTH',PROTECTION:'PROTECTION',POTENCY:'POTENCY',TENACITY:'TENACITY',CRITICALCHANCE:'CRITICALCHANCE',CRITICCHANCE:'CRITICALCHANCE',CRITCHANCE:'CRITICALCHANCE',CRITICALDAMAGE:'CRITICALDAMAGE',CRITDAMAGE:'CRITICALDAMAGE',CRITICALAVOIDANCE:'CRITICALAVOIDANCE'})[k]||k;
-  return percent&&['OFFENSE','DEFENSE','HEALTH','PROTECTION'].includes(canonical)?canonical+'PERCENT':canonical;
+  return window.HolocronModEngine.canonicalStatKey(value);
 }
 function discipleCanonicalSet(value){
   let k=compactKey(value);
