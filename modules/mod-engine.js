@@ -65,6 +65,8 @@
     '8': 'tenacity', tenacity: 'tenacity'
   });
 
+  const NORMALIZED_MOD_CACHE = new Map();
+
   const NAME_ALIASES = Object.freeze({
     health: 'health', maxhealth: 'health',
     protection: 'protection', maxprotection: 'protection',
@@ -382,6 +384,9 @@
 
   function normalizeMod(mod) {
     if (!mod || typeof mod !== 'object') return null;
+    const cacheKey = JSON.stringify(mod);
+    const cached = NORMALIZED_MOD_CACHE.get(cacheKey);
+    if (cached) return cached;
     const primaryRaw = mod.primary_stat ?? mod.primaryStat ?? mod.primary;
     const primary = normalizeStat(primaryRaw, mod.primary_value ?? mod.primaryValue);
     const secondaries = [];
