@@ -160,6 +160,29 @@
     return Object.freeze(bonuses);
   }
 
+  function scoreMod(mod) {
+    const normalized = mod?.primary?.key ? mod : normalizeMod(mod);
+    if (!normalized) return 0;
+    const weights = {
+      'offense:flat': 0.32, 'offense:percentagePoints': 0.42,
+      'health:flat': 0.12, 'health:percentagePoints': 0.22,
+      'protection:flat': 0.10, 'protection:percentagePoints': 0.18,
+      'potency:percentagePoints': 0.24, 'tenacity:percentagePoints': 0.20,
+      'criticalChance:percentagePoints': 0.20, 'criticalDamage:percentagePoints': 0.22,
+      'criticalAvoidance:percentagePoints': 0.18
+    };
+    const primarySpeed = normalized.primary?.key === 'speed' ? (normalized.primary.value || 0) : 0;
+    const secondarySpeed = (normalized.secondaries || [])
+      .filter(stat => stat.key === 'speed').reduce((sum, stat) => sum + (stat.value || 0), 0);
+    let score = (primarySpeed + secondarySpeed) * 1.8;
+    for (const stat of normalized.secondaries || []) {
+      const weight = weights[stat.key + ':' + stat.unit];
+      if (weight != null && stat.value != null) score += stat.value * weight;
+    }
+    const level = numeric(normalized.level) ?? 0;
+    return score + Math.max(0, level - 12) * 0.25;
+  }
+
   function normalizeMod(mod) {
     if (!mod || typeof mod !== 'object') return null;
     const primaryRaw = mod.primary_stat ?? mod.primaryStat ?? mod.primary;
