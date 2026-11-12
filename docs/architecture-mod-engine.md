@@ -1,93 +1,88 @@
-# Architecture decision: moteur unique des mods
+# Architecture — moteur unique des mods
 
-- Statut : migration en cours, intégration interdite tant que les formules non couvertes restent incomplètes
-- Moteur : `modules/mod-engine.js` v0.3.1
-- Statut des calculs : Defense % et statistiques non prises en charge sont signalés incomplets, jamais estimés
-- Base : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
-- Portée : toute l'application, pas uniquement Visionnaire.
+- Statut : migration en cours, branche isolée `refactor/unified-mod-engine`
+- Moteur de référence : `modules/mod-engine.js` v0.3.1
+- Base de travail : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
+- Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
+- Publication : aucune modification de `main` ni de GitHub Pages pendant cette migration.
 
-## Décision
+## Décision non négociable
 
-Le projet aura une seule implémentation de référence pour :
-- l'identification et la normalisation des statistiques ;
-- les unités (valeur fixe, points de pourcentage, ratio interne) ;
-- les statistiques finales d'un personnage ;
-- les bonus de sets et leurs conditions de niveau ;
-- les indicateurs dérivés communs (vitesse, score de mod, qualité).
+Une seule implémentation porte les règles communes des mods :
+- identité canonique des statistiques, unités et identifiants source ;
+- identité canonique des sets et des slots ;
+- vitesse totale et bonus de set ;
+- score générique de mod ;
+- projection des statistiques finales du personnage.
 
-Le module central sera `modules/mod-engine.js`. Les modules métier ne pourront conserver que leurs règles de décision et de présentation. Ils ne pourront pas redéfinir les formules communes.
+Les modules métier gardent leurs critères de décision (Kyber, GAC, sélection de donneurs, contraintes de scénario, affichage), mais ne doivent pas réimplémenter les formules de jeu.
 
-## Frontière de responsabilité
+## Répartition des responsabilités
 
-| Couche | Responsabilité autorisée |
+| Zone | Responsabilité |
 |---|---|
-| `mod-engine.js` | Normalisation, règles du jeu, calculs, validation des entrées |
-| Acolyte | Choix des cibles/donneurs et explication des recommandations |
-| Disciple | Filtrage et classement des candidats de réallocation |
-| Seigneur Sith | Construction des objectifs et contraintes de recherche |
-| Visionnaire | Références Kyber, sélection des personnages/mods, scénarios d'échange |
-| Optimizer | Exploration des combinaisons, contraintes et classement des builds |
-| Import / adaptateurs | Conversion des formats sources vers le contrat canonique, sans calcul métier |
+| `modules/mod-engine.js` | Normalisation canonique, règles de jeu, calculs communs, complétude des résultats |
+| `modules/core.js` | Import des données, wrappers historiques temporaires et présentation |
+| Acolyte | Priorisation GAC et choix des changements ; score générique délégué au moteur |
+| Disciple | Filtres de réallocation et choix des donneurs ; identité stat/set/slot et vitesse déléguées |
+| Seigneur Sith | Objectifs Kyber/GAC et recherche de mods ; calculs de vitesse et identité délégués |
+| Visionnaire | Références Kyber, sélection des mods et scénarios ; projection des stats et identité déléguées |
+| Optimizer Python | Exploration combinatoire et score spécifique Kyber ; normalisation et projection des stats déléguées via Pyodide |
+| Import/adaptateurs | Conversion de format uniquement, aucune formule métier |
 
 ## Contrat canonique
 
-Une statistique doit conserver son identité et son unité. Le seul nom d'affichage ne suffit pas.
-
-Forme logique attendue :
+Une statistique conserve son identifiant source quand il existe, sa clé métier, son unité et sa valeur. Le libellé d'affichage ne suffit jamais à déterminer l'unité.
 
 ```js
 {
-  id: 48,                 // identifiant source conservé si connu
+  id: 48,
   key: "offense",
-  unit: "percent",       // flat | percent | percentagePoints
+  unit: "percentagePoints", // flat | percentagePoints | unknown
   value: 2.5,
-  source: "comlink"      // comlink | swgohgg | json | profile
+  source: "comlink"
 }
 ```
 
-Le moteur doit distinguer explicitement les valeurs fixes, les pourcentages appliqués à une statistique de base et les statistiques exprimées en points de pourcentage. Une valeur dont l'unité ne peut pas être établie ne doit pas être devinée : elle est marquée inconnue et le calcul concerné doit être signalé incomplet.
+Une unité inconnue ou une formule non implémentée rend le calcul incomplet. Aucun zéro ou bonus supposé ne doit être inventé.
 
-## Intégration JavaScript / Python
+## État de la migration
 
-Le calculateur de recherche Python est aujourd'hui exécuté dans Pyodide, dans `optimizer-worker.mjs`. Il ne doit pas conserver une seconde copie des formules.
-
-La cible est :
-1. le moteur JavaScript central est la seule implémentation des formules ;
-2. l'Optimizer conserve en Python, dans un premier temps, l'exploration combinatoire et les contraintes métier ;
-3. Python appelle le moteur central via un pont Pyodide/JavaScript, avec des évaluations groupées pour éviter les appels unitaires coûteux ;
-4. si les mesures montrent que ce pont pénalise la recherche, l'exploration sera migrée en JavaScript plutôt que de dupliquer les formules en Python.
-
-Le moteur central doit être utilisable depuis les scripts classiques de l'interface et depuis le Worker module, sans créer deux fichiers source.
-
-## Migration obligatoire
-
-| Zone actuelle | Action |
+| Zone | État |
 |---|---|
-| `modules/core.js` | Déplacer les fonctions communes et remplacer les anciennes implémentations par des appels temporaires, puis les supprimer |
-| `modules/acolyte.js` | Utiliser le moteur pour scores et statistiques |
-| `modules/disciple.js` | Supprimer `discipleCanonicalStat` et déléguer au moteur |
-| `modules/visionnaire.js` | Supprimer `exchangeFinalStats` et déléguer au moteur |
-| `modules/seigneur.js` / `seigneur-impact.js` | Déléguer tout calcul commun au moteur |
-| `python/optimizer.py` | Supprimer les formules communes de `final_stats` / `mod_stats` après branchement du pont |
-| `optimizer-worker.mjs` | Charger une seule source moteur et initialiser le pont |
-| Tests | Tests comportementaux du contrat commun + non-régression par module |
+| Moteur central | Créé ; stat/set/slot, vitesse, score générique et projection finale regroupés |
+| Core/import | Normalisation déléguée au moteur ; conversion des formats conservée |
+| Acolyte | Vitesse, score générique et identité de stats délégués |
+| Disciple | Identité stat/set/slot et vitesse déléguées ; filtres métier conservés |
+| Seigneur Sith | Identité stat/set et vitesse projetée déléguées ; classement Kyber/GAC conservé |
+| Visionnaire | Projection finale déléguée ; identité stat/set/slot déléguée ; scoring de scénario conservé |
+| Optimizer Python | `final_stats`, `mod_stats`, primaire et set délégués au pont JavaScript ; recherche conservée en Python |
+| Worker Pyodide | Une seule source moteur importée ; pont de normalisation et de projection initialisé |
+| Cache/version | Références index, service worker et Worker réalignées pour cette branche |
 
-## Ordre de migration
+Les anciennes fonctions qui ne font que transmettre les données au moteur peuvent rester temporairement comme adaptateurs d'interface. Toute fonction qui recalcule une formule commune doit être supprimée.
 
-1. Inventorier les formats réellement reçus (Comlink, JSON joueur, secours SWGOH.GG, profils).
-2. Vérifier les identifiants et les échelles avec des fixtures brutes ; ne pas déduire une unité du libellé traduit.
-3. Implémenter le contrat canonique et ses tests unitaires.
-4. Migrer les modules un par un sans changer leurs règles métier.
-5. Brancher l'Optimizer sur le même moteur et mesurer les performances.
-6. Supprimer les anciennes fonctions, alias, mappings et tests structurels devenus inutiles.
-7. Valider l'application complète, l'import/export, la synchronisation, les parcours GAC bleu et mods rouge.
-8. Mettre à jour les versions, le cache et la documentation depuis une source unique.
+## Limites de calcul actuellement explicites
+
+- Les bonus de set distinguent le bonus complet au niveau 15 du demi-bonus si un mod du set n'est pas au niveau 15.
+- Offense fixe et Offense en pourcentage sont des unités différentes ; les dégâts physiques et spéciaux sont projetés séparément.
+- La Défense en pourcentage n'est pas projetée tant que le profil ne fournit pas la composante de défense du palier d'équipement courant. Les valeurs Armor/Resistance affichées ne suffisent pas à la reconstituer exactement.
+- Les statistiques reconnues mais dont la projection n'est pas encore implémentée (par exemple précision/pénétration) rendent le résultat incomplet au lieu d'être ignorées.
+- Les scénarios qui nécessitent un résultat complet doivent donc s'abstenir de proposer une permutation quand ces données manquent.
+
+## Tests et critères d'intégration
+
+1. Fixtures brutes Comlink et import JSON : identifiants, échelles, unités et slots.
+2. Tests comportementaux du moteur : stats fixes/%, bonus de sets, vitesse, défense et stat non prise en charge.
+3. Non-régression par module : Acolyte, Disciple, Seigneur, Visionnaire et Optimizer.
+4. Parcours navigateur complet : import Ally Code/JSON, tableau de bord, sanctuaire rouge, salle du conseil bleue, export/import.
+5. Mesure de performance sur un inventaire réel et un jeu de recherche reproductible.
+6. Pull Request relue et contrôles verts avant intégration par squash ; aucun déploiement depuis la branche.
 
 ## Garde-fous
 
-- Aucun changement sur le Worker Cloudflare sans preuve qu'il est impliqué.
-- Aucun changement de fonctionnalité métier au cours de la migration du calcul.
-- Aucun bonus de set, unité ou identifiant non vérifié ne sera ajouté.
-- Un calcul sans données suffisantes doit être déclaré incomplet, jamais remplacé par zéro inventé.
-- Aucune suppression de fichier avant vérification de ses références et de ses usages.
-- Pas de déploiement depuis cette branche ; validation par tests puis Pull Request.
+- Ne pas modifier le Worker Cloudflare sans preuve qu'il est impliqué.
+- Ne pas changer les règles métier pendant la migration du calcul.
+- Ne pas supprimer un fichier avant d'avoir vérifié toutes ses références.
+- Ne pas considérer un test structurel comme une preuve de justesse mathématique.
+- Ne pas intégrer tant que les formules et les formats non couverts ne sont pas documentés et testés.
