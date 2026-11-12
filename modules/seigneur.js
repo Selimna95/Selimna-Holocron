@@ -457,17 +457,14 @@ function forgeSearchSourceSummary(){
   return a.join(' + ')||'AUCUNE SOURCE';
 }
 function forgeSecondaryStats(m){
-  const out=[];
-  for(let i=1;i<=4;i++){
-    const stat=String(m?.[`secondary_${i}_stat`]||'').trim();
-    if(!stat||compactKey(stat)==='SPEED')continue;
-    out.push({stat,value:Number(m?.[`secondary_${i}_value`]||0)});
-  }
-  return out;
+  const normalized=window.HolocronModEngine.normalizeMod(m);
+  return (normalized?.secondaries||[])
+    .filter(stat=>stat.key&&stat.key!=='speed')
+    .map(stat=>({stat:stat.name+(stat.unit==='percentagePoints'&&['offense','defense','health','protection'].includes(stat.key)?' %':''),value:Number(stat.value||0),key:window.HolocronModEngine.canonicalStatKey({name:stat.name,unit:stat.unit})}));
 }
 function forgeHasSecondary(m,wanted){
-  const target=compactKey(wanted); if(!target)return false;
-  return forgeSecondaryStats(m).some(x=>compactKey(x.stat)===target || compactKey(x.stat).includes(target) || target.includes(compactKey(x.stat)));
+  const target=window.HolocronModEngine.canonicalStatKey(wanted); if(!target)return false;
+  return forgeSecondaryStats(m).some(x=>x.key===target || x.key.includes(target) || target.includes(x.key));
 }
 function forgeSlotCompatible(m,slot){return optimizerSlotKey(m?.slot)===optimizerSlotKey(slot);}
 function forgeSetCompatible(m,profile){
