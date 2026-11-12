@@ -10,6 +10,23 @@ const engine = sandbox.module.exports;
 
 assert.equal(engine.version, '0.1.0');
 
+assert.equal(engine.canonicalSet(1), 'health');
+assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
+assert.equal(engine.canonicalSet('Protection'), null);
+assert.deepEqual({ ...engine.calculateSetBonuses([
+  { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
+  { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
+]) }, { speed: 10 });
+assert.deepEqual({ ...engine.calculateSetBonuses([
+  { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 14 },
+  { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
+]) }, { speed: 5 });
+assert.deepEqual({ ...engine.calculateSetBonuses([
+  { set_name: 'Health', level: 15 }, { set_name: 'Health', level: 15 },
+  { set_name: 'Health', level: 10 }, { set_name: 'Health', level: 15 },
+  { set_name: 'Health', level: 15 }, { set_name: 'Health', level: 15 }
+]) }, { health: 25 });
+
 // Comlink IDs preserve the distinction that core.js previously erased.
 const offenseFlat = engine.normalizeStat({ unitStatId: 41, unscaledDecimalValue: 4000000000 });
 const offensePercent = engine.normalizeStat({ unitStatId: 48, unscaledDecimalValue: 2500000 });
