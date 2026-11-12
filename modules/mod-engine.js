@@ -145,8 +145,22 @@
     if (!baseStats || typeof baseStats !== 'object' || Array.isArray(baseStats)) {
       return { stats: null, complete: false, missing: ['base_stats'] };
     }
+    const profile = baseStats.base_stats && typeof baseStats.base_stats === 'object' ? baseStats : null;
+    const sourceBase = profile ? profile.base_stats : baseStats;
+    const expandedBase = { ...sourceBase };
+    if (profile && profile.current_stats && typeof profile.current_stats === 'object') {
+      for (const [name, value] of Object.entries(profile.current_stats)) {
+        const key = canonicalBaseKey(name);
+        if (key && !Object.keys(expandedBase).some(existing => canonicalBaseKey(existing) === key)) {
+          const current = numeric(value);
+          const delta = numeric(profile.mod_stat_diffs?.[name]) ?? 0;
+          if (current != null) expandedBase[name] = current - delta;
+        }
+      }
+    }
+    level = numeric(level) ?? numeric(profile?.level) ?? 85;
     const base = {};
-    for (const [name, value] of Object.entries(baseStats)) {
+    for (const [name, value] of Object.entries(expandedBase)) {
       const key = canonicalBaseKey(name);
       const amount = numeric(value);
       if (key && amount != null) base[key] = amount;
