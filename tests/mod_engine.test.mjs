@@ -104,7 +104,7 @@ const projectionBase = {
   'Physical Critical Chance': 40, 'Special Critical Chance': 30,
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
 };
-const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ primary_stat: 'Accuracy %', primary_value: 12 }]);
+const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 } }]);
 assert.equal(unsupportedProjection.complete, false);
 assert.ok(unsupportedProjection.missing.includes('stat:physicalAccuracy:unsupported') || unsupportedProjection.missing.includes('stat:specialAccuracy:unsupported'));
 
