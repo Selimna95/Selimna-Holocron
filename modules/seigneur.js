@@ -480,13 +480,6 @@ function forgeCandidateScore(m,profile,secA,secB){
   for(const x of forgeSecondaryStats(m)) if(compactKey(x.stat)===compactKey(secA)||compactKey(x.stat)===compactKey(secB)) contribution+=Number(x.value||0);
   return {both:a&&b,one:(a||b),a,b,speed,set,primary,contribution};
 }
-function forgeIsSpeedSet(mod){
-  const key=compactKey(mod?.set_name??mod?.set??mod?.setId??mod?.set_id??'');
-  return ['SPEED','SPEEDSET','SPEEDMODSET','4'].includes(key);
-}
-function forgeSpeedSetCount(modList){
-  return (Array.isArray(modList)?modList:[]).filter(forgeIsSpeedSet).length;
-}
 function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
   const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
