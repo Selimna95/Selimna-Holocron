@@ -238,7 +238,7 @@ function topChangeStatDelta(fromMod,toMod){
   if(!raw)return;
   const normalized=engine.normalizeStat(raw);
   const key=engine.canonicalStatKey(raw);
-  const label=normalized?.name||raw;
+  const label=(normalized?.name||raw)+((normalized?.unit==='percentagePoints'&&['offense','defense','health','protection'].includes(normalized.key))?' %':'');
   add('__primary__'+key,'Primaire · '+label,mod?.primary_value,side);
  };
  primary(fromMod,'from');
@@ -248,7 +248,7 @@ function topChangeStatDelta(fromMod,toMod){
   if(!raw)continue;
   const normalized=engine.normalizeStat(raw);
   const key=engine.canonicalStatKey(raw);
-  const label=normalized?.name||raw;
+  const label=(normalized?.name||raw)+((normalized?.unit==='percentagePoints'&&['offense','defense','health','protection'].includes(normalized.key))?' %':'');
   add(key,key==='SPEED'?'Vitesse':label,mod[`secondary_${i}_value`],side);
  }
  return [...stats.values()].map(x=>({...x,delta:x.to-x.from}))
