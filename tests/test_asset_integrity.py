@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.51-balanced-speed-prefilter", self.sw)
+        self.assertIn("holocron-static-v4.4.56-unified-mod-engine", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -92,8 +92,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("_sourceFleetKnown", seigneur)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.html)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.sw)
-        self.assertIn("modules/seigneur.js?v=3.9.6-gac-freshness-legacy", self.html)
-        self.assertIn("modules/seigneur.js?v=3.9.6-gac-freshness-legacy", self.sw)
+        self.assertIn("modules/seigneur.js?v=3.9.7-shared-mod-engine", self.html)
+        self.assertIn("modules/seigneur.js?v=3.9.7-shared-mod-engine", self.sw)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.0-roster-impact", self.sw)
         self.assertIn("app.css?v=4.1.3-visionnaire-cleanup", self.html)
@@ -107,7 +107,7 @@ class AssetIntegrityTests(unittest.TestCase):
         optimizer = (ROOT / "python" / "optimizer.py").read_text(encoding="utf-8")
         self.assertIn("current_target_mods: currentTargetMods", core)
         self.assertIn("currentTargetMods);", seigneur)
-        self.assertIn("minimum_speed = optimizer.final_stats(current_target_mods, base_stats).get(\"Speed\")", worker)
+        self.assertIn("minimum_speed = optimizer.final_stats(current_target_mods, base_stats, base_profile).get(\"Speed\")", worker)
         self.assertIn("minimum_speed=minimum_speed", worker)
         self.assertIn("minimum_speed=None", optimizer)
         self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
@@ -180,9 +180,9 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.16-live-kyber-only", self.html)
-        self.assertIn("modules/core.js?v=4.2.16-live-kyber-only", self.sw)
-        self.assertIn("holocron-static-v4.4.51-balanced-speed-prefilter", self.sw)
+        self.assertIn("modules/core.js?v=4.2.19-shared-mod-engine", self.html)
+        self.assertIn("modules/core.js?v=4.2.19-shared-mod-engine", self.sw)
+        self.assertIn("holocron-static-v4.4.56-unified-mod-engine", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
@@ -194,7 +194,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertFalse((ROOT / "sithari-strategy.css").exists())
         self.assertIn('id="visionnaire"', self.html)
         self.assertIn('data-page="visionnaire"', self.html)
-        self.assertIn("modules/visionnaire.js?v=4.1.69-balanced-speed-prefilter-v1", self.html)
+        self.assertIn("modules/visionnaire.js?v=4.1.71-shared-mod-engine", self.html)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", self.html)
         self.assertIn("rosterCharacters", js)
         self.assertIn('data-mode="sets"', js)

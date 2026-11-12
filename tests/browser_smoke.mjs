@@ -104,9 +104,9 @@ try {
     const equipped = [make("a","Speed",5),make("b","Speed",5),make("c","Speed",5),make("d","Speed",5),make("e","Health",0),make("f","Health",0)];
     const before = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},equipped);
     const after = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},[...equipped.slice(1),make("replacement","Health",5)]);
-    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total};
+    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total,beforeSet:before.hasFourPieceSpeedSet,afterSet:after.hasFourPieceSpeedSet,beforeBonus:before.setBonus,afterBonus:after.setBonus};
   });
-  assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus");
+  assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus: "+JSON.stringify(speedGuard));
 
   // Mod P0 regressions: keep arithmetic numeric and preserve stat identity.
   const modMath = await page.evaluate(() => ({

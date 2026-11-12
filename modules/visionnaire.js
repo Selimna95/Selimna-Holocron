@@ -19,16 +19,12 @@
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const labelSet = value => {
-    const k=key(value).replace(/^(double|triple)/,'');
-    const aliases={critchance:'criticalchance',critdamage:'criticaldamage'};
-    return aliases[k]||k;
+    const raw=key(value).replace(/^(double|triple)/,'');
+    return window.HolocronModEngine.canonicalSet(raw)||raw;
   };
-  const slotOf = mod => {
-    const raw=mod?.slot ?? mod?.slot_id ?? mod?.slotId ?? mod?.modSlot ?? '';
-    if(SLOTS.includes(raw)) return raw;
-    const n=Number(raw);
-    return SLOTS[n-1] || SLOTS[n] || '';
-  };
+  const slotOf = mod => window.HolocronModEngine.canonicalSlot(
+    mod?.slot ?? mod?.slot_id ?? mod?.slotId ?? mod?.modSlot ?? ''
+  ) || '';
   const modsOf = character => {
     const list=typeof getCharacterMods==='function' ? (getCharacterMods(character)||[]) : [];
     const bySlot=new Map();
@@ -39,7 +35,7 @@
     });
     return SLOTS.map(slot=>({slot,mod:bySlot.get(slot)||null}));
   };
-  const statKey = value => key(String(value??'').replace(/%/g,'').replace(/^Crit Damage$/i,'Critical Damage').replace(/^Crit Chance$/i,'Critical Chance'));
+  const statKey = value => window.HolocronModEngine.canonicalStatKey(value).replace(/PERCENT$/,'').toLowerCase();
   const normalizeCounts = counts => Object.fromEntries(Object.entries(counts||{})
     .map(([name,count])=>[labelSet(name),Number(count)||0]).filter(([name,count])=>name&&count>0));
   const rankedSetConfigurations = profile => {
@@ -229,45 +225,17 @@
       secondary.join(' · ')].filter(Boolean).join(' · ');
   };
   const exchangeStatName = value => {
-    const raw=String(value??'').trim().replace(/%$/,'').trim();
-    const aliases={critdamage:'Critical Damage',criticaldamage:'Critical Damage',critchance:'Critical Chance',criticalchance:'Critical Chance',critavoidance:'Critical Avoidance',criticalavoidance:'Critical Avoidance'};
-    return aliases[key(raw)]||raw;
+    const normalized=window.HolocronModEngine.normalizeStat(value);
+    return normalized?.key ? normalized.name : String(value??'').trim().replace(/%$/,'').trim();
   };
   function exchangeFinalStats(character,build){
     const profile=typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{};
-    const base=typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):profile.base_stats;
+    const base=profile.base_stats || (typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null);
     if(!base||typeof base!=='object'||!Object.keys(base).length)return null;
-    const result=Object.fromEntries(Object.entries(base).map(([name,value])=>[exchangeStatName(name),Number(value)||0]));
-    const flat={},percent={};
-    for(const mod of Array.isArray(build)?build:[]){
-      let raw=mod?.stats;
-      if(typeof raw==='string'){try{raw=JSON.parse(raw);}catch{raw=null;}}
-      const entries=raw&&typeof raw==='object'&&!Array.isArray(raw)?Object.entries(raw):
-        [[mod?.primary_stat,mod?.primary_value],...Array.from({length:4},(_,i)=>[mod?.[`secondary_${i+1}_stat`],mod?.[`secondary_${i+1}_value`]])];
-      for(const [label,value] of entries){
-        if(!label||value==null)continue;
-        const text=String(label).trim(),name=exchangeStatName(text),amount=Number(value)||0;
-        if(text.endsWith('%'))percent[name]=(percent[name]||0)+amount/100;
-        else flat[name]=(flat[name]||0)+amount;
-      }
-    }
-    const counts=exchangeSetCounts(build);
-    const display={health:'Health',protection:'Protection',offense:'Offense',speed:'Speed',defense:'Defense',
-      criticaldamage:'Critical Damage',criticalchance:'Critical Chance',potency:'Potency',tenacity:'Tenacity',criticalavoidance:'Critical Avoidance'};
-    const relative={health:[2,.10],protection:[2,.10],offense:[4,.15],speed:[4,.10],defense:[2,.25]};
-    const additive={criticaldamage:[4,.30],criticalchance:[2,.08],potency:[2,.15],tenacity:[2,.20],criticalavoidance:[2,.20]};
-    for(const [name,[required,bonus]] of Object.entries(relative)){
-      const count=counts[name]||0;if(count>=required)percent[display[name]]=(percent[display[name]]||0)+bonus*Math.floor(count/required);
-    }
-    for(const [name,[required,bonus]] of Object.entries(additive)){
-      const count=counts[name]||0;if(count>=required)percent[display[name]]=(percent[display[name]]||0)+bonus*Math.floor(count/required);
-    }
-    for(const [name,value] of Object.entries(flat))result[name]=(Number(result[name])||0)+value;
-    for(const [name,ratio] of Object.entries(percent)){
-      if(['Potency','Tenacity','Critical Chance','Critical Damage','Critical Avoidance'].includes(name))result[name]=(Number(result[name])||0)+ratio;
-      else result[name]=(Number(result[name])||0)+(Number(base[name])||0)*ratio;
-    }
-    return result;
+    const source=profile.base_stats ? profile : base;
+    const calculation=window.HolocronModEngine.calculateFinalStats(source,build,character?.level??profile.level);
+    if(!calculation.complete)return null;
+    return Object.fromEntries(Object.entries(calculation.stats||{}).map(([name,value])=>[exchangeStatName(name),Number(value)]));
   }
   const exchangeStatsDelta = (before,after) => {
     if(!before||!after)return null;
@@ -323,7 +291,7 @@
       return {name,before:from,after:to,expected:reference,delta,relative:delta/reference};
     });
     const losses=rows.filter(row=>row.delta < -Math.max(1,row.expected*.25));
-    const protectedStats=new Set(['health','protection','offense','defense']);
+    const protectedStats=new Set(['health','protection','offense','defense','physicaldamage','specialdamage','armor','resistance','speed']);
     const coreLosses=beforeStats&&afterStats?Object.keys(beforeStats).filter(name=>protectedStats.has(key(name))).map(name=>{
       const from=Number(beforeStats[name])||0,to=Number(afterStats[name])||0;
       return {name,before:from,after:to,delta:to-from,relative:from?(to-from)/Math.abs(from):null};
@@ -483,6 +451,7 @@
           if(before.length!==6||after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after)){reject('bonus_sets_donneur','Le donneur perdrait un bonus de set ou son build est incomplet',owner.name||owner.baseId);return;}
           const donorProfile=optimizerProfileForCharacter(owner)||{};
           const beforeStats=exchangeFinalStats(owner,before),afterStats=exchangeFinalStats(owner,after);
+          if(!beforeStats||!afterStats){reject('stats_donneur_incompletes','Calcul des statistiques du donneur incomplet : données de base ou formule non disponible',owner.name||owner.baseId);return;}
           const donorImpact=exchangeStatsDelta(beforeStats,afterStats);
           const beforeStatus=typeof v176ModStatus==='function'?v176ModStatus(before).status:'INCONNU';
           const afterStatus=typeof v176ModStatus==='function'?v176ModStatus(after).status:'INCONNU';
@@ -495,6 +464,7 @@
             statusWorsened:(statusRank[afterStatus]??0)>(statusRank[beforeStatus]??0)});
         }
         const targetStatsBefore=exchangeFinalStats(character,current),targetStatsAfter=exchangeFinalStats(character,finalTarget);
+        if(!targetStatsBefore||!targetStatsAfter){reject('stats_cible_incompletes','Calcul des statistiques de la cible incomplet : données de base ou formule non disponible');return;}
         const targetStatDeltas=exchangeStatsDelta(targetStatsBefore,targetStatsAfter);
         const primaryShares=slots.map(slot=>{
           const mod=chosen.find(item=>slotOf(item)===slot);

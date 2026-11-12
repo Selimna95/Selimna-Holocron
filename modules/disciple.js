@@ -517,23 +517,13 @@ function reallocationStatusAllowed(status){
   return false;
 }
 function discipleCanonicalSlot(value){
-  const k=compactKey(value).replace(/MODS?$/,'');
-  return ({SQUARE:'SQUARE',TRANSMITTER:'SQUARE',ARROW:'ARROW',RECEIVER:'ARROW',DIAMOND:'DIAMOND',PROCESSOR:'DIAMOND',TRIANGLE:'TRIANGLE','HOLOARRAY':'TRIANGLE',CIRCLE:'CIRCLE','DATABUS':'CIRCLE',CROSS:'CROSS',MULTIPLEXER:'CROSS',
-    '1':'SQUARE','2':'SQUARE','3':'ARROW','4':'DIAMOND','5':'TRIANGLE','6':'CIRCLE','7':'CROSS'})[k]||k;
+  return window.HolocronModEngine.canonicalSlot(value)||'';
 }
 function discipleCanonicalStat(value){
-  const raw=String(value??'');
-  const percent=/%|PERCENT|PCT|PERCENTAGE/i.test(raw);
-  const k=compactKey(raw).replace(/PERCENT|PCT|PERCENTAGE/g,'');
-  // compactKey retire les signes : détecter le « % » avant de le normaliser.
-  const canonical=({SPEED:'SPEED',OFFENSE:'OFFENSE',DEFENSE:'DEFENSE',HEALTH:'HEALTH',PROTECTION:'PROTECTION',POTENCY:'POTENCY',TENACITY:'TENACITY',CRITICALCHANCE:'CRITICALCHANCE',CRITICCHANCE:'CRITICALCHANCE',CRITCHANCE:'CRITICALCHANCE',CRITICALDAMAGE:'CRITICALDAMAGE',CRITDAMAGE:'CRITICALDAMAGE',CRITICALAVOIDANCE:'CRITICALAVOIDANCE'})[k]||k;
-  return percent&&['OFFENSE','DEFENSE','HEALTH','PROTECTION'].includes(canonical)?canonical+'PERCENT':canonical;
+  return window.HolocronModEngine.canonicalStatKey(value);
 }
 function discipleCanonicalSet(value){
-  let k=compactKey(value);
-  k=k.replace(/MODSET$/,'').replace(/SET$/,'');
-  return ({'1':'HEALTH','2':'OFFENSE','3':'DEFENSE','4':'SPEED','5':'CRITICALCHANCE','6':'CRITICALDAMAGE','7':'POTENCY','8':'TENACITY',
-    HEALTH:'HEALTH',OFFENSE:'OFFENSE',DEFENSE:'DEFENSE',SPEED:'SPEED',CRITCHANCE:'CRITICALCHANCE',CRITICALCHANCE:'CRITICALCHANCE',CRITDAMAGE:'CRITICALDAMAGE',CRITICALDAMAGE:'CRITICALDAMAGE',POTENCY:'POTENCY',TENACITY:'TENACITY'})[k]||k;
+  return String(window.HolocronModEngine.canonicalSet(value)||'').toUpperCase();
 }
 function discipleModKeys(m){
   return {slot:discipleCanonicalSlot(m?.slot),set:discipleCanonicalSet(m?.set_name),primary:discipleCanonicalStat(m?.primary_stat)};
