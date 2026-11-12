@@ -339,7 +339,7 @@
 
   function canonicalSlot(value) {
     if (value && typeof value === 'object') value = value.name ?? value.id ?? value.slotId ?? value.slot;
-    const raw = compact(value).replace(/mod$/, '');
+    const raw = compact(value).replace(/^slot/, '').replace(/mod$/, '');
     return ({
       square:'Square', transmitter:'Square', receiver:'Arrow', arrow:'Arrow',
       processor:'Diamond', diamond:'Diamond', holoarray:'Triangle', triangle:'Triangle',
