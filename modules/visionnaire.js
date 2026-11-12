@@ -451,6 +451,7 @@
           if(before.length!==6||after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after)){reject('bonus_sets_donneur','Le donneur perdrait un bonus de set ou son build est incomplet',owner.name||owner.baseId);return;}
           const donorProfile=optimizerProfileForCharacter(owner)||{};
           const beforeStats=exchangeFinalStats(owner,before),afterStats=exchangeFinalStats(owner,after);
+          if(!beforeStats||!afterStats){reject('stats_donneur_incompletes','Calcul des statistiques du donneur incomplet : données de base ou formule non disponible',owner.name||owner.baseId);return;}
           const donorImpact=exchangeStatsDelta(beforeStats,afterStats);
           const beforeStatus=typeof v176ModStatus==='function'?v176ModStatus(before).status:'INCONNU';
           const afterStatus=typeof v176ModStatus==='function'?v176ModStatus(after).status:'INCONNU';
@@ -463,6 +464,7 @@
             statusWorsened:(statusRank[afterStatus]??0)>(statusRank[beforeStatus]??0)});
         }
         const targetStatsBefore=exchangeFinalStats(character,current),targetStatsAfter=exchangeFinalStats(character,finalTarget);
+        if(!targetStatsBefore||!targetStatsAfter){reject('stats_cible_incompletes','Calcul des statistiques de la cible incomplet : données de base ou formule non disponible');return;}
         const targetStatDeltas=exchangeStatsDelta(targetStatsBefore,targetStatsAfter);
         const primaryShares=slots.map(slot=>{
           const mod=chosen.find(item=>slotOf(item)===slot);
