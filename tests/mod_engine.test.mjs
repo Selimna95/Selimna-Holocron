@@ -125,6 +125,9 @@ assert.equal(engine.calculateSetBonuses(Array.from({ length: 4 }, () => ({ level
 const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' })));
 assert.equal(speedCalc.total, 110, JSON.stringify(speedCalc));
 assert.equal(speedProjection.stats.Speed, 110);
+const noPrimarySpeedMods = Array.from({ length: 6 }, () => ({ secondary_1_stat: 'Speed', secondary_1_value: 5 }));
+assert.equal(engine.calculateSpeed(0, noPrimarySpeedMods).total, 30);
+assert.equal(engine.calculateFinalStats({ Speed: 100 }, noPrimarySpeedMods).stats.Speed, 130);
 
 
 const profileProjection = engine.calculateFinalStats({
