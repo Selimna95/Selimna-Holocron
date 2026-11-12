@@ -207,7 +207,7 @@ def final_stats(build, base_stats=None, base_profile=None):
     payload = _MOD_ENGINE_BRIDGE(
         json.dumps(source, ensure_ascii=False, separators=(",", ":")),
         json.dumps(list(build or []), ensure_ascii=False, separators=(",", ":")),
-        85,
+        to_float(source.get("level"), 85) if isinstance(source, dict) else 85,
     )
     try:
         result = json.loads(str(payload))
