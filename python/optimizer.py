@@ -20,6 +20,13 @@ except Exception:
         pass
 
 SLOTS = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+_MOD_ENGINE_BRIDGE = None
+
+
+def set_mod_engine_bridge(bridge):
+    """Inject the single JavaScript calculation engine from the Pyodide worker."""
+    global _MOD_ENGINE_BRIDGE
+    _MOD_ENGINE_BRIDGE = bridge
 
 SLOT_ALIASES = {
     # SWGOH.GG / Comlink slot ids: 2=Square, 3=Arrow, 4=Diamond,
@@ -54,38 +61,41 @@ def _normalize_profile_identity(value):
     return re.sub(r"[^a-z0-9]", "", text)
 
 
-def resolve_character_base_stats(profiles, base_id="", name=""):
-    """Resolve base stats by base id first, then an unambiguous normalized name."""
+def resolve_character_profile(profiles, base_id="", name=""):
+    """Resolve a complete reference profile by id, then unambiguous name."""
     if not isinstance(profiles, dict):
         return {}
     wanted_id = _normalize_profile_identity(base_id)
     wanted_name = _normalize_profile_identity(name)
-
     if wanted_id:
         direct = profiles.get(str(base_id or "").strip().upper())
         if isinstance(direct, dict) and isinstance(direct.get("base_stats"), dict) and direct["base_stats"]:
-            return direct["base_stats"]
-        id_matches = [
+            return direct
+        matches = [
             profile for profile in profiles.values()
             if isinstance(profile, dict)
             and _normalize_profile_identity(profile.get("base_id")) == wanted_id
             and isinstance(profile.get("base_stats"), dict)
             and profile["base_stats"]
         ]
-        if len(id_matches) == 1:
-            return id_matches[0]["base_stats"]
-
+        if len(matches) == 1:
+            return matches[0]
     if wanted_name:
-        name_matches = [
+        matches = [
             profile for profile in profiles.values()
             if isinstance(profile, dict)
             and _normalize_profile_identity(profile.get("name") or profile.get("character")) == wanted_name
             and isinstance(profile.get("base_stats"), dict)
             and profile["base_stats"]
         ]
-        if len(name_matches) == 1:
-            return name_matches[0]["base_stats"]
+        if len(matches) == 1:
+            return matches[0]
     return {}
+
+
+def resolve_character_base_stats(profiles, base_id="", name=""):
+    profile = resolve_character_profile(profiles, base_id, name)
+    return profile.get("base_stats", {}) if isinstance(profile, dict) else {}
 
 
 def normalize_slot(slot):
@@ -255,61 +265,25 @@ def primary_name(mod):
     return str(mod.get("primary_stat") or "").strip()
 
 
-def final_stats(build, base_stats=None):
-    """Calculate final character stats from base stats + mod flats/% + set bonuses.
+def final_stats(build, base_stats=None, base_profile=None):
+    """Delegate every stat projection to the shared JavaScript engine."""
+    if _MOD_ENGINE_BRIDGE is None:
+        raise RuntimeError("Moteur de calcul partagé non initialisé dans l'Optimizer.")
+    source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
+    payload = _MOD_ENGINE_BRIDGE(
+        json.dumps(source, ensure_ascii=False, separators=(",", ":")),
+        json.dumps(list(build or []), ensure_ascii=False, separators=(",", ":")),
+        85,
+    )
+    try:
+        result = json.loads(str(payload))
+    except Exception as exc:
+        raise RuntimeError("Réponse invalide du moteur de calcul partagé.") from exc
+    if not isinstance(result, dict) or not result.get("complete") or not isinstance(result.get("stats"), dict):
+        missing = result.get("missing", []) if isinstance(result, dict) else []
+        raise RuntimeError("Calcul de statistiques incomplet : " + ", ".join(map(str, missing)))
+    return result["stats"]
 
-    Health/Protection/Offense/Speed/Defense set bonuses are percentage bonuses
-    on the character base stat. Potency/Tenacity/Critical Chance/Critical
-    Damage/Critical Avoidance are percentage-point bonuses, matching the
-    game's displayed stat units.
-    """
-    base={str(k):to_float(v) for k,v in (base_stats or {}).items()}
-    result=dict(base)
-    percent_add={}
-    flat_add={}
-    for mod in build:
-        for name,value in mod_stats(mod).items():
-            if name.endswith('%'):
-                key=_canonical_stat_name(name)
-                percent_add[key]=percent_add.get(key,0.0)+to_float(value)/100.0
-            else:
-                key=_canonical_stat_name(name)
-                flat_add[key]=flat_add.get(key,0.0)+to_float(value)
-
-    counts={}
-    for mod in build:
-        name=mod_set(mod)
-        if name: counts[name]=counts.get(name,0)+1
-
-    # Relative-to-base bonuses (Health/Protection/Offense/Speed/Defense).
-    relative_bonuses={
-        "Health": (2,0.10), "Protection": (2,0.10), "Offense": (4,0.15),
-        "Speed": (4,0.10), "Defense": (2,0.25),
-    }
-    # Percentage-point bonuses for percentage-style game stats.
-    additive_bonuses={
-        "Critical Damage": (4,0.30), "Critical Chance": (2,0.08),
-        "Potency": (2,0.15), "Tenacity": (2,0.20), "Critical Avoidance": (2,0.20),
-    }
-    for set_name,(required,bonus) in relative_bonuses.items():
-        n=counts.get(set_name,0)
-        if n>=required:
-            percent_add[set_name]=percent_add.get(set_name,0.0)+bonus*(n//required)
-    for set_name,(required,bonus) in additive_bonuses.items():
-        n=counts.get(set_name,0)
-        if n>=required:
-            # Store additive percentage points as a fraction.
-            percent_add[set_name]=percent_add.get(set_name,0.0)+bonus*(n//required)
-
-    # Apply flat mod contributions first, then base-relative percentages.
-    for key,value in flat_add.items():
-        result[key]=to_float(result.get(key))+value
-    for key,ratio in percent_add.items():
-        if key in {"Potency","Tenacity","Critical Chance","Critical Damage","Critical Avoidance"}:
-            result[key]=to_float(result.get(key))+ratio
-        else:
-            result[key]=to_float(result.get(key))+to_float(base.get(key))*ratio
-    return result
 
 def _get_kyber_set_distribution(kyber):
     """Return set usage weights from either dict or Kyber's list format."""
@@ -384,9 +358,9 @@ def _mod_score(mod, kyber, weights):
     return score
 
 
-def build_score(build, kyber, weights, base_stats):
+def build_score(build, kyber, weights, base_stats, base_profile=None):
     score = 0.0
-    stats = final_stats(build, base_stats)
+    stats = final_stats(build, base_stats, base_profile)
 
     set_dist = _get_kyber_set_distribution(kyber)
     counts = {}
@@ -493,6 +467,7 @@ def _matches_set_plan(build, plan):
 def optimize_kyber(
     mods,
     base_stats=None,
+    base_profile=None,
     kyber=None,
     weights=None,
     targets=None,
@@ -602,7 +577,7 @@ def optimize_kyber(
                     build = partial + (mod,)
                     if plan_constraint and not _partial_matches_set_plan(build, plan_constraint):
                         continue
-                    expanded.append((build_score(build, kyber, weights, base_stats), build))
+                    expanded.append((build_score(build, kyber, weights, base_stats, base_profile), build))
             expanded.sort(key=lambda x: x[0], reverse=True)
             current_beam = [build for _, build in expanded[:beam_width]]
             if progress_callback:
@@ -622,7 +597,7 @@ def optimize_kyber(
     def speed_safe(build):
         if minimum_speed is None:
             return True
-        return to_float(final_stats(build, base_stats).get("Speed")) + 1e-9 >= to_float(minimum_speed)
+        return to_float(final_stats(build, base_stats, base_profile).get("Speed")) + 1e-9 >= to_float(minimum_speed)
 
     safe_beam = [build for build in beam if speed_safe(build)]
     # A Kyber set plan is a preference, never a reason to violate the target's
@@ -634,7 +609,7 @@ def optimize_kyber(
 
     if minimum_speed is not None and not safe_beam:
         best_speed = max(
-            (to_float(final_stats(build, base_stats).get("Speed")) for build in beam),
+            (to_float(final_stats(build, base_stats, base_profile).get("Speed")) for build in beam),
             default=0.0,
         )
         raise RuntimeError(
@@ -646,7 +621,7 @@ def optimize_kyber(
 
     results = []
     for build in safe_beam:
-        stats = final_stats(build, base_stats)
+        stats = final_stats(build, base_stats, base_profile)
         results.append({
             "build": list(build),
             "score": build_score(build, kyber, weights, base_stats),
