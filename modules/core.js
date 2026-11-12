@@ -1366,25 +1366,25 @@ function holocronModScore(m){
   return window.HolocronModEngine.scoreMod(m);
 }
 function holocronKyberFit(mod, character){
-  // Ajuste indicatif selon les préférences Kyber du personnage (sets, primaires et secondaires).
-  // Il ne représente pas une simulation de combat ni des stats adverses observées.
   const p=profileForCharacter(character); if(!p)return 0;
-  const set=String(mod?.set_name||'').trim().toLowerCase();
-  const primary=String(mod?.primary_stat||'').trim().toLowerCase();
-  const slot=String(mod?.slot||'');
-  let fit=0;
+  const engine=window.HolocronModEngine;
+  const setKey=engine.canonicalSetFromMod(mod);
   const sets=Array.isArray(p.sets)?p.sets:[];
-  const sw=sets.find(x=>String(x.name||'').toLowerCase()===set);
+  const sw=sets.find(x=>engine.canonicalSet(x.name)===setKey);
+  let fit=0;
   if(sw)fit+=Math.min(5,Number(sw.weight||0)*5);
+  const slot=String(mod?.slot||'');
   const slotData=p.slots?.[slot];
   const primaries=slotData?.primaries||{};
-  const pw=Object.entries(primaries).find(([k])=>String(k).toLowerCase()===primary)?.[1];
+  const primaryKey=engine.canonicalStatKey(mod?.primary_stat||'').replace(/PERCENT$/,'');
+  const pw=Object.entries(primaries).find(([name])=>engine.canonicalStatKey(name).replace(/PERCENT$/,'')===primaryKey)?.[1];
   if(Number.isFinite(Number(pw)))fit+=Math.min(4,Number(pw)*4);
   const focus=p.secondary_focus||{};
   for(let i=1;i<=4;i++){
-    const stat=String(mod?.[`secondary_${i}_stat`]||'').toLowerCase();
+    const stat=mod?.[`secondary_${i}_stat`];
     if(!stat)continue;
-    const entry=Object.entries(focus).find(([k])=>k.toLowerCase().replace(/[^a-z%]/g,'')===stat.replace(/[^a-z%]/g,''));
+    const key=engine.canonicalStatKey(stat).toLowerCase();
+    const entry=Object.entries(focus).find(([name])=>engine.canonicalStatKey(name).toLowerCase()===key);
     if(entry)fit+=Math.min(1.5,Math.max(0,Number(entry[1]||0)/20));
   }
   return fit;
