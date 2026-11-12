@@ -72,7 +72,7 @@ const safeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character
 const unsafeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',speed:5,secondary_1_stat:'Speed',secondary_1_value:5}];
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,safeBuild),true);
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,unsafeBuild),false,
-  'A six-mod build that reduces the recipient speed must be rejected');
+  'A six-mod build that reduces the recipient speed must be rejected; before='+JSON.stringify(context.forgeProjectedModSpeed(roster[0],{base_stats:{Speed:100}},current))+' after='+JSON.stringify(context.forgeProjectedModSpeed(roster[0],{base_stats:{Speed:100}},unsafeBuild)));
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,[...current.slice(0,5),{slot:'Circle',speed:20,secondary_1_stat:'Speed',secondary_1_value:20}]),false,
   'A six-mod build with a duplicate slot must be rejected');
 
