@@ -229,9 +229,8 @@
       secondary.join(' · ')].filter(Boolean).join(' · ');
   };
   const exchangeStatName = value => {
-    const raw=String(value??'').trim().replace(/%$/,'').trim();
-    const aliases={critdamage:'Critical Damage',criticaldamage:'Critical Damage',critchance:'Critical Chance',criticalchance:'Critical Chance',critavoidance:'Critical Avoidance',criticalavoidance:'Critical Avoidance'};
-    return aliases[key(raw)]||raw;
+    const normalized=window.HolocronModEngine.normalizeStat(value);
+    return normalized?.key ? normalized.name : String(value??'').trim().replace(/%$/,'').trim();
   };
   function exchangeFinalStats(character,build){
     const profile=typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{};
@@ -296,7 +295,7 @@
       return {name,before:from,after:to,expected:reference,delta,relative:delta/reference};
     });
     const losses=rows.filter(row=>row.delta < -Math.max(1,row.expected*.25));
-    const protectedStats=new Set(['health','protection','offense','defense']);
+    const protectedStats=new Set(['health','protection','offense','defense','physicaldamage','specialdamage','armor','resistance','speed']);
     const coreLosses=beforeStats&&afterStats?Object.keys(beforeStats).filter(name=>protectedStats.has(key(name))).map(name=>{
       const from=Number(beforeStats[name])||0,to=Number(afterStats[name])||0;
       return {name,before:from,after:to,delta:to-from,relative:from?(to-from)/Math.abs(from):null};
