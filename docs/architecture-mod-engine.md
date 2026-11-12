@@ -1,6 +1,8 @@
 # Architecture decision: moteur unique des mods
 
-- Statut : adopté pour la refonte `refactor/unified-mod-engine`
+- Statut : migration en cours, intégration interdite tant que les formules non couvertes restent incomplètes
+- Moteur : `modules/mod-engine.js` v0.3.1
+- Statut des calculs : Defense % et statistiques non prises en charge sont signalés incomplets, jamais estimés
 - Base : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
 - Portée : toute l'application, pas uniquement Visionnaire.
 
