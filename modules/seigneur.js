@@ -351,8 +351,9 @@ function forgeModPrimaryConformity(mod,profile){
   const expected=optimizerPrimaryReference(profile,slot);
   const entries=Object.entries(expected).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0));
   if(!entries.length)return {ok:null,expected:'Référence indisponible'};
-  const actual=compactKey(mod?.primary_stat||'');
-  const match=entries.find(([name])=>compactKey(name)===actual);
+  const canonical=value=>window.HolocronModEngine.canonicalStatKey(value).replace(/PERCENT$/,'');
+  const actual=canonical(mod?.primary_stat||'');
+  const match=entries.find(([name])=>canonical(name)===actual);
   return {ok:!!match,expected:entries[0]?.[0]||'—',expectedPct:match?Number(match[1]||0):Number(entries[0]?.[1]||0)};
 }
 function forgeCharacterAudit(character,profile){
