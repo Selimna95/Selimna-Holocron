@@ -21,12 +21,24 @@ except Exception:
 
 SLOTS = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
 _MOD_ENGINE_BRIDGE = None
+_MOD_NORMALIZE_BRIDGE = None
 
 
-def set_mod_engine_bridge(bridge):
-    """Inject the single JavaScript calculation engine from the Pyodide worker."""
-    global _MOD_ENGINE_BRIDGE
+def set_mod_engine_bridge(bridge, normalize_bridge=None):
+    """Inject the single JavaScript calculation and normalization engine."""
+    global _MOD_ENGINE_BRIDGE, _MOD_NORMALIZE_BRIDGE
     _MOD_ENGINE_BRIDGE = bridge
+    _MOD_NORMALIZE_BRIDGE = normalize_bridge
+
+
+def _normalized_mod(mod):
+    if _MOD_NORMALIZE_BRIDGE is None:
+        raise RuntimeError("Normalisation partagée des mods non initialisée.")
+    payload = _MOD_NORMALIZE_BRIDGE(json.dumps(mod or {}, ensure_ascii=False, separators=(",", ":")))
+    result = json.loads(str(payload))
+    if not isinstance(result, dict):
+        raise RuntimeError("Réponse invalide du normaliseur partagé.")
+    return result
 
 SLOT_ALIASES = {
     # SWGOH.GG / Comlink slot ids: 2=Square, 3=Arrow, 4=Diamond,
@@ -138,151 +150,45 @@ def mod_id(mod):
     return mod.get("game_id") or mod.get("id")
 
 
-SET_NAMES = {
-    "1":"Health", "2":"Offense", "3":"Defense", "4":"Speed",
-    "5":"Critical Chance", "6":"Critical Damage", "7":"Potency",
-    "8":"Tenacity", "9":"Critical Avoidance", "10":"Offense", "11":"Defense",
-}
-
 def normalize_set(value):
-    if isinstance(value, dict):
-        value = value.get("name") or value.get("id") or value.get("setId") or value.get("modSetId")
-    text = str(value or "").strip()
-    if not text:
-        return None
-    aliases = {
-        "crit chance":"Critical Chance", "critical chance":"Critical Chance",
-        "crit damage":"Critical Damage", "critical damage":"Critical Damage",
-        "crit avoidance":"Critical Avoidance", "critical avoidance":"Critical Avoidance",
-        "offense":"Offense", "health":"Health", "defense":"Defense",
-        "speed":"Speed", "potency":"Potency", "tenacity":"Tenacity",
-    }
-    return SET_NAMES.get(text, aliases.get(text.casefold(), text))
+    normalized = _normalized_mod({"set": value})
+    return normalized.get("set")
+
 
 def mod_set(mod):
     if not isinstance(mod, dict):
         return None
-    for key in ("set_name", "set", "setId", "modSetId", "mod_set_id"):
-        value = mod.get(key)
-        if value is not None and str(value).strip():
-            return normalize_set(value)
-    for parent_key in ("statMod", "stat_mod", "definition", "modDefinition", "mod_definition"):
-        parent = mod.get(parent_key)
-        if isinstance(parent, dict):
-            for key in ("setId", "modSetId", "set_id", "set"):
-                value = parent.get(key)
-                if value is not None and str(value).strip():
-                    return normalize_set(value)
-    definition = mod.get("definitionId") or mod.get("definition_id") or mod.get("defId")
-    if isinstance(definition, dict):
-        value = definition.get("setId") or definition.get("modSetId") or definition.get("set") or definition.get("id")
-        if value is not None:
-            return normalize_set(value)
-        definition = definition.get("id") or definition.get("definitionId")
-    text = str(definition or "").strip()
-    # Real Comlink statMod definitionIds are often compact 3-digit codes:
-    # 161 = Health / rarity 6 / Square, 162 = Health / rarity 6 / Arrow,
-    # 166 = Health / rarity 6 / Cross.
-    if re.fullmatch(r"[1-8][1-7][0-6]", text):
-        return normalize_set(text[0])
-    if re.fullmatch(r"[1-8][1-7][1-6]", text):
-        return normalize_set(text[0])
-    parts = [p for p in re.split(r"[^A-Za-z0-9]+", text) if p]
-    if len(parts) >= 3:
-        try:
-            sid, rarity, slot = int(parts[0]), int(parts[1]), int(parts[2])
-            if 1 <= sid <= 8 and 1 <= rarity <= 7 and 1 <= slot <= 6:
-                return normalize_set(sid)
-            if 1 <= sid <= 8 and 1 <= rarity <= 7 and slot == 0:
-                return normalize_set(sid)
-        except ValueError:
-            pass
-    nums = re.findall(r"\d+", text)
-    for i in range(max(0, len(nums)-2)):
-        try:
-            sid, rarity, slot = int(nums[i]), int(nums[i+1]), int(nums[i+2])
-        except ValueError:
-            continue
-        if 1 <= sid <= 8 and 1 <= rarity <= 7 and 1 <= slot <= 6:
-            return normalize_set(sid)
-        if 1 <= sid <= 8 and 1 <= rarity <= 7 and slot == 0:
-            return normalize_set(sid)
-    return None
+    return _normalized_mod(mod).get("set")
 
-
-PERCENT_STAT_NAMES = {
-    "Potency", "Tenacity", "Critical Chance", "Critical Damage", "Critical Avoidance",
-    "Offense", "Defense", "Health", "Protection", "Speed",
-}
-
-def _stat_is_percent(name):
-    text=str(name or '').strip()
-    return text.endswith('%')
-
-def _canonical_stat_name(name):
-    text=str(name or '').strip()
-    return text[:-1].strip() if text.endswith('%') else text
-
-def _stat_entries(mod):
-    """Return (name, value, is_percent) entries while preserving mod display values."""
-    raw = mod.get("stats", {})
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except Exception:
-            raw = {}
-    entries=[]
-    if isinstance(raw, dict) and raw:
-        for k,v in raw.items():
-            name=str(k).strip()
-            entries.append((name, to_float(v), _stat_is_percent(name)))
-        return entries
-    p=mod.get("primary_stat")
-    if p:
-        name=str(p).strip()
-        entries.append((name, to_float(mod.get("primary_value")), _stat_is_percent(name)))
-    for i in range(1,5):
-        name=mod.get(f"secondary_{i}_stat")
-        if name:
-            name=str(name).strip()
-            entries.append((name, to_float(mod.get(f"secondary_{i}_value")), _stat_is_percent(name)))
-    return entries
 
 def mod_stats(mod):
-    """Return flat/percentage mod stats in their source units.
-
-    Percentage stats are kept with a trailing '%' so final_stats can apply
-    them to the character base stat instead of treating e.g. 3.7% Health as
-    3.7 Health points.
-    """
-    out={}
-    for name,value,is_pct in _stat_entries(mod):
-        key=f"{_canonical_stat_name(name)} %" if is_pct else _canonical_stat_name(name)
-        out[key]=out.get(key,0.0)+value
+    """Return canonical stat values from the shared mod normalizer."""
+    normalized = _normalized_mod(mod)
+    out = {}
+    percent_suffix = {"offense", "defense", "health", "protection", "speed"}
+    entries = [normalized.get("primary")] + list(normalized.get("secondaries") or [])
+    for stat in entries:
+        if not isinstance(stat, dict) or stat.get("value") is None or not stat.get("key"):
+            continue
+        key = stat["key"]
+        name = stat.get("name") or key
+        if stat.get("unit") == "percentagePoints" and key in percent_suffix:
+            name += " %"
+        out[name] = out.get(name, 0.0) + to_float(stat.get("value"))
     return out
 
+
 def primary_name(mod):
-    return str(mod.get("primary_stat") or "").strip()
-
-
-def final_stats(build, base_stats=None, base_profile=None):
-    """Delegate every stat projection to the shared JavaScript engine."""
-    if _MOD_ENGINE_BRIDGE is None:
-        raise RuntimeError("Moteur de calcul partagé non initialisé dans l'Optimizer.")
-    source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
-    payload = _MOD_ENGINE_BRIDGE(
-        json.dumps(source, ensure_ascii=False, separators=(",", ":")),
-        json.dumps(list(build or []), ensure_ascii=False, separators=(",", ":")),
-        85,
-    )
-    try:
-        result = json.loads(str(payload))
-    except Exception as exc:
-        raise RuntimeError("Réponse invalide du moteur de calcul partagé.") from exc
-    if not isinstance(result, dict) or not result.get("complete") or not isinstance(result.get("stats"), dict):
-        missing = result.get("missing", []) if isinstance(result, dict) else []
-        raise RuntimeError("Calcul de statistiques incomplet : " + ", ".join(map(str, missing)))
-    return result["stats"]
+    normalized = _normalized_mod(mod)
+    stat = normalized.get("primary") or {}
+    if not stat.get("key"):
+        return ""
+    name = stat.get("name") or stat["key"]
+    if stat.get("unit") == "percentagePoints" and stat.get("key") in {
+        "offense", "defense", "health", "protection", "speed"
+    }:
+        name += " %"
+    return name
 
 
 def _get_kyber_set_distribution(kyber):
@@ -346,7 +252,8 @@ def _mod_score(mod, kyber, weights):
     for stat, value in stats.items():
         if stat == primary:
             continue
-        score += value * to_float(weights.get(stat), 0.0)
+        weight_key = str(stat).removesuffix(' %')
+        score += value * to_float(weights.get(stat, weights.get(weight_key)), 0.0)
 
     # Speed secondary is always useful, but remains below Kyber primary.
     score += stats.get("Speed", 0.0) * 8.0
