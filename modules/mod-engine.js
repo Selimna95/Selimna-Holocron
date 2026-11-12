@@ -299,14 +299,36 @@
   }
 
   function canonicalSet(value) {
-    const key = compact(value).replace(/modset$/, '').replace(/set$/, '');
+    if (value && typeof value === 'object') {
+      value = value.name ?? value.id ?? value.setId ?? value.modSetId ?? value.set ?? value.definitionId;
+    }
+    const raw = String(value ?? '').trim();
+    if (/^[1-8][1-7][0-6]$/.test(raw)) return SET_ALIASES[raw[0]] || null;
+    const key = compact(raw).replace(/modset$/, '').replace(/set$/, '');
     return SET_ALIASES[key] || null;
+  }
+
+  function canonicalSetFromMod(mod) {
+    if (!mod || typeof mod !== 'object') return null;
+    const direct = mod.set_name ?? mod.set ?? mod.setName ?? mod.setId ?? mod.modSetId ?? mod.mod_set_id;
+    if (direct != null) {
+      const normalized = canonicalSet(direct);
+      if (normalized) return normalized;
+    }
+    for (const parentKey of ['statMod', 'stat_mod', 'definition', 'modDefinition', 'mod_definition']) {
+      const parent = mod[parentKey];
+      if (parent && typeof parent === 'object') {
+        const normalized = canonicalSet(parent.setId ?? parent.modSetId ?? parent.set_id ?? parent.set);
+        if (normalized) return normalized;
+      }
+    }
+    return canonicalSet(mod.definitionId ?? mod.definition_id ?? mod.defId);
   }
 
   function calculateSetBonuses(mods) {
     const grouped = new Map();
     for (const mod of Array.isArray(mods) ? mods : []) {
-      const set = canonicalSet(mod?.set_name ?? mod?.set ?? mod?.setName ?? mod?.setId);
+      const set = canonicalSetFromMod(mod);
       const definition = set && SET_DEFINITIONS[set];
       if (!definition) continue;
       if (!grouped.has(set)) grouped.set(set, []);
@@ -376,7 +398,7 @@
     return Object.freeze({
       id: String(mod.game_id ?? mod.id ?? mod.modId ?? mod.uid ?? ''),
       level: numeric(mod.level) ?? null,
-      set: canonicalSet(mod.set_name ?? mod.set ?? mod.setName ?? mod.setId),
+      set: canonicalSetFromMod(mod),
       slot: mod.slot ?? mod.slot_id ?? mod.slotId ?? null,
       pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
       primary,
@@ -390,6 +412,7 @@
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
+    canonicalSetFromMod,
     calculateSetBonuses,
     calculateFinalStats,
     scoreMod,
