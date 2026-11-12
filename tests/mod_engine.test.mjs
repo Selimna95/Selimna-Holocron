@@ -36,6 +36,7 @@ assert.equal(offenseFlat.value, 40);
 assert.equal(offensePercent.key, 'offense');
 assert.equal(offensePercent.unit, 'percentagePoints');
 assert.equal(offensePercent.value, 2.5);
+assert.equal(engine.normalizeStat({ unitStatId: 48, unscaledDecimalValue: 2500000 }, 2.5).value, 2.5);
 
 const defenseFlat = engine.normalizeStat({ unitStatId: 42, unscaledDecimalValue: 1200000000 });
 const defensePercent = engine.normalizeStat({ unitStatId: 49, unscaledDecimalValue: 5000000 });
