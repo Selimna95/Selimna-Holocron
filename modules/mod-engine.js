@@ -224,6 +224,8 @@
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
     calculateSetBonuses,
+    scoreMod,
+    canonicalStatKey,
     normalizeStat,
     normalizeMod
   });
