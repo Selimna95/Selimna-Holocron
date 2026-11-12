@@ -400,7 +400,7 @@
         if (name) secondaries.push(normalizeStat(name, mod[`secondary_${i}_value`]));
       }
     }
-    return Object.freeze({
+    const normalized = Object.freeze({
       id: String(mod.game_id ?? mod.id ?? mod.modId ?? mod.uid ?? ''),
       level: numeric(mod.level) ?? null,
       set: canonicalSetFromMod(mod),
@@ -410,6 +410,9 @@
       secondaries: Object.freeze(secondaries),
       complete: !!primary.key && primary.complete && secondaries.every(stat => stat.complete)
     });
+    NORMALIZED_MOD_CACHE.set(cacheKey, normalized);
+    if (NORMALIZED_MOD_CACHE.size > 5000) NORMALIZED_MOD_CACHE.delete(NORMALIZED_MOD_CACHE.keys().next().value);
+    return normalized;
   }
 
   const api = Object.freeze({
