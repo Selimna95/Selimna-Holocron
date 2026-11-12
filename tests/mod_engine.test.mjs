@@ -87,4 +87,35 @@ const scored = engine.scoreMod({
 });
 assert.equal(scored, 37.35);
 
+
+const projectionBase = {
+  Health: 1000, Protection: 2000, Speed: 100,
+  'Physical Damage': 500, 'Special Damage': 700,
+  Armor: 50, Resistance: 40, Potency: 0.1, Tenacity: 0.2,
+  'Critical Damage': 1.5,
+  'Physical Critical Chance': 40, 'Special Critical Chance': 30,
+  'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
+};
+const offenseProjection = engine.calculateFinalStats(projectionBase, [
+  { level: 15, set_name: 'Offense', primary_stat: 'Offense', primary_value: 40 },
+  { level: 15, set_name: 'Offense', primary_stat: 'Offense %', primary_value: 10 },
+  { level: 15, set_name: 'Offense' }, { level: 15, set_name: 'Offense' }
+], 85);
+assert.equal(offenseProjection.complete, true);
+assert.equal(offenseProjection.stats['Physical Damage'], 665);
+assert.equal(offenseProjection.stats['Special Damage'], 915);
+
+const defenseProjection = engine.calculateFinalStats(projectionBase, [
+  { level: 15, primary_stat: 'Defense', primary_value: 40 },
+  { level: 15, primary_stat: 'Defense %', primary_value: 10 }
+], 85);
+assert.equal(defenseProjection.complete, true);
+assert.ok(Math.abs(defenseProjection.stats.Armor - 53.7593) < 0.001);
+assert.ok(Math.abs(defenseProjection.stats.Resistance - 44.3231) < 0.001);
+
+const speedProjection = engine.calculateFinalStats(projectionBase, [
+  ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))
+], 85);
+assert.equal(speedProjection.stats.Speed, 110);
+
 console.log('Shared mod engine contract tests passed.');
