@@ -945,7 +945,7 @@ function modDots(m){
   if(mk)return Number(mk[1]);
   const roman=text.match(/(?:^|[\s_-])(VI|V|IV|III|II|I)(?:[-\s]|$)/i);
   if(roman){
-    return ({I:1,II:2,III:3,IV:4,V:5,VI:6}[roman[1].toUpperCase()]||5);
+    return ({I:1,II:2,III:3,IV:4,V:5,VI:6})[roman[1].toUpperCase()] ?? null;
   }
   return null;
 }
