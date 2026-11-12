@@ -489,15 +489,17 @@ function forgeSpeedSetCount(modList){
 }
 function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
-  const modSpeed=list.reduce((sum,m)=>sum+numericValue(modTotalSpeed(m),0),0);
-  // Do not mistake a displayed/current stat block for a base stat: that could
-  // overestimate the 4-piece Speed-set bonus and let a real speed loss through.
   const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
     character?.raw?.baseStats||character?.data?.base_stats||optimizerProfileForCharacter(character)?.base_stats||{};
   const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,0);
-  const hasFourPieceSpeedSet=forgeSpeedSetCount(list)>=4;
-  const setBonus=hasFourPieceSpeedSet&&baseSpeed>0?baseSpeed*0.1:0;
-  return {total:modSpeed+setBonus,modSpeed,setBonus,hasFourPieceSpeedSet,baseSpeed};
+  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list);
+  return {
+    total:projection.total==null?projection.modSpeed:projection.total,
+    modSpeed:projection.modSpeed,
+    setBonus:projection.setBonus,
+    hasFourPieceSpeedSet:projection.hasFourPieceSpeedSet,
+    baseSpeed
+  };
 }
 function forgeCandidatePreservesSpeed(character,profile,equipped,current,candidate){
   if(!current)return true;
