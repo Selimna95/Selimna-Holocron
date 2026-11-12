@@ -70,6 +70,12 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
   }
 }
 
+// Missing mod metadata must remain unknown rather than being fabricated.
+const iconContext = vm.createContext({});
+load(core, ['modIconTier','modDots'], iconContext);
+assert.equal(iconContext.modIconTier({}), '');
+assert.equal(iconContext.modDots({}), null);
+
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
 
