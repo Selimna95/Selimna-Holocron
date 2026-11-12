@@ -474,7 +474,7 @@
       level: numeric(mod.level) ?? null,
       set: canonicalSetFromMod(mod),
       setName: SET_DEFINITIONS[canonicalSetFromMod(mod)]?.name || null,
-      slot: mod.slot ?? mod.slot_id ?? mod.slotId ?? null,
+      slot: canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot),
       pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
       primary,
       secondaries: Object.freeze(secondaries),
