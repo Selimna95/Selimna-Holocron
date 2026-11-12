@@ -31,7 +31,40 @@ def _test_engine_bridge(base_json, mods_json, level):
         result["Critical Damage"] += 0.30 if all(x >= 15 for x in sorted(levels["Critical Damage"], reverse=True)[:4]) else 0.15
     return json.dumps({"complete": True, "stats": result, "missing": []})
 
-optimizer_module.set_mod_engine_bridge(_test_engine_bridge)
+def _test_normalize_bridge(mod_json):
+    mod = json.loads(mod_json)
+    raw_set = mod.get("set_name", mod.get("set", mod.get("setId")))
+    set_names = {
+        "1": "Health", "2": "Offense", "3": "Defense", "4": "Speed",
+        "5": "Critical Chance", "6": "Critical Damage", "7": "Potency", "8": "Tenacity",
+        "health": "Health", "offense": "Offense", "defense": "Defense", "speed": "Speed",
+        "crit chance": "Critical Chance", "critical chance": "Critical Chance",
+        "crit damage": "Critical Damage", "critical damage": "Critical Damage",
+        "potency": "Potency", "tenacity": "Tenacity",
+    }
+    set_value = set_names.get(str(raw_set or "").casefold(), set_names.get(str(raw_set or "")))
+    def stat(name, value):
+        if not name:
+            return None
+        text = str(name).strip()
+        is_percent = text.endswith("%")
+        clean = text[:-1].strip() if is_percent else text
+        key = clean.replace(" ", "").casefold()
+        aliases = {"critchance": "criticalChance", "critdamage": "criticalDamage"}
+        key = aliases.get(key, key)
+        return {
+            "key": key, "name": clean, "unit": "percentagePoints" if is_percent else "flat",
+            "value": float(value) if value is not None else None
+        }
+    primary = stat(mod.get("primary_stat"), mod.get("primary_value"))
+    secondaries = []
+    for i in range(1, 5):
+        item = stat(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value"))
+        if item:
+            secondaries.append(item)
+    return json.dumps({"set": set_value, "primary": primary, "secondaries": secondaries})
+
+optimizer_module.set_mod_engine_bridge(_test_engine_bridge, _test_normalize_bridge)
 
 from python.optimizer import (
     normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
