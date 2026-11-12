@@ -2,7 +2,7 @@
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
-const CACHE_NAME = 'holocron-static-v4.4.53-unified-engine';
+const CACHE_NAME = 'holocron-static-v4.4.54-unified-mod-engine';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -21,16 +21,16 @@ const STATIC_ASSETS = [
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.6.0-gac-freshness',
   './modules/seigneur-gac.js?v=1.1.0-history-fallback',
-  './modules/mod-engine.js?v=0.3.0',
-  './modules/core.js?v=4.2.17-shared-mod-engine',
-  './modules/acolyte.js?v=3.4.5-candidate-score',
-  './modules/disciple.js?v=3.5.3-shared-mod-engine',
-  './modules/seigneur.js?v=3.9.6-gac-freshness-legacy',
+  './modules/mod-engine.js?v=0.3.1',
+  './modules/core.js?v=4.2.18-shared-mod-engine',
+  './modules/acolyte.js?v=3.4.6-shared-mod-engine',
+  './modules/disciple.js?v=3.5.4-shared-mod-engine',
+  './modules/seigneur.js?v=3.9.7-shared-mod-engine',
   './modules/seigneur-impact.js?v=1.0.0-roster-impact',
-  './modules/visionnaire.js?v=4.1.69-balanced-speed-prefilter-v1',
+  './modules/visionnaire.js?v=4.1.70-shared-mod-engine',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
-  './optimizer-worker.mjs?v=3.5.5-unified-engine',
-  './python/optimizer.py?v=3.5.2-unified-engine',
+  './optimizer-worker.mjs?v=3.5.6-shared-mod-engine',
+  './python/optimizer.py?v=3.5.3-shared-mod-engine',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
