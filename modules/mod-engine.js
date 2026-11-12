@@ -24,8 +24,6 @@
     34: { key: 'specialAccuracy', name: 'Special Accuracy', unit: 'percentagePoints' },
     35: { key: 'physicalCriticalAvoidance', name: 'Physical Critical Avoidance', unit: 'percentagePoints' },
     36: { key: 'specialCriticalAvoidance', name: 'Special Critical Avoidance', unit: 'percentagePoints' },
-    35: { key: 'physicalCriticalAvoidance', name: 'Physical Critical Avoidance', unit: 'percentagePoints' },
-    36: { key: 'specialCriticalAvoidance', name: 'Special Critical Avoidance', unit: 'percentagePoints' },
     37: { key: 'physicalAccuracy', name: 'Physical Accuracy', unit: 'flat' },
     38: { key: 'specialAccuracy', name: 'Special Accuracy', unit: 'flat' },
     39: { key: 'physicalCriticalAvoidance', name: 'Physical Critical Avoidance', unit: 'flat' },
