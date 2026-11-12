@@ -909,17 +909,11 @@ async function loadRemotePlayer(){
 }
 function updateAccountSummary(title,fmt){if($('playerName'))$('playerName').textContent=title||'Profil';if($('playerAlly'))$('playerAlly').textContent=fmt||'—';if($('heroPlayerName'))$('heroPlayerName').textContent=title||'Profil';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent=fmt||'—';setText('topAccountName',title||'—');setText('topProfileState','CONNECTÉ');setText('heroProfileState','CONNECTÉ');}
 function modSetLabel(value){
-  const raw=String(value??'').trim();
-  if(!raw)return '';
-  const key=raw.toLowerCase().replace(/[_-]+/g,' ');
-  const map={'1':'Health','2':'Offense','3':'Defense','4':'Speed','5':'Crit Chance','6':'Crit Damage','7':'Potency','8':'Tenacity','health':'Health','offense':'Offense','defense':'Defense','speed':'Speed','crit chance':'Crit Chance','crit damage':'Crit Damage','potency':'Potency','tenacity':'Tenacity'};
-  return map[raw]||map[key]||raw;
+  const key=window.HolocronModEngine.canonicalSet(value);
+  return key?window.HolocronModEngine.setDefinitions[key]?.name||'':String(value??'').trim();
 }
 function modSlotLabel(value){
-  const raw=String(value??'').trim();
-  const key=raw.toLowerCase().replace(/[_-]+/g,' ');
-  const map={'1':'Square','2':'Square','3':'Arrow','4':'Diamond','5':'Triangle','6':'Circle','7':'Cross','square':'Square','arrow':'Arrow','diamond':'Diamond','triangle':'Triangle','circle':'Circle','cross':'Cross','transmitter':'Square','receiver':'Arrow','processor':'Diamond','holo array':'Triangle','data bus':'Circle','multiplexer':'Cross'};
-  return map[raw]||map[key]||raw;
+  return window.HolocronModEngine.canonicalSlot(value)||String(value??'').trim();
 }
 function modIconTier(m){
   const rawValue=m?.tier??m?.quality??m?.grade??m?.modTier??m?.mod_tier??m?.rarityTier??m?.rarity_tier??'';
