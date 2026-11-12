@@ -183,8 +183,18 @@
         const key = canonicalBaseKey(name);
         if (key && !Object.keys(expandedBase).some(existing => canonicalBaseKey(existing) === key)) {
           const current = numeric(value);
-          const delta = numeric(profile.mod_stat_diffs?.[name]) ?? 0;
-          if (current != null) expandedBase[name] = current - delta;
+          const rawDelta = numeric(profile.mod_stat_diffs?.[name]);
+          const delta = rawDelta ?? 0;
+          if (current != null) {
+            if (key === 'criticalAvoidance') {
+              if (current !== 0 && rawDelta == null) continue;
+              const baseAvoidance = current - delta;
+              expandedBase['Physical Critical Avoidance'] = baseAvoidance;
+              expandedBase['Special Critical Avoidance'] = baseAvoidance;
+            } else {
+              expandedBase[name] = current - delta;
+            }
+          }
         }
       }
     }
