@@ -1,4 +1,37 @@
 import unittest
+import json
+import python.optimizer as optimizer_module
+
+def _test_engine_bridge(base_json, mods_json, level):
+    source = json.loads(base_json)
+    base = source.get("base_stats", source) if isinstance(source, dict) else {}
+    result = dict(base)
+    mods = json.loads(mods_json)
+    totals = {}
+    sets = {}
+    levels = {}
+    for mod in mods:
+        set_name = optimizer_module.mod_set(mod)
+        if set_name:
+            sets[set_name] = sets.get(set_name, 0) + 1
+            levels.setdefault(set_name, []).append(int(mod.get("level") or 0))
+        entries = [(mod.get("primary_stat"), mod.get("primary_value"))]
+        entries += [(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value")) for i in range(1, 5)]
+        for name, value in entries:
+            if not name or value is None:
+                continue
+            key = str(name).strip()
+            totals[key] = totals.get(key, 0.0) + float(value)
+    base_speed = float(base.get("Speed", 0))
+    result["Speed"] = base_speed + totals.get("Speed", 0)
+    result["Speed"] += base_speed * totals.get("Speed %", 0) / 100
+    if sets.get("Speed", 0) >= 4:
+        result["Speed"] += int(base_speed * (0.10 if all(x >= 15 for x in sorted(levels["Speed"], reverse=True)[:4]) else 0.05))
+    if "Critical Damage" in result and sets.get("Critical Damage", 0) >= 4:
+        result["Critical Damage"] += 0.30 if all(x >= 15 for x in sorted(levels["Critical Damage"], reverse=True)[:4]) else 0.15
+    return json.dumps({"complete": True, "stats": result, "missing": []})
+
+optimizer_module.set_mod_engine_bridge(_test_engine_bridge)
 
 from python.optimizer import (
     normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
@@ -100,7 +133,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
             for slot, set_name in zip(slots, sets)
         ]
         kyber = {"specific_sets": [{"name": "Health x6", "counts": {"Health": 6}, "weight": 1.0}]}
-        builds = optimize_kyber(mods, base_stats={"Speed": 100}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
+        builds = optimize_kyber(mods, base_stats={"Speed": 100, "Health": 1000}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
         self.assertEqual(len(builds), 1)
         self.assertEqual(len(builds[0]["build"]), 6)
         self.assertEqual(builds[0]["set_plan"], {})
@@ -135,8 +168,8 @@ class OptimizerNormalizationTests(unittest.TestCase):
         build_low = [low_use]
         build_high = [high_use]
         self.assertGreater(
-            build_score(build_low, {}, weights, {}),
-            build_score(build_high, {}, weights, {}),
+            build_score(build_low, {}, weights, {"Speed": 100, "Physical Damage": 500, "Special Damage": 500}),
+            build_score(build_high, {}, weights, {"Speed": 100, "Physical Damage": 500, "Special Damage": 500}),
         )
 
     def test_seigneur_speed_floor_filters_builds_and_retries_without_kyber_set_plan(self):
@@ -172,17 +205,17 @@ class OptimizerNormalizationTests(unittest.TestCase):
         } for slot in slots]
         with self.assertRaisesRegex(RuntimeError, "Vitesse actuelle : 200.0"):
             optimize_kyber(
-                mods, base_stats={"Speed": 100}, kyber={},
+                mods, base_stats={"Speed": 100, "Health": 1000}, kyber={},
                 number_of_builds=3, limit_per_slot=1, minimum_speed=200,
             )
 
     def test_speed_set_bonus_is_ten_percent_of_base_speed(self):
-        build = [{"set": "Speed"} for _ in range(4)]
+        build = [{"set": "Speed", "level": 15} for _ in range(4)]
         stats = final_stats(build, {"Speed": 200})
         self.assertAlmostEqual(stats["Speed"], 220.0)
 
     def test_critical_damage_set_bonus_is_thirty_percentage_points(self):
-        build = [{"set": "Critical Damage"} for _ in range(4)]
+        build = [{"set": "Critical Damage", "level": 15} for _ in range(4)]
         stats = final_stats(build, {"Critical Damage": 1.50})
         self.assertAlmostEqual(stats["Critical Damage"], 1.80)
 
