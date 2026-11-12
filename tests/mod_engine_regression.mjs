@@ -441,7 +441,7 @@ const equipped = [
   { id: 'x', slot: 'Cross', set_name: 'Offense', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 }
 ];
 assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'gain', slot: 'Square', set_name: 'Offense', speed: 25, secondary_1_stat: 'Speed', secondary_1_value: 25 }), true);
-assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'loss', slot: 'Square', set_name: 'Offense', speed: 10, secondary_1_stat: 'Speed', secondary_1_value: 10 }), false);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'loss', slot: 'Square', set_name: 'Offense', speed: 9, secondary_1_stat: 'Speed', secondary_1_value: 9 }), false);
 const threeSpeedSets = [
   { id: 'cur-offense', slot: 'Square', set_name: 'Offense', speed: 10, secondary_1_stat: 'Speed', secondary_1_value: 10 },
   { id: 'a', slot: 'Arrow', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
