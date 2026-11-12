@@ -66,6 +66,7 @@
   });
 
   const NORMALIZED_MOD_CACHE = new Map();
+  const FINAL_STATS_CACHE = new Map();
 
   const NAME_ALIASES = Object.freeze({
     health: 'health', maxhealth: 'health',
@@ -188,6 +189,9 @@
       }
     }
     level = numeric(level) ?? numeric(profile?.level) ?? 85;
+    const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level]);
+    const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
+    if (cachedProjection) return { stats: { ...cachedProjection.stats }, complete: cachedProjection.complete, missing: [...cachedProjection.missing] };
     const base = {};
     for (const [name, value] of Object.entries(expandedBase)) {
       const key = canonicalBaseKey(name);
@@ -319,7 +323,10 @@
       result[displayName] = get(key) + amount + ratingPoints;
     }
 
-    return { stats: result, complete: missing.length === 0, missing: [...new Set(missing)] };
+    const projection = { stats: result, complete: missing.length === 0, missing: [...new Set(missing)] };
+    FINAL_STATS_CACHE.set(cacheKey, projection);
+    if (FINAL_STATS_CACHE.size > 2000) FINAL_STATS_CACHE.delete(FINAL_STATS_CACHE.keys().next().value);
+    return { stats: { ...projection.stats }, complete: projection.complete, missing: [...projection.missing] };
   }
 
   function canonicalSet(value) {
