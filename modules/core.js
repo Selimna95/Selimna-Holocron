@@ -633,11 +633,7 @@ function optimizerRecommendationSummary(profile){
   out.secondaries=Object.entries(focus).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0)).slice(0,6).map(([name,avg])=>({name,avg:Number(avg)}));
   return out;
 }
-function optimizerSlotKey(slot){
-  const k=String(slot||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/g,'');
-  const map={square:'Square',carre:'Square',arrow:'Arrow',fleche:'Arrow',diamond:'Diamond',diamant:'Diamond',triangle:'Triangle',circle:'Circle',cercle:'Circle',cross:'Cross',croix:'Cross'};
-  return map[k]||String(slot||'');
-}
+function optimizerSlotKey(slot){ return window.HolocronModEngine.canonicalSlot(slot)||''; }
 function optimizerPrimaryReference(profile, slot){
   const key=optimizerSlotKey(slot);
   return profile?.slots?.[key]?.primaries||{};
