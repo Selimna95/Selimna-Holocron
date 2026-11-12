@@ -13,6 +13,7 @@ import json
 import re
 import os
 import unicodedata
+from functools import lru_cache
 try:
     from importer import diagnostic_log
 except Exception:
@@ -29,16 +30,23 @@ def set_mod_engine_bridge(bridge, normalize_bridge=None):
     global _MOD_ENGINE_BRIDGE, _MOD_NORMALIZE_BRIDGE
     _MOD_ENGINE_BRIDGE = bridge
     _MOD_NORMALIZE_BRIDGE = normalize_bridge
+    _normalized_mod_cached.cache_clear()
 
 
-def _normalized_mod(mod):
+@lru_cache(maxsize=20000)
+def _normalized_mod_cached(serialized):
     if _MOD_NORMALIZE_BRIDGE is None:
         raise RuntimeError("Normalisation partagée des mods non initialisée.")
-    payload = _MOD_NORMALIZE_BRIDGE(json.dumps(mod or {}, ensure_ascii=False, separators=(",", ":")))
+    payload = _MOD_NORMALIZE_BRIDGE(serialized)
     result = json.loads(str(payload))
     if not isinstance(result, dict):
         raise RuntimeError("Réponse invalide du normaliseur partagé.")
     return result
+
+
+def _normalized_mod(mod):
+    serialized = json.dumps(mod or {}, ensure_ascii=False, separators=(",", ":"))
+    return _normalized_mod_cached(serialized)
 
 SLOT_ALIASES = {
     # SWGOH.GG / Comlink slot ids: 2=Square, 3=Arrow, 4=Diamond,
