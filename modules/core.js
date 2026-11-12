@@ -44,26 +44,22 @@ function extractGalacticPowerFromProfile(text){const body=String(text||'');let t
 function renderGalacticPower(){const gp=accountGalacticPower||{total:0,characters:0,ships:0};setText('gpTotal',gp.total?num(gp.total):'0');setText('gpCharacters',gp.characters?num(gp.characters):'0');setText('gpShips',gp.ships?num(gp.ships):'0');setText('gpBreakdown',gp.total?`${num(gp.characters)} terrestre · ${num(gp.ships)} spatial`:'En attente de synchronisation');}
 
 function statNameFromAny(value) {
-  const rawNames = {1:'Health',5:'Speed',17:'Potency',18:'Tenacity',28:'Protection',41:'Offense',42:'Defense',45:'Critical Chance',48:'Offense',49:'Defense',53:'Critical Chance',55:'Health',56:'Protection',57:'Speed'};
+  const engine = window.HolocronModEngine;
+  const normalized = engine?.normalizeStat(value);
+  if (normalized?.key) return normalized.name + (normalized.unit === 'percentagePoints' ? ' %' : '');
   if (value == null) return '';
-  if (typeof value === 'number') return rawNames[value] || String(value);
-  if (typeof value === 'string' || typeof value === 'number') {
-    const text=String(value).trim();
-    if (/^\d+$/.test(text) && rawNames[Number(text)]) return rawNames[Number(text)];
-    return text;
+  if (typeof value === 'object') {
+    const raw = value.name ?? value.stat ?? value.unitStat ?? value.unitStatId ?? value.statId ?? value.type ?? '';
+    return String(raw?.name ?? raw ?? '').trim();
   }
-  if (typeof value !== 'object') return '';
-  let raw=value.name ?? value.stat ?? value.unitStat ?? value.unitStatId ?? value.statId ?? value.type ?? '';
-  if (raw && typeof raw === 'object') raw=raw.name ?? raw.unitStat ?? raw.unitStatId ?? raw.statId ?? '';
-  if (/^\d+$/.test(String(raw)) && rawNames[Number(raw)]) return rawNames[Number(raw)];
-  return String(raw).trim();
+  return String(value).trim();
 }
 function statValueFromAny(value) {
   if (value == null) return 0;
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
     const text=value.trim();
-    const m=text.match(/[-+]?\d+(?:[.,]\d+)?/);
+    const m=text.match(/[-+]?\\d+(?:[.,]\\d+)?/);
     return m ? Number(m[0].replace(',','.')) : 0;
   }
   if (typeof value === 'object') {
@@ -78,11 +74,21 @@ function statValueFromAny(value) {
 }
 function statObjectFromAny(value) {
   if (value == null) return {stat:'', value:0};
+  const normalized = window.HolocronModEngine?.normalizeStat(value);
+  if (normalized?.key) {
+    const display = value && typeof value === 'object'
+      ? (value.display_value ?? value.displayValue ?? value.stat?.display_value ?? value.stat?.displayValue ?? '')
+      : '';
+    return {
+      stat: normalized.name + (normalized.unit === 'percentagePoints' ? ' %' : ''),
+      value: normalized.value ?? statValueFromAny(value),
+      display_value: display
+    };
+  }
   if (typeof value === 'object') {
     const nested = value.stat && typeof value.stat === 'object' ? value.stat : value;
     const display = nested.display_value ?? nested.displayValue ?? value.display_value ?? value.displayValue;
-    let stat = statNameFromAny(nested.name ?? nested.stat ?? nested.unitStat ?? nested.unitStatId ?? value.name ?? value.stat ?? value.unitStat ?? value.unitStatId);
-    if (display != null && /%/.test(String(display)) && stat && !/%$/.test(stat)) stat += ' %';
+    const stat = statNameFromAny(nested.name ?? nested.stat ?? nested.unitStat ?? nested.unitStatId ?? value.name ?? value.stat ?? value.unitStat ?? value.unitStatId);
     const val = display != null ? statValueFromAny(display) : statValueFromAny(nested.value ?? nested.amount ?? nested.unscaledDecimalValue ?? nested.unscaled_decimal_value ?? value.value ?? value.amount);
     return {stat, value:val, display_value:display ?? ''};
   }
