@@ -194,7 +194,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertFalse((ROOT / "sithari-strategy.css").exists())
         self.assertIn('id="visionnaire"', self.html)
         self.assertIn('data-page="visionnaire"', self.html)
-        self.assertIn("modules/visionnaire.js?v=4.1.70-shared-mod-engine", self.html)
+        self.assertIn("modules/visionnaire.js?v=4.1.71-shared-mod-engine", self.html)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", self.html)
         self.assertIn("rosterCharacters", js)
         self.assertIn('data-mode="sets"', js)
