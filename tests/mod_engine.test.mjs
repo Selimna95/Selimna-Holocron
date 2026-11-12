@@ -122,7 +122,8 @@ const speedProjection = engine.calculateFinalStats(projectionBase, [
   ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))
 ], 85);
 assert.equal(engine.calculateSetBonuses(Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))).speed, 10);
-assert.equal(engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))).total, 110);
+const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' })));
+assert.equal(speedCalc.total, 110, JSON.stringify(speedCalc));
 assert.equal(speedProjection.stats.Speed, 110);
 
 
