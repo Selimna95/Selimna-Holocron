@@ -39,6 +39,28 @@
     57: { key: 'speed', name: 'Speed', unit: 'percentagePoints' }
   });
 
+  const SET_DEFINITIONS = Object.freeze({
+    health: { name: 'Health', required: 2, minimum: 5, maximum: 10 },
+    defense: { name: 'Defense', required: 2, minimum: 12.5, maximum: 25 },
+    criticalChance: { name: 'Critical Chance', required: 2, minimum: 4, maximum: 8 },
+    tenacity: { name: 'Tenacity', required: 2, minimum: 10, maximum: 20 },
+    potency: { name: 'Potency', required: 2, minimum: 7.5, maximum: 15 },
+    offense: { name: 'Offense', required: 4, minimum: 7.5, maximum: 15 },
+    speed: { name: 'Speed', required: 4, minimum: 5, maximum: 10 },
+    criticalDamage: { name: 'Critical Damage', required: 4, minimum: 15, maximum: 30 }
+  });
+
+  const SET_ALIASES = Object.freeze({
+    '1': 'health', health: 'health', healthset: 'health',
+    '2': 'offense', offense: 'offense', offenseset: 'offense',
+    '3': 'defense', defense: 'defense', defenseset: 'defense',
+    '4': 'speed', speed: 'speed', speedset: 'speed',
+    '5': 'criticalChance', criticalchance: 'criticalChance', critchance: 'criticalChance',
+    '6': 'criticalDamage', criticaldamage: 'criticalDamage', critdamage: 'criticalDamage',
+    '7': 'potency', potency: 'potency',
+    '8': 'tenacity', tenacity: 'tenacity'
+  });
+
   const NAME_ALIASES = Object.freeze({
     health: 'health', maxhealth: 'health',
     protection: 'protection', maxprotection: 'protection',
@@ -109,6 +131,35 @@
     });
   }
 
+  function canonicalSet(value) {
+    const key = compact(value).replace(/modset$/, '').replace(/set$/, '');
+    return SET_ALIASES[key] || null;
+  }
+
+  function calculateSetBonuses(mods) {
+    const grouped = new Map();
+    for (const mod of Array.isArray(mods) ? mods : []) {
+      const set = canonicalSet(mod?.set_name ?? mod?.set ?? mod?.setName ?? mod?.setId);
+      const definition = set && SET_DEFINITIONS[set];
+      if (!definition) continue;
+      if (!grouped.has(set)) grouped.set(set, []);
+      grouped.get(set).push(numeric(mod?.level) ?? 0);
+    }
+
+    const bonuses = {};
+    for (const [set, levels] of grouped) {
+      const definition = SET_DEFINITIONS[set];
+      levels.sort((a, b) => b - a);
+      let bonus = 0;
+      for (let offset = 0; offset + definition.required <= levels.length; offset += definition.required) {
+        const group = levels.slice(offset, offset + definition.required);
+        bonus += group.every(level => level >= 15) ? definition.maximum : definition.minimum;
+      }
+      if (bonus) bonuses[set] = bonus;
+    }
+    return Object.freeze(bonuses);
+  }
+
   function normalizeMod(mod) {
     if (!mod || typeof mod !== 'object') return null;
     const primaryRaw = mod.primary_stat ?? mod.primaryStat ?? mod.primary;
@@ -127,7 +178,7 @@
     return Object.freeze({
       id: String(mod.game_id ?? mod.id ?? mod.modId ?? mod.uid ?? ''),
       level: numeric(mod.level) ?? null,
-      set: mod.set_name ?? mod.set ?? mod.setName ?? mod.setId ?? null,
+      set: canonicalSet(mod.set_name ?? mod.set ?? mod.setName ?? mod.setId),
       slot: mod.slot ?? mod.slot_id ?? mod.slotId ?? null,
       pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
       primary,
@@ -139,6 +190,9 @@
   const api = Object.freeze({
     version: '0.1.0',
     statDefinitions: STAT_DEFINITIONS,
+    setDefinitions: SET_DEFINITIONS,
+    canonicalSet,
+    calculateSetBonuses,
     normalizeStat,
     normalizeMod
   });
