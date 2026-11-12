@@ -107,7 +107,7 @@ class AssetIntegrityTests(unittest.TestCase):
         optimizer = (ROOT / "python" / "optimizer.py").read_text(encoding="utf-8")
         self.assertIn("current_target_mods: currentTargetMods", core)
         self.assertIn("currentTargetMods);", seigneur)
-        self.assertIn("minimum_speed = optimizer.final_stats(current_target_mods, base_stats).get(\"Speed\")", worker)
+        self.assertIn("minimum_speed = optimizer.final_stats(current_target_mods, base_stats, base_profile).get(\"Speed\")", worker)
         self.assertIn("minimum_speed=minimum_speed", worker)
         self.assertIn("minimum_speed=None", optimizer)
         self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
