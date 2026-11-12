@@ -104,6 +104,10 @@ const projectionBase = {
   'Physical Critical Chance': 40, 'Special Critical Chance': 30,
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
 };
+const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ primary_stat: 'Accuracy %', primary_value: 12 }]);
+assert.equal(unsupportedProjection.complete, false);
+assert.ok(unsupportedProjection.missing.includes('stat:physicalAccuracy:unsupported') || unsupportedProjection.missing.includes('stat:specialAccuracy:unsupported'));
+
 const offenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 15, set_name: 'Offense', primary_stat: 'Offense', primary_value: 40 },
   { level: 15, set_name: 'Offense', primary_stat: 'Offense %', primary_value: 10 },
