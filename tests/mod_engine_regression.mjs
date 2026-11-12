@@ -70,6 +70,24 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
   }
 }
 
+// Shared import normalization keeps Comlink stat IDs and units intact.
+const importContext = vm.createContext({
+  window: { HolocronModEngine: sharedEngine },
+  numericValue: (value, fallback=0) => Number.isFinite(Number(value)) ? Number(value) : fallback
+});
+load(core, ['statNameFromAny','statValueFromAny','statObjectFromAny','normalizeMod'], importContext);
+const importedMod = importContext.normalizeMod({
+  id: 'comlink-unit-fixture',
+  primary_stat: { unitStatId: 48, unscaledDecimalValue: 2500000 },
+  secondary_stats: [{ unitStatId: 17, unscaledDecimalValue: 2500000 }]
+});
+assert.equal(importedMod.primary_stat, 'Offense %');
+assert.equal(importedMod.primary_stat_unit, 'percentagePoints');
+assert.equal(importedMod.primary_value, 2.5);
+assert.equal(importedMod.secondary_1_stat, 'Potency %');
+assert.equal(importedMod.secondary_1_unit, 'percentagePoints');
+assert.equal(importedMod.secondary_1_value, 2.5);
+
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
 
