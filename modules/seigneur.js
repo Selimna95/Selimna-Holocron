@@ -336,13 +336,14 @@ function forgeKyberSetRules(profile){
   return rules;
 }
 function forgeModSetConformity(mod,profile){
-  const actual=compactKey(mod?.set_name||mod?.set||'');
+  const engine=window.HolocronModEngine;
+  const actual=engine.canonicalSetFromMod(mod);
   const distribution=forgeKyberSetDistribution(profile);
   const rules=forgeKyberSetRules(profile);
   if(!actual||(!distribution.length&&!rules.length))return {ok:null,reason:'Référence de set indisponible'};
-  const observed=distribution.some(item=>item.key===actual) ||
-    rules.some(rule=>Object.keys(rule.counts).some(name=>compactKey(name)===actual));
-  const weight=distribution.find(item=>item.key===actual)?.weight||0;
+  const observed=distribution.some(item=>engine.canonicalSet(item.name)===actual) ||
+    rules.some(rule=>Object.keys(rule.counts).some(name=>engine.canonicalSet(name)===actual));
+  const weight=distribution.find(item=>engine.canonicalSet(item.name)===actual)?.weight||0;
   return {ok:observed,weight,reason:observed?'Set observé dans les données Kyber':'Set absent de la référence Kyber'};
 }
 function forgeModPrimaryConformity(mod,profile){
