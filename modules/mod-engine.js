@@ -165,7 +165,7 @@
       const amount = numeric(value);
       if (key && amount != null) base[key] = amount;
     }
-    const result = { ...baseStats };
+    const result = { ...expandedBase };
     const totals = {};
     const missing = [];
     const add = (key, value) => { totals[key] = (totals[key] || 0) + value; };
