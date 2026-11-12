@@ -339,6 +339,17 @@
     return { stats: { ...projection.stats }, complete: projection.complete, missing: [...projection.missing] };
   }
 
+  function canonicalSlot(value) {
+    if (value && typeof value === 'object') value = value.name ?? value.id ?? value.slotId ?? value.slot;
+    const raw = compact(value).replace(/mod$/, '');
+    return ({
+      square:'Square', transmitter:'Square', receiver:'Arrow', arrow:'Arrow',
+      processor:'Diamond', diamond:'Diamond', holoarray:'Triangle', triangle:'Triangle',
+      databus:'Circle', circle:'Circle', multiplexer:'Cross', cross:'Cross',
+      '1':'Square','2':'Square','3':'Arrow','4':'Diamond','5':'Triangle','6':'Circle','7':'Cross'
+    })[raw] || null;
+  }
+
   function canonicalSet(value) {
     if (value && typeof value === 'object') {
       value = value.name ?? value.id ?? value.setId ?? value.modSetId ?? value.set ?? value.definitionId;
@@ -482,6 +493,7 @@
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
     canonicalSetFromMod,
+    canonicalSlot,
     calculateSetBonuses,
     calculateFinalStats,
     scoreMod,
