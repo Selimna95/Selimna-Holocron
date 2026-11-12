@@ -235,39 +235,12 @@
   };
   function exchangeFinalStats(character,build){
     const profile=typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{};
-    const base=typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):profile.base_stats;
+    const base=profile.base_stats || (typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null);
     if(!base||typeof base!=='object'||!Object.keys(base).length)return null;
-    const result=Object.fromEntries(Object.entries(base).map(([name,value])=>[exchangeStatName(name),Number(value)||0]));
-    const flat={},percent={};
-    for(const mod of Array.isArray(build)?build:[]){
-      let raw=mod?.stats;
-      if(typeof raw==='string'){try{raw=JSON.parse(raw);}catch{raw=null;}}
-      const entries=raw&&typeof raw==='object'&&!Array.isArray(raw)?Object.entries(raw):
-        [[mod?.primary_stat,mod?.primary_value],...Array.from({length:4},(_,i)=>[mod?.[`secondary_${i+1}_stat`],mod?.[`secondary_${i+1}_value`]])];
-      for(const [label,value] of entries){
-        if(!label||value==null)continue;
-        const text=String(label).trim(),name=exchangeStatName(text),amount=Number(value)||0;
-        if(text.endsWith('%'))percent[name]=(percent[name]||0)+amount/100;
-        else flat[name]=(flat[name]||0)+amount;
-      }
-    }
-    const counts=exchangeSetCounts(build);
-    const display={health:'Health',protection:'Protection',offense:'Offense',speed:'Speed',defense:'Defense',
-      criticaldamage:'Critical Damage',criticalchance:'Critical Chance',potency:'Potency',tenacity:'Tenacity',criticalavoidance:'Critical Avoidance'};
-    const relative={health:[2,.10],protection:[2,.10],offense:[4,.15],speed:[4,.10],defense:[2,.25]};
-    const additive={criticaldamage:[4,.30],criticalchance:[2,.08],potency:[2,.15],tenacity:[2,.20],criticalavoidance:[2,.20]};
-    for(const [name,[required,bonus]] of Object.entries(relative)){
-      const count=counts[name]||0;if(count>=required)percent[display[name]]=(percent[display[name]]||0)+bonus*Math.floor(count/required);
-    }
-    for(const [name,[required,bonus]] of Object.entries(additive)){
-      const count=counts[name]||0;if(count>=required)percent[display[name]]=(percent[display[name]]||0)+bonus*Math.floor(count/required);
-    }
-    for(const [name,value] of Object.entries(flat))result[name]=(Number(result[name])||0)+value;
-    for(const [name,ratio] of Object.entries(percent)){
-      if(['Potency','Tenacity','Critical Chance','Critical Damage','Critical Avoidance'].includes(name))result[name]=(Number(result[name])||0)+ratio;
-      else result[name]=(Number(result[name])||0)+(Number(base[name])||0)*ratio;
-    }
-    return result;
+    const source=profile.base_stats ? profile : base;
+    const calculation=window.HolocronModEngine.calculateFinalStats(source,build,character?.level??profile.level);
+    if(!calculation.complete)return null;
+    return Object.fromEntries(Object.entries(calculation.stats||{}).map(([name,value])=>[exchangeStatName(name),Number(value)]));
   }
   const exchangeStatsDelta = (before,after) => {
     if(!before||!after)return null;
