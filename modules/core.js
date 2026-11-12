@@ -72,9 +72,9 @@ function statValueFromAny(value) {
   }
   return 0;
 }
-function statObjectFromAny(value) {
-  if (value == null) return {stat:'', value:0};
-  const normalized = window.HolocronModEngine?.normalizeStat(value);
+function statObjectFromAny(value, explicitValue) {
+  if (value == null) return {stat:'', value:0, unit:'unknown'};
+  const normalized = window.HolocronModEngine?.normalizeStat(value, explicitValue);
   if (normalized?.key) {
     const display = value && typeof value === 'object'
       ? (value.display_value ?? value.displayValue ?? value.stat?.display_value ?? value.stat?.displayValue ?? '')
@@ -82,6 +82,7 @@ function statObjectFromAny(value) {
     return {
       stat: normalized.name + (normalized.unit === 'percentagePoints' ? ' %' : ''),
       value: normalized.value ?? statValueFromAny(value),
+      unit: normalized.unit,
       display_value: display
     };
   }
@@ -90,9 +91,9 @@ function statObjectFromAny(value) {
     const display = nested.display_value ?? nested.displayValue ?? value.display_value ?? value.displayValue;
     const stat = statNameFromAny(nested.name ?? nested.stat ?? nested.unitStat ?? nested.unitStatId ?? value.name ?? value.stat ?? value.unitStat ?? value.unitStatId);
     const val = display != null ? statValueFromAny(display) : statValueFromAny(nested.value ?? nested.amount ?? nested.unscaledDecimalValue ?? nested.unscaled_decimal_value ?? value.value ?? value.amount);
-    return {stat, value:val, display_value:display ?? ''};
+    return {stat, value:val, unit:'unknown', display_value:display ?? ''};
   }
-  return {stat:String(value).trim(), value:0, display_value:''};
+  return {stat:String(value).trim(), value:numericValue(explicitValue,0), unit:'unknown', display_value:''};
 }
 function normalizeMod(m, index=0) {
   if (!m || typeof m !== 'object') return null;
@@ -103,16 +104,26 @@ function normalizeMod(m, index=0) {
   if (out.set_name && typeof out.set_name === 'object') out.set_name = out.set_name.name ?? out.set_name.id ?? out.set_name.setId ?? out.set_name.modSetId;
 
   const primaryRaw = out.primary_stat ?? out.primaryStat ?? out.primary ?? out.primaryStatValue;
-  const primary = statObjectFromAny(primaryRaw);
+  const primary = statObjectFromAny(primaryRaw, typeof primaryRaw === 'string' ? (out.primary_value ?? out.primaryValue) : undefined);
   out.primary_stat = primary.stat || (typeof out.primary_stat === 'string' ? out.primary_stat : '');
-  out.primary_value = primary.display_value ? primary.value : statValueFromAny(out.primary_value ?? out.primaryValue ?? primaryRaw?.value ?? primaryRaw?.amount ?? 0);
+  out.primary_stat_unit = primary.unit || out.primary_stat_unit;
+  out.primary_value = primary.value ?? statValueFromAny(out.primary_value ?? out.primaryValue ?? primaryRaw?.value ?? primaryRaw?.amount ?? 0);
 
   const secs = out.secondary_stats ?? out.secondaryStats ?? out.secondaryStat ?? out.secondary ?? [];
   if (Array.isArray(secs)) secs.slice(0,4).forEach((raw,i)=>{
-    const s=statObjectFromAny(raw);
+    const s=statObjectFromAny(raw, typeof raw === 'string' ? out[`secondary_${i+1}_value`] : undefined);
     out[`secondary_${i+1}_stat`] = s.stat;
-    out[`secondary_${i+1}_value`] = s.display_value ? s.value : statValueFromAny(raw?.value ?? raw?.amount ?? raw?.unscaledDecimalValue ?? raw?.unscaled_decimal_value ?? s.value);
+    out[`secondary_${i+1}_unit`] = s.unit;
+    out[`secondary_${i+1}_value`] = s.value ?? statValueFromAny(raw?.value ?? raw?.amount ?? raw?.unscaledDecimalValue ?? raw?.unscaled_decimal_value ?? 0);
   });
+  else for(let i=1;i<=4;i++){
+    const raw=out[`secondary_${i}_stat`];
+    if(!raw)continue;
+    const s=statObjectFromAny(raw,out[`secondary_${i}_value`]);
+    out[`secondary_${i}_stat`]=s.stat;
+    out[`secondary_${i}_unit`]=s.unit;
+    out[`secondary_${i}_value`]=s.value ?? statValueFromAny(out[`secondary_${i}_value`]);
+  }
 
   out.level = Number(out.level ?? 0);
   // Keep the real tier supplied by the player API. It is independent from dots and level.
