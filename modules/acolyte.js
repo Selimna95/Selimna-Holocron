@@ -24,8 +24,7 @@ function holocronGacUsage(c, season=holocronLatestGacSeason()){
   return Number.isFinite(uses)?Math.max(0,uses):null;
 }
 function holocronModSecondarySpeed(mod){
-  for(let i=1;i<=4;i++){const stat=compactKey(mod?.[`secondary_${i}_stat`]);if(stat==='SPEED'||stat==='VITESSE')return numericValue(mod?.[`secondary_${i}_value`],0);}
-  return 0;
+  return Number(window.HolocronModEngine.speedMetrics(mod).secondary||0);
 }
 function holocronAcolyteTransferPreservesSpeed(currentMod,candidateMod,recipientMods){
   const oldSecondary=holocronModSecondarySpeed(currentMod),newSecondary=holocronModSecondarySpeed(candidateMod);
