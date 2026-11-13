@@ -149,9 +149,11 @@
     const base = numeric(baseSpeed);
     let modSpeed = 0;
     let speedPercent = 0;
+    const missing = [];
     for (const rawMod of Array.isArray(mods) ? mods : []) {
       const mod = isNormalizedMod(rawMod) ? rawMod : normalizeMod(rawMod);
-      if (!mod) continue;
+      if (!mod) { missing.push('mod:invalid'); continue; }
+      if (!mod.primary?.key || mod.primary.value == null || !mod.primary.complete) missing.push('mod:primary_incomplete');
       modSpeed += speedMetrics(mod).total;
       for (const stat of [mod.primary, ...(mod.secondaries || [])]) {
         if (stat?.key === 'speed' && stat.unit === 'percentagePoints') speedPercent += stat.value || 0;
@@ -160,8 +162,11 @@
     const setBonuses = calculateSetBonuses(mods);
     const speedSetCount = (Array.isArray(mods) ? mods : []).filter(mod => canonicalSetFromMod(mod) === 'speed').length;
     const hasFourPieceSpeedSet = speedSetCount >= 4;
-    if (base == null || !setBonuses.complete) {
-      return { complete: false, total: null, modSpeed, setBonus: null, hasFourPieceSpeedSet, missing: [...(base == null ? ['base_speed'] : []), ...(setBonuses.missing || [])] };
+    if (base == null) missing.push('base_speed');
+    missing.push(...(setBonuses.missing || []));
+    const missingUnique = [...new Set(missing)];
+    if (missingUnique.length) {
+      return { complete: false, total: null, modSpeed, setBonus: null, hasFourPieceSpeedSet, missing: missingUnique };
     }
     const setBonusPercent = setBonuses.speed || 0;
     const setBonus = setBonusPercent ? Math.floor(base * setBonusPercent / 100) : 0;
@@ -529,7 +534,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.8',
+    version: '0.3.9',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
