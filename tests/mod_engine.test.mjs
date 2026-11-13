@@ -8,11 +8,13 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox);
 const engine = sandbox.module.exports;
 
-assert.equal(engine.version, '0.3.9');
+assert.equal(engine.version, '0.3.10');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
 assert.equal(engine.canonicalSet('Protection'), null);
+assert.equal(engine.version, '0.3.10');
+assert.deepEqual(Array.from({ length: 12 }, (_, index) => engine.canonicalSlot(index + 1)), ['Square','Arrow','Diamond','Triangle','Circle','Cross','Square','Arrow','Diamond','Triangle','Circle','Cross']);
 assert.deepEqual({ ...engine.calculateSetBonuses([
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
