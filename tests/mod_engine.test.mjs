@@ -59,6 +59,7 @@ assert.equal(engine.normalizeStat('Potency', 2.5).complete, false);
 assert.equal(engine.normalizeStat('Speed', 5).unit, 'flat');
 assert.equal(engine.normalizeStat('Offense', 40).unit, 'flat');
 assert.equal(engine.normalizeStat('Potency %', 2.5).unit, 'percentagePoints');
+assert.equal(engine.normalizeStat('Potency %', '2.5%').value, 2.5);
 assert.equal(engine.normalizeStat('Speed', '12garbage').value, null);
 assert.equal(engine.normalizeStat({ unitStatId: 16, unscaledDecimalValue: 30000000 }).value, 30);
 assert.equal(engine.canonicalStatKey('Offense %'), 'OFFENSEPERCENT');
