@@ -378,9 +378,17 @@
       square:'Square', transmitter:'Square', receiver:'Arrow', arrow:'Arrow',
       processor:'Diamond', diamond:'Diamond', holoarray:'Triangle', triangle:'Triangle',
       databus:'Circle', circle:'Circle', multiplexer:'Cross', cross:'Cross',
-      '1':'Square','2':'Arrow','3':'Diamond','4':'Triangle','5':'Circle','6':'Cross',
-      '7':'Square','8':'Arrow','9':'Diamond','10':'Triangle','11':'Circle','12':'Cross'
+      // Legacy SWGOH.GG/importer slot IDs; Comlink definitionId is decoded separately.
+      '1':'Square','2':'Square','3':'Arrow','4':'Diamond','5':'Triangle','6':'Circle','7':'Cross'
     })[raw] || null;
+  }
+
+  function slotFromDefinitionId(definitionId) {
+    if (definitionId == null) return null;
+    const definition = String(definitionId).split(':')[0];
+    if (definition.length !== 3 || !/^[0-9]{3}$/.test(definition)) return null;
+    const slotIndex = Number(definition[2]);
+    return ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'][slotIndex] || null;
   }
 
   function canonicalSet(value) {
@@ -523,14 +531,8 @@
     const set = canonicalSetFromMod(mod);
     const level = numeric(mod.level);
     const expectedSecondaries = level == null ? null : Math.min(4, Math.floor(level / 3));
-    let slot = canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot);
-    if (!slot && mod.definitionId != null) {
-      const definition = String(mod.definitionId).split(':')[0];
-      const slotIndex = Number(definition[2]);
-      if (definition.length === 3 && [...definition].every(char => char >= '0' && char <= '9') && Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex <= 5) {
-        slot = canonicalSlot(slotIndex + 1);
-      }
-    }
+    const slot = slotFromDefinitionId(mod.definitionId) ||
+      canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot);
     const normalized = Object.freeze({
       id: String(mod.game_id ?? mod.id ?? mod.modId ?? mod.uid ?? ''),
       level,
@@ -549,12 +551,13 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.13',
+    version: '0.3.14',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
     canonicalSetFromMod,
     canonicalSlot,
+    slotFromDefinitionId,
     calculateSetBonuses,
     calculateFinalStats,
     scoreMod,
