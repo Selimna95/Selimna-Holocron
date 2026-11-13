@@ -75,10 +75,10 @@ def _test_normalize_bridge(mod_json):
         if item:
             secondaries.append(item)
     raw_slot = mod.get("slot", mod.get("slot_id", mod.get("slotId")))
-    if raw_slot is None and mod.get("definitionId") is not None:
+    if mod.get("definitionId") is not None:
         definition = str(mod.get("definitionId")).split(":")[0]
         if len(definition) == 3 and definition.isdigit() and 0 <= int(definition[2]) <= 5:
-            raw_slot = int(definition[2]) + 1
+            raw_slot = ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"][int(definition[2])]
     slot_names = {
         "1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
         "5": "Triangle", "6": "Circle", "7": "Cross",
