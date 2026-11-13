@@ -13,11 +13,18 @@ def _test_engine_bridge(base_json, mods_json, level):
     totals = {}
     sets = {}
     levels = {}
+    missing = []
     for mod in mods:
         set_name = optimizer_module.mod_set(mod)
-        if set_name:
+        if not set_name:
+            missing.append("set:unknown")
+        else:
             sets[set_name] = sets.get(set_name, 0) + 1
             levels.setdefault(set_name, []).append(int(mod.get("level") or 0))
+        if mod.get("level") is None:
+            missing.append("mod:level_unknown")
+        if not mod.get("primary_stat") or mod.get("primary_value") is None:
+            missing.append("mod:primary_incomplete")
         entries = [(mod.get("primary_stat"), mod.get("primary_value"))]
         entries += [(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value")) for i in range(1, 5)]
         for name, value in entries:
@@ -32,7 +39,7 @@ def _test_engine_bridge(base_json, mods_json, level):
         result["Speed"] += int(base_speed * (0.10 if all(x >= 15 for x in sorted(levels["Speed"], reverse=True)[:4]) else 0.05))
     if "Critical Damage" in result and sets.get("Critical Damage", 0) >= 4:
         result["Critical Damage"] += 0.30 if all(x >= 15 for x in sorted(levels["Critical Damage"], reverse=True)[:4]) else 0.15
-    return json.dumps({"complete": True, "stats": result, "missing": []})
+    return json.dumps({"complete": not missing, "stats": result, "missing": sorted(set(missing))})
 
 def _test_normalize_bridge(mod_json):
     mod = json.loads(mod_json)
@@ -55,8 +62,10 @@ def _test_normalize_bridge(mod_json):
         key = clean.replace(" ", "").casefold()
         aliases = {"critchance": "criticalChance", "critdamage": "criticalDamage"}
         key = aliases.get(key, key)
+        flat_keys = {"health", "protection", "speed", "offense", "defense"}
+        unit = "percentagePoints" if is_percent else ("flat" if key in flat_keys else "unknown")
         return {
-            "key": key, "name": clean, "unit": "percentagePoints" if is_percent else "flat",
+            "key": key, "name": clean, "unit": unit,
             "value": float(value) if value is not None else None
         }
     primary = stat(mod.get("primary_stat"), mod.get("primary_value"))
@@ -66,15 +75,23 @@ def _test_normalize_bridge(mod_json):
         if item:
             secondaries.append(item)
     raw_slot = mod.get("slot", mod.get("slot_id", mod.get("slotId")))
-    slot_names = {"1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
-                  "5": "Triangle", "6": "Circle", "7": "Cross",
-                  "square": "Square", "arrow": "Arrow", "diamond": "Diamond",
-                  "triangle": "Triangle", "circle": "Circle", "cross": "Cross"}
+    slot_names = {
+        "1": "Square", "2": "Arrow", "3": "Diamond", "4": "Triangle", "5": "Circle", "6": "Cross",
+        "7": "Square", "8": "Arrow", "9": "Diamond", "10": "Triangle", "11": "Circle", "12": "Cross",
+        "square": "Square", "arrow": "Arrow", "diamond": "Diamond",
+        "triangle": "Triangle", "circle": "Circle", "cross": "Cross"
+    }
     slot_text = str(raw_slot or "").strip()
     slot_key = slot_text.casefold().removeprefix("slot_")
     slot_value = slot_names.get(slot_key, slot_text or None)
+    complete = bool(
+        set_value and mod.get("level") is not None and primary
+        and primary.get("value") is not None and primary.get("unit") in {"flat", "percentagePoints"}
+        and all(item.get("value") is not None and item.get("unit") in {"flat", "percentagePoints"} for item in secondaries)
+    )
     return json.dumps({"set": set_value, "setName": set_value, "slot": slot_value,
-                       "primary": primary, "secondaries": secondaries})
+                       "primary": primary, "secondaries": secondaries, "level": mod.get("level"),
+                       "complete": complete})
 
 optimizer_module.set_mod_engine_bridge(_test_engine_bridge, _test_normalize_bridge)
 
@@ -119,9 +136,10 @@ class OptimizerProfileResolutionTests(unittest.TestCase):
 class OptimizerNormalizationTests(unittest.TestCase):
     def test_numeric_and_named_slots(self):
         expected = {
-            "1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
-            "5": "Triangle", "6": "Circle", "7": "Cross",
-            "slot_7": "Cross", " arrow ": "Arrow",
+            "1": "Square", "2": "Arrow", "3": "Diamond", "4": "Triangle",
+            "5": "Circle", "6": "Cross", "7": "Square", "8": "Arrow",
+            "9": "Diamond", "10": "Triangle", "11": "Circle", "12": "Cross",
+            "slot_7": "Square", " arrow ": "Arrow",
         }
         for raw, normalized in expected.items():
             with self.subTest(raw=raw):
@@ -201,7 +219,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
 
     def test_lower_gac_usage_donor_is_preferred_after_mod_fit(self):
         low_use = {
-            "id": "low-use", "slot": "Square", "set": "Speed",
+            "id": "low-use", "slot": "Square", "set": "Speed", "level": 15,
             "primary_stat": "Offense", "primary_value": 5.88,
             "secondary_1_stat": "Speed", "secondary_1_value": 10,
             "_source_usage": 5,
@@ -226,11 +244,13 @@ class OptimizerNormalizationTests(unittest.TestCase):
         for slot in slots:
             mods.append({
                 "id": f"slow-{slot}", "slot": slot, "set": "Health",
+                "primary_stat": "Speed", "primary_value": 0,
                 "secondary_1_stat": "Speed", "secondary_1_value": 0,
                 "level": 15, "rarity": 5,
             })
             mods.append({
                 "id": f"fast-{slot}", "slot": slot, "set": "Speed",
+                "primary_stat": "Speed", "primary_value": 0,
                 "secondary_1_stat": "Speed", "secondary_1_value": 10,
                 "level": 15, "rarity": 5,
             })
@@ -248,6 +268,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
         slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
         mods = [{
             "id": slot, "slot": slot, "set": "Health",
+            "primary_stat": "Speed", "primary_value": 0,
             "secondary_1_stat": "Speed", "secondary_1_value": 2,
             "level": 15, "rarity": 5,
         } for slot in slots]
@@ -258,12 +279,12 @@ class OptimizerNormalizationTests(unittest.TestCase):
             )
 
     def test_speed_set_bonus_is_ten_percent_of_base_speed(self):
-        build = [{"set": "Speed", "level": 15} for _ in range(4)]
+        build = [{"set": "Speed", "level": 15, "primary_stat": "Speed", "primary_value": 0} for _ in range(4)]
         stats = final_stats(build, {"Speed": 200})
         self.assertAlmostEqual(stats["Speed"], 220.0)
 
     def test_critical_damage_set_bonus_is_thirty_percentage_points(self):
-        build = [{"set": "Critical Damage", "level": 15} for _ in range(4)]
+        build = [{"set": "Critical Damage", "level": 15, "primary_stat": "Critical Damage %", "primary_value": 0} for _ in range(4)]
         stats = final_stats(build, {"Critical Damage": 1.50})
         self.assertAlmostEqual(stats["Critical Damage"], 1.80)
 
