@@ -80,8 +80,8 @@ def _test_normalize_bridge(mod_json):
         if len(definition) == 3 and definition.isdigit() and 0 <= int(definition[2]) <= 5:
             raw_slot = int(definition[2]) + 1
     slot_names = {
-        "1": "Square", "2": "Arrow", "3": "Diamond", "4": "Triangle", "5": "Circle", "6": "Cross",
-        "7": "Square", "8": "Arrow", "9": "Diamond", "10": "Triangle", "11": "Circle", "12": "Cross",
+        "1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
+        "5": "Triangle", "6": "Circle", "7": "Cross",
         "square": "Square", "arrow": "Arrow", "diamond": "Diamond",
         "triangle": "Triangle", "circle": "Circle", "cross": "Cross"
     }
@@ -143,7 +143,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
             "1": "Square", "2": "Arrow", "3": "Diamond", "4": "Triangle",
             "5": "Circle", "6": "Cross", "7": "Square", "8": "Arrow",
             "9": "Diamond", "10": "Triangle", "11": "Circle", "12": "Cross",
-            "slot_7": "Square", " arrow ": "Arrow",
+            "slot_7": "Cross", " arrow ": "Arrow",
         }
         for raw, normalized in expected.items():
             with self.subTest(raw=raw):
@@ -172,6 +172,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
             "primary_stat": "Speed", "primary_value": 10,
         })
         self.assertEqual(normalized["slot"], "Square")
+        self.assertEqual(optimizer_module._normalized_mod({"slot_id": 7})["slot"], "Cross")
 
     def test_empty_mod_list_has_clear_error(self):
         with self.assertRaisesRegex(RuntimeError, "Aucun mod disponible"):
