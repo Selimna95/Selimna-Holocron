@@ -15,6 +15,7 @@ assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
 assert.equal(engine.canonicalSet('Protection'), null);
 assert.equal(engine.version, '0.3.10');
 assert.deepEqual(Array.from({ length: 12 }, (_, index) => engine.canonicalSlot(index + 1)), ['Square','Arrow','Diamond','Triangle','Circle','Cross','Square','Arrow','Diamond','Triangle','Circle','Cross']);
+assert.equal(engine.normalizeMod({ definitionId: '130', level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Square');
 assert.deepEqual({ ...engine.calculateSetBonuses([
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
