@@ -22,8 +22,8 @@ Les modules métier gardent leurs critères de décision (Kyber, GAC, sélection
 | Zone | Responsabilité |
 |---|---|
 | `modules/mod-engine.js` | Normalisation canonique, règles de jeu, calculs communs, complétude des résultats |
-| `modules/core.js` v4.2.28 | Import des données, wrappers historiques temporaires et présentation |
-| Acolyte | Priorisation GAC et choix des changements ; score générique délégué au moteur |
+| `modules/core.js` v4.2.29 | Import des données, wrappers historiques temporaires et présentation |
+| Acolyte | Priorisation GAC et choix des changements ; score générique délégué ; mods incomplets exclus des échanges |
 | Disciple | Filtres de réallocation et choix des donneurs ; identité stat/set/slot et vitesse projetée déléguées |
 | Seigneur Sith | Objectifs Kyber/GAC et recherche de mods ; calculs de vitesse et identité délégués |
 | Visionnaire | Références Kyber, sélection des mods et scénarios ; projection des stats et identité déléguées |
@@ -52,7 +52,7 @@ Une unité inconnue ou une formule non implémentée rend le calcul incomplet. A
 |---|---|
 | Moteur central | Créé ; stat/set/slot, vitesse, score générique et projection finale regroupés |
 | Core/import | Normalisation déléguée au moteur ; conversion des formats conservée |
-| Acolyte | Vitesse, score générique et identité de stats délégués |
+| Acolyte | Vitesse, score générique et identité de stats délégués ; vérification de complétude avant échange |
 | Disciple | Identité stat/set/slot et vitesse projetée déléguées ; filtres métier conservés |
 | Seigneur Sith | Identité stat/set et vitesse projetée déléguées ; classement Kyber/GAC conservé |
 | Visionnaire | Projection finale déléguée ; identité stat/set/slot déléguée ; scoring de scénario conservé |
