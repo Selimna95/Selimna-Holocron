@@ -90,7 +90,7 @@
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
     if (value == null || value === '') return null;
     const text = String(value).trim().replace(/\s/g, '').replace(',', '.');
-    const match = text.match(/^[-+]?(?:\d+\.?\d*|\.\d+)/);
+    const match = text.match(/^[-+]?(?:\d+\.?\d*|\.\d+)%?$/);
     const parsed = match ? Number(match[0]) : NaN;
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -119,7 +119,7 @@
     const suppliedUnit = nested.unit ?? raw.unit ?? explicitUnit;
     if (!known && ['flat', 'percentagePoints'].includes(suppliedUnit)) unit = suppliedUnit;
     if (!known && !unit && rawName && /%|percent|percentage/i.test(String(rawName))) unit = 'percentagePoints';
-    if (!known && rawName && !unit) unit = 'flat';
+    if (!known && !unit && ['health', 'protection', 'speed', 'offense', 'defense'].includes(key)) unit = 'flat';
     let value = numeric(sourceValue);
     const isUnscaled = !hasExplicitValue && (nested.unscaledDecimalValue != null || nested.unscaled_decimal_value != null ||
       raw.unscaledDecimalValue != null || raw.unscaled_decimal_value != null);
@@ -505,7 +505,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.4',
+    version: '0.3.5',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
