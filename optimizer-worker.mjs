@@ -76,6 +76,8 @@ else:
     base_profile = dict(base_profile)
 if character_level is not None:
     base_profile['level'] = character_level
+else:
+    base_profile.pop('level', None)
 current_target_mods = json.loads(current_target_mods_json)
 context = json.loads(context_json)
 
