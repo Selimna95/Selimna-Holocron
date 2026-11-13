@@ -45,7 +45,8 @@
     const variableSlot=['Arrow','Triangle','Circle','Cross'].includes(slot);
     if(fromKyber&&variableSlot&&!canonical.endsWith('PERCENT')&&KYBER_PERCENT_PRIMARY_KEYS.has(canonical)){
       const percent=window.HolocronModEngine.canonicalStatKey(raw+' %').toUpperCase();
-      canonical=percent||canonical+'PERCENT';
+      canonical=percent||canonical;
+      if(!canonical.endsWith('PERCENT'))canonical+='PERCENT';
     }
     return canonical.toLowerCase();
   };
