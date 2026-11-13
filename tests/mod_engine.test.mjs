@@ -8,7 +8,7 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox);
 const engine = sandbox.module.exports;
 
-assert.equal(engine.version, '0.3.5');
+assert.equal(engine.version, '0.3.6');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
