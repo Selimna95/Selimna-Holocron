@@ -40,7 +40,7 @@ const roster=[
 ];
 const equipped={
   TARGET:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map(slot=>({id:'t-'+slot,game_id:'t-'+slot,character:'TARGET',slot,set_name:'Offense',level:15,speed:10,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:10,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0})),
-  DONOR:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>({id:'d-'+slot,game_id:'d-'+slot,character:'DONOR',slot,set_name:'Offense',level:15,speed:[2,3,4,5,6,7][i],primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:[2,3,4,5,6,7][i]}))
+  DONOR:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>({id:'d-'+slot,game_id:'d-'+slot,character:'DONOR',slot,set_name:'Offense',level:15,speed:[2,3,4,5,6,7][i],primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:[2,3,4,5,6,7][i],secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}))
 };
 const context=vm.createContext({
   window:{HolocronModEngine:sharedEngine},
@@ -68,8 +68,8 @@ vm.runInContext([
 ].join('\n'),context);
 
 const current=equipped.TARGET;
-const safeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:15,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:15}];
-const unsafeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:5,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:5}];
+const safeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:15,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:15,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}];
+const unsafeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:5,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:5,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}];
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,safeBuild),true);
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,unsafeBuild),false,
   'A six-mod build that reduces the recipient speed must be rejected; before='+JSON.stringify(context.forgeProjectedModSpeed(roster[0],{base_stats:{Speed:100}},current))+' after='+JSON.stringify(context.forgeProjectedModSpeed(roster[0],{base_stats:{Speed:100}},unsafeBuild)));
