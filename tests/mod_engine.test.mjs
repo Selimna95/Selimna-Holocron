@@ -150,6 +150,25 @@ assert.equal(critRatingProjection.complete, true);
 assert.equal(critRatingProjection.stats['Physical Critical Chance'], 41);
 assert.equal(critRatingProjection.stats['Special Critical Chance'], 32);
 
+const critAvoidanceProjection = engine.calculateFinalStats({
+  'Physical Critical Avoidance': 10, 'Special Critical Avoidance': 5
+}, [
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 39, unscaledDecimalValue: 2400000000 } },
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 40, unscaledDecimalValue: 2400000000 } }
+]);
+assert.equal(critAvoidanceProjection.complete, true);
+assert.equal(critAvoidanceProjection.stats['Physical Critical Avoidance'], 11);
+assert.equal(critAvoidanceProjection.stats['Special Critical Avoidance'], 6);
+const unsupportedGenericCrit = engine.normalizeStat({ unitStatId: 45, unscaledDecimalValue: 2400000000 });
+assert.equal(unsupportedGenericCrit.key, null);
+assert.equal(unsupportedGenericCrit.complete, false);
+const speedPercentProjection = engine.calculateSpeed(100, [{
+  level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0,
+  secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 }
+}]);
+assert.equal(speedPercentProjection.complete, true);
+assert.equal(speedPercentProjection.total, 105);
+
 const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 } }]);
 assert.equal(unsupportedProjection.complete, false);
 assert.ok(unsupportedProjection.missing.includes('stat:physicalAccuracy:unsupported') || unsupportedProjection.missing.includes('stat:specialAccuracy:unsupported'));
