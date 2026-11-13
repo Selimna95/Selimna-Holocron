@@ -100,7 +100,7 @@ try {
   // when the incoming mod has the same individual speed as the equipped mod.
   const speedGuard = await page.evaluate(() => {
     const character = { baseId: "TEST", name: "Test", characterId: "UNIT-SPEED" };
-    const make = (id, set, speed) => ({game_id:id,character:"TEST",slot:"Square",set_name:set,level:15,primary_stat:"Offense",primary_value:5,secondary_1_stat:"Speed",secondary_1_value:speed});
+    const make = (id, set, speed) => ({game_id:id,character:"TEST",slot:"Square",set_name:set,level:15,primary_stat:"Offense",primary_value:5,secondary_1_stat:"Speed",secondary_1_value:speed,secondary_2_stat:"Protection",secondary_2_value:0,secondary_3_stat:"Potency %",secondary_3_value:0,secondary_4_stat:"Tenacity %",secondary_4_value:0});
     const equipped = [make("a","Speed",5),make("b","Speed",5),make("c","Speed",5),make("d","Speed",5),make("e","Health",0),make("f","Health",0)];
     const before = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},equipped);
     const after = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},[...equipped.slice(1),make("replacement","Health",5)]);
@@ -111,7 +111,7 @@ try {
   // Mod P0 regressions: keep arithmetic numeric and preserve stat identity.
   const modMath = await page.evaluate(() => ({
     localized: numericValue("1 234,5"),
-    forgeTotal: forgeProjectedModSpeed({baseId:"TEST",name:"Test"},{},Array.from({length:6},(_,i)=>({game_id:"m"+i,slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",level:15,secondary_1_stat:"Speed",secondary_1_value:5}))).modSpeed,
+    forgeTotal: forgeProjectedModSpeed({baseId:"TEST",name:"Test"},{},Array.from({length:6},(_,i)=>({game_id:"m"+i,slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Speed",secondary_1_value:5,secondary_2_stat:"Protection",secondary_2_value:0,secondary_3_stat:"Potency %",secondary_3_value:0,secondary_4_stat:"Tenacity %",secondary_4_value:0}))).modSpeed,
     offenseFlat: discipleCanonicalStat("Offense"),
     offensePercent: discipleCanonicalStat("Offense %"),
     healthFlat: discipleCanonicalStat("Health"),
