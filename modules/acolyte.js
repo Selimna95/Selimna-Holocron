@@ -64,7 +64,8 @@ function holocronTopChangeCandidates(){
   // globalement faible : c'est précisément le stock intéressant à redistribuer.
   const donorWeakness=unit=>{
     const speeds=unit.mods.filter(holocronModIsComplete).map(holocronModSecondarySpeed).sort((a,b)=>a-b);
-    const count=speeds.length||1;
+    if(!speeds.length)return 0;
+    const count=speeds.length;
     const noSpeed=speeds.filter(v=>v===0).length;
     const veryLow=speeds.filter(v=>v>0&&v<=5).length;
     const low=speeds.filter(v=>v>5&&v<=9).length;
