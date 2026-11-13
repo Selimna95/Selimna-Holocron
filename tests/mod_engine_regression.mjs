@@ -81,6 +81,55 @@ load(core, ['modIconTier','modDots'], iconContext);
 assert.equal(iconContext.modIconTier({}), '');
 assert.equal(iconContext.modDots({}), null);
 
+// Optimizer snapshots include progression-dependent stats. Verify the exact live
+// roster metadata is sent to the Worker and that missing relic data stays unknown.
+const optimizerMetadataContext = vm.createContext({ numericValue });
+load(core, ['optimizerRosterMetadata','baseStatsForCharacter'], optimizerMetadataContext);
+const matchingRosterCharacter = {
+  baseId: 'MOFFGIDEONS3', level: 85, stars: 7, gear: 13, relic_tier: 8,
+  raw: { level: 85, rarity: 7, gear_level: 13, relic_tier: 8 }
+};
+const rosterMetadata = optimizerMetadataContext.optimizerRosterMetadata(matchingRosterCharacter);
+assert.deepEqual(JSON.parse(JSON.stringify(rosterMetadata)), {
+  level: 85, rarity: 7, gear_level: 13, relic_tier: 8
+});
+const unknownRelicRosterCharacter = {
+  level: 85, stars: 7, gear: 13, relic_tier: 0,
+  raw: { level: 85, rarity: 7, gear_level: 13 }
+};
+assert.equal(optimizerMetadataContext.optimizerRosterMetadata(unknownRelicRosterCharacter).relic_tier, null);
+assert.deepEqual(JSON.parse(JSON.stringify(optimizerMetadataContext.baseStatsForCharacter(matchingRosterCharacter))), {});
+assert.deepEqual(JSON.parse(JSON.stringify(optimizerMetadataContext.baseStatsForCharacter({
+  base_stats: { Speed: 150 }
+}))), { Speed: 150 });
+
+const optimizerWorkerStub = {
+  listeners: {},
+  addEventListener(type, callback) { this.listeners[type] = callback; },
+  removeEventListener(type, callback) { if (this.listeners[type] === callback) delete this.listeners[type]; },
+  postMessage(message) { this.message = message; }
+};
+const optimizerWorkerContext = vm.createContext({
+  optimizerRequestId: 0,
+  getOptimizerWorker: () => optimizerWorkerStub,
+  performance: { now: () => 1 },
+  $: () => ({ innerHTML: '' }),
+  esc: value => String(value),
+  optimizerRosterMetadata: optimizerMetadataContext.optimizerRosterMetadata,
+  baseStatsForCharacter: optimizerMetadataContext.baseStatsForCharacter
+});
+load(core, ['runOptimizationInWorker'], optimizerWorkerContext);
+const optimizerPending = optimizerWorkerContext.runOptimizationInWorker(
+  matchingRosterCharacter, {}, 5, 80, {}, [], []
+);
+assert.deepEqual(JSON.parse(JSON.stringify(optimizerWorkerStub.message.character_metadata)), {
+  level: 85, rarity: 7, gear_level: 13, relic_tier: 8
+});
+optimizerWorkerStub.listeners.message({
+  data: { id: optimizerWorkerStub.message.id, type: 'done', result: '{}' }
+});
+await optimizerPending;
+
 
 
 // SWGOH.GG's live Kyber page uses plain slot headings and focus rows such as
