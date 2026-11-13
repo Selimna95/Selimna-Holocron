@@ -362,7 +362,7 @@ const fixtureMod = (owner, index, slot, value, complete=true) => ({
 });
 const acolyteFixtureMods = [
   fixtureMod('TARGET', 0, 'Square', 4),
-  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,slot==='Arrow'?4:10)),
+  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,slot==='Arrow'?4:slot==='Diamond'?12:10)),
   fixtureMod('DONOR', 6, 'Square', 12),
   fixtureMod('DONOR', 7, 'Arrow', 20, false),
   ...['Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('DONOR',i+8,slot,0)),
