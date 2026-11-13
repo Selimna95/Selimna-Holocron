@@ -194,6 +194,20 @@ const speedPercentProjection = engine.calculateSpeed(100, [{
 assert.equal(speedPercentProjection.complete, true);
 assert.equal(speedPercentProjection.total, 105);
 
+const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
+  slot: ['Square','Arrow','Diamond','Triangle'][index],
+  level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 0,
+  secondary_1_stat: 'Protection', secondary_1_value: 0,
+  secondary_2_stat: 'Potency %', secondary_2_value: 0,
+  secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
+  secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
+}));
+assert.equal(engine.calculateSpeed(153, completeSpeedSet).setBonus, 15);
+assert.equal(engine.calculateSpeed(153, completeSpeedSet).total, 168);
+const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: index === 3 ? 14 : 15 }));
+assert.equal(engine.calculateSpeed(153, halfSpeedSet).setBonus, 7);
+assert.equal(engine.calculateSpeed(153, halfSpeedSet).total, 160);
+
 const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 } }]);
 assert.equal(unsupportedProjection.complete, false);
 assert.ok(unsupportedProjection.missing.includes('stat:physicalAccuracy:unsupported') || unsupportedProjection.missing.includes('stat:specialAccuracy:unsupported'));
