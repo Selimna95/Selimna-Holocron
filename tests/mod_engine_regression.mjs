@@ -221,7 +221,7 @@ const htmlImportContext = vm.createContext({
   window: { HolocronModEngine: sharedEngine },
   numericValue
 });
-load(core, ['firstText','parseNumberValue','statNameFromAny','statValueFromAny','statObjectFromAny','normalizeMod','parseStatGeneric'], htmlImportContext);
+load(core, ['firstText','firstAttr','parseNumberValue','parseOptionalNumberValue','statNameFromAny','statValueFromAny','statObjectFromAny','normalizeMod','parseStatGeneric','slotFromShape','parseModsPage'], htmlImportContext);
 const htmlStatNode = {
   querySelector(selector) {
     if (selector === '.statmod-stat-label') return { textContent: 'Potency' };
@@ -271,6 +271,31 @@ assert.equal(missingSourceProjection.complete, false);
 assert.equal(missingSourceProjection.total, null);
 assert.ok(missingSourceProjection.missing.includes('mod:level_unknown'));
 assert.ok(missingSourceProjection.missing.includes('mod:primary_incomplete'));
+
+const primaryNode = {
+  querySelector(selector) {
+    if (selector === '.statmod-stat-label') return { textContent: 'Speed' };
+    if (selector === '.statmod-stat-value') return { textContent: '+15' };
+    return null;
+  },
+  getAttribute() { return null; },
+  textContent: ''
+};
+const imageNode = { getAttribute: name => name === 'alt' ? 'Mod Set Speed Square' : null };
+const modNode = {
+  querySelector(selector) {
+    if (selector.startsWith('.statmod-img')) return imageNode;
+    if (selector.startsWith('.statmod-stats-1')) return primaryNode;
+    return null;
+  },
+  querySelectorAll() { return []; },
+  getAttribute(name) { return name === 'data-id' ? 'missing-level-mod' : null; }
+};
+const parsedHtmlMods = htmlImportContext.parseModsPage({ querySelectorAll: () => [modNode] }, 1);
+assert.equal(parsedHtmlMods.length, 1);
+assert.equal(parsedHtmlMods[0].level, null);
+assert.equal(parsedHtmlMods[0].primary_value, 15);
+assert.equal(parsedHtmlMods[0].primary_stat_unit, 'flat');
 
 
 const acContext = vm.createContext({ window: { HolocronModEngine: sharedEngine }, compactKey, numericValue, modTotalSpeed: speed });
