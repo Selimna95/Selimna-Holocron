@@ -75,6 +75,10 @@ def _test_normalize_bridge(mod_json):
         if item:
             secondaries.append(item)
     raw_slot = mod.get("slot", mod.get("slot_id", mod.get("slotId")))
+    if raw_slot is None and mod.get("definitionId") is not None:
+        definition = str(mod.get("definitionId")).split(":")[0]
+        if len(definition) == 3 and definition.isdigit() and 0 <= int(definition[2]) <= 5:
+            raw_slot = int(definition[2]) + 1
     slot_names = {
         "1": "Square", "2": "Arrow", "3": "Diamond", "4": "Triangle", "5": "Circle", "6": "Cross",
         "7": "Square", "8": "Arrow", "9": "Diamond", "10": "Triangle", "11": "Circle", "12": "Cross",
@@ -170,7 +174,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
 
     def test_missing_slot_has_diagnostic_error(self):
         one_mod = [{"id": "only", "slot": "Square", "set": "Speed", "primary_stat": "Speed", "primary_value": 10}]
-        with self.assertRaisesRegex(RuntimeError, "slot"):
+        with self.assertRaisesRegex(RuntimeError, "données incomplètes"):
             optimize_kyber(one_mod, kyber={}, base_stats={})
 
     def test_nominal_six_slot_build(self):
@@ -182,12 +186,17 @@ class OptimizerNormalizationTests(unittest.TestCase):
                 "secondary_1_stat": "Speed", "secondary_1_value": 5,
                 "level": 15, "rarity": 5,
             })
+        mods.append({
+            "id": "incomplete-duplicate", "slot": "Square", "set": "Speed",
+            "primary_stat": "Speed", "primary_value": 10, "level": None,
+        })
         builds = optimize_kyber(
             mods, base_stats={"Speed": 100, "Health": 10000, "Protection": 10000},
             kyber={}, number_of_builds=1, limit_per_slot=1,
         )
         self.assertEqual(len(builds), 1)
         self.assertEqual(len(builds[0]["build"]), 6)
+        self.assertNotIn("incomplete-duplicate", {mod.get("id") for mod in builds[0]["build"]})
 
     def test_impossible_kyber_set_plan_falls_back_to_best_available_build(self):
         slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
