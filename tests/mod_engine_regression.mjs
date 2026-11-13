@@ -385,6 +385,10 @@ Object.assign(acContext, {
 });
 load(acolyte, ['holocronIsGalacticLegend','holocronLatestGacSeason','holocronGacUsage','holocronModIsComplete','holocronTopChangeCandidates'], acContext);
 assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[0]), true, 'target fixture mod is complete');
+assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[6]), true, 'donor Square fixture mod is complete');
+assert.equal(acContext.holocronModSecondarySpeed(acolyteFixtureMods[0]), 4);
+assert.equal(acContext.holocronModSecondarySpeed(acolyteFixtureMods[6]), 12);
+assert.equal(acContext.holocronAcolyteTransferPreservesSpeed(acolyteFixtureMods[0], acolyteFixtureMods[6], acolyteFixtureMods.filter(m=>m.owner==='TARGET')), true);
 assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[7]), false, 'donor Arrow fixture is incomplete');
 assert.equal(acContext.v176ModStatus(acContext.getCharacterMods(acolyteFixture.find(c=>c.baseId==='DONOR'))).status, 'FAIBLES');
 const acolyteRows = acContext.holocronTopChangeCandidates();
