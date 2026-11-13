@@ -456,8 +456,15 @@
   function canonicalStatKey(value) {
     const stat = normalizeStat(value);
     if (!stat.key) return compact(value).toUpperCase();
-    const suffix = stat.unit === 'percentagePoints' &&
-      ['offense', 'defense', 'health', 'protection'].includes(stat.key) ? 'PERCENT' : '';
+    const unitVariantKeys = [
+      'offense', 'defense', 'health', 'protection', 'speed',
+      'criticalChance', 'criticalAvoidance',
+      'physicalCriticalChance', 'specialCriticalChance',
+      'physicalCriticalAvoidance', 'specialCriticalAvoidance',
+      'armor', 'resistance', 'physicalDamage', 'specialDamage',
+      'physicalAccuracy', 'specialAccuracy', 'armorPenetration', 'resistancePenetration'
+    ];
+    const suffix = stat.unit === 'percentagePoints' && unitVariantKeys.includes(stat.key) ? 'PERCENT' : '';
     return (stat.key + suffix).toUpperCase();
   }
 
