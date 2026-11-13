@@ -39,7 +39,9 @@
   const statKey = (value,slot=null,fromKyber=false) => {
     const raw=String(value??'').trim();
     let canonical=window.HolocronModEngine.canonicalStatKey(raw).toUpperCase();
-    if(!canonical)canonical=key(raw).toUpperCase()+(raw.includes('%')?'PERCENT':'');
+    if(!canonical)canonical=key(raw).toUpperCase();
+    const plain=canonical.replace(/PERCENT$/,'');
+    if(raw.includes('%')&&KYBER_PERCENT_PRIMARY_KEYS.has(plain)&&!canonical.endsWith('PERCENT'))canonical+='PERCENT';
     const variableSlot=['Arrow','Triangle','Circle','Cross'].includes(slot);
     if(fromKyber&&variableSlot&&!canonical.endsWith('PERCENT')&&KYBER_PERCENT_PRIMARY_KEYS.has(canonical)){
       const percent=window.HolocronModEngine.canonicalStatKey(raw+' %').toUpperCase();
