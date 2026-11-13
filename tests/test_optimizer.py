@@ -114,11 +114,44 @@ optimizer_module.set_mod_engine_bridge(_test_engine_bridge, _test_normalize_brid
 from python.optimizer import (
     normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
     _partial_matches_set_plan, _mod_score, build_score,
-    resolve_character_base_stats,
+    resolve_character_base_stats, validate_profile_compatibility,
 )
 
 
 class OptimizerProfileResolutionTests(unittest.TestCase):
+    def test_static_profiles_contain_all_progression_metadata(self):
+        path = Path(__file__).resolve().parents[1] / "python" / "optimizer_profiles.json"
+        profiles = json.loads(path.read_text(encoding="utf-8"))
+        self.assertGreater(len(profiles), 0)
+        required = ("level", "rarity", "gear_level", "relic_tier")
+        for base_id, profile in profiles.items():
+            with self.subTest(base_id=base_id):
+                for field in required:
+                    self.assertIsNotNone(profile.get(field), f"{base_id} missing {field}")
+
+    def test_profile_progression_must_match_live_roster_exactly(self):
+        profile = {"level": 85, "rarity": 7, "gear_level": 13, "relic_tier": 8,
+                   "base_stats": {"Speed": 153}}
+        metadata = {"level": 85, "rarity": 7, "gear_level": 13, "relic_tier": 8}
+        self.assertTrue(validate_profile_compatibility(profile, metadata))
+        labels = {
+            "level": "niveau", "rarity": "rareté",
+            "gear_level": "gear", "relic_tier": "palier de relique",
+        }
+        for field, label in labels.items():
+            changed = dict(metadata)
+            changed[field] -= 1
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(RuntimeError, label):
+                    validate_profile_compatibility(profile, changed)
+
+    def test_missing_roster_progression_metadata_is_not_assumed(self):
+        profile = {"level": 85, "rarity": 7, "gear_level": 13, "relic_tier": 8,
+                   "base_stats": {"Speed": 153}}
+        metadata = {"level": 85, "rarity": 7, "gear_level": 13, "relic_tier": None}
+        with self.assertRaisesRegex(RuntimeError, "palier de relique"):
+            validate_profile_compatibility(profile, metadata)
+
     def test_profile_base_stats_equal_current_minus_mod_stat_diffs(self):
         path = Path(__file__).resolve().parents[1] / "python" / "optimizer_profiles.json"
         profiles = json.loads(path.read_text(encoding="utf-8"))
