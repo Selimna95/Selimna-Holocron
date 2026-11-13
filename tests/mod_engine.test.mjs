@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.17');
+assert.equal(engine.version, '0.3.18');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -284,8 +284,14 @@ assert.equal(sourcedDeltaProjection.stats.Protection, 1510);
 const profileLevelDefense = engine.calculateFinalStats({
   level: 85,
   base_stats: { Health: 1000, Speed: 100, Armor: 50, Resistance: 40 }
-}, [{ level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }]);
+}, [{ level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }], 85);
 assert.equal(profileLevelDefense.complete, true);
 assert.ok(Math.abs(profileLevelDefense.stats.Armor - 51.5209) < 0.001);
+const profileOnlyLevelDefense = engine.calculateFinalStats({
+  level: 85,
+  base_stats: { Health: 1000, Speed: 100, Armor: 50, Resistance: 40 }
+}, [{ level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }]);
+assert.equal(profileOnlyLevelDefense.complete, false);
+assert.ok(profileOnlyLevelDefense.missing.includes('level'));
 
 console.log('Shared mod engine contract tests passed.');
