@@ -353,6 +353,7 @@
       return {proposals:[],reason:'Les services partagés de donneurs ou de calcul de vitesse ne sont pas disponibles.'};
     const targetKey=characterKey(character);
     const source=forgeAllSourceMods(character).filter(mod=>{
+      if(window.HolocronModEngine.normalizeMod(mod)?.complete!==true)return false;
       const ownerKey=mod?._sourceOwnerKey;
       const isFree=!ownerKey&&(!mod?._sourceOwner||mod._sourceOwner==='Libre')&&mod?._sourcePriorityKnown===true;
       if(!forgeSourceAllowedForSearch(mod,character)||(!isFree&&!ownerKey)||ownerKey===targetKey)return false;
@@ -391,16 +392,19 @@
     const empty=slots.filter(slot=>!(optionsBySlot.get(slot)||[]).length);
     if(empty.length)return {proposals:[],reason:exchangeGacSourceDiagnostic()||('Aucun donneur vérifié pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.')};
     const beforeSetDistance=exchangeSetDistance(current,profile);
-    const beforeSpeed=forgeProjectedModSpeed(character,profile,current).total;
+    const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
+    if(!beforeProjectionSummary.complete)return {proposals:[],reason:'La vitesse actuelle de la cible est non calculable : données de base ou mods incomplets.'};
+    const beforeSpeed=beforeProjectionSummary.total;
     const targetPrimarySafe=chosen=>slots.every(slot=>{
       const mod=chosen.find(x=>slotOf(x)===slot),reference=primaryDistribution(profile,slot);
       // Missing Kyber data is unknown, not evidence that a primary is invalid.
       return !reference.length||reference.some(entry=>statKey(entry.name)===statKey(mod?.primary_stat));
     });
     const proposals=[];let tested=0,acceptedCount=0,chosen=[],sampled=0,speedPruned=0;
-    const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
+    const baseSpeed=beforeProjectionSummary.baseSpeed;
+    const maximumSpeedSetBonus=baseSpeed>0?baseSpeed*.1:0;
     const retainedSpeed=current.filter(mod=>!slots.includes(slotOf(mod))).reduce((sum,mod)=>sum+modTotalSpeed(mod),0);
-    const candidateSpeedCeiling=retainedSpeed+slots.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0);
+    const candidateSpeedCeiling=baseSpeed+retainedSpeed+slots.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0)+maximumSpeedSetBonus;
     const searchSpace=slots.reduce((product,slot)=>product*(optionsBySlot.get(slot)||[]).length,1);
     const diagnostics={limit:15000,sourceCount:source.length,beforeSpeed:beforeProjectionSummary.total,
       retainedSpeed,candidateSpeedCeiling,searchSpace,
@@ -421,6 +425,7 @@
         const finalTarget=current.filter(mod=>!slots.includes(slotOf(mod))).concat(chosen);
         const beforeProjection=forgeProjectedModSpeed(character,profile,current);
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
+        if(!beforeProjection.complete||!afterProjection.complete){reject('vitesse_cible_inconnue','Vitesse cible non calculable : données de base ou mods incomplets');return;}
         const afterSpeed=afterProjection.total;
         if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet){reject('bonus_vitesse_cible','Perte du bonus de set Vitesse');return;}
         if(afterSpeed+1e-9<beforeSpeed){reject('vitesse_cible','La vitesse totale de la cible diminuerait',null,{targetSpeedBefore:beforeSpeed,targetSpeedAfter:afterSpeed,speedLoss:beforeSpeed-afterSpeed});return;}
@@ -452,12 +457,15 @@
           const donorProfile=optimizerProfileForCharacter(owner)||{};
           const beforeStats=exchangeFinalStats(owner,before),afterStats=exchangeFinalStats(owner,after);
           if(!beforeStats||!afterStats){reject('stats_donneur_incompletes','Calcul des statistiques du donneur incomplet : données de base ou formule non disponible',owner.name||owner.baseId);return;}
+          const donorBeforeSpeed=forgeProjectedModSpeed(owner,donorProfile,before);
+          const donorAfterSpeed=forgeProjectedModSpeed(owner,donorProfile,after);
+          if(!donorBeforeSpeed.complete||!donorAfterSpeed.complete){reject('vitesse_donneur_inconnue','Vitesse du donneur non calculable : données de base ou mods incomplets',null,{donor:owner.name||owner.baseId});return;}
           const donorImpact=exchangeStatsDelta(beforeStats,afterStats);
           const beforeStatus=typeof v176ModStatus==='function'?v176ModStatus(before).status:'INCONNU';
           const afterStatus=typeof v176ModStatus==='function'?v176ModStatus(after).status:'INCONNU';
           const statusRank={'BONS':0,'MOYENS':1,'FAIBLES':2,'TRÈS FAIBLES':3,'INCOMPLETS':4,'SANS MODS':5,'SANS MOD':5};
-          donors.push({owner,transfers,beforeSpeed:forgeProjectedModSpeed(owner,donorProfile,before).total,
-            afterSpeed:forgeProjectedModSpeed(owner,donorProfile,after).total,
+          donors.push({owner,transfers,beforeSpeed:donorBeforeSpeed.total,
+            afterSpeed:donorAfterSpeed.total,
             beforeSets:exchangeSetCounts(before),afterSets:exchangeSetCounts(after),
             beforeStats,afterStats,statDeltas:donorImpact,statBalance:exchangeStatBalance(beforeStats,afterStats),
             uses:Number(transfers[0]._sourceUsage)||0,beforeStatus,afterStatus,
@@ -494,7 +502,6 @@
     const seed=Array.from(String(targetKey||'visionnaire')).reduce((hash,char)=>(Math.imul(hash^char.charCodeAt(0),16777619)>>>0),2166136261);
     const seen=new Set();
     const attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000);
-    const maximumSpeedSetBonus=beforeProjectionSummary.baseSpeed>0?beforeProjectionSummary.baseSpeed*.1:0;
     for(let sample=0;sample<attemptLimit&&tested<diagnostics.limit&&seen.size<searchSpace;sample++){
       const combo=slots.map((slot,index)=>{
         const options=optionsBySlot.get(slot)||[];
@@ -503,7 +510,7 @@
       const signature=combo.map(exchangeModId).join('|');
       if(seen.has(signature))continue;
       seen.add(signature);sampled++;
-      const theoreticalMaximum=retainedSpeed+combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+maximumSpeedSetBonus;
+      const theoreticalMaximum=baseSpeed+retainedSpeed+combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+maximumSpeedSetBonus;
       if(theoreticalMaximum+1e-9<beforeSpeed)speedPruned++;
       else{
         tested++;chosen=combo;
@@ -525,7 +532,7 @@
   }
   function renderExchangeDiagnostics(diagnostics){
     if(!diagnostics)return '';
-    const labels={bonus_vitesse_cible:'Bonus Vitesse cible',vitesse_cible:'Vitesse cible',reference_sets:'Référence des sets',primaire_cible:'Primaires Kyber',donneur_incomplet:'Donneur incomplet',bonus_sets_donneur:'Bonus de sets donneur',perte_stat_cible:'Pertes statistiques cible',doublon:'Doublons'};
+    const labels={bonus_vitesse_cible:'Bonus Vitesse cible',vitesse_cible:'Vitesse cible',vitesse_cible_inconnue:'Vitesse cible non calculable',vitesse_donneur_inconnue:'Vitesse donneur non calculable',reference_sets:'Référence des sets',primaire_cible:'Primaires Kyber',donneur_incomplet:'Donneur incomplet',bonus_sets_donneur:'Bonus de sets donneur',perte_stat_cible:'Pertes statistiques cible',doublon:'Doublons'};
     const rejected=Object.entries(diagnostics.rejected||{}).sort((a,b)=>b[1]-a[1]);
     return '<details class="visionnaire-search-diagnostics" open><summary>DIAGNOSTIC DE RECHERCHE · '+diagnostics.tested.toLocaleString('fr-FR')+' combinaisons testées · '+diagnostics.sourceCount+' mods sources</summary>'+
       '<p>Mods candidats par slot : '+Object.entries(diagnostics.optionsBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
