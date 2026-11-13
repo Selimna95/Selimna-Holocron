@@ -74,6 +74,23 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
 
+const modStatusContext = vm.createContext({ window: { HolocronModEngine: sharedEngine } });
+load(core, ['v176ModStatus'], modStatusContext);
+const completeStatusMods = Array.from({ length: 6 }, (_, index) => ({
+  id: 'status-' + index, slot: ['Square','Arrow','Diamond','Triangle','Circle','Cross'][index],
+  set_name: 'Health', level: 15, primary_stat: 'Health', primary_value: 0,
+  secondary_1_stat: 'Protection', secondary_1_value: 0,
+  secondary_2_stat: 'Potency %', secondary_2_value: 0,
+  secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
+  secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
+}));
+assert.equal(modStatusContext.v176ModStatus(completeStatusMods).status, 'TRÈS FAIBLES');
+const incompleteStatusMods = completeStatusMods.map(mod => ({ ...mod }));
+delete incompleteStatusMods[0].secondary_4_stat;
+delete incompleteStatusMods[0].secondary_4_value;
+assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).status, 'DONNÉES INCOMPLÈTES');
+assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).totalSpeed, null);
+
 // Missing mod metadata must remain unknown rather than being fabricated.
 const iconContext = vm.createContext({});
 load(core, ['modIconTier','modDots'], iconContext);
@@ -321,17 +338,23 @@ const acolyteFixture = [
   { baseId: 'TARGET', name: 'Target' },
   { baseId: 'DONOR', name: 'Donor' }
 ];
-const fixtureMod = (owner, index, slot, value) => ({
+const fixtureMod = (owner, index, slot, value, complete=true) => ({
   owner, _index: index, slot, set_name: 'Speed',
   primary_stat: 'Offense %', primary_value: 5.88,
   secondary_1_stat: 'Speed', secondary_1_value: value,
+  ...(complete ? {
+    secondary_2_stat: 'Protection', secondary_2_value: 0,
+    secondary_3_stat: 'Potency %', secondary_3_value: 0,
+    secondary_4_stat: 'Tenacity %', secondary_4_value: 0
+  } : {}),
   speed: value, level: 15
 });
 const acolyteFixtureMods = [
   fixtureMod('TARGET', 0, 'Square', 4),
-  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,10)),
+  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,slot==='Arrow'?4:10)),
   fixtureMod('DONOR', 6, 'Square', 12),
-  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('DONOR',i+7,slot,0))
+  fixtureMod('DONOR', 7, 'Arrow', 20, false),
+  ...['Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('DONOR',i+8,slot,0))
 ];
 Object.assign(acContext, {
   rosterCharacters: acolyteFixture,
