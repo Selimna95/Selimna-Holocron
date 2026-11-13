@@ -22,9 +22,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - run: npm install --no-save --no-package-lock pyodide@0.27.7
       - run: node --check modules/mod-engine.js
       - run: node --check tests/mod_engine.test.mjs
       - run: node tests/mod_engine.test.mjs
+      - run: node --check tests/mod_engine_pyodide.test.mjs
+      - run: node tests/mod_engine_pyodide.test.mjs
       - run: node --check interface-adapter.js
       - run: node --check modules/core.js
       - run: node --check tests/kyber_parser.test.mjs
