@@ -243,10 +243,13 @@
     return normalized?.key ? normalized.name : String(value??'').trim().replace(/%$/,'').trim();
   };
   function exchangeFinalStats(character,build){
-    const profile=typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{};
-    const base=profile.base_stats || (typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null);
-    if(!base||typeof base!=='object'||!Object.keys(base).length)return null;
-    const source=profile.base_stats ? profile : base;
+    const directBase=typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null;
+    const hasDirectBase=directBase&&typeof directBase==='object'&&Object.keys(directBase).length>0;
+    const validatedProfile=typeof optimizerValidatedProfileForCharacter==='function'
+      ? optimizerValidatedProfileForCharacter(character)
+      : null;
+    const source=hasDirectBase?{base_stats:directBase}:validatedProfile;
+    if(!source||typeof source!=='object')return null;
     const calculation=window.HolocronModEngine.calculateFinalStats(source,build,character?.level);
     if(!calculation.complete)return null;
     return Object.fromEntries(Object.entries(calculation.stats||{}).map(([name,value])=>[exchangeStatName(name),Number(value)]));
@@ -468,11 +471,10 @@
             after[donorIndex]=returned;
           }
           if(before.length!==6||after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after)){reject('bonus_sets_donneur','Le donneur perdrait un bonus de set ou son build est incomplet',owner.name||owner.baseId);return;}
-          const donorProfile=optimizerProfileForCharacter(owner)||{};
           const beforeStats=exchangeFinalStats(owner,before),afterStats=exchangeFinalStats(owner,after);
           if(!beforeStats||!afterStats){reject('stats_donneur_incompletes','Calcul des statistiques du donneur incomplet : données de base ou formule non disponible',owner.name||owner.baseId);return;}
-          const donorBeforeSpeed=forgeProjectedModSpeed(owner,donorProfile,before);
-          const donorAfterSpeed=forgeProjectedModSpeed(owner,donorProfile,after);
+          const donorBeforeSpeed=forgeProjectedModSpeed(owner,null,before);
+          const donorAfterSpeed=forgeProjectedModSpeed(owner,null,after);
           if(!donorBeforeSpeed.complete||!donorAfterSpeed.complete){reject('vitesse_donneur_inconnue','Vitesse du donneur non calculable : données de base ou mods incomplets',null,{donor:owner.name||owner.baseId});return;}
           const donorImpact=exchangeStatsDelta(beforeStats,afterStats);
           const beforeStatus=typeof v176ModStatus==='function'?v176ModStatus(before).status:'INCONNU';

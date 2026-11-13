@@ -178,13 +178,50 @@ function optimizerProfileForCharacter(character) {
   }
   return null;
 }
+function optimizerRosterMetadata(character) {
+  const raw=character?.raw?.data && typeof character.raw.data === 'object'
+    ? character.raw.data
+    : character?.raw;
+  const read = (source, keys) => {
+    if (!source || typeof source !== 'object') return null;
+    for (const key of keys) {
+      if (source[key] != null) return source[key];
+    }
+    return null;
+  };
+  const readCharacter = keys => read(character, keys);
+  const readRaw = keys => read(raw, keys);
+  const relicObject = readRaw(['relic']);
+  const rawRelic = readRaw(['relic_tier','relicTier','relic_level','relicLevel']) ??
+    read(relicObject, ['currentTier','tier','relicTier']);
+  const relicValue = raw && typeof raw === 'object'
+    ? rawRelic
+    : readCharacter(['relic_tier','relicTier','relic_level','relicLevel']);
+  return {
+    level: numericValue(readRaw(['level']) ?? readCharacter(['level']), null),
+    rarity: numericValue(readRaw(['rarity','starLevel','stars']) ?? readCharacter(['stars','rarity','starLevel']), null),
+    gear_level: numericValue(readRaw(['gear_level','gearLevel','gear']) ?? readCharacter(['gear','gear_level','gearLevel']), null),
+    // Do not turn a missing relic field into tier 0: the reference cannot be verified then.
+    relic_tier: numericValue(relicValue, null)
+  };
+}
+function optimizerValidatedProfileForCharacter(character) {
+  const profile=optimizerProfileForCharacter(character);
+  if (!profile || !profile.base_stats || typeof profile.base_stats !== 'object' || !Object.keys(profile.base_stats).length) return null;
+  const metadata=optimizerRosterMetadata(character);
+  for (const field of ['level','rarity','gear_level','relic_tier']) {
+    if (profile[field] == null) return null;
+    const expected=Number(profile[field]);
+    const actual=metadata[field];
+    if (actual == null || !Number.isFinite(expected) || expected !== Number(actual)) return null;
+  }
+  return profile;
+}
 function baseStatsForCharacter(character) {
   const direct=character?.base_stats || character?.baseStats;
+  // Only caller-supplied base stats are direct inputs. Static reference profiles
+  // are resolved and checked in the Worker against the imported roster metadata.
   if (direct && typeof direct === 'object' && Object.keys(direct).length) return direct;
-  const p=optimizerProfileForCharacter(character);
-  if (p?.base_stats && typeof p.base_stats === 'object' && Object.keys(p.base_stats).length) return p.base_stats;
-  // character.stats is the equipped/current stat block, not guaranteed base stats.
-  // Leave it empty so the Worker resolves the canonical profile or fails safely.
   return {};
 }
 
@@ -554,7 +591,7 @@ async function fetchKyberProfile(character){
 }
 let kyberRequestSeq=0;
 function buildLocalOptimizerReference(character){
-  const p=optimizerProfileForCharacter(character)||{};
+  const p=optimizerValidatedProfileForCharacter(character)||{};
   const current=p.current_stats||{};
   return {
     character:String(character?.name||character?.baseId||''),
@@ -734,7 +771,7 @@ function updateCharacterInfo() {
   const c=selectedCharacter();
   if(!c){$('characterInfo').textContent='Aucun personnage sélectionné.';return;}
   const p=profileForCharacter(c);
-  const local=optimizerProfileForCharacter(c);
+  const local=optimizerValidatedProfileForCharacter(c);
   const ref=p || null;
   const fallback=local&&!p;
   const gacPriority=window.holocronGacPriorityForCharacter?.(c)||{known:false};
@@ -1114,7 +1151,7 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.11-required-speed-floor', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.12-profile-snapshot-validation', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
@@ -1141,7 +1178,8 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
       }
     };
     worker.addEventListener('message', onMessage);
-    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_level: Number(character?.level)||null, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
+    const characterMetadata = optimizerRosterMetadata(character);
+    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_metadata: characterMetadata, character_level: characterMetadata.level, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
   });
 }
 

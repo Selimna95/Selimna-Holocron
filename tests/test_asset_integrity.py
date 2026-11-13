@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.97-required-speed-floor", self.sw)
+        self.assertIn("holocron-static-v4.4.98-profile-snapshot-validation", self.sw)
         self.assertIn("modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.html)
         self.assertIn("./modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
@@ -66,6 +66,18 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("analyzePerformance", self.blue_js)
         self.assertIn("marge 95 %", self.blue_js)
 
+
+    def test_optimizer_rejects_static_profiles_that_do_not_match_the_roster(self):
+        core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        worker = (ROOT / "optimizer-worker.mjs").read_text(encoding="utf-8")
+        optimizer = (ROOT / "python" / "optimizer.py").read_text(encoding="utf-8")
+        self.assertIn("character_metadata: characterMetadata", core)
+        self.assertIn("relic_tier: numericValue(relicValue, null)", core)
+        self.assertIn("optimizer.validate_profile_compatibility(base_profile, character_metadata)", worker)
+        self.assertIn("if isinstance(base_stats, dict) and base_stats:", worker)
+        self.assertIn("def validate_profile_compatibility(profile, character_metadata):", optimizer)
+        self.assertIn("if expected is None or actual is None:", optimizer)
+        self.assertIn("Profil de statistiques incompatible", optimizer)
 
     def test_profile_sync_is_staged_and_rejects_incomplete_mod_inventory(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
@@ -113,7 +125,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("minimum_speed=minimum_speed", worker)
         self.assertIn("mod-engine.js?v=0.3.22", worker)
         self.assertIn("minimum_speed=None", optimizer)
-        self.assertIn("python/optimizer.py?v=3.5.5-no-incomplete-candidates", worker)
+        self.assertIn("python/optimizer.py?v=3.5.6-profile-snapshot-validation", worker)
         self.assertIn("normalized.get(\"complete\") is not True", optimizer)
         self.assertIn("if minimum_speed is None or float(minimum_speed) <= 0:", worker)
         self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
@@ -186,15 +198,15 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.32-unknown-speed-category", self.html)
+        self.assertIn("modules/core.js?v=4.2.33-validate-profile-snapshot", self.html)
         self.assertIn("modules/mod-engine.js?v=0.3.22", self.html)
         self.assertIn("modules/disciple.js?v=3.5.9-complete-secondary-options", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.sw)
         self.assertIn("modules/disciple.js?v=3.5.9-complete-secondary-options", self.sw)
         self.assertIn("modules/mod-engine.js?v=0.3.22", self.sw)
-        self.assertIn("modules/core.js?v=4.2.32-unknown-speed-category", self.sw)
-        self.assertIn("holocron-static-v4.4.97-required-speed-floor", self.sw)
+        self.assertIn("modules/core.js?v=4.2.33-validate-profile-snapshot", self.sw)
+        self.assertIn("holocron-static-v4.4.98-profile-snapshot-validation", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):

@@ -26,6 +26,22 @@ pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
 pyodide.globals.set('holocron_mod_normalize_bridge', normalizeBridge);
 pyodide.runPython("import sys\nsys.path.insert(0, '/home/pyodide')\nimport optimizer\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge)\n");
 
+const profileValidation = pyodide.runPython(`
+profile = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8,"base_stats":{"Speed":153}}
+metadata = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8}
+optimizer.validate_profile_compatibility(profile, metadata)
+`);
+assert.equal(profileValidation, true);
+pyodide.runPython(`
+try:
+    optimizer.validate_profile_compatibility(profile, {"level":85,"rarity":7,"gear_level":12,"relic_tier":8})
+except RuntimeError as error:
+    incompatible_profile_error = str(error)
+else:
+    incompatible_profile_error = ""
+`);
+assert.match(pyodide.runPython('incompatible_profile_error'), /gear/);
+
 const base = {
   Health: 1000, Protection: 2000, Speed: 100,
   'Physical Damage': 500, 'Special Damage': 700,

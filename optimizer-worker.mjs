@@ -3,7 +3,7 @@ import "./modules/mod-engine.js?v=0.3.22";
 
 let pyodideReadyPromise = (async () => {
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
-  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.5-no-incomplete-candidates", import.meta.url), { cache: "force-cache" });
+  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.6-profile-snapshot-validation", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
   const optimizerSource = await optimizerResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer.py", optimizerSource);
@@ -60,6 +60,7 @@ self.onmessage = async (event) => {
     pyodide.globals.set("character_base_id", String(data.character_base_id || ""));
     const characterLevel = Number(data.character_level);
     pyodide.globals.set("character_level", Number.isFinite(characterLevel) && characterLevel > 0 ? characterLevel : null);
+    pyodide.globals.set("character_metadata_json", JSON.stringify(data.character_metadata || {}));
     pyodide.globals.set("context_json", JSON.stringify(data.context || {}));
 
     self.postMessage({ id, type: "status", message: "Recherche des candidats par slot…" });
@@ -69,11 +70,18 @@ import json
 mods = json.loads(mods_json)
 profile = json.loads(profile_json)
 base_stats = json.loads(base_stats_json)
-base_profile = optimizer.resolve_character_profile(_optimizer_profiles, character_base_id, character_name)
-if not isinstance(base_profile, dict) or not base_profile:
-    base_profile = {'base_stats': base_stats} if isinstance(base_stats, dict) and base_stats else {}
+character_metadata = json.loads(character_metadata_json)
+if isinstance(base_stats, dict) and base_stats:
+    # Explicit base stats supplied with the live character take precedence.
+    # Do not mix them with progression or mod deltas from a static snapshot.
+    base_profile = {'base_stats': base_stats}
 else:
-    base_profile = dict(base_profile)
+    base_profile = optimizer.resolve_character_profile(_optimizer_profiles, character_base_id, character_name)
+    if isinstance(base_profile, dict) and base_profile:
+        optimizer.validate_profile_compatibility(base_profile, character_metadata)
+        base_profile = dict(base_profile)
+    else:
+        base_profile = {}
 if character_level is not None:
     base_profile['level'] = character_level
 else:

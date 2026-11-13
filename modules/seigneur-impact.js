@@ -35,9 +35,8 @@ function forgeBuildGlobalImpact(character,profile,build){
       const id=String(m?.game_id||m?.id||'');
       return !(id&&removedIds.has(id))&&!removedSlots.has(optimizerSlotKey(m?.slot));
     });
-    const donorProfile=optimizerProfileForCharacter(owner)||{};
-    const before=forgeProjectedModSpeed(owner,donorProfile,beforeMods);
-    const after=forgeProjectedModSpeed(owner,donorProfile,afterMods);
+    const before=forgeProjectedModSpeed(owner,null,beforeMods);
+    const after=forgeProjectedModSpeed(owner,null,afterMods);
     const beforeStatus=v176ModStatus(beforeMods).status;
     const afterStatus=v176ModStatus(afterMods).status;
     const priority=seigneurDonorPriority(owner);

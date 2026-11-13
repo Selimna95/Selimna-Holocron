@@ -64,7 +64,7 @@ function auditRows(){
     const primarySpeed=dataIncomplete?null:cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
     const speedCats=new Set(); let speedCount=dataIncomplete?null:0;
     if(!dataIncomplete)for(const m of cm){const x=modSpeedMetrics(m); if(x.primary)speedCats.add('primary_speed'); else speedCats.add(speedCategory(x.secondary)); if(x.primary || (x.secondary||0)>0)speedCount++;}
-    const p=optimizerProfileForCharacter(c)||{};
+    const p=optimizerValidatedProfileForCharacter(c)||{};
     const relicTier=Number(c.relic_tier??c.relicTier??p.relic_tier??0)||0; const relic=relicLevelFromTier(relicTier);
     const priority=dataIncomplete?Number.POSITIVE_INFINITY:(cm.length===0?100000:cm.length<6?50000:0)+Math.max(0,70-(st.totalSpeed??0))*100+relic*2;
     const best=dataIncomplete?null:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0);
@@ -116,7 +116,7 @@ function renderSelectionPanel(){
   renderCharacterDetail();
 }
 function characterReportStats(c){
-  const p=optimizerProfileForCharacter(c)||{};
+  const p=optimizerValidatedProfileForCharacter(c)||{};
   const base=p.base_stats||{};
   const current=p.current_stats||{};
   const diff=p.mod_stat_diffs||{};
@@ -146,7 +146,7 @@ function renderCharacterReport(){
   const box=$('characterReport'); if(!box)return;
   const c=rosterCharacters.find(x=>characterKey(x)===analysisSelectedCharacter);
   if(!c){box.innerHTML='<div class="empty">Sélectionnez un personnage depuis PERSONNAGE / FACTION.</div>';return;}
-  const cm=getCharacterMods(c), s=v176ModStatus(cm), p=optimizerProfileForCharacter(c)||{}, st=characterReportStats(c);
+  const cm=getCharacterMods(c), s=v176ModStatus(cm), p=optimizerValidatedProfileForCharacter(c)||{}, st=characterReportStats(c);
   const baseSpeed=numericValue(st.profile?.base_stats?.Speed,null);
   const speedProjection=window.HolocronModEngine.calculateSpeed(baseSpeed,cm);
   const speedDataComplete=cm.length===6&&s.status!=='DONNÉES INCOMPLÈTES'&&speedProjection.complete;

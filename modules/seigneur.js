@@ -482,9 +482,13 @@ function forgeCandidateScore(m,profile,secA,secB){
 }
 function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
-  const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
-    character?.raw?.baseStats||character?.data?.base_stats||optimizerProfileForCharacter(character)?.base_stats||{};
-  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
+  const directBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
+    character?.raw?.baseStats||character?.data?.base_stats||{};
+  const validatedProfile=typeof optimizerValidatedProfileForCharacter==='function'
+    ? optimizerValidatedProfileForCharacter(character)
+    : null;
+  const profileBase=validatedProfile?.base_stats||{};
+  const baseSpeed=numericValue(directBase.Speed??directBase.speed??profileBase.Speed??profileBase.speed,null);
   const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list);
   return {
     complete:projection.complete===true&&projection.total!=null,

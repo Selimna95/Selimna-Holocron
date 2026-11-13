@@ -100,6 +100,41 @@ def resolve_character_base_stats(profiles, base_id="", name=""):
     return profile.get("base_stats", {}) if isinstance(profile, dict) else {}
 
 
+def validate_profile_compatibility(profile, character_metadata):
+    """Refuse a static stat snapshot when its progression differs from the live roster."""
+    if not isinstance(profile, dict) or not profile:
+        raise RuntimeError("Profil de référence absent : compatibilité impossible à vérifier.")
+    if not isinstance(character_metadata, dict):
+        raise RuntimeError("Métadonnées du personnage absentes : compatibilité impossible à vérifier.")
+
+    fields = (
+        ("level", "niveau"),
+        ("rarity", "rareté"),
+        ("gear_level", "gear"),
+        ("relic_tier", "palier de relique"),
+    )
+    for field, label in fields:
+        expected = profile.get(field)
+        actual = character_metadata.get(field)
+        if expected is None or actual is None:
+            raise RuntimeError(
+                f"Profil de statistiques non vérifiable : {label} absent "
+                f"de la référence ou du roster."
+            )
+        try:
+            expected_number = float(expected)
+            actual_number = float(actual)
+        except (TypeError, ValueError):
+            raise RuntimeError(f"Profil de statistiques non vérifiable : {label} invalide.")
+        if not (expected_number == actual_number):
+            raise RuntimeError(
+                f"Profil de statistiques incompatible : {label} référence "
+                f"{expected_number:g}, roster {actual_number:g}. "
+                "Aucune optimisation ne sera calculée avec cette référence."
+            )
+    return True
+
+
 def normalize_slot(slot):
     """Delegate slot identity to the shared JavaScript mod engine."""
     if slot is None or isinstance(slot, bool):
