@@ -1,6 +1,6 @@
 # Architecture — moteur unique des mods
 
-- Statut : migration en cours, branche isolée `refactor/unified-mod-engine`
+- Statut : migration en cours, branche isolée `refactor/unified-mod-engine-clean`
 - Moteur de référence : `modules/mod-engine.js` v0.3.11
 - Base de travail : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
@@ -72,6 +72,15 @@ Les anciennes fonctions qui ne font que transmettre les données au moteur peuve
 - Les identifiants de taux critique 14/15 sont traités comme des ratings et convertis à raison de 24 points de rating par point de pourcentage, conformément au calculateur Crinolo ; les identifiants non documentés restent inconnus.
 - Le fallback HTML SWGOH.GG conserve le signe `%` affiché pour éviter de confondre une valeur en pourcentage avec un rating plat ; sans unité affichée ou identifiant source, une statistique ambiguë reste inconnue. Une valeur ou un niveau absent reste `null` : aucun zéro n'est injecté par l'importeur.
 - Les scénarios qui nécessitent un résultat complet doivent donc s'abstenir de proposer une permutation quand ces données manquent.
+
+## Sources externes vérifiées (sans dépendance à l'API SWGOH.GG)
+
+- Formules indépendantes de statistiques : [Crinolo SWGOH Stat Calculator](https://github.com/Crinolo/swgoh-stat-calc) et [fork swgoh-utils](https://github.com/swgoh-utils/swgoh-stat-calc). Ces sources servent à vérifier les conversions et les formules ; elles ne sont pas chargées en production et ne remplacent pas le moteur Holocron.
+- Bonus et nombre de pièces des sets : [swgoh-utils/gamedata — statModSet.json](https://github.com/swgoh-utils/gamedata/blob/main/statModSet.json).
+- Encodage Comlink : le troisième chiffre de `definitionId` représente le slot avec un décalage de -1 ; l'adaptateur ajoute 1 pour obtenir les slots 1 à 6 (Square, Arrow, Diamond, Triangle, Circle, Cross).
+- Les identifiants SWGOH.GG 7 à 12 sont également reconnus dans le même ordre. Les deux encodages convergent vers les six formes canoniques du moteur. Voir [Comlink player data](https://github.com/swgoh-utils/swgoh-comlink/wiki/Player-Data).
+
+L'Optimizer Python écarte les mods dont le set, le niveau, la primaire ou une unité de statistique ne peuvent pas être validés. Une projection impossible est signalée et ne devient jamais un score ou une vitesse égale à zéro.
 
 ## Tests et critères d'intégration
 
