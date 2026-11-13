@@ -65,6 +65,7 @@ Les anciennes fonctions qui ne font que transmettre les données au moteur peuve
 ## Limites de calcul actuellement explicites
 
 - Les bonus de set distinguent le bonus complet au niveau 15 du demi-bonus si un mod du set n'est pas au niveau 15.
+- Le niveau utilisé pour la conversion Défense provient du personnage du roster ; le niveau 85 du profil de référence n'est jamais substitué au niveau réel.
 - Offense fixe et Offense en pourcentage sont des unités différentes ; les dégâts physiques et spéciaux sont projetés séparément.
 - La Défense en pourcentage n'est pas projetée tant que le profil ne fournit pas la composante de défense du palier d'équipement courant. Les valeurs Armor/Resistance affichées ne suffisent pas à la reconstituer exactement.
 - Les statistiques reconnues mais dont la projection n'est pas encore implémentée (par exemple précision/pénétration) rendent le résultat incomplet au lieu d'être ignorées.
