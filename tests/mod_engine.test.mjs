@@ -8,7 +8,7 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox);
 const engine = sandbox.module.exports;
 
-assert.equal(engine.version, '0.3.8');
+assert.equal(engine.version, '0.3.9');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -181,6 +181,10 @@ const incompleteSpeedSet = engine.calculateSpeed(100, [
 assert.equal(incompleteSpeedSet.complete, false);
 assert.equal(incompleteSpeedSet.total, null);
 assert.ok(incompleteSpeedSet.missing.includes('mod:level_unknown'));
+const incompleteSpeedPrimary = engine.calculateSpeed(100, [{ level: 15, set_name: 'Health', secondary_1_stat: 'Speed', secondary_1_value: 5 }]);
+assert.equal(incompleteSpeedPrimary.complete, false);
+assert.equal(incompleteSpeedPrimary.total, null);
+assert.ok(incompleteSpeedPrimary.missing.includes('mod:primary_incomplete'));
 const unknownSetProjection = engine.calculateFinalStats(projectionBase, [{ level: 15, set_name: 'Unmapped Set', primary_stat: 'Health', primary_value: 10 }]);
 assert.equal(unknownSetProjection.complete, false);
 assert.ok(unknownSetProjection.missing.includes('set:unknown'));
