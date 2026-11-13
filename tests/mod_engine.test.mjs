@@ -39,6 +39,21 @@ assert.deepEqual({ ...engine.calculateSetBonuses([
   { set_name: 'Health', level: 15 }, { set_name: 'Health', level: 15 }
 ]) }, { health: 25 });
 
+const setReferenceCases = [
+  ['Health', 2, 'health', 5, 10],
+  ['Defense', 2, 'defense', 12.5, 25],
+  ['Critical Chance', 2, 'criticalChance', 4, 8],
+  ['Tenacity', 2, 'tenacity', 10, 20],
+  ['Potency', 2, 'potency', 7.5, 15],
+  ['Offense', 4, 'offense', 7.5, 15],
+  ['Speed', 4, 'speed', 5, 10],
+  ['Critical Damage', 4, 'criticalDamage', 15, 30]
+];
+for (const [name, required, key, minimum, maximum] of setReferenceCases) {
+  assert.equal(engine.calculateSetBonuses(Array.from({ length: required }, () => ({ set_name: name, level: 14 } )))[key], minimum, name + ' minimum set bonus');
+  assert.equal(engine.calculateSetBonuses(Array.from({ length: required }, () => ({ set_name: name, level: 15 } )))[key], maximum, name + ' level-15 set bonus');
+}
+
 // Comlink IDs preserve the distinction that core.js previously erased.
 const offenseFlat = engine.normalizeStat({ unitStatId: 41, unscaledDecimalValue: 4000000000 });
 const offensePercent = engine.normalizeStat({ unitStatId: 48, unscaledDecimalValue: 2500000 });
