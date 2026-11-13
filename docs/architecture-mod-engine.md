@@ -1,7 +1,7 @@
 # Architecture — moteur unique des mods
 
 - Statut : migration en cours, branche isolée `refactor/unified-mod-engine`
-- Moteur de référence : `modules/mod-engine.js` v0.3.10
+- Moteur de référence : `modules/mod-engine.js` v0.3.11
 - Base de travail : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
 - Publication : aucune modification de `main` ni de GitHub Pages pendant cette migration.
