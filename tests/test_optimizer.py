@@ -2,6 +2,9 @@ import unittest
 import json
 import python.optimizer as optimizer_module
 
+# This lightweight bridge isolates Python search behavior only; the real
+# JavaScript/Pyodide bridge and formulas are exercised in mod_engine_pyodide.test.mjs.
+
 def _test_engine_bridge(base_json, mods_json, level):
     source = json.loads(base_json)
     base = source.get("base_stats", source) if isinstance(source, dict) else {}
