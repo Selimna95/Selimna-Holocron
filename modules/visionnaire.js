@@ -35,7 +35,7 @@
     });
     return SLOTS.map(slot=>({slot,mod:bySlot.get(slot)||null}));
   };
-  const statKey = value => window.HolocronModEngine.canonicalStatKey(value).replace(/PERCENT$/,'').toLowerCase();
+  const statKey = value => window.HolocronModEngine.canonicalStatKey(value).toLowerCase();
   const normalizeCounts = counts => Object.fromEntries(Object.entries(counts||{})
     .map(([name,count])=>[labelSet(name),Number(count)||0]).filter(([name,count])=>name&&count>0));
   const rankedSetConfigurations = profile => {
