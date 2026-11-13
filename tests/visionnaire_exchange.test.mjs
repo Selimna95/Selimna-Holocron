@@ -79,7 +79,7 @@ const buildSandbox={
   LABELS:{Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'},
   state:{mode:'sets'},render:()=>{},setTimeout:fn=>{fn();return 0;},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
-  statKey:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
+  statKey:value=>sharedEngine.canonicalStatKey(value).toLowerCase(),
   modTotalSpeed:mod=>sharedEngine.speedMetrics(mod).total,
   characterKey:c=>String(c.baseId),
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
@@ -171,6 +171,13 @@ assert.equal(focusImpact.coreLosses[0].name,'Defense');
 
 const unknownPrimarySearch=await runSearch(normalTarget,[],freeChoices,{specific_sets:kyber.specific_sets,slots:{}},'primaries');
 assert.ok(unknownPrimarySearch.proposals.length>0,'An unreported Kyber primary distribution must remain unknown, not block all proposals');
+assert.notEqual(sharedEngine.canonicalStatKey('Offense'),sharedEngine.canonicalStatKey('Offense %'),'Flat and percentage primaries must have distinct canonical keys');
+const mismatchedPrimaryProfile={specific_sets:kyber.specific_sets,slots:{Square:{primaries:{Offense:1}},Circle:{primaries:{Offense:1}}}};
+const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
+  makeMod('wrong-primary-square','Square','Speed',20,'Offense %',5),
+  makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
+],mismatchedPrimaryProfile,'primaries');
+assert.equal(mismatchedPrimarySearch.proposals.length,0,'An Offense % primary must not satisfy a Kyber reference for flat Offense');
 
 // The engine must finish the whole small search space even after it has
 // already found more than 30 valid scenarios, retaining the best 30 by score.
