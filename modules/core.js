@@ -1103,7 +1103,7 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.6-shared-mod-engine', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.7-explicit-character-level', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
@@ -1130,7 +1130,7 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
       }
     };
     worker.addEventListener('message', onMessage);
-    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
+    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_level: Number(character?.level)||null, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
   });
 }
 
