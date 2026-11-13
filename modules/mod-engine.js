@@ -235,6 +235,9 @@
       if (!mod.primary?.key || mod.primary.value == null || !mod.primary.complete) {
         missing.push('mod:primary_incomplete');
       }
+      if (mod.expectedSecondaries != null && mod.secondaries.length < mod.expectedSecondaries) {
+        missing.push('mod:secondary_incomplete');
+      }
       const entries = [mod.primary, ...(mod.secondaries || [])];
       for (const stat of entries) {
         if (!stat) continue;
