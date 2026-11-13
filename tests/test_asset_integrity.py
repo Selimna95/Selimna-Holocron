@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.67-complete-mod-filter", self.sw)
+        self.assertIn("holocron-static-v4.4.68-no-incomplete-candidates", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -110,6 +110,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("minimum_speed = optimizer.final_stats(current_target_mods, base_stats, base_profile).get(\"Speed\")", worker)
         self.assertIn("minimum_speed=minimum_speed", worker)
         self.assertIn("minimum_speed=None", optimizer)
+        self.assertIn("python/optimizer.py?v=3.5.5-no-incomplete-candidates", worker)
+        self.assertIn("normalized.get(\"complete\") is not True", optimizer)
         self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
         self.assertIn("Aucun transfert entraînant une perte de vitesse", optimizer)
         self.assertIn("VITESSE TOTALE ESTIMÉE", seigneur)
@@ -181,8 +183,10 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
         self.assertIn("modules/core.js?v=4.2.26-source-slot-ids", self.html)
+        self.assertIn("modules/mod-engine.js?v=0.3.11", self.html)
+        self.assertIn("modules/mod-engine.js?v=0.3.11", self.sw)
         self.assertIn("modules/core.js?v=4.2.26-source-slot-ids", self.sw)
-        self.assertIn("holocron-static-v4.4.67-complete-mod-filter", self.sw)
+        self.assertIn("holocron-static-v4.4.68-no-incomplete-candidates", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
