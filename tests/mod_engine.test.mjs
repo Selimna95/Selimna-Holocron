@@ -169,7 +169,7 @@ const critAvoidanceProjection = engine.calculateFinalStats({
   'Physical Critical Avoidance': 10, 'Special Critical Avoidance': 5
 }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 39, unscaledDecimalValue: 2400000000 } },
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 40, unscaledDecimalValue: 2400000000 } }
+  { level: 1, set_name: 'Defense', primary_stat: { unitStatId: 40, unscaledDecimalValue: 2400000000 } }
 ]);
 assert.equal(critAvoidanceProjection.complete, true);
 assert.equal(critAvoidanceProjection.stats['Physical Critical Avoidance'], 11);
