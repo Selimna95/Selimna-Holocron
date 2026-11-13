@@ -518,12 +518,20 @@
     }
     const set = canonicalSetFromMod(mod);
     const level = numeric(mod.level);
+    let slot = canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot);
+    if (!slot && mod.definitionId != null) {
+      const definition = String(mod.definitionId).split(':')[0];
+      const slotIndex = Number(definition[2]);
+      if (definition.length === 3 && [...definition].every(char => char >= '0' && char <= '9') && Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex <= 5) {
+        slot = canonicalSlot(slotIndex + 1);
+      }
+    }
     const normalized = Object.freeze({
       id: String(mod.game_id ?? mod.id ?? mod.modId ?? mod.uid ?? ''),
       level,
       set,
       setName: SET_DEFINITIONS[set]?.name || null,
-      slot: canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot),
+      slot,
       pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
       primary,
       secondaries: Object.freeze(secondaries),
