@@ -343,8 +343,10 @@
       }
     }
 
-    const criticalChancePoints = (totals['criticalChance:percentagePoints'] || 0) + flat('criticalChance') / 24;
-    const criticalAvoidancePoints = (totals['criticalAvoidance:percentagePoints'] || 0) + flat('criticalAvoidance') / 24;
+    const criticalChancePoints = totals['criticalChance:percentagePoints'] || 0;
+    const criticalAvoidancePoints = totals['criticalAvoidance:percentagePoints'] || 0;
+    if (flat('criticalChance')) missing.push('stat:criticalChance:flat_unsupported');
+    if (flat('criticalAvoidance')) missing.push('stat:criticalAvoidance:flat_unsupported');
     for (const [key, shared] of [
       ['physicalCriticalChance', criticalChancePoints],
       ['specialCriticalChance', criticalChancePoints],
@@ -555,7 +557,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.21',
+    version: '0.3.22',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
