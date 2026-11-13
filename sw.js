@@ -2,7 +2,7 @@
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
-const CACHE_NAME = 'holocron-static-v4.4.82-acolyte-weak-donor-recipient';
+const CACHE_NAME = 'holocron-static-v4.4.83-seigneur-partial-impact';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -26,7 +26,7 @@ const STATIC_ASSETS = [
   './modules/acolyte.js?v=3.4.9-weak-donor-recipient',
   './modules/disciple.js?v=3.5.6-no-incomplete-zero-speed',
   './modules/seigneur.js?v=3.9.8-fail-closed-speed',
-  './modules/seigneur-impact.js?v=1.0.1-complete-speed-impact',
+  './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
   './modules/visionnaire.js?v=4.1.72-sourced-level-only',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
   './optimizer-worker.mjs?v=3.5.10-no-incomplete-candidates',
