@@ -77,8 +77,8 @@ def _test_normalize_bridge(mod_json):
     raw_slot = mod.get("slot", mod.get("slot_id", mod.get("slotId")))
     if mod.get("definitionId") is not None:
         definition = str(mod.get("definitionId")).split(":")[0]
-        if len(definition) == 3 and definition.isdigit() and 0 <= int(definition[2]) <= 5:
-            raw_slot = ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"][int(definition[2])]
+        if len(definition) == 3 and definition.isdigit() and 1 <= int(definition[2]) <= 6:
+            raw_slot = ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"][int(definition[2]) - 1]
     slot_names = {
         "1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
         "5": "Triangle", "6": "Circle", "7": "Cross",
@@ -169,10 +169,11 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertEqual(mod_slot_value({"mod_slot": "Cross"}), "Cross")
         self.assertIsNone(mod_slot_value("not a mod"))
         normalized = optimizer_module._normalized_mod({
-            "definitionId": "130", "set": "Health", "level": 15,
+            "definitionId": "111", "set": "Health", "level": 15,
             "primary_stat": "Speed", "primary_value": 10,
         })
         self.assertEqual(normalized["slot"], "Square")
+        self.assertEqual(optimizer_module._normalized_mod({"definitionId": "112", "slot_id": 2})["slot"], "Arrow")
         self.assertEqual(optimizer_module._normalized_mod({"slot_id": 7})["slot"], "Cross")
 
     def test_empty_mod_list_has_clear_error(self):
