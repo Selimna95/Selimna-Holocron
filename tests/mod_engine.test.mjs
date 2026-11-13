@@ -8,7 +8,7 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox);
 const engine = sandbox.module.exports;
 
-assert.equal(engine.version, '0.3.7');
+assert.equal(engine.version, '0.3.8');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -64,6 +64,13 @@ assert.equal(engine.normalizeStat('Speed', '12garbage').value, null);
 assert.equal(engine.normalizeStat({ unitStatId: 16, unscaledDecimalValue: 30000000 }).value, 30);
 assert.equal(engine.canonicalStatKey('Offense %'), 'OFFENSEPERCENT');
 assert.equal(engine.canonicalStatKey('Potency %'), 'POTENCY');
+assert.equal(engine.canonicalStatKey('Speed %'), 'SPEEDPERCENT');
+assert.equal(engine.canonicalStatKey({ unitStatId: 14, unscaledDecimalValue: 2400000000 }), 'PHYSICALCRITICALCHANCE');
+assert.equal(engine.canonicalStatKey({ unitStatId: 21, unscaledDecimalValue: 2000000 }), 'PHYSICALCRITICALCHANCEPERCENT');
+assert.notEqual(
+  engine.canonicalStatKey({ unitStatId: 39, unscaledDecimalValue: 2400000000 }),
+  engine.canonicalStatKey({ unitStatId: 35, unscaledDecimalValue: 2000000 })
+);
 const speedParts = engine.speedMetrics({ primary_stat: 'Speed', primary_value: 30, secondary_1_stat: 'Speed', secondary_1_value: 5 });
 assert.equal(speedParts.primary, true);
 assert.equal(speedParts.primarySpeed, 30);
