@@ -11,7 +11,7 @@ const engine = sandbox.module.exports;
 
 let pyodide;
 try {
-  pyodide = await loadPyodide({ indexURL: new URL('../node_modules/pyodide/', import.meta.url).href });
+  pyodide = await loadPyodide({ indexURL: new URL('../node_modules/pyodide/', import.meta.url).pathname });
 } catch (error) {
   console.error('Pyodide runtime initialization failed:', error?.stack || String(error));
   throw error;
