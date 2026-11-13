@@ -111,6 +111,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("currentTargetMods);", seigneur)
         self.assertIn("minimum_speed = optimizer.final_stats(current_target_mods, base_stats, base_profile).get(\"Speed\")", worker)
         self.assertIn("minimum_speed=minimum_speed", worker)
+        self.assertIn("mod-engine.js?v=0.3.21", worker)
         self.assertIn("minimum_speed=None", optimizer)
         self.assertIn("python/optimizer.py?v=3.5.5-no-incomplete-candidates", worker)
         self.assertIn("normalized.get(\"complete\") is not True", optimizer)
