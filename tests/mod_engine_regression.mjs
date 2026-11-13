@@ -268,7 +268,7 @@ const sharedEngine = engineSandbox.module.exports;
 const discipleStatsContext = vm.createContext({ optimizerValidatedProfileForCharacter: () => null });
 load(discipleSource, ['characterReportStats'], discipleStatsContext);
 const missingDiscipleReference = discipleStatsContext.characterReportStats({ baseId: 'MOFFGIDEONS3' });
-assert.equal(missingDiscipleReference.profile, null);
+assert.deepEqual(JSON.parse(JSON.stringify(missingDiscipleReference.profile)), {});
 assert.deepEqual(JSON.parse(JSON.stringify(missingDiscipleReference.rows)), [],
   'Disciple must not display progression-dependent stats from an unvalidated snapshot');
 discipleStatsContext.optimizerValidatedProfileForCharacter = () => ({
