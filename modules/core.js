@@ -766,7 +766,7 @@ function firstText(root,selectors){for(const sel of selectors){const n=root.quer
 function firstAttr(root,selectors,attr){for(const sel of selectors){const n=root.querySelector(sel);const v=n?.getAttribute(attr);if(v)return v;}return '';}
 function parseNumberValue(v){const m=String(v??'').replace(/\s/g,'').match(/[+-]?[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):0;}
 function slotFromShape(shape){const s=String(shape||'').toLowerCase();return ({'1':'Square','2':'Square','3':'Arrow','4':'Diamond','5':'Triangle','6':'Circle','7':'Cross',transmitter:'Square',receiver:'Arrow',processor:'Diamond','holo-array':'Triangle','data-bus':'Circle',multiplexer:'Cross'})[s]||shape;}
-function parseStatGeneric(node){if(!node)return{stat:'',value:0};const label=firstText(node,['.statmod-stat-label','[class*="statmod-stat-label"]','[data-stat-name]'])||node.getAttribute?.('data-stat-name')||'';const raw=firstText(node,['.statmod-stat-value','[class*="statmod-stat-value"]','[data-stat-value]'])||node.getAttribute?.('data-stat-value')||node.textContent||'';return{stat:label.trim(),value:parseNumberValue(raw)};}
+function parseStatGeneric(node){if(!node)return{stat:'',value:0,unit:'unknown'};const label=firstText(node,['.statmod-stat-label','[class*="statmod-stat-label"]','[data-stat-name]'])||node.getAttribute?.('data-stat-name')||'';const raw=firstText(node,['.statmod-stat-value','[class*="statmod-stat-value"]','[data-stat-value]'])||node.getAttribute?.('data-stat-value')||node.textContent||'';const percent=/%/.test(String(label))||/%/.test(String(raw));const stat=percent&&!/%/.test(String(label))?String(label).trim()+' %':String(label).trim();return{stat,value:parseNumberValue(raw),unit:percent?'percentagePoints':'flat'};}
 function parseModsPage(doc,page){
   const nodes=[...doc.querySelectorAll('.collection-mod, [class*=\"collection-mod\"], [data-mod-id], [data-id].mod')],result=[];
   nodes.forEach((node,idx)=>{
@@ -783,7 +783,7 @@ function parseModsPage(doc,page){
     const rarity=node.querySelectorAll('.statmod-pip, [class*=\"statmod-pip\"]').length;
     const id=node.getAttribute('data-id')||node.getAttribute('data-mod-id')||`gg-${page}-${idx}`;
     if(shape||set||primary.stat||secondary.length){
-      result.push(normalizeMod({game_id:id,slot:slotFromShape(shape),set_name:set,rarity,dots:rarity,level,primary_stat:primary.stat,primary_value:primary.value,secondary_stats:secondary,character:char,asset_src:src,raw_alt:alt},page*1000+idx));
+      result.push(normalizeMod({game_id:id,slot:slotFromShape(shape),set_name:set,rarity,dots:rarity,level,primary_stat:primary.stat,primary_value:primary.value,primary_stat_unit:primary.unit,secondary_stats:secondary,character:char,asset_src:src,raw_alt:alt},page*1000+idx));
     }
   });
   return result.filter(Boolean);
