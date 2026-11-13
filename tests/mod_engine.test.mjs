@@ -65,6 +65,35 @@ for (const [name, required, key, minimum, maximum] of setReferenceCases) {
 }
 
 // Comlink IDs preserve the distinction that core.js previously erased.
+// Mapping contract copied from the documented Comlink UnitStat enum.
+const comlinkStatCases = [
+  [14, 'physicalCriticalChance', 'flat'], [15, 'specialCriticalChance', 'flat'],
+  [16, 'criticalDamage', 'percentagePoints'], [17, 'potency', 'percentagePoints'],
+  [18, 'tenacity', 'percentagePoints'], [21, 'physicalCriticalChance', 'percentagePoints'],
+  [22, 'specialCriticalChance', 'percentagePoints'], [23, 'armor', 'percentagePoints'],
+  [24, 'resistance', 'percentagePoints'], [25, 'armorPenetration', 'percentagePoints'],
+  [26, 'resistancePenetration', 'percentagePoints'], [28, 'protection', 'flat'],
+  [31, 'physicalDamage', 'percentagePoints'], [32, 'specialDamage', 'percentagePoints'],
+  [33, 'physicalAccuracy', 'percentagePoints'], [34, 'specialAccuracy', 'percentagePoints'],
+  [35, 'physicalCriticalAvoidance', 'percentagePoints'], [36, 'specialCriticalAvoidance', 'percentagePoints'],
+  [37, 'physicalAccuracy', 'flat'], [38, 'specialAccuracy', 'flat'],
+  [39, 'physicalCriticalAvoidance', 'flat'], [40, 'specialCriticalAvoidance', 'flat'],
+  [41, 'offense', 'flat'], [42, 'defense', 'flat'],
+  [48, 'offense', 'percentagePoints'], [49, 'defense', 'percentagePoints'],
+  [53, 'criticalChance', 'percentagePoints'], [54, 'criticalAvoidance', 'percentagePoints'],
+  [55, 'health', 'percentagePoints'], [56, 'protection', 'percentagePoints'],
+  [57, 'speed', 'percentagePoints']
+];
+for (const [id, key, unit] of comlinkStatCases) {
+  const stat = engine.normalizeStat({ unitStatId: id, unscaledDecimalValue: 100000000 });
+  assert.equal(stat.key, key, 'Comlink UnitStat ' + id + ' key');
+  assert.equal(stat.unit, unit, 'Comlink UnitStat ' + id + ' unit');
+  assert.equal(stat.complete, true, 'Comlink UnitStat ' + id + ' is recognized');
+}
+for (const id of [43, 44, 45, 46, 47, 50, 51, 52, 58, 59, 60, 61]) {
+  const stat = engine.normalizeStat({ unitStatId: id, unscaledDecimalValue: 100000000 });
+  assert.equal(stat.complete, false, 'unsupported Comlink UnitStat ' + id + ' must remain unknown');
+}
 const offenseFlat = engine.normalizeStat({ unitStatId: 41, unscaledDecimalValue: 4000000000 });
 const offensePercent = engine.normalizeStat({ unitStatId: 48, unscaledDecimalValue: 2500000 });
 assert.equal(offenseFlat.key, 'offense');
