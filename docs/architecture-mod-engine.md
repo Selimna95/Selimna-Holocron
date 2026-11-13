@@ -1,7 +1,7 @@
 # Architecture — moteur unique des mods
 
 - Statut : migration en cours, branche isolée `refactor/unified-mod-engine-clean`
-- Moteur de référence : `modules/mod-engine.js` v0.3.19
+- Moteur de référence : `modules/mod-engine.js` v0.3.21
 - Base de travail : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
 - Publication : aucune modification de `main` ni de GitHub Pages pendant cette migration.
@@ -88,7 +88,7 @@ Les règles suivantes ont été confrontées au code source du calculateur [Crin
 
 - **Offense** : l'identifiant 41 est un bonus fixe ; l'identifiant 48 est un bonus en points de pourcentage. Ils affectent séparément Physical Damage et Special Damage, à partir des valeurs de base correspondantes.
 - **Defense** : l'identifiant 42 ajoute du rating de défense aux deux voies Armor/Resistance. La conversion du rating utilise le niveau réel (`rating / (rating + 7.5 × level)`). L'identifiant 49 est un pourcentage appliqué au rating de base ; Holocron refuse encore ce cas lorsque la composante de base requise n'est pas disponible.
-- **Critical Chance / Critical Avoidance** : les ratings physiques/spéciaux 14/15 et 39/40 sont convertis séparément. Le calculateur Crinolo utilise 2400 points de rating pour 100 points de pourcentage ; après normalisation des valeurs Comlink, l'incrément est donc `rating / 24`. Les points de pourcentage 21/22, 35/36, 53/54 sont traités séparément.
+- **Critical Chance / Critical Avoidance** : les ratings physiques/spéciaux 14/15 et 39/40 sont convertis séparément. Le calculateur Crinolo utilise 2400 points de rating pour un ratio décimal de 1,0 (soit 100 points de pourcentage). Après normalisation Comlink par 1e8 et conversion du ratio décimal en points de pourcentage, l'incrément Holocron est `rating / 24`. Les points de pourcentage 21/22, 35/36, 53/54 sont traités séparément.
 - **Vitesse** : l'identifiant 5 est plat ; l'identifiant 57 est un pourcentage de la vitesse de base. Le bonus de set est calculé à part et ne doit pas être confondu avec les secondaires.
 - **Sets** : les huit tailles de set et leurs bonus minimums proviennent de `statModSet.json`. Les bonus maximums au niveau 15 correspondent au tableau de référence des [bonus de sets SWGOH](https://swgoh.wiki/wiki/Mods). Les tests vérifient chaque set, pas seulement Speed et Health.
 - Les identifiants génériques 45 (Critical Rating) et 47 (Critical Negate Rating) ne sont pas assimilés arbitrairement aux ratings physiques/spéciaux : tant qu'aucune formule de conversion validée n'est disponible pour ces identifiants, ils rendent la projection incomplète.
@@ -97,6 +97,12 @@ Les règles suivantes ont été confrontées au code source du calculateur [Crin
 Les donneurs dont les données sont incomplètes sont signalés comme impact partiel ; un statut inconnu ne peut jamais être interprété comme une amélioration.
 
 Le calculateur Crinolo n'est pas une dépendance de production : il sert de référence indépendante. Le moteur Holocron reste l'unique moteur exécuté par les modules.
+## Vérification des profils de statistiques
+
+Le fichier `python/optimizer_profiles.json` contient 334 profils. La relation attendue entre les champs `base_stats`, `current_stats` et `mod_stat_diffs` a été contrôlée sur les 2 913 valeurs comparables : `current_stats[stat] - base_stats[stat] - mod_stat_diffs[stat] = 0`, avec une tolérance de 1e-6. Le résidu maximal observé est inférieur à 1.2e-16.
+
+Cela confirme, pour les champs couverts par ces profils, que `base_stats` est le point de départ avant bonus de mods et que `mod_stat_diffs` représente l'écart de mods vers `current_stats`. Le test Python relit désormais le fichier complet et vérifie cette relation sur chaque profil à chaque exécution. La provenance externe initiale de ces profils reste à documenter ; ce contrôle valide leur cohérence interne, pas l'exactitude de leur collecte d'origine.
+
 ## Tests et critères d'intégration
 
 1. Fixtures brutes Comlink et import JSON : identifiants, échelles, unités et slots.
