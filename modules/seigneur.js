@@ -460,7 +460,7 @@ function forgeSecondaryStats(m){
   const normalized=window.HolocronModEngine.normalizeMod(m);
   return (normalized?.secondaries||[])
     .filter(stat=>stat.complete&&stat.key&&stat.key!=='speed')
-    .map(stat=>({stat:stat.name+(stat.unit==='percentagePoints'&&['offense','defense','health','protection'].includes(stat.key)?' %':''),value:Number(stat.value),key:window.HolocronModEngine.canonicalStatKey({name:stat.name,unit:stat.unit})}));
+    .map(stat=>({stat:stat.name+(stat.unit==='percentagePoints'?' %':''),value:Number(stat.value),key:window.HolocronModEngine.canonicalStatKey({name:stat.name,unit:stat.unit})}));
 }
 function forgeHasSecondary(m,wanted){
   const target=window.HolocronModEngine.canonicalStatKey(wanted); if(!target)return false;
@@ -476,7 +476,8 @@ function forgeCandidateScore(m,profile,secA,secB){
   const speed=modTotalSpeed(m);
   const set=forgeSetCompatible(m,profile), primary=forgePrimaryCompatible(m,profile);
   let contribution=0;
-  for(const x of forgeSecondaryStats(m)) if(compactKey(x.stat)===compactKey(secA)||compactKey(x.stat)===compactKey(secB)) contribution+=Number(x.value||0);
+  const wantedA=window.HolocronModEngine.canonicalStatKey(secA),wantedB=window.HolocronModEngine.canonicalStatKey(secB);
+  for(const x of forgeSecondaryStats(m)) if(x.key===wantedA||x.key===wantedB) contribution+=Number(x.value||0);
   return {both:a&&b,one:(a||b),a,b,speed,set,primary,contribution};
 }
 function forgeProjectedModSpeed(character,profile,modList){
