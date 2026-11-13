@@ -22,7 +22,7 @@ Les modules métier gardent leurs critères de décision (Kyber, GAC, sélection
 | Zone | Responsabilité |
 |---|---|
 | `modules/mod-engine.js` | Normalisation canonique, règles de jeu, calculs communs, complétude des résultats |
-| `modules/core.js` v4.2.30 | Import des données, wrappers historiques temporaires et présentation |
+| `modules/core.js` v4.2.31 | Import des données, wrappers historiques temporaires et présentation |
 | Acolyte | Priorisation GAC et choix des changements ; score générique délégué ; mods incomplets exclus des échanges |
 | Disciple | Filtres de réallocation et choix des donneurs ; identité stat/set/slot et vitesse projetée déléguées |
 | Seigneur Sith | Objectifs Kyber/GAC et recherche de mods ; calculs de vitesse et identité délégués |
