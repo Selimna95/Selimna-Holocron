@@ -9,10 +9,17 @@ vm.createContext(sandbox);
 vm.runInContext(read('../modules/mod-engine.js'), sandbox);
 const engine = sandbox.module.exports;
 
-const pyodide = await loadPyodide();
+let pyodide;
+try {
+  pyodide = await loadPyodide({ indexURL: new URL('../node_modules/pyodide/', import.meta.url).href });
+} catch (error) {
+  console.error('Pyodide runtime initialization failed:', error?.stack || String(error));
+  throw error;
+}
+console.log('Pyodide runtime loaded.');
 pyodide.FS.writeFile('/home/pyodide/optimizer.py', read('../python/optimizer.py'));
 const engineBridge = (baseJson, modsJson, level) => JSON.stringify(
-  engine.calculateFinalStats(JSON.parse(baseJson), JSON.parse(modsJson), Number(level) || 85)
+  engine.calculateFinalStats(JSON.parse(baseJson), JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null)
 );
 const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse(modJson)));
 pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
@@ -43,6 +50,9 @@ assert.equal(offense['Special Damage'], 915);
 const defense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 15, 'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85})\njson.dumps(result)\n"));
 assert.ok(Math.abs(defense.Armor - 51.5209) < 0.001);
 assert.ok(Math.abs(defense.Resistance - 42.1769) < 0.001);
+
+const missingLevel = pyodide.runPython("try:\n optimizer.final_stats([{'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json))\nexcept RuntimeError as error:\n str(error)\nelse:\n raise AssertionError('Defense must fail closed without a sourced character level')\n");
+assert.match(missingLevel, /level/);
 
 const missingLevel = pyodide.runPython("try:\n optimizer.final_stats([{'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json))\nexcept RuntimeError as error:\n str(error)\nelse:\n raise AssertionError('Defense must fail closed without a sourced character level')\n");
 assert.match(missingLevel, /level/);
