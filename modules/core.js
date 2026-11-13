@@ -1307,9 +1307,13 @@ function speedCategoryLabel(k){ return ({'1_10':'1 – 10','11_15':'11 – 15','
 function v176ModStatus(modsForCharacter){
   const list=Array.isArray(modsForCharacter)?modsForCharacter:[];
   const count=Math.min(6,list.length);
-  const totalSpeed=list.reduce((s,m)=>s+modTotalSpeed(m),0);
-  if(count===0)return {status:'SANS MODS',class:'critical',totalSpeed};
-  if(count<6)return {status:'INCOMPLETS',class:'incomplete',totalSpeed};
+  if(count===0)return {status:'SANS MODS',class:'critical',totalSpeed:null};
+  if(count<6)return {status:'INCOMPLETS',class:'incomplete',totalSpeed:null};
+  const normalized=list.map(mod=>window.HolocronModEngine.normalizeMod(mod));
+  if(list.length!==6||normalized.some(mod=>!mod?.complete)){
+    return {status:'DONNÉES INCOMPLÈTES',class:'incomplete',totalSpeed:null};
+  }
+  const totalSpeed=normalized.reduce((sum,mod)=>sum+window.HolocronModEngine.speedMetrics(mod).total,0);
   if(totalSpeed<30)return {status:'TRÈS FAIBLES',class:'verylow',totalSpeed};
   if(totalSpeed<50)return {status:'FAIBLES',class:'low',totalSpeed};
   if(totalSpeed<70)return {status:'MOYENS',class:'medium',totalSpeed};
