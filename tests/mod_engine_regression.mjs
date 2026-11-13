@@ -74,22 +74,6 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
 
-const modStatusContext = vm.createContext({ window: { HolocronModEngine: sharedEngine } });
-load(core, ['v176ModStatus'], modStatusContext);
-const completeStatusMods = Array.from({ length: 6 }, (_, index) => ({
-  id: 'status-' + index, slot: ['Square','Arrow','Diamond','Triangle','Circle','Cross'][index],
-  set_name: 'Health', level: 15, primary_stat: 'Health', primary_value: 0,
-  secondary_1_stat: 'Protection', secondary_1_value: 0,
-  secondary_2_stat: 'Potency %', secondary_2_value: 0,
-  secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
-  secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
-}));
-assert.equal(modStatusContext.v176ModStatus(completeStatusMods).status, 'TRÈS FAIBLES');
-const incompleteStatusMods = completeStatusMods.map(mod => ({ ...mod }));
-delete incompleteStatusMods[0].secondary_4_stat;
-delete incompleteStatusMods[0].secondary_4_value;
-assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).status, 'DONNÉES INCOMPLÈTES');
-assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).totalSpeed, null);
 
 // Missing mod metadata must remain unknown rather than being fabricated.
 const iconContext = vm.createContext({});
@@ -215,6 +199,22 @@ const engineSandbox = { module: { exports: {} } };
 vm.createContext(engineSandbox);
 vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
 const sharedEngine = engineSandbox.module.exports;
+const modStatusContext = vm.createContext({ window: { HolocronModEngine: sharedEngine } });
+load(core, ['v176ModStatus'], modStatusContext);
+const completeStatusMods = Array.from({ length: 6 }, (_, index) => ({
+  id: 'status-' + index, slot: ['Square','Arrow','Diamond','Triangle','Circle','Cross'][index],
+  set_name: 'Health', level: 15, primary_stat: 'Health', primary_value: 0,
+  secondary_1_stat: 'Protection', secondary_1_value: 0,
+  secondary_2_stat: 'Potency %', secondary_2_value: 0,
+  secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
+  secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
+}));
+assert.equal(modStatusContext.v176ModStatus(completeStatusMods).status, 'TRÈS FAIBLES');
+const incompleteStatusMods = completeStatusMods.map(mod => ({ ...mod }));
+delete incompleteStatusMods[0].secondary_4_stat;
+delete incompleteStatusMods[0].secondary_4_value;
+assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).status, 'DONNÉES INCOMPLÈTES');
+assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).totalSpeed, null);
 
 // Shared import normalization keeps Comlink stat IDs and units intact.
 const importContext = vm.createContext({
