@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.80-empty-donor-safe", self.sw)
+        self.assertIn("holocron-static-v4.4.81-disciple-incomplete-data", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
         self.assertIn("url.pathname.endsWith('/blue-gac/gac-catalog.json')", self.sw)
         self.assertIn("url.hostname === 'raw.githubusercontent.com'", self.sw)
@@ -182,13 +182,13 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.30-preserve-mod-metadata", self.html)
+        self.assertIn("modules/core.js?v=4.2.31-status-data-completeness", self.html)
         self.assertIn("modules/mod-engine.js?v=0.3.19", self.html)
-        self.assertIn("modules/disciple.js?v=3.5.5-shared-speed-projection", self.html)
-        self.assertIn("modules/disciple.js?v=3.5.5-shared-speed-projection", self.sw)
+        self.assertIn("modules/disciple.js?v=3.5.6-no-incomplete-zero-speed", self.html)
+        self.assertIn("modules/disciple.js?v=3.5.6-no-incomplete-zero-speed", self.sw)
         self.assertIn("modules/mod-engine.js?v=0.3.19", self.sw)
-        self.assertIn("modules/core.js?v=4.2.30-preserve-mod-metadata", self.sw)
-        self.assertIn("holocron-static-v4.4.80-empty-donor-safe", self.sw)
+        self.assertIn("modules/core.js?v=4.2.31-status-data-completeness", self.sw)
+        self.assertIn("holocron-static-v4.4.81-disciple-incomplete-data", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
