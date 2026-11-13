@@ -230,7 +230,7 @@ function renderInventory(){
     if(q && !JSON.stringify(m).toLowerCase().includes(q))return false;
     if(set && m.set_name!==set)return false;
     if(slot && m.slot!==slot)return false;
-    if(primary && compactKey(m.primary_stat)!==compactKey(primary))return false;
+    if(primary && discipleCanonicalStat(m.primary_stat)!==discipleCanonicalStat(primary))return false;
     if(secondary){
       let found=false;
       for(let i=1;i<=4;i++){
