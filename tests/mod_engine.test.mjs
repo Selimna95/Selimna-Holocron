@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.21');
+assert.equal(engine.version, '0.3.22');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -190,6 +190,16 @@ assert.equal(critAvoidanceProjection.stats['Special Critical Avoidance'], 6);
 const unsupportedGenericCrit = engine.normalizeStat({ unitStatId: 45, unscaledDecimalValue: 2400000000 });
 assert.equal(unsupportedGenericCrit.key, null);
 assert.equal(unsupportedGenericCrit.complete, false);
+const unsupportedGenericCritProjection = engine.calculateFinalStats({
+  'Physical Critical Chance': 40, 'Special Critical Chance': 30
+}, [{ level: 1, set_name: 'Health', primary_stat: { name: 'Critical Chance', value: 24, unit: 'flat' } }]);
+assert.equal(unsupportedGenericCritProjection.complete, false);
+assert.ok(unsupportedGenericCritProjection.missing.includes('stat:criticalChance:flat_unsupported'));
+const unsupportedGenericAvoidanceProjection = engine.calculateFinalStats({
+  'Physical Critical Avoidance': 10, 'Special Critical Avoidance': 5
+}, [{ level: 1, set_name: 'Defense', primary_stat: { name: 'Critical Avoidance', value: 24, unit: 'flat' } }]);
+assert.equal(unsupportedGenericAvoidanceProjection.complete, false);
+assert.ok(unsupportedGenericAvoidanceProjection.missing.includes('stat:criticalAvoidance:flat_unsupported'));
 const speedPercentProjection = engine.calculateSpeed(100, [{
   level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0,
   secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 }
