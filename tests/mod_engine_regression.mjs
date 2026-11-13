@@ -349,25 +349,28 @@ const acolyteFixture = [
   { baseId: 'DONOR', name: 'Donor' },
   { baseId: 'EMPTY_DONOR', name: 'Empty donor' }
 ];
+const primaryForSlot = {
+  Square: ['Offense', 5.88], Arrow: ['Speed', 30], Diamond: ['Defense', 5],
+  Triangle: ['Critical Damage %', 30], Circle: ['Health %', 5], Cross: ['Potency %', 5]
+};
 const fixtureMod = (owner, index, slot, value, complete=true) => ({
-  owner, _index: index, slot, set_name: 'Speed',
-  primary_stat: 'Offense %', primary_value: 5.88,
+  owner, _index: index, slot, set_name: 'Speed', level: 15,
+  primary_stat: primaryForSlot[slot][0], primary_value: primaryForSlot[slot][1],
   secondary_1_stat: 'Speed', secondary_1_value: value,
   ...(complete ? {
     secondary_2_stat: 'Protection', secondary_2_value: 0,
     secondary_3_stat: 'Potency %', secondary_3_value: 0,
     secondary_4_stat: 'Tenacity %', secondary_4_value: 0
   } : {}),
-  speed: value, level: 15
+  speed: value
 });
 const acolyteFixtureMods = [
   fixtureMod('TARGET', 0, 'Square', 4),
   ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,slot==='Arrow'?4:20)),
   fixtureMod('DONOR', 6, 'Square', 12),
-  fixtureMod('DONOR', 7, 'Arrow', 20, false),
-  ...['Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('DONOR',i+8,slot,0)),
-  fixtureMod('EMPTY_DONOR', 12, 'Square', 0, false)
+  ...['Arrow','Diamond','Triangle','Circle'].map((slot,i)=>fixtureMod('DONOR',i+7,slot,0)),
 ];
+const incompleteDonorMod = fixtureMod('ORPHAN', 12, 'Cross', 20, false);
 Object.assign(acContext, {
   rosterCharacters: acolyteFixture,
   window: { HolocronModEngine: sharedEngine, __SWGOH_GAC_USAGE__: { seasons: [] } },
@@ -375,10 +378,7 @@ Object.assign(acContext, {
   characterKey: c => String(c?.baseId || ''),
   rosterUnitType: () => 'character',
   getCharacterMods: c => acolyteFixtureMods.filter(m => m.owner === c.baseId),
-  v176ModStatus: list => {
-    const totalSpeed = list.reduce((sum,m)=>sum+Number(m.speed||0),0);
-    return { totalSpeed, status: list.length < 6 ? 'INCOMPLETS' : totalSpeed < 30 ? 'TRÈS FAIBLES' : totalSpeed < 50 ? 'FAIBLES' : totalSpeed < 70 ? 'MOYENS' : 'BONS' };
-  },
+  v176ModStatus: list => modStatusContext.v176ModStatus(list),
   holocronModScoreForCharacter: m => Number(m.speed||0),
   holocronKyberFit: () => 0,
   profileForCharacter: () => null
@@ -389,8 +389,9 @@ assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[6]), true, 'dono
 assert.equal(acContext.holocronModSecondarySpeed(acolyteFixtureMods[0]), 4);
 assert.equal(acContext.holocronModSecondarySpeed(acolyteFixtureMods[6]), 12);
 assert.equal(acContext.holocronAcolyteTransferPreservesSpeed(acolyteFixtureMods[0], acolyteFixtureMods[6], acolyteFixtureMods.filter(m=>m.owner==='TARGET')), true);
-assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[7]), false, 'donor Arrow fixture is incomplete');
-assert.equal(acContext.v176ModStatus(acContext.getCharacterMods(acolyteFixture.find(c=>c.baseId==='DONOR'))).status, 'FAIBLES');
+assert.equal(acContext.holocronModIsComplete(incompleteDonorMod), false, 'incomplete source mod is rejected');
+assert.equal(modStatusContext.v176ModStatus(acolyteFixtureMods.filter(m=>m.owner==='DONOR')).status, 'INCOMPLETS');
+assert.equal(modStatusContext.v176ModStatus([incompleteDonorMod]).status, 'DONNÉES INCOMPLÈTES');
 const acolyteRows = acContext.holocronTopChangeCandidates();
 assert.equal(acolyteRows.length, 1, 'Acolyte must produce the valid fixture exchange');
 assert.equal(acolyteRows[0].recipient.baseId, 'TARGET');
