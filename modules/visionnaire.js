@@ -409,7 +409,7 @@
     const targetPrimarySafe=chosen=>slots.every(slot=>{
       const mod=chosen.find(x=>slotOf(x)===slot),reference=primaryDistribution(profile,slot);
       // Missing Kyber data is unknown, not evidence that a primary is invalid.
-      return !reference.length||reference.some(entry=>statKey(entry.name)===statKey(mod?.primary_stat));
+      return !reference.length||reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false));
     });
     const proposals=[];let tested=0,acceptedCount=0,chosen=[],sampled=0,speedPruned=0;
     const baseSpeed=beforeProjectionSummary.baseSpeed;
@@ -487,7 +487,7 @@
         const targetStatDeltas=exchangeStatsDelta(targetStatsBefore,targetStatsAfter);
         const primaryShares=slots.map(slot=>{
           const mod=chosen.find(item=>slotOf(item)===slot);
-          return primaryDistribution(profile,slot).find(entry=>statKey(entry.name)===statKey(mod?.primary_stat))?.weight??null;
+          return primaryDistribution(profile,slot).find(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false))?.weight??null;
         });
         const knownPrimaryShares=primaryShares.filter(value=>Number.isFinite(value));
         const primaryShare=knownPrimaryShares.length?knownPrimaryShares.reduce((sum,value)=>sum+value,0)/knownPrimaryShares.length:null;
