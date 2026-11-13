@@ -429,8 +429,9 @@
       if (!definition) { missing.push('set:unknown'); continue; }
       if (!grouped.has(set)) grouped.set(set, []);
       const level = numeric(mod?.level);
-      if (level == null) missing.push('mod:level_unknown');
-      grouped.get(set).push(level);
+      const validLevel = Number.isInteger(level) && level >= 1 && level <= 15;
+      if (!validLevel) missing.push(level == null ? 'mod:level_unknown' : 'mod:level_invalid');
+      grouped.get(set).push(validLevel ? level : null);
     }
 
     const bonuses = {};
@@ -532,7 +533,8 @@
     }
     const set = canonicalSetFromMod(mod);
     const level = numeric(mod.level);
-    const expectedSecondaries = level == null ? null : Math.min(4, Math.floor(level / 3));
+    const validLevel = Number.isInteger(level) && level >= 1 && level <= 15;
+    const expectedSecondaries = validLevel ? Math.min(4, Math.floor(level / 3)) : null;
     const slot = slotFromDefinitionId(mod.definitionId) ||
       canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot);
     const normalized = Object.freeze({
@@ -545,7 +547,7 @@
       primary,
       secondaries: Object.freeze(secondaries),
       expectedSecondaries,
-      complete: !!set && level != null && !!primary.key && primary.complete && secondaries.length >= expectedSecondaries && secondaries.every(stat => stat.complete)
+      complete: !!set && validLevel && !!primary.key && primary.complete && secondaries.length >= expectedSecondaries && secondaries.every(stat => stat.complete)
     });
     NORMALIZED_MOD_CACHE.set(cacheKey, normalized);
     if (NORMALIZED_MOD_CACHE.size > 5000) NORMALIZED_MOD_CACHE.delete(NORMALIZED_MOD_CACHE.keys().next().value);
@@ -553,7 +555,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.18',
+    version: '0.3.19',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
