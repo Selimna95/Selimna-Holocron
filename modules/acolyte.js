@@ -131,6 +131,8 @@ function holocronTopChangeCandidates(){
   // Seuls les non-GL incomplets/faibles/très faibles sont donneurs ; tous leurs mods
   // peuvent être proposés, même un mod individuel avec une vitesse élevée.
   for(const r of units){
+    // Un personnage classé donneur faible ne doit pas être traité simultanément comme receveur.
+    if(r.isWeakDonor)continue;
     const targetMods=[...r.mods].sort((a,b)=>
       holocronModSecondarySpeed(a)-holocronModSecondarySpeed(b) ||
       numericValue(modTotalSpeed(a),0)-numericValue(modTotalSpeed(b),0)
