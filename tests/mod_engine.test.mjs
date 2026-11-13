@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.14');
+assert.equal(engine.version, '0.3.15');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -234,5 +234,30 @@ assert.equal(profileProjection.complete, true);
 assert.equal(profileProjection.stats['Physical Critical Chance'], 47);
 assert.equal(profileProjection.stats['Special Critical Chance'], 42);
 assert.equal(profileProjection.stats['Critical Damage'], 1.5);
+
+const noDeltaProfile = {
+  level: 85,
+  base_stats: { Health: 1000, Speed: 100 },
+  current_stats: { Protection: 2000 }
+};
+const noDeltaProjection = engine.calculateFinalStats(noDeltaProfile, [
+  { level: 1, set_name: 'Health', primary_stat: 'Protection', primary_value: 10 }
+]);
+assert.equal(noDeltaProjection.complete, false);
+assert.ok(noDeltaProjection.missing.includes('protection'));
+const sourcedDeltaProjection = engine.calculateFinalStats({
+  level: 85,
+  base_stats: { Health: 1000, Speed: 100 },
+  current_stats: { Protection: 2000 },
+  mod_stat_diffs: { Protection: 500 }
+}, [{ level: 1, set_name: 'Health', primary_stat: 'Protection', primary_value: 10 }]);
+assert.equal(sourcedDeltaProjection.complete, true);
+assert.equal(sourcedDeltaProjection.stats.Protection, 1510);
+const profileLevelDefense = engine.calculateFinalStats({
+  level: 85,
+  base_stats: { Health: 1000, Speed: 100, Armor: 50, Resistance: 40 }
+}, [{ level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }]);
+assert.equal(profileLevelDefense.complete, true);
+assert.ok(Math.abs(profileLevelDefense.stats.Armor - 51.5209) < 0.001);
 
 console.log('Shared mod engine contract tests passed.');
