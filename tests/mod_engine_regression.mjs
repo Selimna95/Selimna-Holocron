@@ -376,7 +376,7 @@ Object.assign(acContext, {
   holocronKyberFit: () => 0,
   profileForCharacter: () => null
 });
-load(acolyte, ['holocronIsGalacticLegend','holocronLatestGacSeason','holocronGacUsage','holocronTopChangeCandidates'], acContext);
+load(acolyte, ['holocronIsGalacticLegend','holocronLatestGacSeason','holocronGacUsage','holocronModIsComplete','holocronTopChangeCandidates'], acContext);
 const acolyteRows = acContext.holocronTopChangeCandidates();
 assert.equal(acolyteRows.length, 1, 'Acolyte must produce the valid fixture exchange');
 assert.equal(acolyteRows[0].recipient.baseId, 'TARGET');
