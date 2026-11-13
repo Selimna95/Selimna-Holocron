@@ -241,14 +241,16 @@ function renderInventory(){
     if(speed && m._speedCategory!==speed)return false;
     return true;
   });
-  rows.sort((a,b)=>b._totalSpeed-a._totalSpeed||String(a.set_name||'').localeCompare(String(b.set_name||''),'fr')||String(a.slot||'').localeCompare(String(b.slot||''),'fr'));
+  rows.sort((a,b)=>(a._totalSpeed==null?1:0)-(b._totalSpeed==null?1:0)||(b._totalSpeed??0)-(a._totalSpeed??0)||String(a.set_name||'').localeCompare(String(b.set_name||''),'fr')||String(a.slot||'').localeCompare(String(b.slot||''),'fr'));
   meta.textContent=`${rows.length} mod(s) affiché(s) sur ${mods.length}`;
   wrap.innerHTML=rows.map(m=>{
+    const complete=window.HolocronModEngine.normalizeMod(m)?.complete===true;
     const x=modSpeedMetrics(m);
+    const speedLabel=!complete?'Données incomplètes':x.primary?'★':(x.secondary!=null?`+${num(x.secondary)}`:'—');
     return `<tr class="${m._speedCategory}" data-mod-index="${m._index}">
       <td>${esc(m.set_name||'—')}</td><td><strong>${esc(m.slot||'—')}</strong></td>
       <td><strong>${esc(m.primary_stat||'—')}</strong> ${num(m.primary_value,1)}</td>
-      <td>${esc(modSecondaries(m)||'—')}</td><td class="speed-cell">${x.primary?'★':(x.secondary?`+${num(x.secondary)}`:'—')}</td>
+      <td>${esc(modSecondaries(m)||'—')}</td><td class="speed-cell">${speedLabel}</td>
       <td><div class="inventory-mod-icon">${modIconHtml(m)}</div></td><td>${num(m.level)}</td><td>${esc(m.character||'Libre')}</td>
     </tr>`;
   }).join('')||'<tr><td colspan="9">Aucun mod ne correspond aux filtres.</td></tr>';
@@ -257,6 +259,7 @@ function renderInventory(){
 function showModInventoryDetail(index){
   const raw=mods[index]; if(!raw)return;
   const m=normalizeModForDisplay(raw), x=modSpeedMetrics(m);
+  const complete=window.HolocronModEngine.normalizeMod(raw)?.complete===true;
   const modal=$('modDetailModal'); if(!modal)return;
   $('modDetailTitle').textContent=`${m.slot||'Mod'} · ${m.set_name||'—'}`;
   $('modDetailBody').innerHTML=`<div class="modal-actions"><button type="button" class="primary" id="modalReallocationBtn">🔄 RECHERCHER UNE RÉAFFECTATION</button></div><div class="modal-mod-grid">
@@ -264,7 +267,7 @@ function showModInventoryDetail(index){
     <div><span>SET</span><b>${esc(m.set_name||'—')}</b></div>
     <div><span>SLOT</span><b>${esc(m.slot||'—')}</b></div>
     <div><span>PRIMAIRE</span><b>${esc(m.primary_stat||'—')} ${num(m.primary_value,1)}</b></div>
-    <div><span>SPEED</span><b>${x.primary?'Primaire Speed':(x.secondary?`+${num(x.secondary)} secondaire`:'Aucune')}</b></div>
+    <div><span>SPEED</span><b>${!complete?'Données incomplètes':x.primary?'Primaire Speed':(x.secondary!=null?`+${num(x.secondary)} secondaire`:'Aucune')}</b></div>
     <div><span>NIVEAU</span><b>${num(m.level)}</b></div>
     <div><span>MOD</span><b>${modIconHtml(m,'48')}</b></div>
   </div><h3>SECONDAIRES</h3><ul>${[1,2,3,4].map(i=>m[`secondary_${i}_stat`]?`<li>${esc(m[`secondary_${i}_stat`])} : <strong>${num(m[`secondary_${i}_value`],1)}</strong></li>`:'').join('')||'<li>Aucune donnée secondaire.</li>'}</ul>`;
