@@ -21,8 +21,14 @@ def _test_engine_bridge(base_json, mods_json, level):
         else:
             sets[set_name] = sets.get(set_name, 0) + 1
             levels.setdefault(set_name, []).append(int(mod.get("level") or 0))
-        if mod.get("level") is None:
-            missing.append("mod:level_unknown")
+        try:
+            level_value = float(mod.get("level"))
+            valid_level = level_value.is_integer() and 1 <= level_value <= 15
+        except (TypeError, ValueError):
+            level_value = None
+            valid_level = False
+        if not valid_level:
+            missing.append("mod:level_unknown" if level_value is None else "mod:level_invalid")
         if not mod.get("primary_stat") or mod.get("primary_value") is None:
             missing.append("mod:primary_incomplete")
         entries = [(mod.get("primary_stat"), mod.get("primary_value"))]
@@ -88,8 +94,13 @@ def _test_normalize_bridge(mod_json):
     slot_text = str(raw_slot or "").strip()
     slot_key = slot_text.casefold().removeprefix("slot_")
     slot_value = slot_names.get(slot_key, slot_text or None)
+    try:
+        level_value = float(mod.get("level"))
+        valid_level = level_value.is_integer() and 1 <= level_value <= 15
+    except (TypeError, ValueError):
+        valid_level = False
     complete = bool(
-        set_value and mod.get("level") is not None and primary
+        set_value and valid_level and primary
         and primary.get("value") is not None and primary.get("unit") in {"flat", "percentagePoints"}
         and all(item.get("value") is not None and item.get("unit") in {"flat", "percentagePoints"} for item in secondaries)
     )
@@ -175,6 +186,10 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertEqual(normalized["slot"], "Square")
         self.assertEqual(optimizer_module._normalized_mod({"definitionId": "112", "slot_id": 2})["slot"], "Arrow")
         self.assertEqual(optimizer_module._normalized_mod({"slot_id": 7})["slot"], "Cross")
+        self.assertFalse(optimizer_module._normalized_mod({
+            "set_name": "Health", "slot": "Square", "level": 16,
+            "primary_stat": "Health", "primary_value": 10,
+        })["complete"])
 
     def test_empty_mod_list_has_clear_error(self):
         with self.assertRaisesRegex(RuntimeError, "Aucun mod disponible"):
