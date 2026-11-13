@@ -109,7 +109,7 @@ function normalizeMod(m, index=0) {
   if (out.slot == null && out.definitionId != null) {
     const definition = String(out.definitionId).split(':')[0];
     const slotIndex = Number(definition[2]);
-    if (/^\\d{3}$/.test(definition) && Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex <= 5) out.slot = slotIndex + 1;
+    if (definition.length === 3 && [...definition].every(char => char >= '0' && char <= '9') && Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex <= 5) out.slot = slotIndex + 1;
   }
   out.set_name = out.set_name ?? out.set ?? out.setName ?? out.setId ?? out.modSetId ?? out.mod_set_id;
   if (out.set_name && typeof out.set_name === 'object') out.set_name = out.set_name.name ?? out.set_name.id ?? out.set_name.setId ?? out.set_name.modSetId;
