@@ -55,7 +55,7 @@ vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.scor
 const fixture={baseId:'GLREY',base_stats:{Health:1000,Speed:100,Potency:0.1}};
 const healthMods=[
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0},
- {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5}
+ {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}
 ];
 assert.equal(sandbox.project(fixture,healthMods).Health,1150);
 const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',level:14,primary_stat:'Speed',primary_value:5,secondary_1_stat:'Health',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}));
