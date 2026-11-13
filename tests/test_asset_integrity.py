@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.93-primary-percent-canonical", self.sw)
+        self.assertIn("holocron-static-v4.4.94-kyber-percent-primary-units", self.sw)
         self.assertIn("modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.html)
         self.assertIn("./modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
@@ -193,7 +193,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("modules/disciple.js?v=3.5.7-unknown-speed-ui", self.sw)
         self.assertIn("modules/mod-engine.js?v=0.3.22", self.sw)
         self.assertIn("modules/core.js?v=4.2.32-unknown-speed-category", self.sw)
-        self.assertIn("holocron-static-v4.4.93-primary-percent-canonical", self.sw)
+        self.assertIn("holocron-static-v4.4.94-kyber-percent-primary-units", self.sw)
 
 
     def test_visionnaire_replaces_the_legacy_permutation_engine(self):
@@ -205,7 +205,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertFalse((ROOT / "sithari-strategy.css").exists())
         self.assertIn('id="visionnaire"', self.html)
         self.assertIn('data-page="visionnaire"', self.html)
-        self.assertIn("modules/visionnaire.js?v=4.1.77-primary-percent-canonical", self.html)
+        self.assertIn("modules/visionnaire.js?v=4.1.78-kyber-percent-only-units", self.html)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", self.html)
         self.assertIn("rosterCharacters", js)
         self.assertIn('data-mode="sets"', js)
