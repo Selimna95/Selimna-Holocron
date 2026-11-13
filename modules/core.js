@@ -87,7 +87,7 @@ function statObjectFromAny(value, explicitValue, explicitUnit) {
       : '';
     return {
       stat: normalized.name + (normalized.unit === 'percentagePoints' ? ' %' : ''),
-      value: normalized.value ?? statValueFromAny(value),
+      value: normalized.value,
       unit: normalized.unit,
       display_value: display
     };
