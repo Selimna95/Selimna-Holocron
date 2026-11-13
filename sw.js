@@ -2,6 +2,7 @@
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
+// Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 const CACHE_NAME = 'holocron-static-v4.4.83-seigneur-partial-impact';
 const STATIC_ASSETS = [
   './',
