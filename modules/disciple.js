@@ -234,7 +234,7 @@ function renderInventory(){
     if(secondary){
       let found=false;
       for(let i=1;i<=4;i++){
-        if(compactKey(secondaryDisplayName(m[`secondary_${i}_stat`]))===compactKey(secondary)){found=true;break;}
+        if(discipleCanonicalStat(secondaryDisplayName(m[`secondary_${i}_stat`]))===discipleCanonicalStat(secondary)){found=true;break;}
       }
       if(!found)return false;
     }
@@ -295,15 +295,18 @@ function prepareV18Filters(){
 }
 function secondaryDisplayName(name){
   const raw=String(name||'').trim();
-  const key=compactKey(raw);
+  const key=compactKey(raw),percent=/%/.test(raw)||/PERCENT$/i.test(raw);
+  const baseKey=key.replace(/PERCENT$/,'');
   const map={
     SPEED:'Speed', OFFENSE:'Offense', DEFENSE:'Defense', HEALTH:'Health', PROTECTION:'Protection',
     POTENCY:'Potency', TENACITY:'Tenacity', CRITICALCHANCE:'Critical Chance',
     CRITICALAVOIDANCE:'Critical Avoidance', CRITICALDAMAGE:'Critical Damage'
   };
-  return map[key]||raw;
+  const label=map[baseKey]||raw.replace(/\s*%$/,'').trim();
+  return percent&&!label.endsWith('%')?label+' %':label;
 }
 function reallocationSpeedTierMatch(mod,tier){
+  if(window.HolocronModEngine.normalizeMod(mod)?.complete!==true)return false;
   const x=modSpeedMetrics(mod);
   const speed=Number(x?.secondary);
   const hasSecondary=Number.isFinite(speed) && speed>0;
@@ -392,6 +395,7 @@ function reallocationCharacterOptions(){
   const charactersByKey=new Map(rosterCharacters.map(c=>[characterKey(c),c]));
   for(const raw of mods){
     const m=normalizeModForDisplay(raw);
+    if(window.HolocronModEngine.normalizeMod(m)?.complete!==true)continue;
     if(!reallocationSpeedTierMatch(m,reallocationSpeedTier))continue;
     const ownerKey=reallocationModOwnerKey(m);
     if(!ownerKey)continue;
@@ -454,7 +458,7 @@ function reallocationSecondaryOptions(){
     const m=normalizeModForDisplay(raw);
     for(let i=1;i<=4;i++) if(m[`secondary_${i}_stat`]){
       const label=secondaryDisplayName(m[`secondary_${i}_stat`]);
-      names.set(compactKey(label),label);
+      names.set(discipleCanonicalStat(label),label);
     }
   }
   return [...names.values()].sort((a,b)=>a.localeCompare(b,'fr'));
@@ -498,8 +502,8 @@ function renderReallocationModSelector(){
 function renderReallocationSecondaryOptions(selectedValue=''){
   const select=$('reallocationSecondary'); if(!select)return;
   const opts=reallocationSecondaryOptions();
-  select.innerHTML='<option value="">Choisir une secondaire…</option>'+opts.map(x=>`<option value="${esc(compactKey(x))}">${esc(x)}</option>`).join('');
-  if(selectedValue && opts.some(x=>compactKey(x)===selectedValue))select.value=selectedValue;
+  select.innerHTML='<option value="">Choisir une secondaire…</option>'+opts.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  if(selectedValue && opts.some(x=>discipleCanonicalStat(x)===discipleCanonicalStat(selectedValue)))select.value=selectedValue;
 }
 function renderReallocationSelectionVisual(selected){
   const box=$('reallocationSelectedModVisual');
