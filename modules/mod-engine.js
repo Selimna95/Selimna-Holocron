@@ -147,7 +147,6 @@
 
   function calculateSpeed(baseSpeed, mods) {
     const base = numeric(baseSpeed);
-    if (base == null) return { complete: false, total: null, modSpeed: 0, setBonus: 0, hasFourPieceSpeedSet: false };
     let modSpeed = 0;
     let speedPercent = 0;
     for (const rawMod of Array.isArray(mods) ? mods : []) {
@@ -158,7 +157,13 @@
         if (stat?.key === 'speed' && stat.unit === 'percentagePoints') speedPercent += stat.value || 0;
       }
     }
-    const setBonusPercent = calculateSetBonuses(mods).speed || 0;
+    const setBonuses = calculateSetBonuses(mods);
+    const speedSetCount = (Array.isArray(mods) ? mods : []).filter(mod => canonicalSetFromMod(mod) === 'speed').length;
+    const hasFourPieceSpeedSet = speedSetCount >= 4;
+    if (base == null || !setBonuses.complete) {
+      return { complete: false, total: null, modSpeed, setBonus: null, hasFourPieceSpeedSet, missing: [...(base == null ? ['base_speed'] : []), ...(setBonuses.missing || [])] };
+    }
+    const setBonusPercent = setBonuses.speed || 0;
     const setBonus = setBonusPercent ? Math.floor(base * setBonusPercent / 100) : 0;
     const modPercent = speedPercent;
     return {
@@ -241,6 +246,7 @@
     }
 
     const setBonuses = calculateSetBonuses(mods);
+    if (!setBonuses.complete) missing.push(...(setBonuses.missing || []));
     for (const [set, value] of Object.entries(setBonuses)) {
       const target = ({
         health: 'health', offense: 'offense', defense: 'defense', speed: 'speed',
@@ -396,25 +402,34 @@
 
   function calculateSetBonuses(mods) {
     const grouped = new Map();
+    const missing = [];
     for (const mod of Array.isArray(mods) ? mods : []) {
       const set = canonicalSetFromMod(mod);
       const definition = set && SET_DEFINITIONS[set];
-      if (!definition) continue;
+      if (!definition) { missing.push('set:unknown'); continue; }
       if (!grouped.has(set)) grouped.set(set, []);
-      grouped.get(set).push(numeric(mod?.level) ?? 0);
+      const level = numeric(mod?.level);
+      if (level == null) missing.push('mod:level_unknown');
+      grouped.get(set).push(level);
     }
 
     const bonuses = {};
     for (const [set, levels] of grouped) {
       const definition = SET_DEFINITIONS[set];
-      levels.sort((a, b) => b - a);
+      levels.sort((a, b) => (b ?? -Infinity) - (a ?? -Infinity));
       let bonus = 0;
       for (let offset = 0; offset + definition.required <= levels.length; offset += definition.required) {
         const group = levels.slice(offset, offset + definition.required);
+        if (group.some(level => level == null)) { missing.push('set:level_unknown'); continue; }
         bonus += group.every(level => level >= 15) ? definition.maximum : definition.minimum;
       }
       if (bonus) bonuses[set] = bonus;
     }
+    const missingUnique = [...new Set(missing)];
+    Object.defineProperties(bonuses, {
+      complete: { value: missingUnique.length === 0, enumerable: false },
+      missing: { value: Object.freeze(missingUnique), enumerable: false }
+    });
     return Object.freeze(bonuses);
   }
 
@@ -488,16 +503,18 @@
         if (name) secondaries.push(normalizeStat(name, mod[`secondary_${i}_value`], mod[`secondary_${i}_unit`]));
       }
     }
+    const set = canonicalSetFromMod(mod);
+    const level = numeric(mod.level);
     const normalized = Object.freeze({
       id: String(mod.game_id ?? mod.id ?? mod.modId ?? mod.uid ?? ''),
-      level: numeric(mod.level) ?? null,
-      set: canonicalSetFromMod(mod),
-      setName: SET_DEFINITIONS[canonicalSetFromMod(mod)]?.name || null,
+      level,
+      set,
+      setName: SET_DEFINITIONS[set]?.name || null,
       slot: canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot),
       pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
       primary,
       secondaries: Object.freeze(secondaries),
-      complete: !!primary.key && primary.complete && secondaries.every(stat => stat.complete)
+      complete: !!set && level != null && !!primary.key && primary.complete && secondaries.every(stat => stat.complete)
     });
     NORMALIZED_MOD_CACHE.set(cacheKey, normalized);
     if (NORMALIZED_MOD_CACHE.size > 5000) NORMALIZED_MOD_CACHE.delete(NORMALIZED_MOD_CACHE.keys().next().value);
@@ -505,7 +522,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.6',
+    version: '0.3.7',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
