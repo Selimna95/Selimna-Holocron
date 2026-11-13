@@ -415,20 +415,33 @@ def optimize_kyber(
     set_plan = set_plan_info[1] if set_plan_info else None
 
     grouped = {slot: [] for slot in SLOTS}
+    incomplete_mods = 0
+    invalid_slot_values = []
     for mod in mods:
         if not isinstance(mod, dict):
+            incomplete_mods += 1
             continue
         item = dict(mod)
-        slot = normalize_slot(mod_slot_value(item))
-        if slot in grouped:
-            item["slot"] = slot
-            resolved_set = mod_set(item)
-            # Never erase a set that was already normalized by the importer.
-            resolved_set = resolved_set or normalize_set(item.get("set_name") or item.get("set"))
-            item["set_name"] = resolved_set
-            if resolved_set is not None:
-                item["set"] = resolved_set
-            grouped[slot].append(item)
+        normalized = _normalized_mod(item)
+        if not isinstance(normalized, dict) or normalized.get("complete") is not True:
+            incomplete_mods += 1
+            continue
+        # Slot and set are read from the same shared normalization result.
+        # This also supports Comlink definitionId-only mods and SWGOH.GG slot IDs.
+        slot = normalized.get("slot")
+        if slot not in grouped:
+            raw_slot = mod_slot_value(item)
+            if raw_slot is not None and repr(raw_slot) not in invalid_slot_values:
+                invalid_slot_values.append(repr(raw_slot))
+            continue
+        resolved_set = normalized.get("setName")
+        if not resolved_set:
+            incomplete_mods += 1
+            continue
+        item["slot"] = slot
+        item["set_name"] = resolved_set
+        item["set"] = resolved_set
+        grouped[slot].append(item)
 
     missing = [slot for slot in SLOTS if not grouped[slot]]
     if missing:
@@ -445,11 +458,17 @@ def optimize_kyber(
                 raw_examples.append(marker)
             if len(raw_examples) >= 12:
                 break
+        diagnostics = []
+        if incomplete_mods:
+            diagnostics.append(f"{incomplete_mods} mod(s) ignoré(s) pour données incomplètes (stat, set ou niveau absent/inconnu)")
+        if invalid_slot_values:
+            diagnostics.append("Slots non reconnus : " + ", ".join(invalid_slot_values))
         raise RuntimeError(
             "Aucun candidat valide pour le(s) slot(s) : "
             + ", ".join(missing)
             + "\nValeurs de slot reçues : "
             + ", ".join(raw_examples)
+            + ("\n" + "\n".join(diagnostics) if diagnostics else "")
         )
 
     candidates = {}
@@ -464,6 +483,8 @@ def optimize_kyber(
     # Bounded beam search instead of 50^6 / 80^6 brute force.
     # First try the exact Kyber set composition. If unavailable, retry without
     # the hard constraint instead of returning an empty result.
+    projection_failures = []
+
     def search_builds(plan_constraint):
         current_beam = [()]
         for slot_index, slot in enumerate(SLOTS, 1):
@@ -476,7 +497,13 @@ def optimize_kyber(
                     build = partial + (mod,)
                     if plan_constraint and not _partial_matches_set_plan(build, plan_constraint):
                         continue
-                    expanded.append((build_score(build, kyber, weights, base_stats, base_profile), build))
+                    try:
+                        score = build_score(build, kyber, weights, base_stats, base_profile)
+                    except RuntimeError as exc:
+                        if len(projection_failures) < 12:
+                            projection_failures.append(str(exc))
+                        continue
+                    expanded.append((score, build))
             expanded.sort(key=lambda x: x[0], reverse=True)
             current_beam = [build for _, build in expanded[:beam_width]]
             if progress_callback:
@@ -492,11 +519,15 @@ def optimize_kyber(
     applied_set_plan = set_plan if set_plan and any(_matches_set_plan(build, set_plan) for build in beam) else None
     if set_plan and applied_set_plan is None:
         beam = search_builds(None)
+    if not beam:
+        detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
+        raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
 
     def speed_safe(build):
         if minimum_speed is None:
             return True
-        return to_float(final_stats(build, base_stats, base_profile).get("Speed")) + 1e-9 >= to_float(minimum_speed)
+        projected_speed = to_float(final_stats(build, base_stats, base_profile).get("Speed"), None)
+        return projected_speed is not None and projected_speed + 1e-9 >= to_float(minimum_speed)
 
     safe_beam = [build for build in beam if speed_safe(build)]
     # A Kyber set plan is a preference, never a reason to violate the target's
@@ -507,10 +538,15 @@ def optimize_kyber(
         safe_beam = [build for build in beam if speed_safe(build)]
 
     if minimum_speed is not None and not safe_beam:
-        best_speed = max(
-            (to_float(final_stats(build, base_stats, base_profile).get("Speed")) for build in beam),
-            default=0.0,
-        )
+        speed_values = [
+            value for value in (
+                to_float(final_stats(build, base_stats, base_profile).get("Speed"), None)
+                for build in beam
+            ) if value is not None
+        ]
+        if not speed_values:
+            raise RuntimeError("Vitesse cible non calculable : la statistique Speed manque dans le profil source.")
+        best_speed = max(speed_values)
         raise RuntimeError(
             "Aucune configuration ne respecte la vitesse minimale du personnage cible. "
             f"Vitesse actuelle : {to_float(minimum_speed):.1f} ; "
