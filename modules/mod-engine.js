@@ -170,7 +170,7 @@
     };
   }
 
-  function calculateFinalStats(baseStats, mods, level = 85) {
+  function calculateFinalStats(baseStats, mods, level = null) {
     if (!baseStats || typeof baseStats !== 'object' || Array.isArray(baseStats)) {
       return { stats: null, complete: false, missing: ['base_stats'] };
     }
@@ -197,7 +197,7 @@
         }
       }
     }
-    level = numeric(level) ?? numeric(profile?.level) ?? 85;
+    level = numeric(level) ?? numeric(profile?.level);
     const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
     if (cachedProjection) return { stats: { ...cachedProjection.stats }, complete: cachedProjection.complete, missing: [...cachedProjection.missing] };
@@ -505,7 +505,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.3',
+    version: '0.3.4',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
