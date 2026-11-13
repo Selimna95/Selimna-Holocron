@@ -26,7 +26,7 @@ function forgeBuildGlobalImpact(character,profile,build){
     if(!groups.has(ownerKey))groups.set(ownerKey,{owner,mods:[]});
     groups.get(ownerKey).mods.push(mod);
   }
-  const statusRank={'BONS':0,'MOYENS':1,'FAIBLES':2,'TRÈS FAIBLES':3,'INCOMPLETS':4,'SANS MODS':5,'SANS MOD':5};
+  const statusRank={'BONS':0,'MOYENS':1,'FAIBLES':2,'TRÈS FAIBLES':3,'INCOMPLETS':4,'SANS MODS':5,'SANS MOD':5,'DONNÉES INCOMPLÈTES':6};
   const donors=[...groups.values()].map(({owner,mods:removed})=>{
     const beforeMods=getCharacterMods(owner);
     const removedIds=new Set(removed.map(m=>String(m?.game_id||m?.id||'')).filter(Boolean));
@@ -47,7 +47,7 @@ function forgeBuildGlobalImpact(character,profile,build){
       beforeSpeed:before.complete?before.total:null,afterSpeed:after.complete?after.total:null,
       speedLoss:before.complete&&after.complete?before.total-after.total:null,
       beforeStatus,afterStatus,
-      statusWorsened:(statusRank[afterStatus]??0)>(statusRank[beforeStatus]??0),
+      statusWorsened:(statusRank[afterStatus]??6)>(statusRank[beforeStatus]??6),
       uses:priority.known?priority.uses:null,priorityKnown:priority.known
     };
   }).sort((a,b)=>Number(b.speedLoss??-Infinity)-Number(a.speedLoss??-Infinity));
@@ -69,6 +69,8 @@ function forgeBuildGlobalImpact(character,profile,build){
 function forgeBuildGlobalImpactMarkup(impact){
   if(!impact)return '';
   const signed=value=>value==null?'non calculable':(value>0?'+':'')+num(value,1);
+  const impactPartial=impact.targetSpeedGain==null||impact.donorSpeedLoss==null||impact.donors.some(d=>d.speedLoss==null);
+  const impactLabel=impact.donorStatusWorsened?'DONNEUR(S) FRAGILISÉ(S)':impactPartial?'IMPACT PARTIEL':'IMPACT CONTRÔLÉ';
   const donorRows=impact.donors.map(d=>`<div class="forge-global-impact-donor ${d.statusWorsened?'is-warning':''}">
     <b>${esc(d.name)}</b><span>${d.modsTaken} mod(s) prélevé(s) · ${d.beforeCount} → ${d.afterCount} mods</span>
     <em>${d.speedLoss==null?'Vitesse non calculable':`Vitesse ${num(d.beforeSpeed,1)} → ${num(d.afterSpeed,1)} · ${signed(-d.speedLoss)}`}</em>
@@ -77,7 +79,7 @@ function forgeBuildGlobalImpactMarkup(impact){
   const strategic=impact.priorityGapKnown?signed(impact.priorityGap)+' combats pondérés':'non calculable';
   const sourceNote=impact.evidenceType==='defense-composition'?'Signal GAC issu des compositions défensives publiées, catalogue partiel.':'Signal issu des observations GAC disponibles.';
   return `<section class="forge-global-impact">
-    <div class="forge-section-title"><span>BILAN GLOBAL DU TRANSFERT</span><small>${impact.donorStatusWorsened?'DONNEUR(S) FRAGILISÉ(S)':'IMPACT CONTRÔLÉ'}</small></div>
+    <div class="forge-section-title"><span>BILAN GLOBAL DU TRANSFERT</span><small>${impactLabel}</small></div>
     <div class="forge-global-impact-metrics">
       <div><span>BÉNÉFICIAIRE · VITESSE</span><b class="${impact.targetSpeedGain>0?'gain':'neutral'}">${signed(impact.targetSpeedGain)}</b><small>${impact.targetSpeedGain==null?'Vitesse non calculable':`${num(impact.targetBefore,1)} → ${num(impact.targetAfter,1)}`}</small></div>
       <div><span>DONNEURS · VITESSE CÉDÉE</span><b>${impact.donorSpeedLoss==null?'NON CALCULABLE':num(impact.donorSpeedLoss,1)}</b><small>${impact.donors.length} donneur(s) · ${impact.donors.reduce((sum,d)=>sum+d.modsTaken,0)} mod(s)</small></div>
