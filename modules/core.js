@@ -1308,11 +1308,11 @@ function v176ModStatus(modsForCharacter){
   const list=Array.isArray(modsForCharacter)?modsForCharacter:[];
   const count=Math.min(6,list.length);
   if(count===0)return {status:'SANS MODS',class:'critical',totalSpeed:null};
-  if(count<6)return {status:'INCOMPLETS',class:'incomplete',totalSpeed:null};
   const normalized=list.map(mod=>window.HolocronModEngine.normalizeMod(mod));
-  if(list.length!==6||normalized.some(mod=>!mod?.complete)){
+  if(list.length>6||normalized.some(mod=>!mod?.complete)){
     return {status:'DONNÉES INCOMPLÈTES',class:'incomplete',totalSpeed:null};
   }
+  if(count<6)return {status:'INCOMPLETS',class:'incomplete',totalSpeed:null};
   const totalSpeed=normalized.reduce((sum,mod)=>sum+window.HolocronModEngine.speedMetrics(mod).total,0);
   if(totalSpeed<30)return {status:'TRÈS FAIBLES',class:'verylow',totalSpeed};
   if(totalSpeed<50)return {status:'FAIBLES',class:'low',totalSpeed};
