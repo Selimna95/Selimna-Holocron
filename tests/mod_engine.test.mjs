@@ -14,13 +14,17 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.13');
+assert.equal(engine.version, '0.3.14');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
 assert.equal(engine.canonicalSet('Protection'), null);
-assert.deepEqual(Array.from({ length: 12 }, (_, index) => engine.canonicalSlot(index + 1)), ['Square','Arrow','Diamond','Triangle','Circle','Cross','Square','Arrow','Diamond','Triangle','Circle','Cross']);
+assert.deepEqual(Array.from({ length: 7 }, (_, index) => engine.canonicalSlot(index + 1)), ['Square','Square','Arrow','Diamond','Triangle','Circle','Cross']);
+assert.equal(engine.canonicalSlot(8), null);
+assert.deepEqual(['130','131','132','133','134','135'].map(id => engine.slotFromDefinitionId(id)), ['Square','Arrow','Diamond','Triangle','Circle','Cross']);
 assert.equal(engine.normalizeMod({ definitionId: '130', level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Square');
+assert.equal(engine.normalizeMod({ definitionId: '131', slot: 2, level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Arrow');
+assert.equal(engine.normalizeMod({ slot_id: 7, level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Cross');
 assert.deepEqual({ ...engine.calculateSetBonuses([
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
