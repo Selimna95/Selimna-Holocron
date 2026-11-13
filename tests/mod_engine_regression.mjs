@@ -384,6 +384,9 @@ Object.assign(acContext, {
   profileForCharacter: () => null
 });
 load(acolyte, ['holocronIsGalacticLegend','holocronLatestGacSeason','holocronGacUsage','holocronModIsComplete','holocronTopChangeCandidates'], acContext);
+assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[0]), true, 'target fixture mod is complete');
+assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[7]), false, 'donor Arrow fixture is incomplete');
+assert.equal(acContext.v176ModStatus(acContext.getCharacterMods(acolyteFixture.find(c=>c.baseId==='DONOR'))).status, 'FAIBLES');
 const acolyteRows = acContext.holocronTopChangeCandidates();
 assert.equal(acolyteRows.length, 1, 'Acolyte must produce the valid fixture exchange');
 assert.equal(acolyteRows[0].recipient.baseId, 'TARGET');
