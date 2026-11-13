@@ -3,7 +3,7 @@
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
-const CACHE_NAME = 'holocron-static-v4.4.96-disciple-complete-secondary-options';
+const CACHE_NAME = 'holocron-static-v4.4.97-required-speed-floor';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -30,7 +30,7 @@ const STATIC_ASSETS = [
   './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
   './modules/visionnaire.js?v=4.1.78-kyber-percent-only-units',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
-  './optimizer-worker.mjs?v=3.5.10-no-incomplete-candidates',
+  './optimizer-worker.mjs?v=3.5.11-required-speed-floor',
   './python/optimizer.py?v=3.5.5-no-incomplete-candidates',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
