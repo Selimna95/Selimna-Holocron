@@ -132,8 +132,8 @@ try {
   assert.equal(modMath.secondaryUnitIdentity[3].stat, "Tenacity %");
 
   const incompleteSpeedUi = await page.evaluate(() => {
-    const incomplete = {set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Speed",secondary_1_value:5};
-    const completeWithoutSpeed = {set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Protection",secondary_1_value:0,secondary_2_stat:"Potency %",secondary_2_value:0,secondary_3_stat:"Tenacity %",secondary_3_value:0,secondary_4_stat:"Critical Damage %",secondary_4_value:0};
+    const incomplete = {slot:"Square",set_name:"Health",level:15,primary_stat:"Offense",primary_value:50,secondary_1_stat:"Speed",secondary_1_value:5};
+    const completeWithoutSpeed = {slot:"Square",set_name:"Health",level:15,primary_stat:"Offense",primary_value:50,secondary_1_stat:"Protection",secondary_1_value:0,secondary_2_stat:"Potency %",secondary_2_value:0,secondary_3_stat:"Tenacity %",secondary_3_value:0,secondary_4_stat:"Critical Damage %",secondary_4_value:0};
     const originalMods = mods;
     try {
       const summary = speedBreakdown([incomplete, completeWithoutSpeed]);
@@ -150,13 +150,13 @@ try {
   assert.doesNotMatch(incompleteSpeedUi.card, /Sans Speed/);
 
   const discipleUnitSafety = await page.evaluate(() => {
-    const make = secondary => ({set_name:"Health",level:15,primary_stat:"Health",primary_value:100,
+    const make = secondary => ({slot:"Square",set_name:"Health",level:15,primary_stat:"Offense",primary_value:50,
       secondary_1_stat:secondary,secondary_1_value:secondary==="Offense %"?5:20,
       secondary_2_stat:"Protection",secondary_2_value:0,
       secondary_3_stat:"Potency %",secondary_3_value:0,
       secondary_4_stat:"Tenacity %",secondary_4_value:0});
     const flat=make("Offense"),percent=make("Offense %");
-    const incomplete={set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Speed",secondary_1_value:5};
+    const incomplete={slot:"Square",set_name:"Health",level:15,primary_stat:"Offense",primary_value:50,secondary_1_stat:"Speed",secondary_1_value:5};
     const originalMods=mods;
     try {
       mods=[flat,percent];
