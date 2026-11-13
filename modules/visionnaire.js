@@ -243,10 +243,13 @@
     return normalized?.key ? normalized.name : String(value??'').trim().replace(/%$/,'').trim();
   };
   function exchangeFinalStats(character,build){
-    const profile=typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{};
-    const base=profile.base_stats || (typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null);
-    if(!base||typeof base!=='object'||!Object.keys(base).length)return null;
-    const source=profile.base_stats ? profile : base;
+    const directBase=typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null;
+    const hasDirectBase=directBase&&typeof directBase==='object'&&Object.keys(directBase).length>0;
+    const validatedProfile=typeof optimizerValidatedProfileForCharacter==='function'
+      ? optimizerValidatedProfileForCharacter(character)
+      : null;
+    const source=hasDirectBase?{base_stats:directBase}:validatedProfile;
+    if(!source||typeof source!=='object')return null;
     const calculation=window.HolocronModEngine.calculateFinalStats(source,build,character?.level);
     if(!calculation.complete)return null;
     return Object.fromEntries(Object.entries(calculation.stats||{}).map(([name,value])=>[exchangeStatName(name),Number(value)]));
