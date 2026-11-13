@@ -385,8 +385,11 @@
     if (definitionId == null) return null;
     const definition = String(definitionId).split(':')[0];
     if (definition.length !== 3 || !/^[0-9]{3}$/.test(definition)) return null;
-    const slotIndex = Number(definition[2]);
-    return ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'][slotIndex] || null;
+    // Comlink definitionId stores the slot enum minus one: 1=Square ... 6=Cross.
+    const slotIndex = Number(definition[2]) - 1;
+    return slotIndex >= 0 && slotIndex < 6
+      ? ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'][slotIndex]
+      : null;
   }
 
   function canonicalSet(value) {
@@ -549,7 +552,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.15',
+    version: '0.3.16',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
