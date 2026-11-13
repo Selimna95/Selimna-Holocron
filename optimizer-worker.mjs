@@ -1,5 +1,5 @@
 import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs";
-import "./modules/mod-engine.js?v=0.3.3";
+import "./modules/mod-engine.js?v=0.3.4";
 
 let pyodideReadyPromise = (async () => {
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
@@ -23,7 +23,7 @@ let pyodideReadyPromise = (async () => {
   const modEngineBridge = (baseJson, modsJson, level) => {
     const base = JSON.parse(baseJson);
     const mods = JSON.parse(modsJson);
-    const result = self.HolocronModEngine.calculateFinalStats(base, mods, Number(level) || 85);
+    const result = self.HolocronModEngine.calculateFinalStats(base, mods, Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null);
     return JSON.stringify(result);
   };
   const modNormalizeBridge = (modJson) => {
@@ -58,6 +58,8 @@ self.onmessage = async (event) => {
     pyodide.globals.set("limit_slot", Number(data.limit_slot || 80));
     pyodide.globals.set("character_name", String(data.character_name || ""));
     pyodide.globals.set("character_base_id", String(data.character_base_id || ""));
+    const characterLevel = Number(data.character_level);
+    pyodide.globals.set("character_level", Number.isFinite(characterLevel) && characterLevel > 0 ? characterLevel : null);
     pyodide.globals.set("context_json", JSON.stringify(data.context || {}));
 
     self.postMessage({ id, type: "status", message: "Recherche des candidats par slot…" });
@@ -69,7 +71,11 @@ profile = json.loads(profile_json)
 base_stats = json.loads(base_stats_json)
 base_profile = optimizer.resolve_character_profile(_optimizer_profiles, character_base_id, character_name)
 if not isinstance(base_profile, dict) or not base_profile:
-    base_profile = {'base_stats': base_stats, 'level': 85} if isinstance(base_stats, dict) and base_stats else {}
+    base_profile = {'base_stats': base_stats} if isinstance(base_stats, dict) and base_stats else {}
+else:
+    base_profile = dict(base_profile)
+if character_level is not None:
+    base_profile['level'] = character_level
 current_target_mods = json.loads(current_target_mods_json)
 context = json.loads(context_json)
 
