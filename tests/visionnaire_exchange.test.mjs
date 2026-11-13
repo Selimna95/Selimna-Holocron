@@ -183,7 +183,7 @@ const mismatchedPrimaryProfile={specific_sets:kyber.specific_sets,slots:{Square:
 const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
   makeMod('wrong-primary-square','Square','Speed',20,'Offense %',5),
   makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
-],mismatchedPrimaryProfile,'primaries');
+],mismatchedPrimaryProfile,'primaries',[],['Square']);
 assert.equal(mismatchedPrimarySearch.proposals.length,0,'An Offense % primary must not satisfy a Kyber reference for flat Offense');
 const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Offense:500,'Physical Damage':1000,'Special Damage':1000}};
 const shorthandPercentProfile={specific_sets:kyber.specific_sets,slots:{Cross:{primaries:{Offense:1}}}};
