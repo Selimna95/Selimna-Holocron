@@ -8,7 +8,7 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox);
 const engine = sandbox.module.exports;
 
-assert.equal(engine.version, '0.3.6');
+assert.equal(engine.version, '0.3.7');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -122,14 +122,14 @@ const projectionBase = {
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
 };
 const critRatingProjection = engine.calculateFinalStats(projectionBase, [
-  { primary_stat: { unitStatId: 14, unscaledDecimalValue: 2400000000 } },
-  { primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
+  { level: 15, set_name: 'Health', primary_stat: { unitStatId: 14, unscaledDecimalValue: 2400000000 } },
+  { level: 15, set_name: 'Health', primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
 ]);
 assert.equal(critRatingProjection.complete, true);
 assert.equal(critRatingProjection.stats['Physical Critical Chance'], 41);
 assert.equal(critRatingProjection.stats['Special Critical Chance'], 32);
 
-const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 } }]);
+const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ level: 15, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 } }]);
 assert.equal(unsupportedProjection.complete, false);
 assert.ok(unsupportedProjection.missing.includes('stat:physicalAccuracy:unsupported') || unsupportedProjection.missing.includes('stat:specialAccuracy:unsupported'));
 
@@ -144,16 +144,16 @@ assert.equal(offenseProjection.stats['Physical Damage'], 665);
 assert.equal(offenseProjection.stats['Special Damage'], 915);
 
 const defenseProjection = engine.calculateFinalStats(projectionBase, [
-  { level: 15, primary_stat: 'Defense', primary_value: 40 },
-  { level: 15, primary_stat: 'Defense %', primary_value: 10 }
+  { level: 15, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 },
+  { level: 15, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 }
 ], 85);
 assert.equal(defenseProjection.complete, false);
 assert.ok(defenseProjection.missing.includes('defense:gear_component_required'));
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
-  { level: 15, primary_stat: 'Defense', primary_value: 40 }
+  { level: 15, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
 ], 85);
 const missingLevelDefenseProjection = engine.calculateFinalStats(projectionBase, [
-  { level: 15, primary_stat: 'Defense', primary_value: 40 }
+  { level: 15, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
 ]);
 assert.equal(missingLevelDefenseProjection.complete, false);
 assert.ok(missingLevelDefenseProjection.missing.includes('level'));
@@ -167,14 +167,22 @@ const speedProjection = engine.calculateFinalStats(projectionBase, [
 assert.equal(engine.calculateSetBonuses(Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' }))).speed, 10);
 const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' })));
 assert.equal(speedCalc.total, 110, JSON.stringify(speedCalc));
+const incompleteSpeedSet = engine.calculateSpeed(100, [
+  { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
+  { set_name: 'Speed', level: 15 }, { set_name: 'Speed' }
+]);
+assert.equal(incompleteSpeedSet.complete, false);
+assert.equal(incompleteSpeedSet.total, null);
+assert.ok(incompleteSpeedSet.missing.includes('mod:level_unknown'));
+
 assert.equal(speedProjection.stats.Speed, 110);
-const noPrimarySpeedMods = Array.from({ length: 6 }, () => ({ primary_stat: 'Health %', primary_value: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 }));
+const noPrimarySpeedMods = Array.from({ length: 6 }, () => ({ level: 15, set_name: 'Health', primary_stat: 'Health %', primary_value: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 }));
 assert.equal(engine.calculateSpeed(0, noPrimarySpeedMods).total, 30);
 assert.equal(engine.calculateFinalStats({ Speed: 100, Health: 1000 }, noPrimarySpeedMods).stats.Speed, 130);
 const missingPrimaryProjection = engine.calculateFinalStats(projectionBase, [{ level: 15, set_name: 'Health' }]);
 assert.equal(missingPrimaryProjection.complete, false);
 assert.ok(missingPrimaryProjection.missing.includes('mod:primary_incomplete'));
-const missingPrimaryValueProjection = engine.calculateFinalStats(projectionBase, [{ primary_stat: { unitStatId: 41 } }]);
+const missingPrimaryValueProjection = engine.calculateFinalStats(projectionBase, [{ level: 15, set_name: 'Health', primary_stat: { unitStatId: 41 } }]);
 assert.equal(missingPrimaryValueProjection.complete, false);
 assert.ok(missingPrimaryValueProjection.missing.includes('stat:value_missing'));
 
@@ -184,7 +192,7 @@ const profileProjection = engine.calculateFinalStats({
   base_stats: { Health: 1000, Speed: 100, 'Physical Damage': 500, 'Special Damage': 700, Armor: 50, Resistance: 40 },
   current_stats: { 'Physical Critical Chance': 50, 'Special Critical Chance': 45, 'Critical Damage': 1.8, Potency: 0.12, Tenacity: 0.3 },
   mod_stat_diffs: { 'Physical Critical Chance': 5, 'Special Critical Chance': 5, 'Critical Damage': 0.3, Potency: 0.02, Tenacity: 0.1 }
-}, [{ primary_stat: 'Critical Chance %', primary_value: 2 }], 85);
+}, [{ level: 15, set_name: 'Health', primary_stat: 'Critical Chance %', primary_value: 2 }], 85);
 assert.equal(profileProjection.complete, true);
 assert.equal(profileProjection.stats['Physical Critical Chance'], 47);
 assert.equal(profileProjection.stats['Special Critical Chance'], 42);
