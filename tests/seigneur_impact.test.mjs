@@ -48,7 +48,7 @@ const context=vm.createContext({
   rosterCharacters:roster,
   getCharacterMods:c=>equipped[c.baseId]||[],
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
-  v176ModStatus:list=>({status:list.length===6?'FAIBLES':list.length?'INCOMPLETS':'SANS MODS'}),
+  v176ModStatus:list=>({status:list.some(m=>!sharedEngine.normalizeMod(m)?.complete)?'DONNÉES INCOMPLÈTES':list.length===6?'FAIBLES':list.length?'INCOMPLETS':'SANS MODS'}),
   seigneurDonorPriority:c=>({known:true,uses:c.baseId==='TARGET'?100:10}),
   seigneurLatestGacUsageSeason:()=>({evidenceType:'defense-composition',sourceStatus:'partial'}),
   buildRosterOwnerResolver:characters=>({resolve:value=>{
@@ -97,6 +97,8 @@ const incompleteDonorImpact = context.forgeBuildGlobalImpact(roster[0],{base_sta
 assert.equal(incompleteDonorImpact.donors[0].speedLoss,null);
 assert.equal(incompleteDonorImpact.donorSpeedLoss,null);
 assert.match(context.forgeBuildGlobalImpactMarkup(incompleteDonorImpact),/Vitesse non calculable/);
+assert.match(context.forgeBuildGlobalImpactMarkup(incompleteDonorImpact),/IMPACT PARTIEL/);
+assert.equal(incompleteDonorImpact.donors[0].statusWorsened,false);
 donorCross.level = previousLevel;
 assert.equal(impactData.donors[0].statusWorsened,true);
 assert.equal(impactData.priorityGap,90);
