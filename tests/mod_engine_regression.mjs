@@ -216,6 +216,30 @@ assert.equal(importedMod.secondary_1_stat, 'Potency %');
 assert.equal(importedMod.secondary_1_unit, 'percentagePoints');
 assert.equal(importedMod.secondary_1_value, 2.5);
 
+// HTML fallback values carry their displayed unit (e.g. +2.5%) into the shared normalizer.
+const htmlImportContext = vm.createContext({
+  window: { HolocronModEngine: sharedEngine },
+  numericValue
+});
+load(core, ['firstText','parseNumberValue','statNameFromAny','statValueFromAny','statObjectFromAny','normalizeMod','parseStatGeneric'], htmlImportContext);
+const htmlStatNode = {
+  querySelector(selector) {
+    if (selector === '.statmod-stat-label') return { textContent: 'Potency' };
+    if (selector === '.statmod-stat-value') return { textContent: '+2.5%' };
+    return null;
+  },
+  getAttribute() { return null; },
+  textContent: ''
+};
+const htmlStat = htmlImportContext.parseStatGeneric(htmlStatNode);
+assert.deepEqual({ stat: htmlStat.stat, value: htmlStat.value, unit: htmlStat.unit },
+  { stat: 'Potency %', value: 2.5, unit: 'percentagePoints' });
+const htmlNormalizedMod = htmlImportContext.normalizeMod({
+  primary_stat: htmlStat.stat, primary_value: htmlStat.value, primary_stat_unit: htmlStat.unit
+});
+assert.equal(htmlNormalizedMod.primary_stat_unit, 'percentagePoints');
+assert.equal(htmlNormalizedMod.primary_value, 2.5);
+
 
 const acContext = vm.createContext({ window: { HolocronModEngine: sharedEngine }, compactKey, numericValue, modTotalSpeed: speed });
 load(acolyte, ['holocronModSecondarySpeed', 'holocronAcolyteTransferPreservesSpeed'], acContext);
