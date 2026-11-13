@@ -23,6 +23,9 @@ function holocronGacUsage(c, season=holocronLatestGacSeason()){
   const uses=Number(record.uses ?? record.usage);
   return Number.isFinite(uses)?Math.max(0,uses):null;
 }
+function holocronModIsComplete(mod){
+  return window.HolocronModEngine.normalizeMod(mod)?.complete===true;
+}
 function holocronModSecondarySpeed(mod){
   return Number(window.HolocronModEngine.speedMetrics(mod).secondary||0);
 }
@@ -60,7 +63,7 @@ function holocronTopChangeCandidates(){
   // Un mod individuellement rapide reste éligible s'il appartient à un donneur
   // globalement faible : c'est précisément le stock intéressant à redistribuer.
   const donorWeakness=unit=>{
-    const speeds=unit.mods.map(holocronModSecondarySpeed).sort((a,b)=>a-b);
+    const speeds=unit.mods.filter(holocronModIsComplete).map(holocronModSecondarySpeed).sort((a,b)=>a-b);
     const count=speeds.length||1;
     const noSpeed=speeds.filter(v=>v===0).length;
     const veryLow=speeds.filter(v=>v>0&&v<=5).length;
@@ -132,6 +135,7 @@ function holocronTopChangeCandidates(){
       numericValue(modTotalSpeed(a),0)-numericValue(modTotalSpeed(b),0)
     );
     for(const currentMod of targetMods){
+      if(!holocronModIsComplete(currentMod))continue;
       if(!isUnambiguouslyOwnedBy(currentMod,r.c))continue;
       const oldSecondarySpeed=holocronModSecondarySpeed(currentMod);
       if(oldSecondarySpeed>9)continue;
@@ -149,6 +153,8 @@ function holocronTopChangeCandidates(){
         // pas de prérequis obligatoire.
         if(!r.isGL && r.gacUses!==null && d.gacUses!==null && d.gacUses>=r.gacUses)continue;
         for(const donorMod of d.mods){
+          // Aucune projection ni recommandation ne part d'un mod incomplet.
+          if(!holocronModIsComplete(donorMod))continue;
           // Sécurité impérative : le mod proposé doit être équipé exclusivement sur ce donneur.
           if(!isUnambiguouslyOwnedBy(donorMod,d.c))continue;
           if(donorMod.slot!==currentMod.slot)continue;
