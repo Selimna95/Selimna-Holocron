@@ -459,8 +459,8 @@ function forgeSearchSourceSummary(){
 function forgeSecondaryStats(m){
   const normalized=window.HolocronModEngine.normalizeMod(m);
   return (normalized?.secondaries||[])
-    .filter(stat=>stat.key&&stat.key!=='speed')
-    .map(stat=>({stat:stat.name+(stat.unit==='percentagePoints'&&['offense','defense','health','protection'].includes(stat.key)?' %':''),value:Number(stat.value||0),key:window.HolocronModEngine.canonicalStatKey({name:stat.name,unit:stat.unit})}));
+    .filter(stat=>stat.complete&&stat.key&&stat.key!=='speed')
+    .map(stat=>({stat:stat.name+(stat.unit==='percentagePoints'&&['offense','defense','health','protection'].includes(stat.key)?' %':''),value:Number(stat.value),key:window.HolocronModEngine.canonicalStatKey({name:stat.name,unit:stat.unit})}));
 }
 function forgeHasSecondary(m,wanted){
   const target=window.HolocronModEngine.canonicalStatKey(wanted); if(!target)return false;
