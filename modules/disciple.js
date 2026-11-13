@@ -455,6 +455,7 @@ function setReallocationCharacter(key){
 function reallocationSecondaryOptions(){
   const names=new Map();
   for(const raw of mods){
+    if(window.HolocronModEngine.normalizeMod(raw)?.complete!==true)continue;
     const m=normalizeModForDisplay(raw);
     for(let i=1;i<=4;i++) if(m[`secondary_${i}_stat`]){
       const label=secondaryDisplayName(m[`secondary_${i}_stat`]);
