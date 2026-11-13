@@ -94,7 +94,9 @@ Les règles suivantes ont été confrontées au code source du calculateur [Crin
 - Les identifiants génériques 45 (Critical Rating) et 47 (Critical Negate Rating) ne sont pas assimilés arbitrairement aux ratings physiques/spéciaux : tant qu'aucune formule de conversion validée n'est disponible pour ces identifiants, ils rendent la projection incomplète.
 - Les statistiques de précision, pénétration et autres effets non pris en charge restent explicitement non calculables ; elles ne sont ni ignorées ni ramenées à zéro.
 
-Les donneurs dont les données sont incomplètes sont signalés comme impact partiel ; un statut inconnu ne peut jamais être interprété comme une amélioration.\n\nLe calculateur Crinolo n'est pas une dépendance de production : il sert de référence indépendante. Le moteur Holocron reste l'unique moteur exécuté par les modules.
+Les donneurs dont les données sont incomplètes sont signalés comme impact partiel ; un statut inconnu ne peut jamais être interprété comme une amélioration.
+
+Le calculateur Crinolo n'est pas une dépendance de production : il sert de référence indépendante. Le moteur Holocron reste l'unique moteur exécuté par les modules.
 ## Tests et critères d'intégration
 
 1. Fixtures brutes Comlink et import JSON : identifiants, échelles, unités et slots.
