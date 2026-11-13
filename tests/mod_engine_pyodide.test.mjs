@@ -51,7 +51,8 @@ const defense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.fi
 assert.ok(Math.abs(defense.Armor - 51.5209) < 0.001);
 assert.ok(Math.abs(defense.Resistance - 42.1769) < 0.001);
 
-const missingLevel = pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json))\nexcept RuntimeError as error:\n str(error)\nelse:\n raise AssertionError('Defense must fail closed without a sourced character level')\n");
+pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json))\nexcept RuntimeError as error:\n missing_level_error = str(error)\nelse:\n missing_level_error = ''\n");
+const missingLevel = pyodide.runPython('missing_level_error');
 assert.match(missingLevel, /level/);
 
 
@@ -59,10 +60,12 @@ const critRating = JSON.parse(pyodide.runPython("import json\nresult = optimizer
 assert.equal(critRating['Physical Critical Chance'], 41);
 assert.equal(critRating['Special Critical Chance'], 32);
 
-const incompleteDefense = pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}], json.loads(base_json))\nexcept RuntimeError as error:\n str(error)\nelse:\n raise AssertionError('Defense % must fail closed without the gear component')\n");
+pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85})\nexcept RuntimeError as error:\n incomplete_defense_error = str(error)\nelse:\n incomplete_defense_error = ''\n");
+const incompleteDefense = pyodide.runPython('incomplete_defense_error');
 assert.match(incompleteDefense, /defense:gear_component_required/);
 
-const incompleteUnknown = pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n str(error)\nelse:\n raise AssertionError('An unknown source stat must fail closed')\n");
+pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
+const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
 
 console.log('Real Pyodide ↔ JavaScript shared mod-engine integration tests passed.');
