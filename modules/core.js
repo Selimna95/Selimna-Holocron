@@ -1352,10 +1352,12 @@ function allFactions(){
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function speedBreakdown(list=mods){
-  const out={'1_10':0,'11_15':0,'16_19':0,'20_24':0,'25plus':0,'no_speed':0,'primary_speed':0,total:0};
+  const out={'1_10':0,'11_15':0,'16_19':0,'20_24':0,'25plus':0,'no_speed':0,'primary_speed':0,'unknown':0,total:0};
   for(const raw of list){
     const m=normalizeModForDisplay(raw); out.total++;
-    const x=modSpeedMetrics(m);
+    const normalized=window.HolocronModEngine.normalizeMod(raw);
+    if(!normalized?.complete){out.unknown++;continue;}
+    const x=modSpeedMetrics(normalized);
     if(x.primary) out.primary_speed++;
     else out[speedCategory(x.secondary)]++;
   }
@@ -1364,8 +1366,10 @@ function speedBreakdown(list=mods){
 function inventoryRows(){
   return mods.map((raw,i)=>{
     const m=normalizeModForDisplay(raw);
-    const x=modSpeedMetrics(m);
-    return {...m,_index:i,_speed:x.secondary||0,_primarySpeed:x.primary,_totalSpeed:modTotalSpeed(m),_speedCategory:x.primary?'primary_speed':speedCategory(x.secondary)};
+    const normalized=window.HolocronModEngine.normalizeMod(raw);
+    const x=modSpeedMetrics(normalized||m);
+    const complete=normalized?.complete===true;
+    return {...m,_index:i,_speed:complete?(x.secondary??0):null,_primarySpeed:complete?x.primary:null,_totalSpeed:complete?x.total:null,_speedCategory:!complete?'unknown':x.primary?'primary_speed':speedCategory(x.secondary)};
   });
 }
 function renderV18SpeedRecap(containerId='v18SpeedRecap'){
@@ -1373,7 +1377,7 @@ function renderV18SpeedRecap(containerId='v18SpeedRecap'){
   const b=speedBreakdown(mods);
   const cards=[
     ['1_10','1 – 10','secondary'],['11_15','11 – 15','secondary'],['16_19','16 – 19','secondary'],['20_24','20 – 24','secondary'],['25plus','25+','secondary'],
-    ['primary_speed','Primaire Speed','primary'],['no_speed','Sans Speed','secondary']
+    ['primary_speed','Primaire Speed','primary'],['no_speed','Sans Speed','secondary'],['unknown','Données incomplètes','secondary']
   ];
   box.innerHTML=cards.map(([k,label])=>`<button class="speed-recap-card speed-${k}" data-speed-category="${k}"><span>${label}</span><strong>${num(b[k])}</strong><small>${b.total?((b[k]/b.total)*100).toFixed(1):'0.0'} %</small></button>`).join('');
   box.querySelectorAll('[data-speed-category]').forEach(el=>el.addEventListener('click',()=>{
