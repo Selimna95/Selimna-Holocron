@@ -8,7 +8,7 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox);
 const engine = sandbox.module.exports;
 
-assert.equal(engine.version, '0.3.3');
+assert.equal(engine.version, '0.3.4');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -145,6 +145,11 @@ assert.ok(defenseProjection.missing.includes('defense:gear_component_required'))
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 15, primary_stat: 'Defense', primary_value: 40 }
 ], 85);
+const missingLevelDefenseProjection = engine.calculateFinalStats(projectionBase, [
+  { level: 15, primary_stat: 'Defense', primary_value: 40 }
+]);
+assert.equal(missingLevelDefenseProjection.complete, false);
+assert.ok(missingLevelDefenseProjection.missing.includes('level'));
 assert.equal(flatDefenseProjection.complete, true);
 assert.ok(Math.abs(flatDefenseProjection.stats.Armor - 51.5209) < 0.001);
 assert.ok(Math.abs(flatDefenseProjection.stats.Resistance - 42.1769) < 0.001);
