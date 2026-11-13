@@ -35,7 +35,18 @@
     });
     return SLOTS.map(slot=>({slot,mod:bySlot.get(slot)||null}));
   };
-  const statKey = value => window.HolocronModEngine.canonicalStatKey(value).toLowerCase();
+  const KYBER_PERCENT_PRIMARY_KEYS=new Set(['OFFENSE','DEFENSE','HEALTH','PROTECTION','CRITICALDAMAGE','POTENCY','TENACITY','CRITICALCHANCE','CRITICALAVOIDANCE','ACCURACY','EVASION']);
+  const statKey = (value,slot=null,fromKyber=false) => {
+    const raw=String(value??'').trim();
+    let canonical=window.HolocronModEngine.canonicalStatKey(raw).toUpperCase();
+    if(!canonical)canonical=key(raw).toUpperCase()+(raw.includes('%')?'PERCENT':'');
+    const variableSlot=['Arrow','Triangle','Circle','Cross'].includes(slot);
+    if(fromKyber&&variableSlot&&!canonical.endsWith('PERCENT')&&KYBER_PERCENT_PRIMARY_KEYS.has(canonical)){
+      const percent=window.HolocronModEngine.canonicalStatKey(raw+' %').toUpperCase();
+      canonical=percent||canonical+'PERCENT';
+    }
+    return canonical.toLowerCase();
+  };
   const normalizeCounts = counts => Object.fromEntries(Object.entries(counts||{})
     .map(([name,count])=>[labelSet(name),Number(count)||0]).filter(([name,count])=>name&&count>0));
   const rankedSetConfigurations = profile => {
@@ -103,7 +114,7 @@
       const setName=labelSet(mod?.set_name??mod?.set??'');
       const distribution=primaryDistribution(profile,slot);
       const hasPrimaryReference=distribution.length>0;
-      const currentPrimary=distribution.find(x=>statKey(x.name)===statKey(mod?.primary_stat));
+      const currentPrimary=distribution.find(x=>statKey(x.name,slot,true)===statKey(mod?.primary_stat,slot,false));
       const primaryShare=currentPrimary?.weight||0;
       const primaryOk=!hasPrimaryReference||primaryShare>0;
       return {slot,mod,setOk:setVerifiable&&!differingSets.includes(setName),primaryOk,
@@ -372,12 +383,12 @@
           String(a._visionnaireDonor?.name||'').localeCompare(String(b._visionnaireDonor?.name||''),'fr'));
       const reference=primaryDistribution(profile,slot);
       const eligible=state.mode==='sets'||!reference.length?ordered:
-        ordered.filter(mod=>reference.some(entry=>statKey(entry.name)===statKey(mod?.primary_stat)));
+        ordered.filter(mod=>reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false)));
       primaryFilteredBySlot[LABELS[slot]]=ordered.length-eligible.length;
       // Preserve speed-oriented ordering while retaining set/primary diversity.
       const diverse=[],setCounts={},buildCounts={},selectedIds=new Set();
       for(const mod of eligible){
-        const set=labelSet(mod.set_name??mod.set??''),primary=statKey(mod.primary_stat),build=set+'|'+primary;
+        const set=labelSet(mod.set_name??mod.set??''),primary=statKey(mod.primary_stat,slot,false),build=set+'|'+primary;
         if((setCounts[set]||0)>=8||(buildCounts[build]||0)>=4)continue;
         diverse.push(mod);selectedIds.add(exchangeModId(mod));
         setCounts[set]=(setCounts[set]||0)+1;buildCounts[build]=(buildCounts[build]||0)+1;
