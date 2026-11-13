@@ -155,6 +155,7 @@
       if (!mod) { missing.push('mod:invalid'); continue; }
       if (!mod.primary?.key || mod.primary.value == null || !mod.primary.complete) missing.push('mod:primary_incomplete');
       if (mod.expectedSecondaries != null && mod.secondaries.length < mod.expectedSecondaries) missing.push('mod:secondary_incomplete');
+      if (mod.secondaries.some(stat => !stat.complete)) missing.push('mod:secondary_incomplete');
       modSpeed += speedMetrics(mod).total;
       for (const stat of [mod.primary, ...(mod.secondaries || [])]) {
         if (stat?.key === 'speed' && stat.unit === 'percentagePoints') speedPercent += stat.value || 0;
@@ -552,7 +553,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.16',
+    version: '0.3.17',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
