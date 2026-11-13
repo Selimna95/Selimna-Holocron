@@ -149,6 +149,34 @@ try {
   assert.match(incompleteSpeedUi.card, /Données incomplètes/);
   assert.doesNotMatch(incompleteSpeedUi.card, /Sans Speed/);
 
+  const discipleUnitSafety = await page.evaluate(() => {
+    const make = secondary => ({set_name:"Health",level:15,primary_stat:"Health",primary_value:100,
+      secondary_1_stat:secondary,secondary_1_value:secondary==="Offense %"?5:20,
+      secondary_2_stat:"Protection",secondary_2_value:0,
+      secondary_3_stat:"Potency %",secondary_3_value:0,
+      secondary_4_stat:"Tenacity %",secondary_4_value:0});
+    const flat=make("Offense"),percent=make("Offense %");
+    const incomplete={set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Speed",secondary_1_value:5};
+    const originalMods=mods;
+    try {
+      mods=[flat,percent];
+      return {
+        labels:reallocationSecondaryOptions(),
+        flatKey:discipleCanonicalStat(secondaryDisplayName("Offense")),
+        percentKey:discipleCanonicalStat(secondaryDisplayName("Offense %")),
+        flatMatchesPercent:reallocationCandidateSecondary(flat,"Offense %"),
+        percentMatchesPercent:reallocationCandidateSecondary(percent,"Offense %"),
+        incompleteTierMatch:reallocationSpeedTierMatch(incomplete,"speed_1_5")
+      };
+    } finally { mods=originalMods; }
+  });
+  assert.ok(discipleUnitSafety.labels.includes("Offense"));
+  assert.ok(discipleUnitSafety.labels.includes("Offense %"));
+  assert.notEqual(discipleUnitSafety.flatKey,discipleUnitSafety.percentKey,"Disciple must keep flat Offense distinct from Offense %");
+  assert.equal(discipleUnitSafety.flatMatchesPercent,null,"A flat Offense secondary must not satisfy an Offense % search");
+  assert.equal(discipleUnitSafety.percentMatchesPercent.value,5);
+  assert.equal(discipleUnitSafety.incompleteTierMatch,false,"Incomplete mod data must not be classified into a numeric speed tier");
+
   // Disciple: consecutive searches must refresh the visible candidates every
   // time, including when the user changes the secondary and then clicks search.
   const discipleRepeatSearch = await page.evaluate(() => {
