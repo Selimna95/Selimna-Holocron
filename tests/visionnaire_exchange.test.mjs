@@ -25,6 +25,9 @@ assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not te
 assert.ok(js.includes('return !reference.length||reference.some'), 'Missing primary reference data must not reject every candidate');
 assert.ok(js.includes('modTotalSpeed(b)-modTotalSpeed(a)'), 'Candidate search must prioritize speed-preserving mods before donor-usage tie breaks');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
+assert.ok(js.includes('baseSpeed+retainedSpeed+combo.reduce'), 'Theoretical speed ceiling must include the character base speed');
+assert.ok(js.includes('if(!beforeProjection.complete||!afterProjection.complete)'), 'Target speed projections must fail closed when incomplete');
+assert.ok(js.includes('if(!donorBeforeSpeed.complete||!donorAfterSpeed.complete)'), 'Donor speed projections must fail closed when incomplete');
 assert.ok(js.includes('async function buildExchangeProposals'), 'Six-slot search must run asynchronously');
 assert.ok(js.includes('await new Promise(resolve=>setTimeout(resolve,0))'), 'Search must yield to the browser while evaluating combinations');
 assert.ok(js.includes('await buildExchangeProposals'), 'UI must await the responsive search routine');
@@ -77,7 +80,7 @@ const buildSandbox={
   state:{mode:'sets'},render:()=>{},setTimeout:fn=>{fn();return 0;},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   statKey:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
-  modTotalSpeed:mod=>Number(mod.speed||0),
+  modTotalSpeed:mod=>sharedEngine.speedMetrics(mod).total,
   characterKey:c=>String(c.baseId),
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
   baseStatsForCharacter:c=>c.base_stats||{},
@@ -89,7 +92,7 @@ const buildSandbox={
 };
 vm.createContext(buildSandbox);
 vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
-const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,speed,primary_stat:primary,primary_value:value,secondary_1_stat:'Health',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0});
+const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,primary_stat:primary,primary_value:value,secondary_1_stat:'Speed',secondary_1_value:speed,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0});
 async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
   const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
   donor.mods=donorMods;
@@ -106,10 +109,10 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
     getCharacterMods:c=>byOwner.get(c.baseId)||[],
     forgeAllSourceMods:()=>sources,
     forgeProjectedModSpeed:(c,_p,list)=>{
-      const speed=list.reduce((sum,m)=>sum+Number(m.speed||0),0);
-      const four=list.filter(m=>m.set_name==='Speed').length>=4;
-      const base=Number(c.base_stats?.Speed||0);
-      return {total:speed+(four&&base?base*.1:0),baseSpeed:base,hasFourPieceSpeedSet:four};
+      const rawBase=c.base_stats?.Speed;
+      const base=rawBase==null?null:Number(rawBase);
+      const projection=sharedEngine.calculateSpeed(Number.isFinite(base)?base:null,list);
+      return {...projection,baseSpeed:Number.isFinite(base)?base:null};
     }
   });
   return buildSandbox.search({character:target,profile},['Square','Circle']);
@@ -146,6 +149,10 @@ const rejected=await runSearch(speedTarget,[],slowFree,primaryProfile,'primaries
 assert.equal(rejected.proposals.length,0,'No scenario may lower the target total speed');
 assert.equal(rejected.tested,0,'Impossible low-speed combinations must be pruned before full evaluation');
 assert.equal(rejected.diagnostics.speedPruned,rejected.diagnostics.searchSpace,'Every impossible combination must be pruned by the speed prefilter');
+const missingBaseTarget={...normalTarget,base_stats:{Health:1000,Offense:500}};
+const missingBaseSearch=await runSearch(missingBaseTarget,[],freeChoices,kyber);
+assert.equal(missingBaseSearch.proposals.length,0,'Visionnaire must not recommend an exchange when target base speed is unknown');
+assert.match(missingBaseSearch.reason,/vitesse actuelle.*non calculable/i);
 
 const focusScore=sandbox.focus({secondary_focus:{Speed:20,Health:10}},[
  {secondary_1_stat:'Speed',secondary_1_value:20,secondary_2_stat:'Health',secondary_2_value:10}
