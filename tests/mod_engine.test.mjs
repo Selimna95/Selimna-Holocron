@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.19');
+assert.equal(engine.version, '0.3.20');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -168,18 +168,20 @@ const projectionBase = {
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
 };
 const critRatingProjection = engine.calculateFinalStats(projectionBase, [
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 14, unscaledDecimalValue: 2400000000 } },
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 14, unscaledDecimalValue: 240000000000 } },
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 15, unscaledDecimalValue: 480000000000 } }
 ]);
 assert.equal(critRatingProjection.complete, true);
 assert.equal(critRatingProjection.stats['Physical Critical Chance'], 41);
 assert.equal(critRatingProjection.stats['Special Critical Chance'], 32);
+assert.equal(critRatingProjection.stats['Physical Critical Chance'] - projectionBase['Physical Critical Chance'], 1);
+assert.equal(critRatingProjection.stats['Special Critical Chance'] - projectionBase['Special Critical Chance'], 2);
 
 const critAvoidanceProjection = engine.calculateFinalStats({
   'Physical Critical Avoidance': 10, 'Special Critical Avoidance': 5
 }, [
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 39, unscaledDecimalValue: 2400000000 } },
-  { level: 1, set_name: 'Defense', primary_stat: { unitStatId: 40, unscaledDecimalValue: 2400000000 } }
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 39, unscaledDecimalValue: 240000000000 } },
+  { level: 1, set_name: 'Defense', primary_stat: { unitStatId: 40, unscaledDecimalValue: 240000000000 } }
 ]);
 assert.equal(critAvoidanceProjection.complete, true);
 assert.equal(critAvoidanceProjection.stats['Physical Critical Avoidance'], 11);
