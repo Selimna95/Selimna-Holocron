@@ -9,12 +9,16 @@ function setAnalysisTab(tab){
 }
 function analysisCharacterRows(){
   const faction=analysisFaction||'Toutes les factions';
-  return charactersInFaction(faction).map(c=>{
+  const rows=charactersInFaction(faction).map(c=>{
     const cm=getCharacterMods(c); const s=v176ModStatus(cm);
-    const secSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
-    const primarySpeed=cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
-    return {character:c,mods:cm,modCount:cm.length,speed:secSpeed,primarySpeed,totalSpeed:s.totalSpeed,status:s.status,class:s.class,best:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0),factions:factionMap[characterKey(c)]||[]};
-  }).sort((a,b)=>b.totalSpeed-a.totalSpeed||String(a.character.name).localeCompare(String(b.character.name),'fr'));
+    const dataIncomplete=s.status==='DONNÉES INCOMPLÈTES';
+    const secSpeed=dataIncomplete?null:cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
+    const primarySpeed=dataIncomplete?null:cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
+    const best=dataIncomplete?null:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0);
+    return {character:c,mods:cm,modCount:cm.length,speed:secSpeed,primarySpeed,totalSpeed:s.totalSpeed,status:s.status,class:s.class,best,factions:factionMap[characterKey(c)]||[]};
+  });
+  const rank=status=>status==='SANS MODS'||status==='INCOMPLETS'?0:status==='DONNÉES INCOMPLÈTES'?2:1;
+  return rows.sort((a,b)=>rank(a.status)-rank(b.status)||(a.totalSpeed??Infinity)-(b.totalSpeed??Infinity)||String(a.character.name).localeCompare(String(b.character.name),'fr'));
 }
 function renderAnalysisRecap(){
   const b=speedBreakdown(mods);
@@ -55,21 +59,23 @@ function auditRows(){
   const faction=analysisFaction||'Toutes les factions';
   let rows=charactersInFaction(faction).filter(c=>rosterUnitType(c)!=='ship').map(c=>{
     const cm=getCharacterMods(c), st=v176ModStatus(cm);
-    const secSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
-    const primarySpeed=cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
-    const speedCats=new Set(); let speedCount=0;
-    for(const m of cm){const x=modSpeedMetrics(m); if(x.primary)speedCats.add('primary_speed'); else speedCats.add(speedCategory(x.secondary)); if(x.primary || (x.secondary||0)>0)speedCount++;}
+    const dataIncomplete=st.status==='DONNÉES INCOMPLÈTES';
+    const secSpeed=dataIncomplete?null:cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
+    const primarySpeed=dataIncomplete?null:cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
+    const speedCats=new Set(); let speedCount=dataIncomplete?null:0;
+    if(!dataIncomplete)for(const m of cm){const x=modSpeedMetrics(m); if(x.primary)speedCats.add('primary_speed'); else speedCats.add(speedCategory(x.secondary)); if(x.primary || (x.secondary||0)>0)speedCount++;}
     const p=optimizerProfileForCharacter(c)||{};
     const relicTier=Number(c.relic_tier??c.relicTier??p.relic_tier??0)||0; const relic=relicLevelFromTier(relicTier);
-    const priority=(cm.length===0?100000:cm.length<6?50000:0)+Math.max(0,70-st.totalSpeed)*100+relic*2;
-    return {character:c,mods:cm,modCount:cm.length,secSpeed,primarySpeed,totalSpeed:st.totalSpeed,status:st.status,class:st.class,best:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0),factions:factionMap[characterKey(c)]||[],relic,speedCount,speedCats,priority,side:characterAlignmentFromFactions(c)};
+    const priority=dataIncomplete?Number.POSITIVE_INFINITY:(cm.length===0?100000:cm.length<6?50000:0)+Math.max(0,70-(st.totalSpeed??0))*100+relic*2;
+    const best=dataIncomplete?null:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0);
+    return {character:c,mods:cm,modCount:cm.length,secSpeed,primarySpeed,totalSpeed:st.totalSpeed,status:st.status,class:st.class,best,factions:factionMap[characterKey(c)]||[],relic,speedCount,speedCats,priority,side:characterAlignmentFromFactions(c)};
   });
   if(analysisSide!=='ALL') rows=rows.filter(r=>r.side===analysisSide);
   if(analysisStatus!=='TOUS') rows=rows.filter(r=>r.status===analysisStatus);
   if(analysisAuditSpeed!=='TOUS') rows=rows.filter(r=>r.speedCats.has(analysisAuditSpeed));
-  if(analysisAuditSort==='speed') rows.sort((a,b)=>a.secSpeed-b.secSpeed||a.relic-b.relic);
-  else if(analysisAuditSort==='mods') rows.sort((a,b)=>a.modCount-b.modCount||a.secSpeed-b.secSpeed||b.relic-a.relic);
-  else if(analysisAuditSort==='relic') rows.sort((a,b)=>b.relic-a.relic||b.secSpeed-a.secSpeed);
+  if(analysisAuditSort==='speed') rows.sort((a,b)=>(a.secSpeed??Infinity)-(b.secSpeed??Infinity)||a.relic-b.relic);
+  else if(analysisAuditSort==='mods') rows.sort((a,b)=>a.modCount-b.modCount||(a.secSpeed??Infinity)-(b.secSpeed??Infinity)||b.relic-a.relic);
+  else if(analysisAuditSort==='relic') rows.sort((a,b)=>b.relic-a.relic||(b.secSpeed??-Infinity)-(a.secSpeed??-Infinity));
   else rows.sort((a,b)=>b.priority-a.priority||a.secSpeed-b.secSpeed||b.relic-a.relic||String(a.character.name||'').localeCompare(String(b.character.name||''),'fr'));
   return rows;
 }
@@ -102,7 +108,7 @@ function renderSelectionPanel(){
   $('selectionMeta').textContent=`${rows.length} personnage(s) affiché(s) sur ${all.length} · ${analysisFaction||'Toutes les factions'}`;
   $('selectionTable').innerHTML=rows.map(r=>`<tr class="${r.class}" data-character-key="${esc(characterKey(r.character))}">
     <td><strong>${esc(r.character.name||r.character.baseId)}</strong>${factionBadgesHtml(r.factions)}</td>
-    <td>${r.relic?'R'+num(r.relic):'—'}</td><td>${r.modCount}/6</td><td>${num(r.totalSpeed)}</td><td>${num(r.secSpeed)}</td><td>${r.speedCount}</td><td>${r.primarySpeed?num(r.primarySpeed):'NON'}</td><td><span class="audit-badge ${r.class}">${esc(r.status)}</span></td>
+    <td>${r.relic?'R'+num(r.relic):'—'}</td><td>${r.modCount}/6</td><td>${r.totalSpeed==null?'—':num(r.totalSpeed)}</td><td>${r.secSpeed==null?'—':num(r.secSpeed)}</td><td>${r.speedCount==null?'—':r.speedCount}</td><td>${r.primarySpeed==null?'—':r.primarySpeed?num(r.primarySpeed):'NON'}</td><td><span class="audit-badge ${r.class}">${esc(r.status)}</span></td>
     <td><button type="button" class="detail-mods-btn" data-open-character="${esc(characterKey(r.character))}">OUVRIR LE RAPPORT</button></td>
   </tr>`).join('')||'<tr><td colspan="9">Aucun personnage ne correspond aux filtres.</td></tr>';
   $('selectionTable').querySelectorAll('tr[data-character-key]').forEach(row=>row.addEventListener('click',e=>{if(e.target.closest('.detail-mods-btn'))return;analysisSelectedCharacter=row.dataset.characterKey;charSelect.value=analysisSelectedCharacter;setAnalysisTab('report');}));
@@ -141,13 +147,15 @@ function renderCharacterReport(){
   const c=rosterCharacters.find(x=>characterKey(x)===analysisSelectedCharacter);
   if(!c){box.innerHTML='<div class="empty">Sélectionnez un personnage depuis PERSONNAGE / FACTION.</div>';return;}
   const cm=getCharacterMods(c), s=v176ModStatus(cm), p=optimizerProfileForCharacter(c)||{}, st=characterReportStats(c);
-  const secSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
-  const primarySpeed=cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
   const baseSpeed=numericValue(st.profile?.base_stats?.Speed,null);
   const speedProjection=window.HolocronModEngine.calculateSpeed(baseSpeed,cm);
-  const totalSpeed=speedProjection.complete?speedProjection.total:null;
-  const modSpeedContribution=speedProjection.complete?speedProjection.total-baseSpeed:null;
-  const speedCount=cm.filter(m=>{const x=modSpeedMetrics(m);return x.primary||(x.secondary||0)>0;}).length;
+  const speedDataComplete=cm.length===6&&s.status!=='DONNÉES INCOMPLÈTES'&&speedProjection.complete;
+  const totalSpeed=speedDataComplete?speedProjection.total:null;
+  const secSpeed=speedDataComplete?cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0):null;
+  const primarySpeed=speedDataComplete?cm.reduce((n,m)=>n+modPrimarySpeed(m),0):null;
+  const modSpeedContribution=speedDataComplete?speedProjection.total-baseSpeed:null;
+  const speedCount=speedDataComplete?cm.filter(m=>{const x=modSpeedMetrics(m);return x.primary||(x.secondary||0)>0;}).length:null;
+  const best=speedDataComplete?cm.reduce((x,m)=>Math.max(x,modSpeedMetrics(m).secondary||0),0):null;
   const factions=factionMap[characterKey(c)]||[];
   const order=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const bySlot=new Map(cm.map(m=>[m.slot,m]));
@@ -158,10 +166,10 @@ function renderCharacterReport(){
       <div><span class="tag">RAPPORT PERSONNAGE</span><h1>${esc(c.name||c.baseId)}</h1>${factionBadgesHtml(factions)}</div>
       <div class="report-identity"><div><span>NIVEAU</span><b>${num(c.level||p.level)}</b></div><div><span>GEAR</span><b>${num(c.gear||c.gear_level||p.gear_level)}</b></div><div><span>RELIC</span><b>${'R'+num(relicLevelFromTier(c.relic_tier??c.relicTier??p.relic_tier??0))}</b></div><div><span>ÉTOILES</span><b>${num(c.stars||c.rarity||p.rarity)}★</b></div><div><span>PUISSANCE</span><b>${num(c.power||c.power_rating||c.powerRating)}</b></div></div>
     </div>
-    <div class="report-kpis"><div><span>MODS</span><strong>${cm.length}/6</strong></div><div><span>SPEED PERSONNAGE PROJETÉE</span><strong>${totalSpeed==null?'—':num(totalSpeed)}</strong></div><div><span>SPEED SECONDAIRE</span><strong>+${num(secSpeed)}</strong></div><div><span>PRIMAIRE SPEED</span><strong>${primarySpeed?'+'+num(primarySpeed):'NON'}</strong></div><div><span>MODS AVEC SPEED</span><strong>${speedCount}/6</strong></div><div><span>STATUT V176</span><strong class="audit-badge ${s.class}">${esc(s.status)}</strong></div></div>
+    <div class="report-kpis"><div><span>MODS</span><strong>${cm.length}/6</strong></div><div><span>SPEED PERSONNAGE PROJETÉE</span><strong>${totalSpeed==null?'—':num(totalSpeed)}</strong></div><div><span>SPEED SECONDAIRE</span><strong>${secSpeed==null?'—':'+'+num(secSpeed)}</strong></div><div><span>PRIMAIRE SPEED</span><strong>${primarySpeed==null?'—':primarySpeed?'+'+num(primarySpeed):'NON'}</strong></div><div><span>MODS AVEC SPEED</span><strong>${speedCount==null?'—':speedCount+'/6'}</strong></div><div><span>STATUT V176</span><strong class="audit-badge ${s.class}">${esc(s.status)}</strong></div></div>
     <div class="report-section"><div class="report-section-title">STATISTIQUES DU PERSONNAGE</div><div class="report-stats-wrap"><table class="v18-table report-stats"><thead><tr><th>Statistique</th><th>Base</th><th>Actuelle</th><th>Apport mods</th></tr></thead><tbody>${st.rows.map(r=>`<tr><td>${esc(r.label)}</td><td>${formatReportStat(r.base,r.label)}</td><td>${formatReportStat(r.current,r.label)}</td><td>${formatReportStat(r.diff,r.label)}</td></tr>`).join('')}</tbody></table></div></div>
     <div class="report-section"><div class="report-section-title">LES 6 MODS ÉQUIPÉS</div><div class="report-mod-grid">${cards}</div></div>
-    <div class="report-section report-analysis-grid"><div><div class="report-section-title">ANALYSE SPEED</div><div class="report-list"><div><span>Speed secondaire</span><b>+${num(secSpeed)}</b></div><div><span>Speed primaire</span><b>${primarySpeed?'+'+num(primarySpeed):'Aucune'}</b></div><div><span>Apport total des mods (avec set)</span><b>${modSpeedContribution==null?'—':'+'+num(modSpeedContribution)}</b></div><div><span>Meilleure Speed secondaire</span><b>+${num(cm.reduce((x,m)=>Math.max(x,modSpeedMetrics(m).secondary||0),0))}</b></div><div><span>Mods niveau 15</span><b>${cm.filter(m=>Number(m.level)===15).length}/6</b></div></div></div><div><div class="report-section-title">SETS</div><div class="report-list">${[...new Set(cm.map(m=>m.set_name).filter(Boolean))].map(set=>`<div><span>${esc(set)}</span><b>${cm.filter(m=>m.set_name===set).length}</b></div>`).join('')||'<div><span>Aucun set</span><b>—</b></div>'}</div></div></div>
+    <div class="report-section report-analysis-grid"><div><div class="report-section-title">ANALYSE SPEED</div><div class="report-list"><div><span>Speed secondaire</span><b>${secSpeed==null?'—':'+'+num(secSpeed)}</b></div><div><span>Speed primaire</span><b>${primarySpeed==null?'—':primarySpeed?'+'+num(primarySpeed):'Aucune'}</b></div><div><span>Apport total des mods (avec set)</span><b>${modSpeedContribution==null?'—':'+'+num(modSpeedContribution)}</b></div><div><span>Meilleure Speed secondaire</span><b>${best==null?'—':'+'+num(best)}</b></div><div><span>Mods niveau 15</span><b>${cm.filter(m=>Number(m.level)===15).length}/6</b></div></div></div><div><div class="report-section-title">SETS</div><div class="report-list">${[...new Set(cm.map(m=>m.set_name).filter(Boolean))].map(set=>`<div><span>${esc(set)}</span><b>${cm.filter(m=>m.set_name===set).length}</b></div>`).join('')||'<div><span>Aucun set</span><b>—</b></div>'}</div></div></div>
     <div class="report-section"><div class="report-section-title">SECONDAIRES DES MODS</div><div class="report-secondary-list">${cm.map(m=>`<div class="report-secondary-row"><strong>${esc(m.slot)}</strong><span>${esc(modSecondaries(m)||'—')}</span></div>`).join('')||'<div>Aucun mod équipé.</div>'}</div></div>`;
   $('backToCharacterSelection')?.addEventListener('click',()=>setAnalysisTab('selection'));
   box.querySelectorAll('[data-mod-index]').forEach(el=>el.addEventListener('click',()=>showModInventoryDetail(Number(el.dataset.modIndex))));
