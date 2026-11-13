@@ -786,7 +786,7 @@ function parseModsPage(doc,page){
     const primary=parseStatGeneric(node.querySelector('.statmod-stats-1 .statmod-stat, [class*=\"statmod-stats-1\"] [class*=\"statmod-stat\"]'));
     const secondary=[...node.querySelectorAll('.statmod-stats-2 .statmod-stat, [class*=\"statmod-stats-2\"] [class*=\"statmod-stat\"]')].map(parseStatGeneric).filter(x=>x.stat);
     const char=firstAttr(node,['img.char-portrait-img','img[class*=\"char-portrait-img\"]'],'alt');
-    const level=parseNumberValue(firstText(node,['.statmod-level','[class*=\"statmod-level\"]']));
+    const level=parseOptionalNumberValue(firstText(node,['.statmod-level','[class*=\"statmod-level\"]']));
     const rarity=node.querySelectorAll('.statmod-pip, [class*=\"statmod-pip\"]').length;
     const id=node.getAttribute('data-id')||node.getAttribute('data-mod-id')||`gg-${page}-${idx}`;
     if(shape||set||primary.stat||secondary.length){
