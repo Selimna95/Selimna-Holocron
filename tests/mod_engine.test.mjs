@@ -172,7 +172,7 @@ const speedProjection = engine.calculateFinalStats(projectionBase, [
   ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100 }))
 ], 85);
 assert.equal(engine.calculateSetBonuses(Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100 }))).speed, 10);
-const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed' })));
+const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100 })));
 assert.equal(speedCalc.total, 110, JSON.stringify(speedCalc));
 const incompleteSpeedSet = engine.calculateSpeed(100, [
   { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100 }, { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100 },
