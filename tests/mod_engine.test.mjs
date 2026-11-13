@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.16');
+assert.equal(engine.version, '0.3.17');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -208,6 +208,15 @@ assert.ok(unknownModLevelProjection.missing.includes('mod:level_unknown'));
 const incompleteSecondaryProjection = engine.calculateFinalStats(projectionBase, [{ level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 10, secondary_1_stat: 'Speed', secondary_1_value: 5 }]);
 assert.equal(incompleteSecondaryProjection.complete, false);
 assert.ok(incompleteSecondaryProjection.missing.includes('mod:secondary_incomplete'));
+const unknownSecondarySpeed = engine.calculateSpeed(100, [{
+  level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 10,
+  secondary_1_stat: 'Unknown Stat', secondary_1_value: 5,
+  secondary_2_stat: 'Protection', secondary_2_value: 0,
+  secondary_3_stat: 'Potency %', secondary_3_value: 0,
+  secondary_4_stat: 'Tenacity %', secondary_4_value: 0
+}]);
+assert.equal(unknownSecondarySpeed.complete, false);
+assert.ok(unknownSecondarySpeed.missing.includes('mod:secondary_incomplete'));
 const level12CompleteMod = engine.normalizeMod({ level: 12, set_name: 'Health', primary_stat: 'Health', primary_value: 10, ...zeroSecondaries });
 assert.equal(level12CompleteMod.expectedSecondaries, 4);
 assert.equal(level12CompleteMod.complete, true);
