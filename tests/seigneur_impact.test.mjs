@@ -88,6 +88,16 @@ assert.equal(impactData.donors[0].modsTaken,1);
 assert.equal(impactData.donors[0].beforeCount,6);
 assert.equal(impactData.donors[0].afterCount,5);
 assert.equal(impactData.donors[0].speedLoss,7);
+
+// An unverified donor mod level must not be rendered as a zero speed loss.
+const donorCross = equipped.DONOR[5];
+const previousLevel = donorCross.level;
+donorCross.level = null;
+const incompleteDonorImpact = context.forgeBuildGlobalImpact(roster[0],{base_stats:{Speed:100}},safeBuild);
+assert.equal(incompleteDonorImpact.donors[0].speedLoss,null);
+assert.equal(incompleteDonorImpact.donorSpeedLoss,null);
+assert.match(context.forgeBuildGlobalImpactMarkup(incompleteDonorImpact),/Vitesse non calculable/);
+donorCross.level = previousLevel;
 assert.equal(impactData.donors[0].statusWorsened,true);
 assert.equal(impactData.priorityGap,90);
 const markup=context.forgeBuildGlobalImpactMarkup(impactData);
