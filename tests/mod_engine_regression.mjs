@@ -219,7 +219,7 @@ assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).totalSpeed, nu
 // Shared import normalization keeps Comlink stat IDs and units intact.
 const importContext = vm.createContext({
   window: { HolocronModEngine: sharedEngine },
-  numericValue: (value, fallback=0) => Number.isFinite(Number(value)) ? Number(value) : fallback
+  numericValue: (value, fallback=0) => value == null || String(value).trim() === '' ? fallback : (Number.isFinite(Number(value)) ? Number(value) : fallback)
 });
 load(core, ['statNameFromAny','statValueFromAny','statObjectFromAny','normalizeMod'], importContext);
 const unknownDotMod = importContext.normalizeMod({ slot: 'Square', set_name: 'Health', dots: 6 });
