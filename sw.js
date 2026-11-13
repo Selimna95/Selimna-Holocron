@@ -2,7 +2,7 @@
 // Older retired cache identifier: holocron-static-v4.0.8-gac-parameters
 // Previous cache: holocron-static-v4.3.6-seigneur-slot-comparison
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
-const CACHE_NAME = 'holocron-static-v4.4.66-source-slot-ids';
+const CACHE_NAME = 'holocron-static-v4.4.67-complete-mod-filter';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -21,7 +21,7 @@ const STATIC_ASSETS = [
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.6.0-gac-freshness',
   './modules/seigneur-gac.js?v=1.1.0-history-fallback',
-  './modules/mod-engine.js?v=0.3.10',
+  './modules/mod-engine.js?v=0.3.11',
   './modules/core.js?v=4.2.26-source-slot-ids',
   './modules/acolyte.js?v=3.4.6-shared-mod-engine',
   './modules/disciple.js?v=3.5.4-shared-mod-engine',
@@ -29,8 +29,8 @@ const STATIC_ASSETS = [
   './modules/seigneur-impact.js?v=1.0.1-complete-speed-impact',
   './modules/visionnaire.js?v=4.1.72-sourced-level-only',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
-  './optimizer-worker.mjs?v=3.5.8-no-level-fallback',
-  './python/optimizer.py?v=3.5.3-shared-mod-engine',
+  './optimizer-worker.mjs?v=3.5.9-complete-mod-filter',
+  './python/optimizer.py?v=3.5.4-complete-mod-filter',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
