@@ -82,6 +82,19 @@ Les anciennes fonctions qui ne font que transmettre les données au moteur peuve
 
 L'Optimizer Python écarte les mods dont le set, le niveau, la primaire ou une unité de statistique ne peuvent pas être validés. Une projection impossible est signalée et ne devient jamais un score ou une vitesse égale à zéro.
 
+## Vérification indépendante des formules
+
+Les règles suivantes ont été confrontées au code source du calculateur [Crinolo SWGOH Stat Calculator](https://github.com/Crinolo/swgoh-stat-calc), à ses conversions internes et aux définitions Comlink :
+
+- **Offense** : l'identifiant 41 est un bonus fixe ; l'identifiant 48 est un bonus en points de pourcentage. Ils affectent séparément Physical Damage et Special Damage, à partir des valeurs de base correspondantes.
+- **Defense** : l'identifiant 42 ajoute du rating de défense aux deux voies Armor/Resistance. La conversion du rating utilise le niveau réel (`rating / (rating + 7.5 × level)`). L'identifiant 49 est un pourcentage appliqué au rating de base ; Holocron refuse encore ce cas lorsque la composante de base requise n'est pas disponible.
+- **Critical Chance / Critical Avoidance** : les ratings physiques/spéciaux 14/15 et 39/40 sont convertis séparément. Le calculateur Crinolo utilise 2400 points de rating pour 100 points de pourcentage ; après normalisation des valeurs Comlink, l'incrément est donc `rating / 24`. Les points de pourcentage 21/22, 35/36, 53/54 sont traités séparément.
+- **Vitesse** : l'identifiant 5 est plat ; l'identifiant 57 est un pourcentage de la vitesse de base. Le bonus de set est calculé à part et ne doit pas être confondu avec les secondaires.
+- **Sets** : les huit tailles de set et leurs bonus minimums proviennent de `statModSet.json`. Les bonus maximums au niveau 15 correspondent au tableau de référence des [bonus de sets SWGOH](https://swgoh.wiki/wiki/Mods). Les tests vérifient chaque set, pas seulement Speed et Health.
+- Les identifiants génériques 45 (Critical Rating) et 47 (Critical Negate Rating) ne sont pas assimilés arbitrairement aux ratings physiques/spéciaux : tant qu'aucune formule de conversion validée n'est disponible pour ces identifiants, ils rendent la projection incomplète.
+- Les statistiques de précision, pénétration et autres effets non pris en charge restent explicitement non calculables ; elles ne sont ni ignorées ni ramenées à zéro.
+
+Le calculateur Crinolo n'est pas une dépendance de production : il sert de référence indépendante. Le moteur Holocron reste l'unique moteur exécuté par les modules.
 ## Tests et critères d'intégration
 
 1. Fixtures brutes Comlink et import JSON : identifiants, échelles, unités et slots.
