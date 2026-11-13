@@ -7,6 +7,7 @@ function forgeBuildPreservesSpeed(character,profile,equipped,build){
   if(slots.size!==6||slots.has(''))return false;
   const before=forgeProjectedModSpeed(character,profile,equipped);
   const after=forgeProjectedModSpeed(character,profile,build);
+  if(!before.complete||!after.complete)return false;
   if(before.baseSpeed<=0&&before.hasFourPieceSpeedSet&&!after.hasFourPieceSpeedSet)return false;
   return after.total+1e-9>=before.total;
 }
@@ -43,20 +44,21 @@ function forgeBuildGlobalImpact(character,profile,build){
     return {
       name:owner?.name||owner?.baseId||'Donneur',modsTaken:removed.length,
       beforeCount:beforeMods.length,afterCount:afterMods.length,
-      beforeSpeed:before.total,afterSpeed:after.total,speedLoss:before.total-after.total,
+      beforeSpeed:before.complete?before.total:null,afterSpeed:after.complete?after.total:null,
+      speedLoss:before.complete&&after.complete?before.total-after.total:null,
       beforeStatus,afterStatus,
       statusWorsened:(statusRank[afterStatus]??0)>(statusRank[beforeStatus]??0),
       uses:priority.known?priority.uses:null,priorityKnown:priority.known
     };
-  }).sort((a,b)=>Number(b.speedLoss)-Number(a.speedLoss));
+  }).sort((a,b)=>Number(b.speedLoss??-Infinity)-Number(a.speedLoss??-Infinity));
   const priorityGapKnown=targetPriority.known&&donors.every(d=>d.priorityKnown);
   const priorityGap=priorityGapKnown?donors.reduce((sum,d)=>sum+(targetPriority.uses-d.uses)*d.modsTaken,0):null;
   const usage=seigneurLatestGacUsageSeason();
   return {
-    targetBefore:targetBefore.total,targetAfter:targetAfter.total,
-    targetSpeedGain:targetAfter.total-targetBefore.total,
+    targetBefore:targetBefore.complete?targetBefore.total:null,targetAfter:targetAfter.complete?targetAfter.total:null,
+    targetSpeedGain:targetBefore.complete&&targetAfter.complete?targetAfter.total-targetBefore.total:null,
     targetUses:targetPriority.known?targetPriority.uses:null,
-    donorSpeedLoss:donors.reduce((sum,d)=>sum+d.speedLoss,0),
+    donorSpeedLoss:donors.every(d=>d.speedLoss!=null)?donors.reduce((sum,d)=>sum+d.speedLoss,0):null,
     donors,priorityGap,priorityGapKnown,
     donorStatusWorsened:donors.some(d=>d.statusWorsened),
     evidenceType:usage?.evidenceType||'unit-usage',
@@ -66,10 +68,10 @@ function forgeBuildGlobalImpact(character,profile,build){
 
 function forgeBuildGlobalImpactMarkup(impact){
   if(!impact)return '';
-  const signed=value=>(value>0?'+':'')+num(value,1);
+  const signed=value=>value==null?'non calculable':(value>0?'+':'')+num(value,1);
   const donorRows=impact.donors.map(d=>`<div class="forge-global-impact-donor ${d.statusWorsened?'is-warning':''}">
     <b>${esc(d.name)}</b><span>${d.modsTaken} mod(s) prélevé(s) · ${d.beforeCount} → ${d.afterCount} mods</span>
-    <em>Vitesse ${num(d.beforeSpeed,1)} → ${num(d.afterSpeed,1)} · ${signed(-d.speedLoss)}</em>
+    <em>${d.speedLoss==null?'Vitesse non calculable':`Vitesse ${num(d.beforeSpeed,1)} → ${num(d.afterSpeed,1)} · ${signed(-d.speedLoss)}`}</em>
     <small>${esc(d.beforeStatus)} → ${esc(d.afterStatus)} · GAC ${d.priorityKnown?num(d.uses):'non mesuré'}</small>
   </div>`).join('')||'<div class="forge-global-impact-empty">Aucun mod équipé n’est prélevé sur un autre personnage : la configuration utilise les mods de la cible et/ou l’inventaire libre.</div>';
   const strategic=impact.priorityGapKnown?signed(impact.priorityGap)+' combats pondérés':'non calculable';
@@ -77,8 +79,8 @@ function forgeBuildGlobalImpactMarkup(impact){
   return `<section class="forge-global-impact">
     <div class="forge-section-title"><span>BILAN GLOBAL DU TRANSFERT</span><small>${impact.donorStatusWorsened?'DONNEUR(S) FRAGILISÉ(S)':'IMPACT CONTRÔLÉ'}</small></div>
     <div class="forge-global-impact-metrics">
-      <div><span>BÉNÉFICIAIRE · VITESSE</span><b class="${impact.targetSpeedGain>0?'gain':'neutral'}">${signed(impact.targetSpeedGain)}</b><small>${num(impact.targetBefore,1)} → ${num(impact.targetAfter,1)}</small></div>
-      <div><span>DONNEURS · VITESSE CÉDÉE</span><b>${num(impact.donorSpeedLoss,1)}</b><small>${impact.donors.length} donneur(s) · ${impact.donors.reduce((sum,d)=>sum+d.modsTaken,0)} mod(s)</small></div>
+      <div><span>BÉNÉFICIAIRE · VITESSE</span><b class="${impact.targetSpeedGain>0?'gain':'neutral'}">${signed(impact.targetSpeedGain)}</b><small>${impact.targetSpeedGain==null?'Vitesse non calculable':`${num(impact.targetBefore,1)} → ${num(impact.targetAfter,1)}`}</small></div>
+      <div><span>DONNEURS · VITESSE CÉDÉE</span><b>${impact.donorSpeedLoss==null?'NON CALCULABLE':num(impact.donorSpeedLoss,1)}</b><small>${impact.donors.length} donneur(s) · ${impact.donors.reduce((sum,d)=>sum+d.modsTaken,0)} mod(s)</small></div>
       <div><span>ÉCART DE PRIORITÉ GAC</span><b>${strategic}</b><small>positif = bénéficiaire plus utilisé que les donneurs</small></div>
     </div>
     <div class="forge-global-impact-donors">${donorRows}</div>
