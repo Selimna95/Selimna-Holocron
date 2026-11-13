@@ -215,6 +215,11 @@ delete incompleteStatusMods[0].secondary_4_stat;
 delete incompleteStatusMods[0].secondary_4_value;
 assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).status, 'DONNÉES INCOMPLÈTES');
 assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).totalSpeed, null);
+assert.equal(modStatusContext.v176ModStatus(completeStatusMods.slice(0,5)).status, 'INCOMPLETS');
+const fiveWithIncomplete = completeStatusMods.slice(0,5).map(mod => ({ ...mod }));
+delete fiveWithIncomplete[0].secondary_4_stat;
+delete fiveWithIncomplete[0].secondary_4_value;
+assert.equal(modStatusContext.v176ModStatus(fiveWithIncomplete).status, 'DONNÉES INCOMPLÈTES');
 
 // Shared import normalization keeps Comlink stat IDs and units intact.
 const importContext = vm.createContext({
