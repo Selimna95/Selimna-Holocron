@@ -8,6 +8,8 @@
   const STAT_DEFINITIONS = Object.freeze({
     1:  { key: 'health', name: 'Health', unit: 'flat' },
     5:  { key: 'speed', name: 'Speed', unit: 'flat' },
+    14: { key: 'physicalCriticalChance', name: 'Physical Critical Chance', unit: 'flat' },
+    15: { key: 'specialCriticalChance', name: 'Special Critical Chance', unit: 'flat' },
     16: { key: 'criticalDamage', name: 'Critical Damage', unit: 'percentagePoints' },
     17: { key: 'potency', name: 'Potency', unit: 'percentagePoints' },
     18: { key: 'tenacity', name: 'Tenacity', unit: 'percentagePoints' },
@@ -30,8 +32,6 @@
     40: { key: 'specialCriticalAvoidance', name: 'Special Critical Avoidance', unit: 'flat' },
     41: { key: 'offense', name: 'Offense', unit: 'flat' },
     42: { key: 'defense', name: 'Defense', unit: 'flat' },
-    45: { key: 'criticalChance', name: 'Critical Chance', unit: 'flat' },
-    47: { key: 'criticalAvoidance', name: 'Critical Avoidance', unit: 'flat' },
     48: { key: 'offense', name: 'Offense', unit: 'percentagePoints' },
     49: { key: 'defense', name: 'Defense', unit: 'percentagePoints' },
     53: { key: 'criticalChance', name: 'Critical Chance', unit: 'percentagePoints' },
@@ -221,9 +221,13 @@
     for (const rawMod of Array.isArray(mods) ? mods : []) {
       const mod = isNormalizedMod(rawMod) ? rawMod : normalizeMod(rawMod);
       if (!mod) { missing.push('mod:invalid'); continue; }
+      if (!mod.primary?.key || mod.primary.value == null || !mod.primary.complete) {
+        missing.push('mod:primary_incomplete');
+      }
       const entries = [mod.primary, ...(mod.secondaries || [])];
       for (const stat of entries) {
-        if (!stat || stat.value == null) continue;
+        if (!stat) continue;
+        if (stat.value == null) { missing.push('stat:value_missing'); continue; }
         if (!stat.key || !['flat', 'percentagePoints'].includes(stat.unit)) {
           missing.push('stat:unknown');
           continue;
@@ -501,7 +505,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.2',
+    version: '0.3.3',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
