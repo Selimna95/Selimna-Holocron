@@ -1,5 +1,5 @@
 import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs";
-import "./modules/mod-engine.js?v=0.3.15";
+import "./modules/mod-engine.js?v=0.3.16";
 
 let pyodideReadyPromise = (async () => {
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
