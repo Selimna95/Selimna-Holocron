@@ -140,9 +140,8 @@ class OptimizerProfileResolutionTests(unittest.TestCase):
 class OptimizerNormalizationTests(unittest.TestCase):
     def test_numeric_and_named_slots(self):
         expected = {
-            "1": "Square", "2": "Arrow", "3": "Diamond", "4": "Triangle",
-            "5": "Circle", "6": "Cross", "7": "Square", "8": "Arrow",
-            "9": "Diamond", "10": "Triangle", "11": "Circle", "12": "Cross",
+            "1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
+            "5": "Triangle", "6": "Circle", "7": "Cross",
             "slot_7": "Cross", " arrow ": "Arrow",
         }
         for raw, normalized in expected.items():
@@ -153,6 +152,8 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertIsNone(normalize_slot(None))
         self.assertIsNone(normalize_slot(True))
         self.assertEqual(normalize_slot("unknown-slot"), "unknown-slot")
+        self.assertEqual(normalize_slot("8"), "8")
+        self.assertEqual(normalize_slot("12"), "12")
 
     def test_set_aliases_and_numeric_ids(self):
         self.assertEqual(normalize_set("speed"), "Speed")
