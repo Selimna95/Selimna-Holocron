@@ -341,7 +341,8 @@ assert.equal(acContext.holocronAcolyteTransferPreservesSpeed(current, slower, [c
 // target/donor pair. This catches missing score variables at proposal time.
 const acolyteFixture = [
   { baseId: 'TARGET', name: 'Target' },
-  { baseId: 'DONOR', name: 'Donor' }
+  { baseId: 'DONOR', name: 'Donor' },
+  { baseId: 'EMPTY_DONOR', name: 'Empty donor' }
 ];
 const fixtureMod = (owner, index, slot, value, complete=true) => ({
   owner, _index: index, slot, set_name: 'Speed',
@@ -359,7 +360,8 @@ const acolyteFixtureMods = [
   ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,slot==='Arrow'?4:10)),
   fixtureMod('DONOR', 6, 'Square', 12),
   fixtureMod('DONOR', 7, 'Arrow', 20, false),
-  ...['Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('DONOR',i+8,slot,0))
+  ...['Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('DONOR',i+8,slot,0)),
+  fixtureMod('EMPTY_DONOR', 12, 'Square', 0, false)
 ];
 Object.assign(acContext, {
   rosterCharacters: acolyteFixture,
