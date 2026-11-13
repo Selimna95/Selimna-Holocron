@@ -167,7 +167,8 @@ const projectionBase = {
   'Physical Critical Chance': 40, 'Special Critical Chance': 30,
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
 };
-// Comlink values are normalized by 1e8; Crinolo returns decimal ratios, while Holocron stores percentage points (x100), so 24 normalized rating units = 1 point.\nconst critRatingProjection = engine.calculateFinalStats(projectionBase, [
+// Comlink values are normalized by 1e8; Crinolo returns decimal ratios, while Holocron stores percentage points (x100), so 24 normalized rating units = 1 point.
+const critRatingProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 14, unscaledDecimalValue: 2400000000 } },
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
 ]);
