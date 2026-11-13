@@ -14,12 +14,11 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.12');
+assert.equal(engine.version, '0.3.13');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
 assert.equal(engine.canonicalSet('Protection'), null);
-assert.equal(engine.version, '0.3.11');
 assert.deepEqual(Array.from({ length: 12 }, (_, index) => engine.canonicalSlot(index + 1)), ['Square','Arrow','Diamond','Triangle','Circle','Cross','Square','Arrow','Diamond','Triangle','Circle','Cross']);
 assert.equal(engine.normalizeMod({ definitionId: '130', level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Square');
 assert.deepEqual({ ...engine.calculateSetBonuses([
