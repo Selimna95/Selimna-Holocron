@@ -106,10 +106,9 @@ function normalizeMod(m, index=0) {
   const out = {...m};
   out.game_id = out.game_id ?? out.id ?? out.modId ?? out.uid ?? `web-${index}`;
   out.slot = out.slot ?? out.slot_id ?? out.slotId ?? out.mod_slot ?? out.modSlot ?? out.shape;
-  if (out.slot == null && out.definitionId != null) {
-    const definition = String(out.definitionId).split(':')[0];
-    const slotIndex = Number(definition[2]);
-    if (definition.length === 3 && [...definition].every(char => char >= '0' && char <= '9') && Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex <= 5) out.slot = slotIndex + 1;
+  if (out.definitionId != null) {
+    const definitionSlot = window.HolocronModEngine?.slotFromDefinitionId(out.definitionId);
+    if (definitionSlot) out.slot = definitionSlot;
   }
   out.set_name = out.set_name ?? out.set ?? out.setName ?? out.setId ?? out.modSetId ?? out.mod_set_id;
   if (out.set_name && typeof out.set_name === 'object') out.set_name = out.set_name.name ?? out.set_name.id ?? out.set_name.setId ?? out.set_name.modSetId;
