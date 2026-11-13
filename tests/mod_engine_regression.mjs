@@ -239,6 +239,16 @@ const htmlNormalizedMod = htmlImportContext.normalizeMod({
 });
 assert.equal(htmlNormalizedMod.primary_stat_unit, 'percentagePoints');
 assert.equal(htmlNormalizedMod.primary_value, 2.5);
+const ambiguousHtmlStatNode = {
+  querySelector(selector) {
+    if (selector === '.statmod-stat-label') return { textContent: 'Potency' };
+    if (selector === '.statmod-stat-value') return { textContent: '2.5' };
+    return null;
+  },
+  getAttribute() { return null; },
+  textContent: ''
+};
+assert.equal(htmlImportContext.parseStatGeneric(ambiguousHtmlStatNode).unit, 'unknown');
 
 
 const acContext = vm.createContext({ window: { HolocronModEngine: sharedEngine }, compactKey, numericValue, modTotalSpeed: speed });
