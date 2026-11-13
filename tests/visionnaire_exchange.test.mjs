@@ -79,7 +79,14 @@ const buildSandbox={
   LABELS:{Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'},
   state:{mode:'sets'},render:()=>{},setTimeout:fn=>{fn();return 0;},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
-  statKey:value=>sharedEngine.canonicalStatKey(value).toLowerCase(),
+  statKey:(value,slot=null,fromKyber=false)=>{
+    const raw=String(value??'').trim();
+    let canonical=sharedEngine.canonicalStatKey(raw).toUpperCase()||raw.toUpperCase().replace(/[^A-Z0-9]/g,'')+(raw.includes('%')?'PERCENT':'');
+    if(fromKyber&&['Arrow','Triangle','Circle','Cross'].includes(slot)&&!canonical.endsWith('PERCENT')&&['OFFENSE','DEFENSE','HEALTH','PROTECTION','CRITICALDAMAGE','POTENCY','TENACITY','CRITICALCHANCE','CRITICALAVOIDANCE','ACCURACY','EVASION'].includes(canonical)){
+      canonical=sharedEngine.canonicalStatKey(raw+' %').toUpperCase()||canonical+'PERCENT';
+    }
+    return canonical.toLowerCase();
+  },
   modTotalSpeed:mod=>sharedEngine.speedMetrics(mod).total,
   characterKey:c=>String(c.baseId),
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
@@ -93,7 +100,7 @@ const buildSandbox={
 vm.createContext(buildSandbox);
 vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,primary_stat:primary,primary_value:value,secondary_1_stat:'Speed',secondary_1_value:speed,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0});
-async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
+async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[],selectedSlots=['Square','Circle']){
   const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
   donor.mods=donorMods;
   const glDonor={baseId:'GLDONOR',name:'Donneur GL',base_stats:{Speed:100},mods:glDonorMods};
@@ -115,7 +122,7 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
       return {...projection,baseSpeed:Number.isFinite(base)?base:null};
     }
   });
-  return buildSandbox.search({character:target,profile},['Square','Circle']);
+  return buildSandbox.search({character:target,profile},selectedSlots);
 }
 const glTarget={baseId:'GLREY',name:'Rey',base_stats:{Speed:100,Health:1000,Offense:500}};
 glTarget.mods=[
@@ -178,6 +185,12 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
   makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
 ],mismatchedPrimaryProfile,'primaries');
 assert.equal(mismatchedPrimarySearch.proposals.length,0,'An Offense % primary must not satisfy a Kyber reference for flat Offense');
+const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Offense:500,'Physical Damage':1000,'Special Damage':1000}};
+const shorthandPercentProfile={specific_sets:kyber.specific_sets,slots:{Cross:{primaries:{Offense:1}}}};
+const shorthandPercentSearch=await runSearch(variablePrimaryTarget,[],[
+  makeMod('correct-percent-primary','Cross','Speed',20,'Offense %',5)
+],shorthandPercentProfile,'primaries',[],['Cross']);
+assert.ok(shorthandPercentSearch.proposals.length>0,'A Kyber shorthand Offense primary on a variable slot must match the actual Offense % primary');
 
 // The engine must finish the whole small search space even after it has
 // already found more than 30 valid scenarios, retaining the best 30 by score.
