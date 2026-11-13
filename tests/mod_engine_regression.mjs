@@ -266,11 +266,12 @@ vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
 const sharedEngine = engineSandbox.module.exports;
 const visionnaireStatsContext = vm.createContext({
   window: { HolocronModEngine: sharedEngine },
+  exchangeStatName: value => String(value),
   baseStatsForCharacter: () => ({}),
   optimizerProfileForCharacter: () => ({ base_stats: { Speed: 153 } }),
   optimizerValidatedProfileForCharacter: () => null
 });
-load(visionnaire, ['exchangeStatName','exchangeFinalStats'], visionnaireStatsContext);
+load(visionnaire, ['exchangeFinalStats'], visionnaireStatsContext);
 assert.equal(visionnaireStatsContext.exchangeFinalStats({ baseId: 'MOFFGIDEONS3' }, []), null,
   'Visionnaire must not use a stale static profile when progression validation fails');
 visionnaireStatsContext.optimizerValidatedProfileForCharacter = () => ({ base_stats: { Speed: 153 } });
