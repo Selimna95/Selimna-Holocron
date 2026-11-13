@@ -1,7 +1,7 @@
 # Architecture — moteur unique des mods
 
 - Statut : migration en cours, branche isolée `refactor/unified-mod-engine`
-- Moteur de référence : `modules/mod-engine.js` v0.3.4
+- Moteur de référence : `modules/mod-engine.js` v0.3.5
 - Base de travail : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
 - Publication : aucune modification de `main` ni de GitHub Pages pendant cette migration.
@@ -22,7 +22,7 @@ Les modules métier gardent leurs critères de décision (Kyber, GAC, sélection
 | Zone | Responsabilité |
 |---|---|
 | `modules/mod-engine.js` | Normalisation canonique, règles de jeu, calculs communs, complétude des résultats |
-| `modules/core.js` v4.2.21 | Import des données, wrappers historiques temporaires et présentation |
+| `modules/core.js` v4.2.22 | Import des données, wrappers historiques temporaires et présentation |
 | Acolyte | Priorisation GAC et choix des changements ; score générique délégué au moteur |
 | Disciple | Filtres de réallocation et choix des donneurs ; identité stat/set/slot et vitesse déléguées |
 | Seigneur Sith | Objectifs Kyber/GAC et recherche de mods ; calculs de vitesse et identité délégués |
@@ -69,7 +69,7 @@ Les anciennes fonctions qui ne font que transmettre les données au moteur peuve
 - La Défense en pourcentage n'est pas projetée tant que le profil ne fournit pas la composante de défense du palier d'équipement courant. Les valeurs Armor/Resistance affichées ne suffisent pas à la reconstituer exactement.
 - Les statistiques reconnues mais dont la projection n'est pas encore implémentée (par exemple précision/pénétration) rendent le résultat incomplet au lieu d'être ignorées.
 - Les identifiants de taux critique 14/15 sont traités comme des ratings et convertis à raison de 24 points de rating par point de pourcentage, conformément au calculateur Crinolo ; les identifiants non documentés restent inconnus.
-- Le fallback HTML SWGOH.GG conserve le signe `%` affiché pour éviter de confondre une valeur en pourcentage avec un rating plat.
+- Le fallback HTML SWGOH.GG conserve le signe `%` affiché pour éviter de confondre une valeur en pourcentage avec un rating plat ; sans unité affichée ou identifiant source, une statistique ambiguë reste inconnue.
 - Les scénarios qui nécessitent un résultat complet doivent donc s'abstenir de proposer une permutation quand ces données manquent.
 
 ## Tests et critères d'intégration
