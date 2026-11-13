@@ -39,8 +39,8 @@ const roster=[
   {baseId:'DONOR',name:'Donor',base_stats:{Speed:100}}
 ];
 const equipped={
-  TARGET:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map(slot=>({id:'t-'+slot,game_id:'t-'+slot,character:'TARGET',slot,set_name:'Offense',speed:10,secondary_1_stat:'Speed',secondary_1_value:10})),
-  DONOR:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>({id:'d-'+slot,game_id:'d-'+slot,character:'DONOR',slot,set_name:'Offense',speed:[2,3,4,5,6,7][i],secondary_1_stat:'Speed',secondary_1_value:[2,3,4,5,6,7][i]}))
+  TARGET:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map(slot=>({id:'t-'+slot,game_id:'t-'+slot,character:'TARGET',slot,set_name:'Offense',level:15,speed:10,secondary_1_stat:'Speed',secondary_1_value:10})),
+  DONOR:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>({id:'d-'+slot,game_id:'d-'+slot,character:'DONOR',slot,set_name:'Offense',level:15,speed:[2,3,4,5,6,7][i],secondary_1_stat:'Speed',secondary_1_value:[2,3,4,5,6,7][i]}))
 };
 const context=vm.createContext({
   window:{HolocronModEngine:sharedEngine},
@@ -68,15 +68,15 @@ vm.runInContext([
 ].join('\n'),context);
 
 const current=equipped.TARGET;
-const safeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',speed:15,secondary_1_stat:'Speed',secondary_1_value:15}];
-const unsafeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',speed:5,secondary_1_stat:'Speed',secondary_1_value:5}];
+const safeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:15,secondary_1_stat:'Speed',secondary_1_value:15}];
+const unsafeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:5,secondary_1_stat:'Speed',secondary_1_value:5}];
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,safeBuild),true);
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,unsafeBuild),false,
   'A six-mod build that reduces the recipient speed must be rejected; before='+JSON.stringify(context.forgeProjectedModSpeed(roster[0],{base_stats:{Speed:100}},current))+' after='+JSON.stringify(context.forgeProjectedModSpeed(roster[0],{base_stats:{Speed:100}},unsafeBuild)));
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,[...current.slice(0,5),{slot:'Circle',speed:20,secondary_1_stat:'Speed',secondary_1_value:20}]),false,
   'A six-mod build with a duplicate slot must be rejected');
 
-const speedSetCurrent=current.map((m,i)=>({...m,set_name:i<4?'Speed':'Offense'}));
+const speedSetCurrent=current.map((m,i)=>({...m,set_name:i<4?'Speed':'Offense',level:15}));
 const speedSetReplacement=speedSetCurrent.map((m,i)=>({...m,set_name:i===0?'Offense':m.set_name}));
 assert.equal(context.forgeBuildPreservesSpeed({baseId:'TARGET'}, {}, speedSetCurrent,speedSetReplacement),false,
   'Losing a four-piece Speed set is unsafe when base speed is unknown');
