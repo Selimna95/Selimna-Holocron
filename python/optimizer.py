@@ -411,6 +411,11 @@ def optimize_kyber(
         "Tenacity": 0.1,
     }
 
+    if minimum_speed is not None:
+        minimum_speed = to_float(minimum_speed, None)
+        if minimum_speed is None:
+            raise RuntimeError("Vitesse minimale invalide : valeur numérique absente.")
+
     set_plan_info = _kyber_set_plan(kyber)
     set_plan = set_plan_info[1] if set_plan_info else None
 
@@ -535,6 +540,9 @@ def optimize_kyber(
     if applied_set_plan and not safe_beam:
         beam = search_builds(None)
         applied_set_plan = None
+        if not beam:
+            detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
+            raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
         safe_beam = [build for build in beam if speed_safe(build)]
 
     if minimum_speed is not None and not safe_beam:
