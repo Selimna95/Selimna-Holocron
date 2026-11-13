@@ -167,6 +167,11 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertEqual(mod_slot_value({"slotId": 3}), 3)
         self.assertEqual(mod_slot_value({"mod_slot": "Cross"}), "Cross")
         self.assertIsNone(mod_slot_value("not a mod"))
+        normalized = optimizer_module._normalized_mod({
+            "definitionId": "130", "set": "Health", "level": 15,
+            "primary_stat": "Speed", "primary_value": 10,
+        })
+        self.assertEqual(normalized["slot"], "Square")
 
     def test_empty_mod_list_has_clear_error(self):
         with self.assertRaisesRegex(RuntimeError, "Aucun mod disponible"):
