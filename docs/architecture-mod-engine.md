@@ -99,7 +99,7 @@ Les donneurs dont les données sont incomplètes sont signalés comme impact par
 Le calculateur Crinolo n'est pas une dépendance de production : il sert de référence indépendante. Le moteur Holocron reste l'unique moteur exécuté par les modules.
 ## Références de primaires Visionnaire
 
-Les clés canoniques de primaires conservent le suffixe d'unité : `Offense` et `Offense %` sont distincts. Une référence Kyber à une primaire plate ne valide donc pas une primaire en pourcentage, et inversement. Si la référence de primaire n'existe pas pour un slot, l'état reste inconnu et ne bloque pas artificiellement la recherche.
+Les clés canoniques de primaires conservent le suffixe d'unité : `Offense` et `Offense %` sont distincts. Les libellés de primaires SWGOH.GG sont toutefois abrégés dans les slots variables (par exemple `Offense` sur Cross désigne `Offense %`). La normalisation de référence applique cette convention uniquement aux slots variables Arrow/Triangle/Circle/Cross ; les slots fixes Square (Offense plate) et Diamond (Defense plate) conservent leurs unités plates. Si la référence de primaire n'existe pas pour un slot, l'état reste inconnu et ne bloque pas artificiellement la recherche.
 
 ## Normalisation des secondaires dans Seigneur Sith
 
