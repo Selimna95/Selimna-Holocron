@@ -343,8 +343,8 @@
       }
     }
 
-    const criticalChancePoints = (totals['criticalChance:percentagePoints'] || 0) + flat('criticalChance') / 2400;
-    const criticalAvoidancePoints = (totals['criticalAvoidance:percentagePoints'] || 0) + flat('criticalAvoidance') / 2400;
+    const criticalChancePoints = (totals['criticalChance:percentagePoints'] || 0) + flat('criticalChance') / 24;
+    const criticalAvoidancePoints = (totals['criticalAvoidance:percentagePoints'] || 0) + flat('criticalAvoidance') / 24;
     for (const [key, shared] of [
       ['physicalCriticalChance', criticalChancePoints],
       ['specialCriticalChance', criticalChancePoints],
@@ -354,7 +354,7 @@
       const amount = shared + (totals[key + ':percentagePoints'] || 0);
       if (!amount && !flat(key)) continue;
       if (!has(key)) { missing.push(key); continue; }
-      const ratingPoints = flat(key) / 2400;
+      const ratingPoints = flat(key) / 24;
       const displayName = ({
         physicalCriticalChance: 'Physical Critical Chance',
         specialCriticalChance: 'Special Critical Chance',
@@ -555,7 +555,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.20',
+    version: '0.3.21',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
