@@ -45,7 +45,7 @@ const speed = (mod) => Number(mod?.speed ?? 0);
 
 // Visionnaire search sampling must distribute exploration across every slot.
 const visionnaire = read('../modules/visionnaire.js');
-const disciple = read('../modules/disciple.js');
+const discipleSource = read('../modules/disciple.js');
 const visionnaireContext = vm.createContext({});
 load(visionnaire, ['visionnaireSampleIndex'], visionnaireContext);
 for (let slotIndex = 0; slotIndex < 6; slotIndex++) {
@@ -266,7 +266,7 @@ vm.createContext(engineSandbox);
 vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
 const sharedEngine = engineSandbox.module.exports;
 const discipleStatsContext = vm.createContext({ optimizerValidatedProfileForCharacter: () => null });
-load(disciple, ['characterReportStats'], discipleStatsContext);
+load(discipleSource, ['characterReportStats'], discipleStatsContext);
 const missingDiscipleReference = discipleStatsContext.characterReportStats({ baseId: 'MOFFGIDEONS3' });
 assert.equal(missingDiscipleReference.profile, null);
 assert.deepEqual(JSON.parse(JSON.stringify(missingDiscipleReference.rows)), [],
