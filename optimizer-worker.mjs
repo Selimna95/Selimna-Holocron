@@ -105,6 +105,11 @@ if context.get("mode") == "seigneur-six-mods":
     # The current six-mod speed is the hard floor for Seigneur Sith.
     # final_stats includes arrow primary speed and the four-piece Speed-set bonus.
     minimum_speed = optimizer.final_stats(current_target_mods, base_stats, base_profile).get("Speed")
+    if minimum_speed is None or float(minimum_speed) <= 0:
+        raise RuntimeError(
+            "Vitesse actuelle du personnage non calculable : "
+            "la recherche Seigneur Sith est arrêtée sans plancher de vitesse vérifiable."
+        )
 r = optimizer.find_top_builds(
     mods,
     base_stats=base_stats,
