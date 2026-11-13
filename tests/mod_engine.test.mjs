@@ -174,6 +174,12 @@ const incompleteSpeedSet = engine.calculateSpeed(100, [
 assert.equal(incompleteSpeedSet.complete, false);
 assert.equal(incompleteSpeedSet.total, null);
 assert.ok(incompleteSpeedSet.missing.includes('mod:level_unknown'));
+const unknownSetProjection = engine.calculateFinalStats(projectionBase, [{ level: 15, set_name: 'Unmapped Set', primary_stat: 'Health', primary_value: 10 }]);
+assert.equal(unknownSetProjection.complete, false);
+assert.ok(unknownSetProjection.missing.includes('set:unknown'));
+const unknownModLevelProjection = engine.calculateFinalStats(projectionBase, [{ set_name: 'Health', primary_stat: 'Health', primary_value: 10 }]);
+assert.equal(unknownModLevelProjection.complete, false);
+assert.ok(unknownModLevelProjection.missing.includes('mod:level_unknown'));
 
 assert.equal(speedProjection.stats.Speed, 110);
 const noPrimarySpeedMods = Array.from({ length: 6 }, () => ({ level: 15, set_name: 'Health', primary_stat: 'Health %', primary_value: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 }));
