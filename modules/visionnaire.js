@@ -233,7 +233,7 @@
     const base=profile.base_stats || (typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null);
     if(!base||typeof base!=='object'||!Object.keys(base).length)return null;
     const source=profile.base_stats ? profile : base;
-    const calculation=window.HolocronModEngine.calculateFinalStats(source,build,character?.level??profile.level);
+    const calculation=window.HolocronModEngine.calculateFinalStats(source,build,character?.level);
     if(!calculation.complete)return null;
     return Object.fromEntries(Object.entries(calculation.stats||{}).map(([name,value])=>[exchangeStatName(name),Number(value)]));
   }
