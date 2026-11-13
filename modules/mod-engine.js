@@ -374,7 +374,8 @@
       square:'Square', transmitter:'Square', receiver:'Arrow', arrow:'Arrow',
       processor:'Diamond', diamond:'Diamond', holoarray:'Triangle', triangle:'Triangle',
       databus:'Circle', circle:'Circle', multiplexer:'Cross', cross:'Cross',
-      '1':'Square','2':'Square','3':'Arrow','4':'Diamond','5':'Triangle','6':'Circle','7':'Cross'
+      '1':'Square','2':'Arrow','3':'Diamond','4':'Triangle','5':'Circle','6':'Cross',
+      '7':'Square','8':'Arrow','9':'Diamond','10':'Triangle','11':'Circle','12':'Cross'
     })[raw] || null;
   }
 
@@ -534,7 +535,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.9',
+    version: '0.3.10',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
