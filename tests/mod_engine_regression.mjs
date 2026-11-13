@@ -272,9 +272,13 @@ assert.equal(missingSourceProjection.total, null);
 assert.ok(missingSourceProjection.missing.includes('mod:level_unknown'));
 assert.ok(missingSourceProjection.missing.includes('mod:primary_incomplete'));
 const rawComlinkMod = htmlImportContext.normalizeMod({ definitionId: '130', level: 15, primary_stat: 'Speed', primary_value: 15 });
+assert.equal(rawComlinkMod.slot, 'Square');
 assert.equal(sharedEngine.normalizeMod(rawComlinkMod).slot, 'Square');
+const rawComlinkArrow = htmlImportContext.normalizeMod({ definitionId: '131', level: 15, primary_stat: 'Speed', primary_value: 15 });
+assert.equal(rawComlinkArrow.slot, 'Arrow');
+assert.equal(sharedEngine.normalizeMod(rawComlinkArrow).slot, 'Arrow');
 const swgohGgSlotMod = htmlImportContext.normalizeMod({ slot_id: 7, level: 15, set_name: 'Health', primary_stat: 'Speed', primary_value: 15 });
-assert.equal(sharedEngine.normalizeMod(swgohGgSlotMod).slot, 'Square');
+assert.equal(sharedEngine.normalizeMod(swgohGgSlotMod).slot, 'Cross');
 
 const primaryNode = {
   querySelector(selector) {
