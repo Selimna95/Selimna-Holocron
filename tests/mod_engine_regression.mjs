@@ -89,7 +89,10 @@ const optimizerProfileFixtures = {
     level: 85, rarity: 7, gear_level: 13, relic_tier: 8
   }
 };
-const optimizerMetadataContext = vm.createContext({ numericValue, optimizerProfiles: optimizerProfileFixtures });
+const optimizerMetadataContext = vm.createContext({
+  numericValue, optimizerProfiles: optimizerProfileFixtures,
+  slug: value => String(value || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+});
 load(core, ['optimizerRosterMetadata','optimizerProfileForCharacter','optimizerValidatedProfileForCharacter','baseStatsForCharacter'], optimizerMetadataContext);
 const matchingRosterCharacter = {
   baseId: 'MOFFGIDEONS3', level: 85, stars: 7, gear: 13, relic_tier: 8,
