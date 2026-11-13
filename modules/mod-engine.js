@@ -194,21 +194,19 @@
         if (key && !Object.keys(expandedBase).some(existing => canonicalBaseKey(existing) === key)) {
           const current = numeric(value);
           const rawDelta = numeric(profile.mod_stat_diffs?.[name]);
-          const delta = rawDelta ?? 0;
-          if (current != null) {
-            if (key === 'criticalAvoidance') {
-              if (current !== 0 && rawDelta == null) continue;
-              const baseAvoidance = current - delta;
-              expandedBase['Physical Critical Avoidance'] = baseAvoidance;
-              expandedBase['Special Critical Avoidance'] = baseAvoidance;
-            } else {
-              expandedBase[name] = current - delta;
-            }
+          // Current stats already include mods. Without a source delta, they cannot be treated as base stats.
+          if (current == null || rawDelta == null) continue;
+          if (key === 'criticalAvoidance') {
+            const baseAvoidance = current - rawDelta;
+            expandedBase['Physical Critical Avoidance'] = baseAvoidance;
+            expandedBase['Special Critical Avoidance'] = baseAvoidance;
+          } else {
+            expandedBase[name] = current - rawDelta;
           }
         }
       }
     }
-    level = numeric(level);
+    level = numeric(level) ?? numeric(profile?.level);
     const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
     if (cachedProjection) return { stats: { ...cachedProjection.stats }, complete: cachedProjection.complete, missing: [...cachedProjection.missing] };
@@ -551,7 +549,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.14',
+    version: '0.3.15',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
