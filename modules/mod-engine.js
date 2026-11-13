@@ -207,7 +207,7 @@
         }
       }
     }
-    level = numeric(level) ?? numeric(profile?.level);
+    level = numeric(level);
     const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
     if (cachedProjection) return { stats: { ...cachedProjection.stats }, complete: cachedProjection.complete, missing: [...cachedProjection.missing] };
@@ -553,7 +553,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.17',
+    version: '0.3.18',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
