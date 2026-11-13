@@ -175,8 +175,10 @@ function renderCharacterReport(){
   box.querySelectorAll('[data-mod-index]').forEach(el=>el.addEventListener('click',()=>showModInventoryDetail(Number(el.dataset.modIndex))));
 }
 function renderReportModCard(m){
+  const complete=window.HolocronModEngine.normalizeMod(m)?.complete===true;
   const x=modSpeedMetrics(m), sec=modSecondaries(m)||'Aucune';
-  return `<button type="button" class="report-mod-card" data-mod-index="${m._index??''}"><div class="report-mod-slot"><span>${esc(m.slot)}</span><em>${esc(m.set_name||'—')}</em>${modIconHtml(m,'52')}</div><h3>${esc(m.primary_stat||'—')} ${num(m.primary_value,1)}</h3><div class="report-mod-speed">${x.primary?'PRIMAIRE SPEED':(x.secondary?`SPEED SECONDAIRE +${num(x.secondary)}`:'SANS SPEED')}</div><p>${esc(sec)}</p><small>Niveau ${num(m.level)} · ${modDots(m)} dots · Tier ${modIconTier(m)} · ${esc(m.character||'Libre')}</small></button>`;
+  const speedLabel=!complete?'DONNÉES INCOMPLÈTES':x.primary?'PRIMAIRE SPEED':(x.secondary!=null?`SPEED SECONDAIRE +${num(x.secondary)}`:'SANS SPEED');
+  return `<button type="button" class="report-mod-card" data-mod-index="${m._index??''}"><div class="report-mod-slot"><span>${esc(m.slot)}</span><em>${esc(m.set_name||'—')}</em>${modIconHtml(m,'52')}</div><h3>${esc(m.primary_stat||'—')} ${num(m.primary_value,1)}</h3><div class="report-mod-speed">${speedLabel}</div><p>${esc(sec)}</p><small>Niveau ${num(m.level)} · ${modDots(m)} dots · Tier ${modIconTier(m)} · ${esc(m.character||'Libre')}</small></button>`;
 }
 
 function renderCharacterDetail(){
@@ -184,20 +186,24 @@ function renderCharacterDetail(){
   const box=$('characterModDetail'); if(!box)return;
   if(!c){box.innerHTML='<div class="empty">Sélectionnez un personnage.</div>';return;}
   const cm=getCharacterMods(c), s=v176ModStatus(cm);
-  const secSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0), primarySpeed=cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
-  box.innerHTML=`<div class="character-detail-head"><div><span class="tag">PERSONNAGE</span><h2>${esc(c.name||c.baseId)}</h2><p>Niveau ${num(c.level)} · Gear ${num(c.gear)} · ${relicLevelFromTier(c.relic_tier??c.relicTier??0)?'R'+num(relicLevelFromTier(c.relic_tier??c.relicTier)):'Sans Relic'} · ${num(c.stars)}★ · Puissance ${num(c.power)}</p>${factionBadgesHtml(factionMap[characterKey(c)]||[])}</div><div class="detail-kpis"><b>${cm.length}/6</b><span>mods équipés</span><b>${num(secSpeed)}</b><span>Speed secondaire</span><b>${num(primarySpeed)}</b><span>Speed primaire</span><strong class="audit-badge ${s.class}">${esc(s.status)}</strong></div></div>
+  const speedDataComplete=s.status!=='DONNÉES INCOMPLÈTES';
+  const secSpeed=speedDataComplete?cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0):null;
+  const primarySpeed=speedDataComplete?cm.reduce((n,m)=>n+modPrimarySpeed(m),0):null;
+  box.innerHTML=`<div class="character-detail-head"><div><span class="tag">PERSONNAGE</span><h2>${esc(c.name||c.baseId)}</h2><p>Niveau ${num(c.level)} · Gear ${num(c.gear)} · ${relicLevelFromTier(c.relic_tier??c.relicTier??0)?'R'+num(relicLevelFromTier(c.relic_tier??c.relicTier)):'Sans Relic'} · ${num(c.stars)}★ · Puissance ${num(c.power)}</p>${factionBadgesHtml(factionMap[characterKey(c)]||[])}</div><div class="detail-kpis"><b>${cm.length}/6</b><span>mods équipés</span><b>${secSpeed==null?'—':num(secSpeed)}</b><span>Speed secondaire</span><b>${primarySpeed==null?'—':num(primarySpeed)}</b><span>Speed primaire</span><strong class="audit-badge ${s.class}">${esc(s.status)}</strong></div></div>
   <div class="character-detail-actions"><strong>DÉTAIL DES 6 MODS ÉQUIPÉS</strong><button type="button" class="detail-mods-btn" id="openCharacterInventory">OUVRIR DANS L’INVENTAIRE</button></div>
   <div class="mod-detail-grid">${[...cm,...Array(Math.max(0,6-cm.length)).fill(null)].slice(0,6).map((m,i)=>m?renderModCard(m):`<div class="mod-card empty-slot"><strong>${['Square','Arrow','Diamond','Triangle','Circle','Cross'][i]}</strong><span>MOD MANQUANT</span></div>`).join('')}</div>`;
   $('openCharacterInventory')?.addEventListener('click',()=>openCharacterInventory(c));
 }
 function renderModCard(m){
+  const complete=window.HolocronModEngine.normalizeMod(m)?.complete===true;
   const x=modSpeedMetrics(m), speed=x.secondary??0, owner=m.character||'Libre';
   const sec=modSecondaries(m)||'—';
-  const speedClass=x.primary?'speed_primary':speedCategory(speed);
+  const speedClass=!complete?'speed_unknown':x.primary?'speed_primary':speedCategory(speed);
+  const speedLabel=!complete?'Données incomplètes':x.primary?'Primaire Speed':(x.secondary!=null?`Speed secondaire +${num(speed)}`:'Sans Speed');
   return `<button class="mod-detail-card ${speedClass}" data-mod-index="${m._index??''}">
     <div class="mod-card-top"><strong>${esc(m.slot||'—')}</strong><span>${esc(m.set_name||'—')}</span>${modIconHtml(m,'54')}</div>
     <div class="mod-primary"><b>${esc(m.primary_stat||'—')}</b> ${num(m.primary_value,1)}</div>
-    <div class="mod-speed-line">${x.primary?'Primaire Speed':(speed>0?`Speed secondaire +${num(speed)}`:'Sans Speed')}</div>
+    <div class="mod-speed-line">${speedLabel}</div>
     <div class="mod-secondaries">${esc(sec)}</div>
     <small>Niv. ${num(m.level)} · ${num(m.rarity)}★ · ${esc(owner)}</small>
   </button>`;
