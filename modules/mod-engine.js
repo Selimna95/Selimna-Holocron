@@ -91,7 +91,7 @@
     if (value == null || value === '') return null;
     const text = String(value).trim().replace(/\s/g, '').replace(',', '.');
     const match = text.match(/^[-+]?(?:\d+\.?\d*|\.\d+)%?$/);
-    const parsed = match ? Number(match[0]) : NaN;
+    const parsed = match ? Number(match[0].replace(/%$/, '')) : NaN;
     return Number.isFinite(parsed) ? parsed : null;
   }
 
@@ -197,7 +197,7 @@
         }
       }
     }
-    level = numeric(level) ?? numeric(profile?.level);
+    level = numeric(level);
     const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
     if (cachedProjection) return { stats: { ...cachedProjection.stats }, complete: cachedProjection.complete, missing: [...cachedProjection.missing] };
