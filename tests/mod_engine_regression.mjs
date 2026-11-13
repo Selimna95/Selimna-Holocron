@@ -83,8 +83,14 @@ assert.equal(iconContext.modDots({}), null);
 
 // Optimizer snapshots include progression-dependent stats. Verify the exact live
 // roster metadata is sent to the Worker and that missing relic data stays unknown.
-const optimizerMetadataContext = vm.createContext({ numericValue });
-load(core, ['optimizerRosterMetadata','baseStatsForCharacter'], optimizerMetadataContext);
+const optimizerProfileFixtures = {
+  MOFFGIDEONS3: {
+    base_id: 'MOFFGIDEONS3', base_stats: { Speed: 153 },
+    level: 85, rarity: 7, gear_level: 13, relic_tier: 8
+  }
+};
+const optimizerMetadataContext = vm.createContext({ numericValue, optimizerProfiles: optimizerProfileFixtures });
+load(core, ['optimizerRosterMetadata','optimizerProfileForCharacter','optimizerValidatedProfileForCharacter','baseStatsForCharacter'], optimizerMetadataContext);
 const matchingRosterCharacter = {
   baseId: 'MOFFGIDEONS3', level: 85, stars: 7, gear: 13, relic_tier: 8,
   raw: { level: 85, rarity: 7, gear_level: 13, relic_tier: 8 }
@@ -102,6 +108,13 @@ assert.deepEqual(JSON.parse(JSON.stringify(optimizerMetadataContext.baseStatsFor
 assert.deepEqual(JSON.parse(JSON.stringify(optimizerMetadataContext.baseStatsForCharacter({
   base_stats: { Speed: 150 }
 }))), { Speed: 150 });
+assert.equal(optimizerMetadataContext.optimizerValidatedProfileForCharacter(matchingRosterCharacter)?.base_stats?.Speed, 153,
+  'A static profile is usable only when all four progression fields match');
+assert.equal(optimizerMetadataContext.optimizerValidatedProfileForCharacter({
+  baseId: 'MOFFGIDEONS3', raw: { level: 85, rarity: 7, gear_level: 12, relic_tier: 8 }
+}), null, 'A gear mismatch must invalidate the static profile');
+assert.equal(optimizerMetadataContext.optimizerValidatedProfileForCharacter(unknownRelicRosterCharacter), null,
+  'Missing relic metadata must invalidate the static profile');
 
 const optimizerWorkerStub = {
   listeners: {},
@@ -248,6 +261,18 @@ const engineSandbox = { module: { exports: {} } };
 vm.createContext(engineSandbox);
 vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
 const sharedEngine = engineSandbox.module.exports;
+const visionnaireStatsContext = vm.createContext({
+  window: { HolocronModEngine: sharedEngine },
+  baseStatsForCharacter: () => ({}),
+  optimizerProfileForCharacter: () => ({ base_stats: { Speed: 153 } }),
+  optimizerValidatedProfileForCharacter: () => null
+});
+load(visionnaire, ['exchangeStatName','exchangeFinalStats'], visionnaireStatsContext);
+assert.equal(visionnaireStatsContext.exchangeFinalStats({ baseId: 'MOFFGIDEONS3' }, []), null,
+  'Visionnaire must not use a stale static profile when progression validation fails');
+visionnaireStatsContext.optimizerValidatedProfileForCharacter = () => ({ base_stats: { Speed: 153 } });
+assert.equal(visionnaireStatsContext.exchangeFinalStats({ baseId: 'MOFFGIDEONS3' }, [])?.Speed, 153,
+  'Visionnaire may project stats from a progression-validated profile');
 const modStatusContext = vm.createContext({ window: { HolocronModEngine: sharedEngine } });
 load(core, ['v176ModStatus'], modStatusContext);
 const completeStatusMods = Array.from({ length: 6 }, (_, index) => ({
@@ -618,7 +643,7 @@ assert.deepEqual(Array.from(scoped,x=>x.id).sort(),['free-mod','incomplete-mod',
 const forgeContext = vm.createContext({
   window: { HolocronModEngine: sharedEngine },
   numericValue, modTotalSpeed: speed, optimizerSlotKey: (v) => String(v ?? ''),
-  optimizerProfileForCharacter: () => ({})
+  optimizerProfileForCharacter: () => ({}), optimizerValidatedProfileForCharacter: () => null
 });
 load(seigneur, ['forgeProjectedModSpeed', 'forgeCandidatePreservesSpeed'], forgeContext);
 const baseSpeedCharacter = { base_stats: { Speed: 100 } };
@@ -647,6 +672,11 @@ const threeSpeedSets = [
 ];
 assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, threeSpeedSets, threeSpeedSets[0], makeSpeedMod('fourth-speed', 'Square', 'Speed', 5)), true);
 assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'unknown', slot: 'Square', set_name: 'Offense', speed: 25, secondary_1_stat: 'Speed', secondary_1_value: 25 }), false);
+assert.equal(forgeContext.forgeProjectedModSpeed({}, { base_stats: { Speed: 100 } }, equipped).complete, false,
+  'A Kyber/reference argument must not bypass progression validation for base speed');
+forgeContext.optimizerValidatedProfileForCharacter = () => ({ base_stats: { Speed: 100 } });
+assert.equal(forgeContext.forgeProjectedModSpeed({}, {}, equipped).complete, true,
+  'A progression-validated profile may provide the base speed');
 
 
 // 5b) Seigneur: a Kyber set distribution is not an exact six-mod composition.
