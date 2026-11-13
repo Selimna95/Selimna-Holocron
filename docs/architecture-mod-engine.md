@@ -101,6 +101,10 @@ Le calculateur Crinolo n'est pas une dépendance de production : il sert de réf
 
 Les clés canoniques de primaires conservent le suffixe d'unité : `Offense` et `Offense %` sont distincts. Les libellés de primaires SWGOH.GG sont toutefois abrégés dans les slots variables (par exemple `Offense` sur Cross désigne `Offense %`). La normalisation de référence applique cette convention uniquement aux slots variables Arrow/Triangle/Circle/Cross ; les slots fixes Square (Offense plate) et Diamond (Defense plate) conservent leurs unités plates. Si la référence de primaire n'existe pas pour un slot, l'état reste inconnu et ne bloque pas artificiellement la recherche.
 
+## Normalisation des secondaires dans Disciple
+
+Les filtres de primaires et secondaires comparent les clés canoniques avec leur unité. `Offense` et `Offense %` restent deux choix distincts dans les filtres d'inventaire et de réallocation. Un mod dont les données sont incomplètes n'entre pas dans une tranche de vitesse numérique et ne peut pas être présenté comme `Sans Speed`.
+
 ## Normalisation des secondaires dans Seigneur Sith
 
 Les contributions statistiques sont comparées par clé canonique incluant l'unité lorsque celle-ci distingue deux stats (par exemple `Offense` et `Offense %`). Les valeurs en points de pourcentage conservent leur suffixe `%` à l'affichage ; elles ne sont pas additionnées à une statistique plate de même nom.
