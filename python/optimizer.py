@@ -140,7 +140,7 @@ def mod_stats(mod):
     percent_suffix = {"offense", "defense", "health", "protection", "speed"}
     entries = [normalized.get("primary")] + list(normalized.get("secondaries") or [])
     for stat in entries:
-        if not isinstance(stat, dict) or stat.get("value") is None or not stat.get("key"):
+        if not isinstance(stat, dict) or stat.get("value") is None or not stat.get("key") or stat.get("unit") not in {"flat", "percentagePoints"}:
             continue
         key = stat["key"]
         name = stat.get("name") or key
