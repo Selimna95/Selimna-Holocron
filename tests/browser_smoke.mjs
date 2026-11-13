@@ -122,6 +122,24 @@ try {
   assert.notEqual(modMath.offenseFlat, modMath.offensePercent, "Offense and Offense % are distinct secondary stats");
   assert.notEqual(modMath.healthFlat, modMath.healthPercent, "Health and Health % are distinct secondary stats");
 
+  const incompleteSpeedUi = await page.evaluate(() => {
+    const incomplete = {set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Speed",secondary_1_value:5};
+    const completeWithoutSpeed = {set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Protection",secondary_1_value:0,secondary_2_stat:"Potency %",secondary_2_value:0,secondary_3_stat:"Tenacity %",secondary_3_value:0,secondary_4_stat:"Critical Damage %",secondary_4_value:0};
+    const originalMods = mods;
+    try {
+      const summary = speedBreakdown([incomplete, completeWithoutSpeed]);
+      mods = [incomplete];
+      const row = inventoryRows()[0];
+      return {unknown:summary.unknown,noSpeed:summary.no_speed,rowSpeed:row._speed,rowCategory:row._speedCategory,card:renderModCard(incomplete)};
+    } finally { mods = originalMods; }
+  });
+  assert.equal(incompleteSpeedUi.unknown, 1, "Incomplete mod data must have its own summary category");
+  assert.equal(incompleteSpeedUi.noSpeed, 1, "A complete mod with no Speed secondary is genuinely in the no-speed category");
+  assert.equal(incompleteSpeedUi.rowSpeed, null, "An unknown speed value must remain null in the inventory model");
+  assert.equal(incompleteSpeedUi.rowCategory, "unknown");
+  assert.match(incompleteSpeedUi.card, /Données incomplètes/);
+  assert.doesNotMatch(incompleteSpeedUi.card, /Sans Speed/);
+
   // Disciple: consecutive searches must refresh the visible candidates every
   // time, including when the user changes the secondary and then clicks search.
   const discipleRepeatSearch = await page.evaluate(() => {
