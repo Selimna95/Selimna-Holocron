@@ -250,6 +250,28 @@ const ambiguousHtmlStatNode = {
 };
 assert.equal(htmlImportContext.parseStatGeneric(ambiguousHtmlStatNode).unit, 'unknown');
 
+const missingHtmlStatNode = {
+  querySelector(selector) {
+    if (selector === '.statmod-stat-label') return { textContent: 'Speed' };
+    if (selector === '.statmod-stat-value') return { textContent: '—' };
+    return null;
+  },
+  getAttribute() { return null; },
+  textContent: ''
+};
+assert.equal(htmlImportContext.parseStatGeneric(missingHtmlStatNode).value, null);
+assert.equal(htmlImportContext.statValueFromAny('not-a-number'), null);
+const missingSourceMod = htmlImportContext.normalizeMod({
+  set_name: 'Speed', level: null, primary_stat: 'Speed', primary_value: null
+});
+assert.equal(missingSourceMod.level, null);
+assert.equal(missingSourceMod.primary_value, null);
+const missingSourceProjection = sharedEngine.calculateSpeed(100, [missingSourceMod]);
+assert.equal(missingSourceProjection.complete, false);
+assert.equal(missingSourceProjection.total, null);
+assert.ok(missingSourceProjection.missing.includes('mod:level_unknown'));
+assert.ok(missingSourceProjection.missing.includes('mod:primary_incomplete'));
+
 
 const acContext = vm.createContext({ window: { HolocronModEngine: sharedEngine }, compactKey, numericValue, modTotalSpeed: speed });
 load(acolyte, ['holocronModSecondarySpeed', 'holocronAcolyteTransferPreservesSpeed'], acContext);
