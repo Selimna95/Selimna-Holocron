@@ -41,7 +41,7 @@ const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Offense', primary_value: 40, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Offense %', primary_value: 10, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries },
-  { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100 }
+  { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
 ];
 pyodide.globals.set('mods_json', JSON.stringify(offenseMods));
 const offense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats(json.loads(mods_json), json.loads(base_json))\njson.dumps(result)\n"));
