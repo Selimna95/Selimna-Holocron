@@ -222,6 +222,11 @@ const importContext = vm.createContext({
   numericValue: (value, fallback=0) => Number.isFinite(Number(value)) ? Number(value) : fallback
 });
 load(core, ['statNameFromAny','statValueFromAny','statObjectFromAny','normalizeMod'], importContext);
+const unknownDotMod = importContext.normalizeMod({ slot: 'Square', set_name: 'Health', dots: 6 });
+assert.equal(unknownDotMod.pips, 6);
+assert.equal(unknownDotMod.level, null);
+const unknownTierMod = importContext.normalizeMod({ slot: 'Square', set_name: 'Health' });
+assert.equal(unknownTierMod.pips, null);
 const importedMod = importContext.normalizeMod({
   id: 'comlink-unit-fixture',
   primary_stat: { unitStatId: 48, unscaledDecimalValue: 2500000 },
