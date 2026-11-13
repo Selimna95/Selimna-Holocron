@@ -530,25 +530,30 @@ const forgeContext = vm.createContext({
 });
 load(seigneur, ['forgeProjectedModSpeed', 'forgeCandidatePreservesSpeed'], forgeContext);
 const baseSpeedCharacter = { base_stats: { Speed: 100 } };
+const makeSpeedMod = (id, slot, set_name, speedValue) => ({
+  id, slot, set_name, level: 1, speed: speedValue,
+  primary_stat: 'Health', primary_value: 0,
+  secondary_1_stat: 'Speed', secondary_1_value: speedValue
+});
 const equipped = [
-  { id: 'cur', slot: 'Square', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 'a', slot: 'Arrow', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 'd', slot: 'Diamond', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 't', slot: 'Triangle', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 'c', slot: 'Circle', set_name: 'Offense', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 'x', slot: 'Cross', set_name: 'Offense', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 }
+  makeSpeedMod('cur', 'Square', 'Speed', 5),
+  makeSpeedMod('a', 'Arrow', 'Speed', 5),
+  makeSpeedMod('d', 'Diamond', 'Speed', 5),
+  makeSpeedMod('t', 'Triangle', 'Speed', 5),
+  makeSpeedMod('c', 'Circle', 'Offense', 5),
+  makeSpeedMod('x', 'Cross', 'Offense', 5)
 ];
-assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'gain', slot: 'Square', set_name: 'Offense', speed: 25, secondary_1_stat: 'Speed', secondary_1_value: 25 }), true);
-assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'loss', slot: 'Square', set_name: 'Offense', speed: 9, secondary_1_stat: 'Speed', secondary_1_value: 9 }), false);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], makeSpeedMod('gain', 'Square', 'Offense', 25)), true);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], makeSpeedMod('loss', 'Square', 'Offense', 9)), false);
 const threeSpeedSets = [
-  { id: 'cur-offense', slot: 'Square', set_name: 'Offense', speed: 10, secondary_1_stat: 'Speed', secondary_1_value: 10 },
-  { id: 'a', slot: 'Arrow', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 'd', slot: 'Diamond', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 't', slot: 'Triangle', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 'c', slot: 'Circle', set_name: 'Offense', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 },
-  { id: 'x', slot: 'Cross', set_name: 'Offense', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 }
+  makeSpeedMod('cur-offense', 'Square', 'Offense', 10),
+  makeSpeedMod('a', 'Arrow', 'Speed', 5),
+  makeSpeedMod('d', 'Diamond', 'Speed', 5),
+  makeSpeedMod('t', 'Triangle', 'Speed', 5),
+  makeSpeedMod('c', 'Circle', 'Offense', 5),
+  makeSpeedMod('x', 'Cross', 'Offense', 5)
 ];
-assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, threeSpeedSets, threeSpeedSets[0], { id: 'fourth-speed', slot: 'Square', set_name: 'Speed', speed: 5, secondary_1_stat: 'Speed', secondary_1_value: 5 }), true);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, threeSpeedSets, threeSpeedSets[0], makeSpeedMod('fourth-speed', 'Square', 'Speed', 5)), true);
 assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'unknown', slot: 'Square', set_name: 'Offense', speed: 25, secondary_1_stat: 'Speed', secondary_1_value: 25 }), false);
 
 
