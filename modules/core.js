@@ -205,6 +205,17 @@ function optimizerRosterMetadata(character) {
     relic_tier: numericValue(relicValue, null)
   };
 }
+function optimizerValidatedProfileForCharacter(character) {
+  const profile=optimizerProfileForCharacter(character);
+  if (!profile || !profile.base_stats || typeof profile.base_stats !== 'object' || !Object.keys(profile.base_stats).length) return null;
+  const metadata=optimizerRosterMetadata(character);
+  for (const field of ['level','rarity','gear_level','relic_tier']) {
+    const expected=Number(profile[field]);
+    const actual=metadata[field];
+    if (actual == null || !Number.isFinite(expected) || expected !== Number(actual)) return null;
+  }
+  return profile;
+}
 function baseStatsForCharacter(character) {
   const direct=character?.base_stats || character?.baseStats;
   // Only caller-supplied base stats are direct inputs. Static reference profiles
