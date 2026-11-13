@@ -8,7 +8,7 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox);
 const engine = sandbox.module.exports;
 
-assert.equal(engine.version, '0.3.4');
+assert.equal(engine.version, '0.3.5');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -54,6 +54,12 @@ assert.equal(specialCritRating.key, 'specialCriticalChance');
 assert.equal(specialCritRating.value, 48);
 assert.equal(engine.normalizeStat({ unitStatId: 45, unscaledDecimalValue: 2400000000 }).complete, false);
 assert.equal(engine.normalizeStat({ unitStatId: 47, unscaledDecimalValue: 2400000000 }).complete, false);
+assert.equal(engine.normalizeStat('Potency', 2.5).unit, 'unknown');
+assert.equal(engine.normalizeStat('Potency', 2.5).complete, false);
+assert.equal(engine.normalizeStat('Speed', 5).unit, 'flat');
+assert.equal(engine.normalizeStat('Offense', 40).unit, 'flat');
+assert.equal(engine.normalizeStat('Potency %', 2.5).unit, 'percentagePoints');
+assert.equal(engine.normalizeStat('Speed', '12garbage').value, null);
 assert.equal(engine.normalizeStat({ unitStatId: 16, unscaledDecimalValue: 30000000 }).value, 30);
 assert.equal(engine.canonicalStatKey('Offense %'), 'OFFENSEPERCENT');
 assert.equal(engine.canonicalStatKey('Potency %'), 'POTENCY');
