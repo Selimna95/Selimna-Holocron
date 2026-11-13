@@ -210,6 +210,7 @@ function optimizerValidatedProfileForCharacter(character) {
   if (!profile || !profile.base_stats || typeof profile.base_stats !== 'object' || !Object.keys(profile.base_stats).length) return null;
   const metadata=optimizerRosterMetadata(character);
   for (const field of ['level','rarity','gear_level','relic_tier']) {
+    if (profile[field] == null) return null;
     const expected=Number(profile[field]);
     const actual=metadata[field];
     if (actual == null || !Number.isFinite(expected) || expected !== Number(actual)) return null;

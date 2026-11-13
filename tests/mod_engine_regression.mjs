@@ -100,7 +100,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(rosterMetadata)), {
   level: 85, rarity: 7, gear_level: 13, relic_tier: 8
 });
 const unknownRelicRosterCharacter = {
-  level: 85, stars: 7, gear: 13, relic_tier: 0,
+  baseId: 'MOFFGIDEONS3', level: 85, stars: 7, gear: 13, relic_tier: 0,
   raw: { level: 85, rarity: 7, gear_level: 13 }
 };
 assert.equal(optimizerMetadataContext.optimizerRosterMetadata(unknownRelicRosterCharacter).relic_tier, null);
