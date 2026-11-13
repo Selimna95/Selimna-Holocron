@@ -7,6 +7,15 @@ const engineSandbox={module:{exports:{}}};
 vm.createContext(engineSandbox);
 vm.runInContext(engineSource,engineSandbox);
 const sharedEngine=engineSandbox.module.exports;
+const statKeyStart=js.indexOf('  const KYBER_PERCENT_PRIMARY_KEYS=');
+const statKeyEnd=js.indexOf('  const normalizeCounts=',statKeyStart);
+if(statKeyStart<0||statKeyEnd<0)throw new Error('Visionnaire slot-aware primary key helper is missing');
+const statKeySandbox={window:{HolocronModEngine:sharedEngine},key:value=>String(value??'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')};
+vm.createContext(statKeySandbox);
+vm.runInContext(js.slice(statKeyStart,statKeyEnd)+'\\nthis.statKey=statKey;',statKeySandbox);
+const actualStatKey=statKeySandbox.statKey;
+assert.equal(actualStatKey('Offense','Cross',true),actualStatKey('Offense %','Cross',false),'SWGOH.GG Cross primary shorthand maps Offense to Offense %');
+assert.notEqual(actualStatKey('Offense','Square',true),actualStatKey('Offense %','Square',false),'Fixed Square Offense remains flat');
 assert.ok(js.includes('function exchangeFinalStats'),'Full stat projection must exist');
 assert.ok(js.includes('function exchangeScenarioScore'),'Strategic scoring must exist');
 assert.ok(js.includes("const isFree=!ownerKey"),'Free inventory mods must be included');
@@ -79,14 +88,7 @@ const buildSandbox={
   LABELS:{Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'},
   state:{mode:'sets'},render:()=>{},setTimeout:fn=>{fn();return 0;},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
-  statKey:(value,slot=null,fromKyber=false)=>{
-    const raw=String(value??'').trim();
-    let canonical=sharedEngine.canonicalStatKey(raw).toUpperCase()||raw.toUpperCase().replace(/[^A-Z0-9]/g,'')+(raw.includes('%')?'PERCENT':'');
-    if(fromKyber&&['Arrow','Triangle','Circle','Cross'].includes(slot)&&!canonical.endsWith('PERCENT')&&['OFFENSE','DEFENSE','HEALTH','PROTECTION','CRITICALDAMAGE','POTENCY','TENACITY','CRITICALCHANCE','CRITICALAVOIDANCE','ACCURACY','EVASION'].includes(canonical)){
-      canonical=sharedEngine.canonicalStatKey(raw+' %').toUpperCase()||canonical+'PERCENT';
-    }
-    return canonical.toLowerCase();
-  },
+  statKey:actualStatKey,
   modTotalSpeed:mod=>sharedEngine.speedMetrics(mod).total,
   characterKey:c=>String(c.baseId),
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
