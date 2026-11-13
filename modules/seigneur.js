@@ -483,10 +483,11 @@ function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
   const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
     character?.raw?.baseStats||character?.data?.base_stats||optimizerProfileForCharacter(character)?.base_stats||{};
-  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,0);
+  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
   const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list);
   return {
-    total:projection.total==null?projection.modSpeed:projection.total,
+    complete:projection.complete===true&&projection.total!=null,
+    total:projection.complete===true&&projection.total!=null?projection.total:null,
     modSpeed:projection.modSpeed,
     setBonus:projection.setBonus,
     hasFourPieceSpeedSet:projection.hasFourPieceSpeedSet,
@@ -499,6 +500,7 @@ function forgeCandidatePreservesSpeed(character,profile,equipped,current,candida
   const after=(Array.isArray(equipped)?equipped:[]).filter(m=>currentId?String(m.game_id||m.id||'')!==currentId:optimizerSlotKey(m.slot)!==currentSlot);
   after.push(candidate);
   const beforeProjection=forgeProjectedModSpeed(character,profile,equipped),afterProjection=forgeProjectedModSpeed(character,profile,after);
+  if(!beforeProjection.complete||!afterProjection.complete)return false;
   if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return false;
   return afterProjection.total+1e-9>=beforeProjection.total;
 }
