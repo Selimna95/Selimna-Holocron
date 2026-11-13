@@ -54,11 +54,11 @@ vm.createContext(sandbox);
 vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;this.focus=exchangeSecondaryFocusScore;this.focusImpact=exchangeTargetFocusImpact;',sandbox);
 const fixture={baseId:'GLREY',base_stats:{Health:1000,Speed:100,Potency:0.1}};
 const healthMods=[
- {set_name:'Health',primary_stat:'Health %',primary_value:5},
+ {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5},
  {set_name:'Health',primary_stat:'Health %',primary_value:5}
 ];
 assert.equal(sandbox.project(fixture,healthMods).Health,1150);
-const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',primary_stat:'Speed',primary_value:5}));
+const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',level:14,primary_stat:'Speed',primary_value:5}));
 assert.equal(sandbox.project(fixture,speedMods).Speed,125);
 const better=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:0,primaryShare:.9,targetBalance:.02,donors:[{uses:5,statBalance:.01,statusWorsened:false}]});
 const worse=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:3,primaryShare:.2,targetBalance:-.03,donors:[{uses:100,statBalance:-.05,statusWorsened:true}]});
@@ -89,7 +89,7 @@ const buildSandbox={
 };
 vm.createContext(buildSandbox);
 vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
-const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,speed,primary_stat:primary,primary_value:value});
+const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,speed,primary_stat:primary,primary_value:value});
 async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
   const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
   donor.mods=donorMods;
