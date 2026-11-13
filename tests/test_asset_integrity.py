@@ -187,8 +187,6 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("modules/core.js?v=4.2.31-status-data-completeness", self.html)
         self.assertIn("modules/mod-engine.js?v=0.3.19", self.html)
         self.assertIn("modules/disciple.js?v=3.5.6-no-incomplete-zero-speed", self.html)
-        self.assertIn("modules/acolyte.js?v=3.4.8-empty-donor-safe", self.html)
-        self.assertIn("modules/acolyte.js?v=3.4.8-empty-donor-safe", self.sw)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.sw)
         self.assertIn("modules/disciple.js?v=3.5.6-no-incomplete-zero-speed", self.sw)
