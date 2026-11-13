@@ -1303,7 +1303,7 @@ function speedCategory(v){
   if(n<=24)return '20_24';
   return '25plus';
 }
-function speedCategoryLabel(k){ return ({'1_10':'1 – 10','11_15':'11 – 15','16_19':'16 – 19','20_24':'20 – 24','25plus':'25+','no_speed':'Sans Speed','primary_speed':'Primaire Speed'})[k]||k; }
+function speedCategoryLabel(k){ return ({'1_10':'1 – 10','11_15':'11 – 15','16_19':'16 – 19','20_24':'20 – 24','25plus':'25+','no_speed':'Sans Speed','primary_speed':'Primaire Speed','unknown':'Données incomplètes'})[k]||k; }
 function v176ModStatus(modsForCharacter){
   const list=Array.isArray(modsForCharacter)?modsForCharacter:[];
   const count=Math.min(6,list.length);
