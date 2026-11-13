@@ -55,25 +55,31 @@ function statNameFromAny(value) {
   return String(value).trim();
 }
 function statValueFromAny(value) {
-  if (value == null) return 0;
-  if (typeof value === 'number') return value;
+  if (value == null) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value === 'string') {
     const text=value.trim();
-    const m=text.match(/[-+]?\\d+(?:[.,]\\d+)?/);
-    return m ? Number(m[0].replace(',','.')) : 0;
+    const m=text.match(/[-+]?\d+(?:[.,]\d+)?/);
+    return m ? Number(m[0].replace(',','.')) : null;
   }
   if (typeof value === 'object') {
     if (value.display_value != null) return statValueFromAny(value.display_value);
     if (value.displayValue != null) return statValueFromAny(value.displayValue);
     if (value.value != null && typeof value.value !== 'object') return statValueFromAny(value.value);
     if (value.amount != null) return statValueFromAny(value.amount);
-    if (value.unscaledDecimalValue != null) return Number(value.unscaledDecimalValue) / 100000000;
-    if (value.unscaled_decimal_value != null) return Number(value.unscaled_decimal_value) / 100000000;
+    if (value.unscaledDecimalValue != null) {
+      const n=Number(value.unscaledDecimalValue);
+      return Number.isFinite(n)?n/100000000:null;
+    }
+    if (value.unscaled_decimal_value != null) {
+      const n=Number(value.unscaled_decimal_value);
+      return Number.isFinite(n)?n/100000000:null;
+    }
   }
-  return 0;
+  return null;
 }
 function statObjectFromAny(value, explicitValue, explicitUnit) {
-  if (value == null) return {stat:'', value:0, unit:'unknown'};
+  if (value == null) return {stat:'', value:null, unit:'unknown'};
   const normalized = window.HolocronModEngine?.normalizeStat(value, explicitValue, explicitUnit);
   if (normalized?.key) {
     const display = value && typeof value === 'object'
@@ -93,7 +99,7 @@ function statObjectFromAny(value, explicitValue, explicitUnit) {
     const val = display != null ? statValueFromAny(display) : statValueFromAny(nested.value ?? nested.amount ?? nested.unscaledDecimalValue ?? nested.unscaled_decimal_value ?? value.value ?? value.amount);
     return {stat, value:val, unit:'unknown', display_value:display ?? ''};
   }
-  return {stat:String(value).trim(), value:numericValue(explicitValue,0), unit:'unknown', display_value:''};
+  return {stat:String(value).trim(), value:numericValue(explicitValue,null), unit:'unknown', display_value:''};
 }
 function normalizeMod(m, index=0) {
   if (!m || typeof m !== 'object') return null;
@@ -107,14 +113,14 @@ function normalizeMod(m, index=0) {
   const primary = statObjectFromAny(primaryRaw, typeof primaryRaw === 'string' ? (out.primary_value ?? out.primaryValue) : undefined, out.primary_stat_unit ?? out.primaryUnit);
   out.primary_stat = primary.stat || (typeof out.primary_stat === 'string' ? out.primary_stat : '');
   out.primary_stat_unit = primary.unit || out.primary_stat_unit;
-  out.primary_value = primary.value ?? statValueFromAny(out.primary_value ?? out.primaryValue ?? primaryRaw?.value ?? primaryRaw?.amount ?? 0);
+  out.primary_value = primary.value ?? statValueFromAny(out.primary_value ?? out.primaryValue ?? primaryRaw?.value ?? primaryRaw?.amount);
 
   const secs = out.secondary_stats ?? out.secondaryStats ?? out.secondaryStat ?? out.secondary ?? [];
   if (Array.isArray(secs)) secs.slice(0,4).forEach((raw,i)=>{
     const s=statObjectFromAny(raw, typeof raw === 'string' ? out[`secondary_${i+1}_value`] : undefined, out[`secondary_${i+1}_unit`]);
     out[`secondary_${i+1}_stat`] = s.stat;
     out[`secondary_${i+1}_unit`] = s.unit;
-    out[`secondary_${i+1}_value`] = s.value ?? statValueFromAny(raw?.value ?? raw?.amount ?? raw?.unscaledDecimalValue ?? raw?.unscaled_decimal_value ?? 0);
+    out[`secondary_${i+1}_value`] = s.value ?? statValueFromAny(raw?.value ?? raw?.amount ?? raw?.unscaledDecimalValue ?? raw?.unscaled_decimal_value);
   });
   else for(let i=1;i<=4;i++){
     const raw=out[`secondary_${i}_stat`];
@@ -125,7 +131,7 @@ function normalizeMod(m, index=0) {
     out[`secondary_${i}_value`]=s.value ?? statValueFromAny(out[`secondary_${i}_value`]);
   }
 
-  out.level = Number(out.level ?? 0);
+  out.level = numericValue(out.level, null);
   // Keep the real tier supplied by the player API. It is independent from dots and level.
   out.tier = out.tier ?? out.quality ?? out.grade ?? out.modTier ?? out.mod_tier ?? out.rarityTier ?? out.rarity_tier ?? '';
   out.pips = Number(out.pips ?? out.dotCount ?? out.dot_count ?? 0) || 0;
@@ -765,8 +771,9 @@ function parseHTML(text){return new DOMParser().parseFromString(text,'text/html'
 function firstText(root,selectors){for(const sel of selectors){const n=root.querySelector(sel);if(n){const t=n.textContent?.trim();if(t)return t;}}return '';}
 function firstAttr(root,selectors,attr){for(const sel of selectors){const n=root.querySelector(sel);const v=n?.getAttribute(attr);if(v)return v;}return '';}
 function parseNumberValue(v){const m=String(v??'').replace(/\s/g,'').match(/[+-]?[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):0;}
+function parseOptionalNumberValue(v){const m=String(v??'').replace(/\s/g,'').match(/[+-]?[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):null;}
 function slotFromShape(shape){const s=String(shape||'').toLowerCase();return ({'1':'Square','2':'Square','3':'Arrow','4':'Diamond','5':'Triangle','6':'Circle','7':'Cross',transmitter:'Square',receiver:'Arrow',processor:'Diamond','holo-array':'Triangle','data-bus':'Circle',multiplexer:'Cross'})[s]||shape;}
-function parseStatGeneric(node){if(!node)return{stat:'',value:0,unit:'unknown'};const label=firstText(node,['.statmod-stat-label','[class*="statmod-stat-label"]','[data-stat-name]'])||node.getAttribute?.('data-stat-name')||'';const raw=firstText(node,['.statmod-stat-value','[class*="statmod-stat-value"]','[data-stat-value]'])||node.getAttribute?.('data-stat-value')||node.textContent||'';const percent=/%/.test(String(label))||/%/.test(String(raw));const stat=percent&&!/%/.test(String(label))?String(label).trim()+' %':String(label).trim();const flatKey=String(label).toLowerCase().replace(/[^a-z]/g,'');const flat=['health','maxhealth','protection','maxprotection','speed','vitesse','offense','attack','defense'].includes(flatKey);return{stat,value:parseNumberValue(raw),unit:percent?'percentagePoints':flat?'flat':'unknown'};}
+function parseStatGeneric(node){if(!node)return{stat:'',value:null,unit:'unknown'};const label=firstText(node,['.statmod-stat-label','[class*="statmod-stat-label"]','[data-stat-name]')||node.getAttribute?.('data-stat-name')||'';const raw=firstText(node,['.statmod-stat-value','[class*="statmod-stat-value"]','[data-stat-value]')||node.getAttribute?.('data-stat-value')||node.textContent||'';const percent=/%/.test(String(label))||/%/.test(String(raw));const stat=percent&&!/%/.test(String(label))?String(label).trim()+' %':String(label).trim();const flatKey=String(label).toLowerCase().replace(/[^a-z]/g,'');const flat=['health','maxhealth','protection','maxprotection','speed','vitesse','offense','attack','defense'].includes(flatKey);return{stat,value:parseOptionalNumberValue(raw),unit:percent?'percentagePoints':flat?'flat':'unknown'};}
 function parseModsPage(doc,page){
   const nodes=[...doc.querySelectorAll('.collection-mod, [class*=\"collection-mod\"], [data-mod-id], [data-id].mod')],result=[];
   nodes.forEach((node,idx)=>{
@@ -788,7 +795,7 @@ function parseModsPage(doc,page){
   });
   return result.filter(Boolean);
 }
-function parseCharacters(doc){const result=[],nodes=[...doc.querySelectorAll('.collection-char-list .collection-char, .collection-char, [class*="collection-char"]')],seen=new Set();for(const node of nodes){const name=firstText(node,['.collection-char-name-link','[class*="collection-char-name"]','a[href*="/character/"]']);if(!name||seen.has(name))continue;seen.add(name);const level=parseNumberValue(firstText(node,['.char-portrait-full-level','[class*="char-portrait-full-level"]']));let gear=0;const portrait=node.querySelector('.player-char-portrait,[class*="player-char-portrait"]');for(let i=1;i<=13;i++)if(portrait?.classList.contains(`char-portrait-full-gear-t${i}`))gear=i;const stars=[...node.querySelectorAll('.star, [class*="star"]')].filter(x=>!String(x.className).includes('inactive')).length;result.push({name,level,gear,stars});}return result;}
+function parseCharacters(doc){const result=[],nodes=[...doc.querySelectorAll('.collection-char-list .collection-char, .collection-char, [class*="collection-char"]')],seen=new Set();for(const node of nodes){const name=firstText(node,['.collection-char-name-link','[class*="collection-char-name"]','a[href*="/character/"]']);if(!name||seen.has(name))continue;seen.add(name);const level=parseOptionalNumberValue(firstText(node,['.char-portrait-full-level','[class*="char-portrait-full-level"]']));let gear=0;const portrait=node.querySelector('.player-char-portrait,[class*="player-char-portrait"]');for(let i=1;i<=13;i++)if(portrait?.classList.contains(`char-portrait-full-gear-t${i}`))gear=i;const stars=[...node.querySelectorAll('.star, [class*="star"]')].filter(x=>!String(x.className).includes('inactive')).length;result.push({name,level,gear,stars});}return result;}
 function looksLikeMod(o){
   if(!o||typeof o!=='object')return false;
   const keys=Object.keys(o).map(k=>k.toLowerCase());
