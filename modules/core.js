@@ -138,8 +138,8 @@ function normalizeMod(m, index=0) {
   out.level = numericValue(out.level, null);
   // Keep the real tier supplied by the player API. It is independent from dots and level.
   out.tier = out.tier ?? out.quality ?? out.grade ?? out.modTier ?? out.mod_tier ?? out.rarityTier ?? out.rarity_tier ?? '';
-  out.pips = Number(out.pips ?? out.dotCount ?? out.dot_count ?? 0) || 0;
-  out.rarity = Number(out.rarity ?? out.pips ?? 0);
+  out.pips = numericValue(out.pips ?? out.dots ?? out.dotCount ?? out.dot_count, null);
+  out.rarity = numericValue(out.rarity ?? out.pips, null);
   out.character = out.character ?? out.characterName ?? out.equippedTo ?? out.equipped_to ?? out.unit_equiped ?? out.unitEquiped ?? out.location ?? out.usingIn ?? '';
   return out;
 }
@@ -990,7 +990,7 @@ function modIconHtml(m, size='56'){
   const dotsColor=dots===6?'gold':dots?'white':'unknown';
   const dotsLabel=dots==null?'?':String(dots),tierLabel=tier||'?';
   const tierClass={A:'tier-a',B:'tier-b',C:'tier-c',D:'tier-d',E:'tier-e'}[tier]||'tier-unknown';
-  return `<span class="mod-visual slot-${slotClass}" data-dots="${dots??''}" data-tier="${tier}" data-slot="${esc(slot)}" title="${name} — ${dotsLabel} dots · ${tier?'Tier '+tier:'Tier inconnu'} · Niveau ${num(m?.level)}"><span class="mod-visual-grade"><span class="mod-visual-dots-number dots-${dotsColor}">${dotsLabel}</span><span class="mod-visual-tier ${tierClass}">${tierLabel}</span></span><span class="mod-visual-level">Niv. ${num(m?.level)}</span></span>`;
+  return `<span class="mod-visual slot-${slotClass}" data-dots="${dots??''}" data-tier="${tier}" data-slot="${esc(slot)}" title="${name} — ${dotsLabel} dots · ${tier?'Tier '+tier:'Tier inconnu'} · Niveau ${m?.level==null?'?':num(m.level)}"><span class="mod-visual-grade"><span class="mod-visual-dots-number dots-${dotsColor}">${dotsLabel}</span><span class="mod-visual-tier ${tierClass}">${tierLabel}</span></span><span class="mod-visual-level">Niv. ${m?.level==null?'?':num(m.level)}</span></span>`;
 }
 function normalizeModForDisplay(m){
   if(!m)return m;
@@ -1014,9 +1014,9 @@ function normalizeModForDisplay(m){
   out.character=owner;
   out.ownerKey=compactKey(owner);
   out.ownerBaseId=compactKey(out.characterId??out.character_id??out.equippedToId??out.equipped_to_id??'');
-  out.level=Number(out.level??0);
-  out.rarity=Number(out.rarity??out.pips??0);
-  out.dots=Number(out.dots??out.dotCount??out.pips??out.rarity??0);
+  out.level=numericValue(out.level,null);
+  out.rarity=numericValue(out.rarity??out.pips,null);
+  out.dots=modDots(out);
   out.tier=out.tier??out.quality??out.grade??out.modTier??out.mod_tier??out.rarityTier??'';
   out.raw_alt=out.raw_alt??out.alt??out.imageAlt??out.name??'';
   out.asset_src=out.asset_src??out.icon_url??out.iconUrl??out.image_url??out.imageUrl??out.icon??out.image??'';
