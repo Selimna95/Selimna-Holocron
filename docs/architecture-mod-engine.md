@@ -97,6 +97,10 @@ Les règles suivantes ont été confrontées au code source du calculateur [Crin
 Les donneurs dont les données sont incomplètes sont signalés comme impact partiel ; un statut inconnu ne peut jamais être interprété comme une amélioration.
 
 Le calculateur Crinolo n'est pas une dépendance de production : il sert de référence indépendante. Le moteur Holocron reste l'unique moteur exécuté par les modules.
+## Normalisation des secondaires dans Seigneur Sith
+
+Les contributions statistiques sont comparées par clé canonique incluant l'unité lorsque celle-ci distingue deux stats (par exemple `Offense` et `Offense %`). Les valeurs en points de pourcentage conservent leur suffixe `%` à l'affichage ; elles ne sont pas additionnées à une statistique plate de même nom.
+
 ## Garde-fou de vitesse Visionnaire
 
 Le plafond théorique de vitesse doit inclure la vitesse de base du personnage, les mods conservés, les mods candidats et un plafond de bonus de set. La comparaison se fait avec la vitesse actuelle complète calculée par `calculateSpeed`. Si la vitesse de base ou un mod requis est incomplet, la recherche s'arrête sans proposition ; les projections de vitesse des donneurs sont également obligatoires.
