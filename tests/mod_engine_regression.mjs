@@ -37,7 +37,8 @@ function load(source, names, context) {
 }
 const compactKey = (value) => String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const numericValue = (value, fallback = 0) => {
-  const n = Number(String(value ?? '').replace(',', '.'));
+  if (value == null || String(value).trim() === '') return fallback;
+  const n = Number(String(value).replace(',', '.'));
   return Number.isFinite(n) ? n : fallback;
 };
 const speed = (mod) => Number(mod?.speed ?? 0);
