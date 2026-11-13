@@ -116,11 +116,20 @@ try {
     offensePercent: discipleCanonicalStat("Offense %"),
     healthFlat: discipleCanonicalStat("Health"),
     healthPercent: discipleCanonicalStat("Health %"),
+    secondaryUnitIdentity: forgeSecondaryStats({level:15,primary_stat:"Health",primary_value:100,
+      secondary_1_stat:"Offense",secondary_1_value:20,
+      secondary_2_stat:"Offense %",secondary_2_value:5,
+      secondary_3_stat:"Potency %",secondary_3_value:2.5,
+      secondary_4_stat:"Tenacity %",secondary_4_value:3}).map(x=>({stat:x.stat,key:x.key})),
   }));
   assert.equal(modMath.localized, 1234.5);
   assert.equal(modMath.forgeTotal, 30, "Forge must add six mod speeds numerically, not concatenate strings");
   assert.notEqual(modMath.offenseFlat, modMath.offensePercent, "Offense and Offense % are distinct secondary stats");
   assert.notEqual(modMath.healthFlat, modMath.healthPercent, "Health and Health % are distinct secondary stats");
+  assert.equal(modMath.secondaryUnitIdentity[0].key, "OFFENSE");
+  assert.equal(modMath.secondaryUnitIdentity[1].key, "OFFENSEPERCENT");
+  assert.equal(modMath.secondaryUnitIdentity[2].stat, "Potency %");
+  assert.equal(modMath.secondaryUnitIdentity[3].stat, "Tenacity %");
 
   const incompleteSpeedUi = await page.evaluate(() => {
     const incomplete = {set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Speed",secondary_1_value:5};
