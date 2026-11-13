@@ -8,7 +8,7 @@ vm.createContext(engineSandbox);
 vm.runInContext(engineSource,engineSandbox);
 const sharedEngine=engineSandbox.module.exports;
 const statKeyStart=js.indexOf('  const KYBER_PERCENT_PRIMARY_KEYS=');
-const statKeyEnd=js.indexOf('  const normalizeCounts=',statKeyStart);
+const statKeyEnd=js.indexOf('  const normalizeCounts =',statKeyStart);
 if(statKeyStart<0||statKeyEnd<0)throw new Error('Visionnaire slot-aware primary key helper is missing');
 const statKeySandbox={window:{HolocronModEngine:sharedEngine},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,'')};
 vm.createContext(statKeySandbox);
