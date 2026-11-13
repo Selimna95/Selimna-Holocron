@@ -154,6 +154,7 @@
       const mod = isNormalizedMod(rawMod) ? rawMod : normalizeMod(rawMod);
       if (!mod) { missing.push('mod:invalid'); continue; }
       if (!mod.primary?.key || mod.primary.value == null || !mod.primary.complete) missing.push('mod:primary_incomplete');
+      if (mod.expectedSecondaries != null && mod.secondaries.length < mod.expectedSecondaries) missing.push('mod:secondary_incomplete');
       modSpeed += speedMetrics(mod).total;
       for (const stat of [mod.primary, ...(mod.secondaries || [])]) {
         if (stat?.key === 'speed' && stat.unit === 'percentagePoints') speedPercent += stat.value || 0;
@@ -518,6 +519,7 @@
     }
     const set = canonicalSetFromMod(mod);
     const level = numeric(mod.level);
+    const expectedSecondaries = level == null ? null : Math.min(4, Math.floor(level / 3));
     let slot = canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot);
     if (!slot && mod.definitionId != null) {
       const definition = String(mod.definitionId).split(':')[0];
@@ -535,7 +537,8 @@
       pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
       primary,
       secondaries: Object.freeze(secondaries),
-      complete: !!set && level != null && !!primary.key && primary.complete && secondaries.every(stat => stat.complete)
+      expectedSecondaries,
+      complete: !!set && level != null && !!primary.key && primary.complete && secondaries.length >= expectedSecondaries && secondaries.every(stat => stat.complete)
     });
     NORMALIZED_MOD_CACHE.set(cacheKey, normalized);
     if (NORMALIZED_MOD_CACHE.size > 5000) NORMALIZED_MOD_CACHE.delete(NORMALIZED_MOD_CACHE.keys().next().value);
@@ -543,7 +546,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.11',
+    version: '0.3.12',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
