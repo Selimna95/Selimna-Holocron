@@ -1,7 +1,7 @@
 # Architecture — moteur unique des mods
 
 - Statut : migration en cours, branche isolée `refactor/unified-mod-engine-clean`
-- Moteur de référence : `modules/mod-engine.js` v0.3.15
+- Moteur de référence : `modules/mod-engine.js` v0.3.16
 - Base de travail : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
 - Publication : aucune modification de `main` ni de GitHub Pages pendant cette migration.
@@ -77,7 +77,7 @@ Les anciennes fonctions qui ne font que transmettre les données au moteur peuve
 
 - Formules indépendantes de statistiques : [Crinolo SWGOH Stat Calculator](https://github.com/Crinolo/swgoh-stat-calc) et [fork swgoh-utils](https://github.com/swgoh-utils/swgoh-stat-calc). Ces sources servent à vérifier les conversions et les formules ; elles ne sont pas chargées en production et ne remplacent pas le moteur Holocron.
 - Bonus et nombre de pièces des sets : [swgoh-utils/gamedata — statModSet.json](https://github.com/swgoh-utils/gamedata/blob/main/statModSet.json).
-- Encodage Comlink : le troisième chiffre de `definitionId` est un index de slot commençant à zéro. L'adaptateur le traduit explicitement vers `Square`, `Arrow`, `Diamond`, `Triangle`, `Circle` ou `Cross`, sans le faire passer par la table numérique historique. Source : [Comlink player data](https://github.com/swgoh-utils/swgoh-comlink/wiki/Player-Data).
+- Encodage Comlink : le troisième chiffre de `definitionId` est un code de slot 1 à 6 ; le champ `statMod.slot` correspondant vaut ce code + 1. L'adaptateur mappe directement 1→`Square`, 2→`Arrow`, 3→`Diamond`, 4→`Triangle`, 5→`Circle`, 6→`Cross`. Le fichier [statMod.json](https://github.com/swgoh-utils/gamedata/blob/main/statMod.json) confirme par exemple `id=111` avec `slot=2` ; le code `111` désigne donc `Square`. La documentation est [Comlink player data](https://github.com/swgoh-utils/swgoh-comlink/wiki/Player-Data).
 - Les numéros de slot historiques de l'importeur restent distincts : `1` et `2` désignent `Square`, puis `3` à `7` désignent respectivement `Arrow`, `Diamond`, `Triangle`, `Circle` et `Cross`. Les valeurs numériques `8` à `12` ne sont pas reconnues. Cette table conserve le comportement historique du dépôt ; elle n'est pas utilisée pour décoder `definitionId`.
 
 L'Optimizer Python écarte les mods dont le set, le niveau, la primaire ou une unité de statistique ne peuvent pas être validés. Une projection impossible est signalée et ne devient jamais un score ou une vitesse égale à zéro.
