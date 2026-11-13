@@ -55,7 +55,7 @@ vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.scor
 const fixture={baseId:'GLREY',base_stats:{Health:1000,Speed:100,Potency:0.1}};
 const healthMods=[
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5},
- {set_name:'Health',primary_stat:'Health %',primary_value:5}
+ {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5}
 ];
 assert.equal(sandbox.project(fixture,healthMods).Health,1150);
 const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',level:14,primary_stat:'Speed',primary_value:5}));
