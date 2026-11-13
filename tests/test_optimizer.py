@@ -1,5 +1,6 @@
 import unittest
 import json
+from pathlib import Path
 import python.optimizer as optimizer_module
 
 # This lightweight bridge isolates Python search behavior only; the real
@@ -118,6 +119,23 @@ from python.optimizer import (
 
 
 class OptimizerProfileResolutionTests(unittest.TestCase):
+    def test_profile_base_stats_equal_current_minus_mod_stat_diffs(self):
+        path = Path(__file__).resolve().parents[1] / "python" / "optimizer_profiles.json"
+        profiles = json.loads(path.read_text(encoding="utf-8"))
+        checked = 0
+        for base_id, profile in profiles.items():
+            base = profile.get("base_stats") or {}
+            current = profile.get("current_stats") or {}
+            diffs = profile.get("mod_stat_diffs") or {}
+            for stat, mod_delta in diffs.items():
+                if stat not in base or stat not in current:
+                    continue
+                with self.subTest(base_id=base_id, stat=stat):
+                    residual = float(current[stat]) - float(base[stat]) - float(mod_delta)
+                    self.assertAlmostEqual(residual, 0.0, delta=1e-6)
+                    checked += 1
+        self.assertGreater(checked, 0, "profile dataset must contain comparable mod deltas")
+
     def test_resolves_profile_by_base_id_even_when_name_differs(self):
         profiles = {
             "APPO": {"base_id": "APPO", "name": 'CC-1119 "Appo"',
