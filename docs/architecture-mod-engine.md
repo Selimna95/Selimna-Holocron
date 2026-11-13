@@ -1,10 +1,10 @@
 # Architecture — moteur unique des mods
 
-- Statut : migration en cours, branche isolée `refactor/unified-mod-engine-clean`
-- Moteur de référence : `modules/mod-engine.js` v0.3.22
-- Base de travail : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
+- Statut : moteur unifié intégré à `main` le 13 novembre 2026 (`537ca42832c2ab715147e3e52d1d59020144042c`) ; audit de fiabilité des profils Optimizer en cours sur `fix/validate-optimizer-profile-snapshot`.
+- Moteur de référence : `modules/mod-engine.js` v0.3.22.
+- Base de l'audit : `main@537ca42832c2ab715147e3e52d1d59020144042c`.
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
-- Publication : aucune modification de `main` ni de GitHub Pages pendant cette migration.
+- Publication Pages : non considérée comme validée par la seule réussite de la CI ; le déploiement doit être contrôlé séparément.
 
 ## Décision non négociable
 
@@ -118,6 +118,8 @@ Le plafond théorique de vitesse doit inclure la vitesse de base du personnage, 
 Le fichier `python/optimizer_profiles.json` contient 334 profils. La relation attendue entre les champs `base_stats`, `current_stats` et `mod_stat_diffs` a été contrôlée sur les 2 913 valeurs comparables : `current_stats[stat] - base_stats[stat] - mod_stat_diffs[stat] = 0`, avec une tolérance de 1e-6. Le résidu maximal observé est inférieur à 1.2e-16.
 
 Cela confirme, pour les champs couverts par ces profils, que `base_stats` est le point de départ avant bonus de mods et que `mod_stat_diffs` représente l'écart de mods vers `current_stats`. Le test Python relit désormais le fichier complet et vérifie cette relation sur chaque profil à chaque exécution. La provenance externe initiale de ces profils reste à documenter ; ce contrôle valide leur cohérence interne, pas l'exactitude de leur collecte d'origine.
+
+**Compatibilité du snapshot avec le roster courant :** ces profils portent aussi `level`, `rarity`, `gear_level` et `relic_tier`. Leurs `base_stats` incluent l'état de progression enregistré au moment de la collecte. Le Worker ne doit donc pas réutiliser un profil simplement parce que le `baseId` correspond. Il vérifie désormais les quatre métadonnées contre le personnage importé ; si une valeur manque ou diffère, le calcul est refusé. Les champs `character.stats` courants ne sont jamais substitués aux stats de base. Si le personnage fournit explicitement `base_stats`/`baseStats`, ces valeurs sont utilisées seules, sans les mélanger aux `current_stats` et `mod_stat_diffs` d'un snapshot statique.
 
 ## Tests et critères d'intégration
 
