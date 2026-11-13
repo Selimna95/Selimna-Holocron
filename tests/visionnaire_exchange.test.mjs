@@ -16,6 +16,17 @@ vm.runInContext(js.slice(statKeyStart,statKeyEnd)+'\nthis.statKey=statKey;',stat
 const actualStatKey=statKeySandbox.statKey;
 assert.equal(actualStatKey('Offense','Cross',true),actualStatKey('Offense %','Cross',false),'SWGOH.GG Cross primary shorthand maps Offense to Offense %');
 assert.notEqual(actualStatKey('Offense','Square',true),actualStatKey('Offense %','Square',false),'Fixed Square Offense remains flat');
+const kyberPrimaryLabels=[
+  ['Arrow','Accuracy',true],['Arrow','Critical Avoidance',true],['Arrow','Defense',true],['Arrow','Health',true],['Arrow','Offense',true],['Arrow','Protection',true],['Arrow','Speed',false],
+  ['Triangle','Critical Damage',true],['Triangle','Defense',true],['Triangle','Health',true],['Triangle','Offense',true],['Triangle','Protection',true],
+  ['Circle','Health',true],['Circle','Protection',true],
+  ['Cross','Defense',true],['Cross','Health',true],['Cross','Offense',true],['Cross','Potency',true],['Cross','Protection',true],['Cross','Tenacity',true]
+];
+for(const [slot,name,isPercent] of kyberPrimaryLabels){
+  const expected=actualStatKey(isPercent?name+' %':name,slot,false);
+  assert.equal(actualStatKey(name,slot,true),expected,'Kyber primary shorthand: '+slot+' / '+name);
+}
+assert.equal(actualStatKey('Defense','Diamond',true),actualStatKey('Defense','Diamond',false),'Fixed Diamond Defense remains flat');
 assert.ok(js.includes('function exchangeFinalStats'),'Full stat projection must exist');
 assert.ok(js.includes('function exchangeScenarioScore'),'Strategic scoring must exist');
 assert.ok(js.includes("const isFree=!ownerKey"),'Free inventory mods must be included');
