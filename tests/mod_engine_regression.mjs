@@ -45,6 +45,7 @@ const speed = (mod) => Number(mod?.speed ?? 0);
 
 // Visionnaire search sampling must distribute exploration across every slot.
 const visionnaire = read('../modules/visionnaire.js');
+const disciple = read('../modules/disciple.js');
 const visionnaireContext = vm.createContext({});
 load(visionnaire, ['visionnaireSampleIndex'], visionnaireContext);
 for (let slotIndex = 0; slotIndex < 6; slotIndex++) {
@@ -264,6 +265,27 @@ const engineSandbox = { module: { exports: {} } };
 vm.createContext(engineSandbox);
 vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
 const sharedEngine = engineSandbox.module.exports;
+const discipleStatsContext = vm.createContext({ optimizerValidatedProfileForCharacter: () => null });
+load(disciple, ['characterReportStats'], discipleStatsContext);
+const missingDiscipleReference = discipleStatsContext.characterReportStats({ baseId: 'MOFFGIDEONS3' });
+assert.equal(missingDiscipleReference.profile, null);
+assert.deepEqual(JSON.parse(JSON.stringify(missingDiscipleReference.rows)), [],
+  'Disciple must not display progression-dependent stats from an unvalidated snapshot');
+discipleStatsContext.optimizerValidatedProfileForCharacter = () => ({
+  base_stats: { Speed: 153 }, current_stats: { Speed: 238 }, mod_stat_diffs: { Speed: 85 }
+});
+assert.equal(discipleStatsContext.characterReportStats({ baseId: 'MOFFGIDEONS3' }).rows.find(row => row.label === 'Speed')?.current, 238,
+  'Disciple may display stats from a progression-validated snapshot');
+
+const localReferenceContext = vm.createContext({ optimizerValidatedProfileForCharacter: () => null });
+load(core, ['buildLocalOptimizerReference'], localReferenceContext);
+assert.equal(localReferenceContext.buildLocalOptimizerReference({ name: 'Test' }).averages.Speed, 0,
+  'The local fallback must not use unvalidated progression-dependent averages');
+localReferenceContext.optimizerValidatedProfileForCharacter = () => ({
+  base_stats: { Speed: 153 }, current_stats: { Speed: 238 }
+});
+assert.equal(localReferenceContext.buildLocalOptimizerReference({ name: 'Test' }).averages.Speed, 238,
+  'The local fallback may use validated snapshot averages');
 const visionnaireStatsContext = vm.createContext({
   window: { HolocronModEngine: sharedEngine },
   exchangeStatName: value => String(value),

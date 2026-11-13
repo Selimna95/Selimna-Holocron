@@ -591,7 +591,7 @@ async function fetchKyberProfile(character){
 }
 let kyberRequestSeq=0;
 function buildLocalOptimizerReference(character){
-  const p=optimizerProfileForCharacter(character)||{};
+  const p=optimizerValidatedProfileForCharacter(character)||{};
   const current=p.current_stats||{};
   return {
     character:String(character?.name||character?.baseId||''),
@@ -771,7 +771,7 @@ function updateCharacterInfo() {
   const c=selectedCharacter();
   if(!c){$('characterInfo').textContent='Aucun personnage sélectionné.';return;}
   const p=profileForCharacter(c);
-  const local=optimizerProfileForCharacter(c);
+  const local=optimizerValidatedProfileForCharacter(c);
   const ref=p || null;
   const fallback=local&&!p;
   const gacPriority=window.holocronGacPriorityForCharacter?.(c)||{known:false};
