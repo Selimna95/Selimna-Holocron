@@ -9,12 +9,16 @@ function setAnalysisTab(tab){
 }
 function analysisCharacterRows(){
   const faction=analysisFaction||'Toutes les factions';
-  return charactersInFaction(faction).map(c=>{
+  const rows=charactersInFaction(faction).map(c=>{
     const cm=getCharacterMods(c); const s=v176ModStatus(cm);
-    const secSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
-    const primarySpeed=cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
-    return {character:c,mods:cm,modCount:cm.length,speed:secSpeed,primarySpeed,totalSpeed:s.totalSpeed,status:s.status,class:s.class,best:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0),factions:factionMap[characterKey(c)]||[]};
-  }).sort((a,b)=>b.totalSpeed-a.totalSpeed||String(a.character.name).localeCompare(String(b.character.name),'fr'));
+    const dataIncomplete=s.status==='DONNÉES INCOMPLÈTES';
+    const secSpeed=dataIncomplete?null:cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
+    const primarySpeed=dataIncomplete?null:cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
+    const best=dataIncomplete?null:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0);
+    return {character:c,mods:cm,modCount:cm.length,speed:secSpeed,primarySpeed,totalSpeed:s.totalSpeed,status:s.status,class:s.class,best,factions:factionMap[characterKey(c)]||[]};
+  });
+  const rank=status=>status==='SANS MODS'||status==='INCOMPLETS'?0:status==='DONNÉES INCOMPLÈTES'?2:1;
+  return rows.sort((a,b)=>rank(a.status)-rank(b.status)||(a.totalSpeed??Infinity)-(b.totalSpeed??Infinity)||String(a.character.name).localeCompare(String(b.character.name),'fr'));
 }
 function renderAnalysisRecap(){
   const b=speedBreakdown(mods);
@@ -55,21 +59,23 @@ function auditRows(){
   const faction=analysisFaction||'Toutes les factions';
   let rows=charactersInFaction(faction).filter(c=>rosterUnitType(c)!=='ship').map(c=>{
     const cm=getCharacterMods(c), st=v176ModStatus(cm);
-    const secSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
-    const primarySpeed=cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
-    const speedCats=new Set(); let speedCount=0;
-    for(const m of cm){const x=modSpeedMetrics(m); if(x.primary)speedCats.add('primary_speed'); else speedCats.add(speedCategory(x.secondary)); if(x.primary || (x.secondary||0)>0)speedCount++;}
+    const dataIncomplete=st.status==='DONNÉES INCOMPLÈTES';
+    const secSpeed=dataIncomplete?null:cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
+    const primarySpeed=dataIncomplete?null:cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
+    const speedCats=new Set(); let speedCount=dataIncomplete?null:0;
+    if(!dataIncomplete)for(const m of cm){const x=modSpeedMetrics(m); if(x.primary)speedCats.add('primary_speed'); else speedCats.add(speedCategory(x.secondary)); if(x.primary || (x.secondary||0)>0)speedCount++;}
     const p=optimizerProfileForCharacter(c)||{};
     const relicTier=Number(c.relic_tier??c.relicTier??p.relic_tier??0)||0; const relic=relicLevelFromTier(relicTier);
-    const priority=(cm.length===0?100000:cm.length<6?50000:0)+Math.max(0,70-st.totalSpeed)*100+relic*2;
-    return {character:c,mods:cm,modCount:cm.length,secSpeed,primarySpeed,totalSpeed:st.totalSpeed,status:st.status,class:st.class,best:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0),factions:factionMap[characterKey(c)]||[],relic,speedCount,speedCats,priority,side:characterAlignmentFromFactions(c)};
+    const priority=dataIncomplete?Number.POSITIVE_INFINITY:(cm.length===0?100000:cm.length<6?50000:0)+Math.max(0,70-(st.totalSpeed??0))*100+relic*2;
+    const best=dataIncomplete?null:cm.reduce((mx,m)=>Math.max(mx,modSpeedMetrics(m).secondary||0),0);
+    return {character:c,mods:cm,modCount:cm.length,secSpeed,primarySpeed,totalSpeed:st.totalSpeed,status:st.status,class:st.class,best,factions:factionMap[characterKey(c)]||[],relic,speedCount,speedCats,priority,side:characterAlignmentFromFactions(c)};
   });
   if(analysisSide!=='ALL') rows=rows.filter(r=>r.side===analysisSide);
   if(analysisStatus!=='TOUS') rows=rows.filter(r=>r.status===analysisStatus);
   if(analysisAuditSpeed!=='TOUS') rows=rows.filter(r=>r.speedCats.has(analysisAuditSpeed));
-  if(analysisAuditSort==='speed') rows.sort((a,b)=>a.secSpeed-b.secSpeed||a.relic-b.relic);
-  else if(analysisAuditSort==='mods') rows.sort((a,b)=>a.modCount-b.modCount||a.secSpeed-b.secSpeed||b.relic-a.relic);
-  else if(analysisAuditSort==='relic') rows.sort((a,b)=>b.relic-a.relic||b.secSpeed-a.secSpeed);
+  if(analysisAuditSort==='speed') rows.sort((a,b)=>(a.secSpeed??Infinity)-(b.secSpeed??Infinity)||a.relic-b.relic);
+  else if(analysisAuditSort==='mods') rows.sort((a,b)=>a.modCount-b.modCount||(a.secSpeed??Infinity)-(b.secSpeed??Infinity)||b.relic-a.relic);
+  else if(analysisAuditSort==='relic') rows.sort((a,b)=>b.relic-a.relic||(b.secSpeed??-Infinity)-(a.secSpeed??-Infinity));
   else rows.sort((a,b)=>b.priority-a.priority||a.secSpeed-b.secSpeed||b.relic-a.relic||String(a.character.name||'').localeCompare(String(b.character.name||''),'fr'));
   return rows;
 }
@@ -102,7 +108,7 @@ function renderSelectionPanel(){
   $('selectionMeta').textContent=`${rows.length} personnage(s) affiché(s) sur ${all.length} · ${analysisFaction||'Toutes les factions'}`;
   $('selectionTable').innerHTML=rows.map(r=>`<tr class="${r.class}" data-character-key="${esc(characterKey(r.character))}">
     <td><strong>${esc(r.character.name||r.character.baseId)}</strong>${factionBadgesHtml(r.factions)}</td>
-    <td>${r.relic?'R'+num(r.relic):'—'}</td><td>${r.modCount}/6</td><td>${num(r.totalSpeed)}</td><td>${num(r.secSpeed)}</td><td>${r.speedCount}</td><td>${r.primarySpeed?num(r.primarySpeed):'NON'}</td><td><span class="audit-badge ${r.class}">${esc(r.status)}</span></td>
+    <td>${r.relic?'R'+num(r.relic):'—'}</td><td>${r.modCount}/6</td><td>${r.totalSpeed==null?'—':num(r.totalSpeed)}</td><td>${r.secSpeed==null?'—':num(r.secSpeed)}</td><td>${r.speedCount==null?'—':r.speedCount}</td><td>${r.primarySpeed==null?'—':r.primarySpeed?num(r.primarySpeed):'NON'}</td><td><span class="audit-badge ${r.class}">${esc(r.status)}</span></td>
     <td><button type="button" class="detail-mods-btn" data-open-character="${esc(characterKey(r.character))}">OUVRIR LE RAPPORT</button></td>
   </tr>`).join('')||'<tr><td colspan="9">Aucun personnage ne correspond aux filtres.</td></tr>';
   $('selectionTable').querySelectorAll('tr[data-character-key]').forEach(row=>row.addEventListener('click',e=>{if(e.target.closest('.detail-mods-btn'))return;analysisSelectedCharacter=row.dataset.characterKey;charSelect.value=analysisSelectedCharacter;setAnalysisTab('report');}));
@@ -141,10 +147,15 @@ function renderCharacterReport(){
   const c=rosterCharacters.find(x=>characterKey(x)===analysisSelectedCharacter);
   if(!c){box.innerHTML='<div class="empty">Sélectionnez un personnage depuis PERSONNAGE / FACTION.</div>';return;}
   const cm=getCharacterMods(c), s=v176ModStatus(cm), p=optimizerProfileForCharacter(c)||{}, st=characterReportStats(c);
-  const secSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0);
-  const primarySpeed=cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
-  const totalSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0)+modPrimarySpeed(m),0)+Number(st.profile.base_stats?.Speed||0);
-  const speedCount=cm.filter(m=>{const x=modSpeedMetrics(m);return x.primary||(x.secondary||0)>0;}).length;
+  const baseSpeed=numericValue(st.profile?.base_stats?.Speed,null);
+  const speedProjection=window.HolocronModEngine.calculateSpeed(baseSpeed,cm);
+  const speedDataComplete=cm.length===6&&s.status!=='DONNÉES INCOMPLÈTES'&&speedProjection.complete;
+  const totalSpeed=speedDataComplete?speedProjection.total:null;
+  const secSpeed=speedDataComplete?cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0):null;
+  const primarySpeed=speedDataComplete?cm.reduce((n,m)=>n+modPrimarySpeed(m),0):null;
+  const modSpeedContribution=speedDataComplete?speedProjection.total-baseSpeed:null;
+  const speedCount=speedDataComplete?cm.filter(m=>{const x=modSpeedMetrics(m);return x.primary||(x.secondary||0)>0;}).length:null;
+  const best=speedDataComplete?cm.reduce((x,m)=>Math.max(x,modSpeedMetrics(m).secondary||0),0):null;
   const factions=factionMap[characterKey(c)]||[];
   const order=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const bySlot=new Map(cm.map(m=>[m.slot,m]));
@@ -155,17 +166,19 @@ function renderCharacterReport(){
       <div><span class="tag">RAPPORT PERSONNAGE</span><h1>${esc(c.name||c.baseId)}</h1>${factionBadgesHtml(factions)}</div>
       <div class="report-identity"><div><span>NIVEAU</span><b>${num(c.level||p.level)}</b></div><div><span>GEAR</span><b>${num(c.gear||c.gear_level||p.gear_level)}</b></div><div><span>RELIC</span><b>${'R'+num(relicLevelFromTier(c.relic_tier??c.relicTier??p.relic_tier??0))}</b></div><div><span>ÉTOILES</span><b>${num(c.stars||c.rarity||p.rarity)}★</b></div><div><span>PUISSANCE</span><b>${num(c.power||c.power_rating||c.powerRating)}</b></div></div>
     </div>
-    <div class="report-kpis"><div><span>MODS</span><strong>${cm.length}/6</strong></div><div><span>SPEED TOTALE DES MODS</span><strong>${num(totalSpeed)}</strong></div><div><span>SPEED SECONDAIRE</span><strong>+${num(secSpeed)}</strong></div><div><span>PRIMAIRE SPEED</span><strong>${primarySpeed?'+'+num(primarySpeed):'NON'}</strong></div><div><span>MODS AVEC SPEED</span><strong>${speedCount}/6</strong></div><div><span>STATUT V176</span><strong class="audit-badge ${s.class}">${esc(s.status)}</strong></div></div>
+    <div class="report-kpis"><div><span>MODS</span><strong>${cm.length}/6</strong></div><div><span>SPEED PERSONNAGE PROJETÉE</span><strong>${totalSpeed==null?'—':num(totalSpeed)}</strong></div><div><span>SPEED SECONDAIRE</span><strong>${secSpeed==null?'—':'+'+num(secSpeed)}</strong></div><div><span>PRIMAIRE SPEED</span><strong>${primarySpeed==null?'—':primarySpeed?'+'+num(primarySpeed):'NON'}</strong></div><div><span>MODS AVEC SPEED</span><strong>${speedCount==null?'—':speedCount+'/6'}</strong></div><div><span>STATUT V176</span><strong class="audit-badge ${s.class}">${esc(s.status)}</strong></div></div>
     <div class="report-section"><div class="report-section-title">STATISTIQUES DU PERSONNAGE</div><div class="report-stats-wrap"><table class="v18-table report-stats"><thead><tr><th>Statistique</th><th>Base</th><th>Actuelle</th><th>Apport mods</th></tr></thead><tbody>${st.rows.map(r=>`<tr><td>${esc(r.label)}</td><td>${formatReportStat(r.base,r.label)}</td><td>${formatReportStat(r.current,r.label)}</td><td>${formatReportStat(r.diff,r.label)}</td></tr>`).join('')}</tbody></table></div></div>
     <div class="report-section"><div class="report-section-title">LES 6 MODS ÉQUIPÉS</div><div class="report-mod-grid">${cards}</div></div>
-    <div class="report-section report-analysis-grid"><div><div class="report-section-title">ANALYSE SPEED</div><div class="report-list"><div><span>Speed secondaire</span><b>+${num(secSpeed)}</b></div><div><span>Speed primaire</span><b>${primarySpeed?'+'+num(primarySpeed):'Aucune'}</b></div><div><span>Speed totale apportée par les mods</span><b>+${num(secSpeed+primarySpeed)}</b></div><div><span>Meilleure Speed secondaire</span><b>+${num(cm.reduce((x,m)=>Math.max(x,modSpeedMetrics(m).secondary||0),0))}</b></div><div><span>Mods niveau 15</span><b>${cm.filter(m=>Number(m.level)===15).length}/6</b></div></div></div><div><div class="report-section-title">SETS</div><div class="report-list">${[...new Set(cm.map(m=>m.set_name).filter(Boolean))].map(set=>`<div><span>${esc(set)}</span><b>${cm.filter(m=>m.set_name===set).length}</b></div>`).join('')||'<div><span>Aucun set</span><b>—</b></div>'}</div></div></div>
+    <div class="report-section report-analysis-grid"><div><div class="report-section-title">ANALYSE SPEED</div><div class="report-list"><div><span>Speed secondaire</span><b>${secSpeed==null?'—':'+'+num(secSpeed)}</b></div><div><span>Speed primaire</span><b>${primarySpeed==null?'—':primarySpeed?'+'+num(primarySpeed):'Aucune'}</b></div><div><span>Apport total des mods (avec set)</span><b>${modSpeedContribution==null?'—':'+'+num(modSpeedContribution)}</b></div><div><span>Meilleure Speed secondaire</span><b>${best==null?'—':'+'+num(best)}</b></div><div><span>Mods niveau 15</span><b>${cm.filter(m=>Number(m.level)===15).length}/6</b></div></div></div><div><div class="report-section-title">SETS</div><div class="report-list">${[...new Set(cm.map(m=>m.set_name).filter(Boolean))].map(set=>`<div><span>${esc(set)}</span><b>${cm.filter(m=>m.set_name===set).length}</b></div>`).join('')||'<div><span>Aucun set</span><b>—</b></div>'}</div></div></div>
     <div class="report-section"><div class="report-section-title">SECONDAIRES DES MODS</div><div class="report-secondary-list">${cm.map(m=>`<div class="report-secondary-row"><strong>${esc(m.slot)}</strong><span>${esc(modSecondaries(m)||'—')}</span></div>`).join('')||'<div>Aucun mod équipé.</div>'}</div></div>`;
   $('backToCharacterSelection')?.addEventListener('click',()=>setAnalysisTab('selection'));
   box.querySelectorAll('[data-mod-index]').forEach(el=>el.addEventListener('click',()=>showModInventoryDetail(Number(el.dataset.modIndex))));
 }
 function renderReportModCard(m){
+  const complete=window.HolocronModEngine.normalizeMod(m)?.complete===true;
   const x=modSpeedMetrics(m), sec=modSecondaries(m)||'Aucune';
-  return `<button type="button" class="report-mod-card" data-mod-index="${m._index??''}"><div class="report-mod-slot"><span>${esc(m.slot)}</span><em>${esc(m.set_name||'—')}</em>${modIconHtml(m,'52')}</div><h3>${esc(m.primary_stat||'—')} ${num(m.primary_value,1)}</h3><div class="report-mod-speed">${x.primary?'PRIMAIRE SPEED':(x.secondary?`SPEED SECONDAIRE +${num(x.secondary)}`:'SANS SPEED')}</div><p>${esc(sec)}</p><small>Niveau ${num(m.level)} · ${modDots(m)} dots · Tier ${modIconTier(m)} · ${esc(m.character||'Libre')}</small></button>`;
+  const speedLabel=!complete?'DONNÉES INCOMPLÈTES':x.primary?'PRIMAIRE SPEED':(x.secondary!=null?`SPEED SECONDAIRE +${num(x.secondary)}`:'SANS SPEED');
+  return `<button type="button" class="report-mod-card" data-mod-index="${m._index??''}"><div class="report-mod-slot"><span>${esc(m.slot)}</span><em>${esc(m.set_name||'—')}</em>${modIconHtml(m,'52')}</div><h3>${esc(m.primary_stat||'—')} ${num(m.primary_value,1)}</h3><div class="report-mod-speed">${speedLabel}</div><p>${esc(sec)}</p><small>Niveau ${num(m.level)} · ${modDots(m)} dots · Tier ${modIconTier(m)} · ${esc(m.character||'Libre')}</small></button>`;
 }
 
 function renderCharacterDetail(){
@@ -173,20 +186,24 @@ function renderCharacterDetail(){
   const box=$('characterModDetail'); if(!box)return;
   if(!c){box.innerHTML='<div class="empty">Sélectionnez un personnage.</div>';return;}
   const cm=getCharacterMods(c), s=v176ModStatus(cm);
-  const secSpeed=cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0), primarySpeed=cm.reduce((n,m)=>n+modPrimarySpeed(m),0);
-  box.innerHTML=`<div class="character-detail-head"><div><span class="tag">PERSONNAGE</span><h2>${esc(c.name||c.baseId)}</h2><p>Niveau ${num(c.level)} · Gear ${num(c.gear)} · ${relicLevelFromTier(c.relic_tier??c.relicTier??0)?'R'+num(relicLevelFromTier(c.relic_tier??c.relicTier)):'Sans Relic'} · ${num(c.stars)}★ · Puissance ${num(c.power)}</p>${factionBadgesHtml(factionMap[characterKey(c)]||[])}</div><div class="detail-kpis"><b>${cm.length}/6</b><span>mods équipés</span><b>${num(secSpeed)}</b><span>Speed secondaire</span><b>${num(primarySpeed)}</b><span>Speed primaire</span><strong class="audit-badge ${s.class}">${esc(s.status)}</strong></div></div>
+  const speedDataComplete=s.status!=='DONNÉES INCOMPLÈTES';
+  const secSpeed=speedDataComplete?cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0):null;
+  const primarySpeed=speedDataComplete?cm.reduce((n,m)=>n+modPrimarySpeed(m),0):null;
+  box.innerHTML=`<div class="character-detail-head"><div><span class="tag">PERSONNAGE</span><h2>${esc(c.name||c.baseId)}</h2><p>Niveau ${num(c.level)} · Gear ${num(c.gear)} · ${relicLevelFromTier(c.relic_tier??c.relicTier??0)?'R'+num(relicLevelFromTier(c.relic_tier??c.relicTier)):'Sans Relic'} · ${num(c.stars)}★ · Puissance ${num(c.power)}</p>${factionBadgesHtml(factionMap[characterKey(c)]||[])}</div><div class="detail-kpis"><b>${cm.length}/6</b><span>mods équipés</span><b>${secSpeed==null?'—':num(secSpeed)}</b><span>Speed secondaire</span><b>${primarySpeed==null?'—':num(primarySpeed)}</b><span>Speed primaire</span><strong class="audit-badge ${s.class}">${esc(s.status)}</strong></div></div>
   <div class="character-detail-actions"><strong>DÉTAIL DES 6 MODS ÉQUIPÉS</strong><button type="button" class="detail-mods-btn" id="openCharacterInventory">OUVRIR DANS L’INVENTAIRE</button></div>
   <div class="mod-detail-grid">${[...cm,...Array(Math.max(0,6-cm.length)).fill(null)].slice(0,6).map((m,i)=>m?renderModCard(m):`<div class="mod-card empty-slot"><strong>${['Square','Arrow','Diamond','Triangle','Circle','Cross'][i]}</strong><span>MOD MANQUANT</span></div>`).join('')}</div>`;
   $('openCharacterInventory')?.addEventListener('click',()=>openCharacterInventory(c));
 }
 function renderModCard(m){
+  const complete=window.HolocronModEngine.normalizeMod(m)?.complete===true;
   const x=modSpeedMetrics(m), speed=x.secondary??0, owner=m.character||'Libre';
   const sec=modSecondaries(m)||'—';
-  const speedClass=x.primary?'speed_primary':speedCategory(speed);
+  const speedClass=!complete?'speed_unknown':x.primary?'speed_primary':speedCategory(speed);
+  const speedLabel=!complete?'Données incomplètes':x.primary?'Primaire Speed':(x.secondary!=null?`Speed secondaire +${num(speed)}`:'Sans Speed');
   return `<button class="mod-detail-card ${speedClass}" data-mod-index="${m._index??''}">
     <div class="mod-card-top"><strong>${esc(m.slot||'—')}</strong><span>${esc(m.set_name||'—')}</span>${modIconHtml(m,'54')}</div>
     <div class="mod-primary"><b>${esc(m.primary_stat||'—')}</b> ${num(m.primary_value,1)}</div>
-    <div class="mod-speed-line">${x.primary?'Primaire Speed':(speed>0?`Speed secondaire +${num(speed)}`:'Sans Speed')}</div>
+    <div class="mod-speed-line">${speedLabel}</div>
     <div class="mod-secondaries">${esc(sec)}</div>
     <small>Niv. ${num(m.level)} · ${num(m.rarity)}★ · ${esc(owner)}</small>
   </button>`;
@@ -213,25 +230,27 @@ function renderInventory(){
     if(q && !JSON.stringify(m).toLowerCase().includes(q))return false;
     if(set && m.set_name!==set)return false;
     if(slot && m.slot!==slot)return false;
-    if(primary && compactKey(m.primary_stat)!==compactKey(primary))return false;
+    if(primary && discipleCanonicalStat(m.primary_stat)!==discipleCanonicalStat(primary))return false;
     if(secondary){
       let found=false;
       for(let i=1;i<=4;i++){
-        if(compactKey(secondaryDisplayName(m[`secondary_${i}_stat`]))===compactKey(secondary)){found=true;break;}
+        if(discipleCanonicalStat(secondaryDisplayName(m[`secondary_${i}_stat`]))===discipleCanonicalStat(secondary)){found=true;break;}
       }
       if(!found)return false;
     }
     if(speed && m._speedCategory!==speed)return false;
     return true;
   });
-  rows.sort((a,b)=>b._totalSpeed-a._totalSpeed||String(a.set_name||'').localeCompare(String(b.set_name||''),'fr')||String(a.slot||'').localeCompare(String(b.slot||''),'fr'));
+  rows.sort((a,b)=>(a._totalSpeed==null?1:0)-(b._totalSpeed==null?1:0)||(b._totalSpeed??0)-(a._totalSpeed??0)||String(a.set_name||'').localeCompare(String(b.set_name||''),'fr')||String(a.slot||'').localeCompare(String(b.slot||''),'fr'));
   meta.textContent=`${rows.length} mod(s) affiché(s) sur ${mods.length}`;
   wrap.innerHTML=rows.map(m=>{
+    const complete=window.HolocronModEngine.normalizeMod(m)?.complete===true;
     const x=modSpeedMetrics(m);
+    const speedLabel=!complete?'Données incomplètes':x.primary?'★':(x.secondary!=null?`+${num(x.secondary)}`:'—');
     return `<tr class="${m._speedCategory}" data-mod-index="${m._index}">
       <td>${esc(m.set_name||'—')}</td><td><strong>${esc(m.slot||'—')}</strong></td>
       <td><strong>${esc(m.primary_stat||'—')}</strong> ${num(m.primary_value,1)}</td>
-      <td>${esc(modSecondaries(m)||'—')}</td><td class="speed-cell">${x.primary?'★':(x.secondary?`+${num(x.secondary)}`:'—')}</td>
+      <td>${esc(modSecondaries(m)||'—')}</td><td class="speed-cell">${speedLabel}</td>
       <td><div class="inventory-mod-icon">${modIconHtml(m)}</div></td><td>${num(m.level)}</td><td>${esc(m.character||'Libre')}</td>
     </tr>`;
   }).join('')||'<tr><td colspan="9">Aucun mod ne correspond aux filtres.</td></tr>';
@@ -240,6 +259,7 @@ function renderInventory(){
 function showModInventoryDetail(index){
   const raw=mods[index]; if(!raw)return;
   const m=normalizeModForDisplay(raw), x=modSpeedMetrics(m);
+  const complete=window.HolocronModEngine.normalizeMod(raw)?.complete===true;
   const modal=$('modDetailModal'); if(!modal)return;
   $('modDetailTitle').textContent=`${m.slot||'Mod'} · ${m.set_name||'—'}`;
   $('modDetailBody').innerHTML=`<div class="modal-actions"><button type="button" class="primary" id="modalReallocationBtn">🔄 RECHERCHER UNE RÉAFFECTATION</button></div><div class="modal-mod-grid">
@@ -247,7 +267,7 @@ function showModInventoryDetail(index){
     <div><span>SET</span><b>${esc(m.set_name||'—')}</b></div>
     <div><span>SLOT</span><b>${esc(m.slot||'—')}</b></div>
     <div><span>PRIMAIRE</span><b>${esc(m.primary_stat||'—')} ${num(m.primary_value,1)}</b></div>
-    <div><span>SPEED</span><b>${x.primary?'Primaire Speed':(x.secondary?`+${num(x.secondary)} secondaire`:'Aucune')}</b></div>
+    <div><span>SPEED</span><b>${!complete?'Données incomplètes':x.primary?'Primaire Speed':(x.secondary!=null?`+${num(x.secondary)} secondaire`:'Aucune')}</b></div>
     <div><span>NIVEAU</span><b>${num(m.level)}</b></div>
     <div><span>MOD</span><b>${modIconHtml(m,'48')}</b></div>
   </div><h3>SECONDAIRES</h3><ul>${[1,2,3,4].map(i=>m[`secondary_${i}_stat`]?`<li>${esc(m[`secondary_${i}_stat`])} : <strong>${num(m[`secondary_${i}_value`],1)}</strong></li>`:'').join('')||'<li>Aucune donnée secondaire.</li>'}</ul>`;
@@ -275,15 +295,18 @@ function prepareV18Filters(){
 }
 function secondaryDisplayName(name){
   const raw=String(name||'').trim();
-  const key=compactKey(raw);
+  const key=compactKey(raw),percent=/%/.test(raw)||/PERCENT$/i.test(raw);
+  const baseKey=key.replace(/PERCENT$/,'');
   const map={
     SPEED:'Speed', OFFENSE:'Offense', DEFENSE:'Defense', HEALTH:'Health', PROTECTION:'Protection',
     POTENCY:'Potency', TENACITY:'Tenacity', CRITICALCHANCE:'Critical Chance',
     CRITICALAVOIDANCE:'Critical Avoidance', CRITICALDAMAGE:'Critical Damage'
   };
-  return map[key]||raw;
+  const label=map[baseKey]||raw.replace(/\s*%$/,'').trim();
+  return percent&&!label.endsWith('%')?label+' %':label;
 }
 function reallocationSpeedTierMatch(mod,tier){
+  if(window.HolocronModEngine.normalizeMod(mod)?.complete!==true)return false;
   const x=modSpeedMetrics(mod);
   const speed=Number(x?.secondary);
   const hasSecondary=Number.isFinite(speed) && speed>0;
@@ -372,6 +395,7 @@ function reallocationCharacterOptions(){
   const charactersByKey=new Map(rosterCharacters.map(c=>[characterKey(c),c]));
   for(const raw of mods){
     const m=normalizeModForDisplay(raw);
+    if(window.HolocronModEngine.normalizeMod(m)?.complete!==true)continue;
     if(!reallocationSpeedTierMatch(m,reallocationSpeedTier))continue;
     const ownerKey=reallocationModOwnerKey(m);
     if(!ownerKey)continue;
@@ -431,10 +455,11 @@ function setReallocationCharacter(key){
 function reallocationSecondaryOptions(){
   const names=new Map();
   for(const raw of mods){
+    if(window.HolocronModEngine.normalizeMod(raw)?.complete!==true)continue;
     const m=normalizeModForDisplay(raw);
     for(let i=1;i<=4;i++) if(m[`secondary_${i}_stat`]){
       const label=secondaryDisplayName(m[`secondary_${i}_stat`]);
-      names.set(compactKey(label),label);
+      names.set(discipleCanonicalStat(label),label);
     }
   }
   return [...names.values()].sort((a,b)=>a.localeCompare(b,'fr'));
@@ -478,8 +503,8 @@ function renderReallocationModSelector(){
 function renderReallocationSecondaryOptions(selectedValue=''){
   const select=$('reallocationSecondary'); if(!select)return;
   const opts=reallocationSecondaryOptions();
-  select.innerHTML='<option value="">Choisir une secondaire…</option>'+opts.map(x=>`<option value="${esc(compactKey(x))}">${esc(x)}</option>`).join('');
-  if(selectedValue && opts.some(x=>compactKey(x)===selectedValue))select.value=selectedValue;
+  select.innerHTML='<option value="">Choisir une secondaire…</option>'+opts.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  if(selectedValue && opts.some(x=>discipleCanonicalStat(x)===discipleCanonicalStat(selectedValue)))select.value=selectedValue;
 }
 function renderReallocationSelectionVisual(selected){
   const box=$('reallocationSelectedModVisual');
@@ -517,23 +542,13 @@ function reallocationStatusAllowed(status){
   return false;
 }
 function discipleCanonicalSlot(value){
-  const k=compactKey(value).replace(/MODS?$/,'');
-  return ({SQUARE:'SQUARE',TRANSMITTER:'SQUARE',ARROW:'ARROW',RECEIVER:'ARROW',DIAMOND:'DIAMOND',PROCESSOR:'DIAMOND',TRIANGLE:'TRIANGLE','HOLOARRAY':'TRIANGLE',CIRCLE:'CIRCLE','DATABUS':'CIRCLE',CROSS:'CROSS',MULTIPLEXER:'CROSS',
-    '1':'SQUARE','2':'SQUARE','3':'ARROW','4':'DIAMOND','5':'TRIANGLE','6':'CIRCLE','7':'CROSS'})[k]||k;
+  return window.HolocronModEngine.canonicalSlot(value)||'';
 }
 function discipleCanonicalStat(value){
-  const raw=String(value??'');
-  const percent=/%|PERCENT|PCT|PERCENTAGE/i.test(raw);
-  const k=compactKey(raw).replace(/PERCENT|PCT|PERCENTAGE/g,'');
-  // compactKey retire les signes : détecter le « % » avant de le normaliser.
-  const canonical=({SPEED:'SPEED',OFFENSE:'OFFENSE',DEFENSE:'DEFENSE',HEALTH:'HEALTH',PROTECTION:'PROTECTION',POTENCY:'POTENCY',TENACITY:'TENACITY',CRITICALCHANCE:'CRITICALCHANCE',CRITICCHANCE:'CRITICALCHANCE',CRITCHANCE:'CRITICALCHANCE',CRITICALDAMAGE:'CRITICALDAMAGE',CRITDAMAGE:'CRITICALDAMAGE',CRITICALAVOIDANCE:'CRITICALAVOIDANCE'})[k]||k;
-  return percent&&['OFFENSE','DEFENSE','HEALTH','PROTECTION'].includes(canonical)?canonical+'PERCENT':canonical;
+  return window.HolocronModEngine.canonicalStatKey(value);
 }
 function discipleCanonicalSet(value){
-  let k=compactKey(value);
-  k=k.replace(/MODSET$/,'').replace(/SET$/,'');
-  return ({'1':'HEALTH','2':'OFFENSE','3':'DEFENSE','4':'SPEED','5':'CRITICALCHANCE','6':'CRITICALDAMAGE','7':'POTENCY','8':'TENACITY',
-    HEALTH:'HEALTH',OFFENSE:'OFFENSE',DEFENSE:'DEFENSE',SPEED:'SPEED',CRITCHANCE:'CRITICALCHANCE',CRITICALCHANCE:'CRITICALCHANCE',CRITDAMAGE:'CRITICALDAMAGE',CRITICALDAMAGE:'CRITICALDAMAGE',POTENCY:'POTENCY',TENACITY:'TENACITY'})[k]||k;
+  return String(window.HolocronModEngine.canonicalSet(value)||'').toUpperCase();
 }
 function discipleModKeys(m){
   return {slot:discipleCanonicalSlot(m?.slot),set:discipleCanonicalSet(m?.set_name),primary:discipleCanonicalStat(m?.primary_stat)};

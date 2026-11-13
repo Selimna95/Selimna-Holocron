@@ -2,6 +2,31 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const js=fs.readFileSync(new URL('../modules/visionnaire.js',import.meta.url),'utf8');
+const engineSource=fs.readFileSync(new URL('../modules/mod-engine.js',import.meta.url),'utf8');
+const engineSandbox={module:{exports:{}}};
+vm.createContext(engineSandbox);
+vm.runInContext(engineSource,engineSandbox);
+const sharedEngine=engineSandbox.module.exports;
+const statKeyStart=js.indexOf('  const KYBER_PERCENT_PRIMARY_KEYS=');
+const statKeyEnd=js.indexOf('  const normalizeCounts =',statKeyStart);
+if(statKeyStart<0||statKeyEnd<0)throw new Error('Visionnaire slot-aware primary key helper is missing');
+const statKeySandbox={window:{HolocronModEngine:sharedEngine},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,'')};
+vm.createContext(statKeySandbox);
+vm.runInContext(js.slice(statKeyStart,statKeyEnd)+'\nthis.statKey=statKey;',statKeySandbox);
+const actualStatKey=statKeySandbox.statKey;
+assert.equal(actualStatKey('Offense','Cross',true),actualStatKey('Offense %','Cross',false),'SWGOH.GG Cross primary shorthand maps Offense to Offense %');
+assert.notEqual(actualStatKey('Offense','Square',true),actualStatKey('Offense %','Square',false),'Fixed Square Offense remains flat');
+const kyberPrimaryLabels=[
+  ['Arrow','Accuracy',true],['Arrow','Critical Avoidance',true],['Arrow','Defense',true],['Arrow','Health',true],['Arrow','Offense',true],['Arrow','Protection',true],['Arrow','Speed',false],
+  ['Triangle','Critical Damage',true],['Triangle','Defense',true],['Triangle','Health',true],['Triangle','Offense',true],['Triangle','Protection',true],
+  ['Circle','Health',true],['Circle','Protection',true],
+  ['Cross','Defense',true],['Cross','Health',true],['Cross','Offense',true],['Cross','Potency',true],['Cross','Protection',true],['Cross','Tenacity',true]
+];
+for(const [slot,name,isPercent] of kyberPrimaryLabels){
+  const expected=actualStatKey(isPercent?name+' %':name,slot,false);
+  assert.equal(actualStatKey(name,slot,true),expected,'Kyber primary shorthand: '+slot+' / '+name);
+}
+assert.equal(actualStatKey('Defense','Diamond',true),actualStatKey('Defense','Diamond',false),'Fixed Diamond Defense remains flat');
 assert.ok(js.includes('function exchangeFinalStats'),'Full stat projection must exist');
 assert.ok(js.includes('function exchangeScenarioScore'),'Strategic scoring must exist');
 assert.ok(js.includes("const isFree=!ownerKey"),'Free inventory mods must be included');
@@ -20,6 +45,9 @@ assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not te
 assert.ok(js.includes('return !reference.length||reference.some'), 'Missing primary reference data must not reject every candidate');
 assert.ok(js.includes('modTotalSpeed(b)-modTotalSpeed(a)'), 'Candidate search must prioritize speed-preserving mods before donor-usage tie breaks');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
+assert.ok(js.includes('baseSpeed+retainedSpeed+combo.reduce'), 'Theoretical speed ceiling must include the character base speed');
+assert.ok(js.includes('if(!beforeProjection.complete||!afterProjection.complete)'), 'Target speed projections must fail closed when incomplete');
+assert.ok(js.includes('if(!donorBeforeSpeed.complete||!donorAfterSpeed.complete)'), 'Donor speed projections must fail closed when incomplete');
 assert.ok(js.includes('async function buildExchangeProposals'), 'Six-slot search must run asynchronously');
 assert.ok(js.includes('await new Promise(resolve=>setTimeout(resolve,0))'), 'Search must yield to the browser while evaluating combinations');
 assert.ok(js.includes('await buildExchangeProposals'), 'UI must await the responsive search routine');
@@ -38,6 +66,7 @@ import vm from 'node:vm';
 const start=js.indexOf('  const exchangeSetCounts =');
 const end=js.indexOf('  async function buildExchangeProposals',start);
 const sandbox={
+  window:{HolocronModEngine:sharedEngine},
   key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   baseStatsForCharacter:character=>character.base_stats||{},
@@ -48,12 +77,12 @@ vm.createContext(sandbox);
 vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;this.focus=exchangeSecondaryFocusScore;this.focusImpact=exchangeTargetFocusImpact;',sandbox);
 const fixture={baseId:'GLREY',base_stats:{Health:1000,Speed:100,Potency:0.1}};
 const healthMods=[
- {set_name:'Health',primary_stat:'Health %',primary_value:5},
- {set_name:'Health',primary_stat:'Health %',primary_value:5}
+ {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0},
+ {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}
 ];
-assert.equal(sandbox.project(fixture,healthMods).Health,1200);
-const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',primary_stat:'Speed',primary_value:5}));
-assert.equal(sandbox.project(fixture,speedMods).Speed,130);
+assert.equal(sandbox.project(fixture,healthMods).Health,1150);
+const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',level:14,primary_stat:'Speed',primary_value:5,secondary_1_stat:'Health',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}));
+assert.equal(sandbox.project(fixture,speedMods).Speed,125);
 const better=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:0,primaryShare:.9,targetBalance:.02,donors:[{uses:5,statBalance:.01,statusWorsened:false}]});
 const worse=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:3,primaryShare:.2,targetBalance:-.03,donors:[{uses:100,statBalance:-.05,statusWorsened:true}]});
 assert.ok(better.score>worse.score);
@@ -66,12 +95,12 @@ const buildEnd=js.indexOf('  function renderExchangeProposals',buildStart);
 const buildSandbox={
   SLOTS:['Square','Arrow','Diamond','Triangle','Circle','Cross'],
   slotOf:mod=>mod?.slot||'',
-  window:{__SWGOH_GAC_USAGE__:{sourceStatus:'observed'}},
+  window:{HolocronModEngine:sharedEngine,__SWGOH_GAC_USAGE__:{sourceStatus:'observed'}},
   LABELS:{Square:'Carré',Arrow:'Flèche',Diamond:'Losange',Triangle:'Triangle',Circle:'Cercle',Cross:'Croix'},
   state:{mode:'sets'},render:()=>{},setTimeout:fn=>{fn();return 0;},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
-  statKey:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
-  modTotalSpeed:mod=>Number(mod.speed||0),
+  statKey:actualStatKey,
+  modTotalSpeed:mod=>sharedEngine.speedMetrics(mod).total,
   characterKey:c=>String(c.baseId),
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
   baseStatsForCharacter:c=>c.base_stats||{},
@@ -83,8 +112,8 @@ const buildSandbox={
 };
 vm.createContext(buildSandbox);
 vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
-const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,speed,primary_stat:primary,primary_value:value});
-async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[]){
+const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,primary_stat:primary,primary_value:value,secondary_1_stat:'Speed',secondary_1_value:speed,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0});
+async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[],selectedSlots=['Square','Circle']){
   const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
   donor.mods=donorMods;
   const glDonor={baseId:'GLDONOR',name:'Donneur GL',base_stats:{Speed:100},mods:glDonorMods};
@@ -100,13 +129,13 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
     getCharacterMods:c=>byOwner.get(c.baseId)||[],
     forgeAllSourceMods:()=>sources,
     forgeProjectedModSpeed:(c,_p,list)=>{
-      const speed=list.reduce((sum,m)=>sum+Number(m.speed||0),0);
-      const four=list.filter(m=>m.set_name==='Speed').length>=4;
-      const base=Number(c.base_stats?.Speed||0);
-      return {total:speed+(four&&base?base*.1:0),baseSpeed:base,hasFourPieceSpeedSet:four};
+      const rawBase=c.base_stats?.Speed;
+      const base=rawBase==null?null:Number(rawBase);
+      const projection=sharedEngine.calculateSpeed(Number.isFinite(base)?base:null,list);
+      return {...projection,baseSpeed:Number.isFinite(base)?base:null};
     }
   });
-  return buildSandbox.search({character:target,profile},['Square','Circle']);
+  return buildSandbox.search({character:target,profile},selectedSlots);
 }
 const glTarget={baseId:'GLREY',name:'Rey',base_stats:{Speed:100,Health:1000,Offense:500}};
 glTarget.mods=[
@@ -140,6 +169,10 @@ const rejected=await runSearch(speedTarget,[],slowFree,primaryProfile,'primaries
 assert.equal(rejected.proposals.length,0,'No scenario may lower the target total speed');
 assert.equal(rejected.tested,0,'Impossible low-speed combinations must be pruned before full evaluation');
 assert.equal(rejected.diagnostics.speedPruned,rejected.diagnostics.searchSpace,'Every impossible combination must be pruned by the speed prefilter');
+const missingBaseTarget={...normalTarget,base_stats:{Health:1000,Offense:500}};
+const missingBaseSearch=await runSearch(missingBaseTarget,[],freeChoices,kyber);
+assert.equal(missingBaseSearch.proposals.length,0,'Visionnaire must not recommend an exchange when target base speed is unknown');
+assert.match(missingBaseSearch.reason,/vitesse actuelle.*non calculable/i);
 
 const focusScore=sandbox.focus({secondary_focus:{Speed:20,Health:10}},[
  {secondary_1_stat:'Speed',secondary_1_value:20,secondary_2_stat:'Health',secondary_2_value:10}
@@ -158,6 +191,19 @@ assert.equal(focusImpact.coreLosses[0].name,'Defense');
 
 const unknownPrimarySearch=await runSearch(normalTarget,[],freeChoices,{specific_sets:kyber.specific_sets,slots:{}},'primaries');
 assert.ok(unknownPrimarySearch.proposals.length>0,'An unreported Kyber primary distribution must remain unknown, not block all proposals');
+assert.notEqual(sharedEngine.canonicalStatKey('Offense'),sharedEngine.canonicalStatKey('Offense %'),'Flat and percentage primaries must have distinct canonical keys');
+const mismatchedPrimaryProfile={specific_sets:kyber.specific_sets,slots:{Square:{primaries:{Offense:1}},Circle:{primaries:{Offense:1}}}};
+const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
+  makeMod('wrong-primary-square','Square','Speed',20,'Offense %',5),
+  makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
+],mismatchedPrimaryProfile,'primaries',[],['Square']);
+assert.equal(mismatchedPrimarySearch.proposals.length,0,'An Offense % primary must not satisfy a Kyber reference for flat Offense');
+const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Offense:500,'Physical Damage':1000,'Special Damage':1000}};
+const shorthandPercentProfile={specific_sets:kyber.specific_sets,slots:{Cross:{primaries:{Offense:1}}}};
+const shorthandPercentSearch=await runSearch(variablePrimaryTarget,[],[
+  makeMod('correct-percent-primary','Cross','Speed',20,'Offense %',5)
+],shorthandPercentProfile,'primaries',[],['Cross']);
+assert.ok(shorthandPercentSearch.proposals.length>0,'A Kyber shorthand Offense primary on a variable slot must match the actual Offense % primary');
 
 // The engine must finish the whole small search space even after it has
 // already found more than 30 valid scenarios, retaining the best 30 by score.

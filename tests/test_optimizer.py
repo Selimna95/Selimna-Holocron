@@ -1,4 +1,115 @@
 import unittest
+import json
+from pathlib import Path
+import python.optimizer as optimizer_module
+
+# This lightweight bridge isolates Python search behavior only; the real
+# JavaScript/Pyodide bridge and formulas are exercised in mod_engine_pyodide.test.mjs.
+
+def _test_engine_bridge(base_json, mods_json, level):
+    source = json.loads(base_json)
+    base = source.get("base_stats", source) if isinstance(source, dict) else {}
+    result = dict(base)
+    mods = json.loads(mods_json)
+    totals = {}
+    sets = {}
+    levels = {}
+    missing = []
+    for mod in mods:
+        set_name = optimizer_module.mod_set(mod)
+        if not set_name:
+            missing.append("set:unknown")
+        else:
+            sets[set_name] = sets.get(set_name, 0) + 1
+            levels.setdefault(set_name, []).append(int(mod.get("level") or 0))
+        try:
+            level_value = float(mod.get("level"))
+            valid_level = level_value.is_integer() and 1 <= level_value <= 15
+        except (TypeError, ValueError):
+            level_value = None
+            valid_level = False
+        if not valid_level:
+            missing.append("mod:level_unknown" if level_value is None else "mod:level_invalid")
+        if not mod.get("primary_stat") or mod.get("primary_value") is None:
+            missing.append("mod:primary_incomplete")
+        entries = [(mod.get("primary_stat"), mod.get("primary_value"))]
+        entries += [(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value")) for i in range(1, 5)]
+        for name, value in entries:
+            if not name or value is None:
+                continue
+            key = str(name).strip()
+            totals[key] = totals.get(key, 0.0) + float(value)
+    base_speed = float(base.get("Speed", 0))
+    result["Speed"] = base_speed + totals.get("Speed", 0)
+    result["Speed"] += base_speed * totals.get("Speed %", 0) / 100
+    if sets.get("Speed", 0) >= 4:
+        result["Speed"] += int(base_speed * (0.10 if all(x >= 15 for x in sorted(levels["Speed"], reverse=True)[:4]) else 0.05))
+    if "Critical Damage" in result and sets.get("Critical Damage", 0) >= 4:
+        result["Critical Damage"] += 0.30 if all(x >= 15 for x in sorted(levels["Critical Damage"], reverse=True)[:4]) else 0.15
+    return json.dumps({"complete": not missing, "stats": result, "missing": sorted(set(missing))})
+
+def _test_normalize_bridge(mod_json):
+    mod = json.loads(mod_json)
+    raw_set = mod.get("set_name", mod.get("set", mod.get("setId")))
+    set_names = {
+        "1": "Health", "2": "Offense", "3": "Defense", "4": "Speed",
+        "5": "Critical Chance", "6": "Critical Damage", "7": "Potency", "8": "Tenacity",
+        "health": "Health", "offense": "Offense", "defense": "Defense", "speed": "Speed",
+        "crit chance": "Critical Chance", "critical chance": "Critical Chance",
+        "crit damage": "Critical Damage", "critical damage": "Critical Damage",
+        "potency": "Potency", "tenacity": "Tenacity",
+    }
+    set_value = set_names.get(str(raw_set or "").casefold(), set_names.get(str(raw_set or "")))
+    def stat(name, value):
+        if not name:
+            return None
+        text = str(name).strip()
+        is_percent = text.endswith("%")
+        clean = text[:-1].strip() if is_percent else text
+        key = clean.replace(" ", "").casefold()
+        aliases = {"critchance": "criticalChance", "critdamage": "criticalDamage"}
+        key = aliases.get(key, key)
+        flat_keys = {"health", "protection", "speed", "offense", "defense"}
+        unit = "percentagePoints" if is_percent else ("flat" if key in flat_keys else "unknown")
+        return {
+            "key": key, "name": clean, "unit": unit,
+            "value": float(value) if value is not None else None
+        }
+    primary = stat(mod.get("primary_stat"), mod.get("primary_value"))
+    secondaries = []
+    for i in range(1, 5):
+        item = stat(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value"))
+        if item:
+            secondaries.append(item)
+    raw_slot = mod.get("slot", mod.get("slot_id", mod.get("slotId")))
+    if mod.get("definitionId") is not None:
+        definition = str(mod.get("definitionId")).split(":")[0]
+        if len(definition) == 3 and definition.isdigit() and 1 <= int(definition[2]) <= 6:
+            raw_slot = ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"][int(definition[2]) - 1]
+    slot_names = {
+        "1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
+        "5": "Triangle", "6": "Circle", "7": "Cross",
+        "square": "Square", "arrow": "Arrow", "diamond": "Diamond",
+        "triangle": "Triangle", "circle": "Circle", "cross": "Cross"
+    }
+    slot_text = str(raw_slot or "").strip()
+    slot_key = slot_text.casefold().removeprefix("slot_")
+    slot_value = slot_names.get(slot_key, slot_text or None)
+    try:
+        level_value = float(mod.get("level"))
+        valid_level = level_value.is_integer() and 1 <= level_value <= 15
+    except (TypeError, ValueError):
+        valid_level = False
+    complete = bool(
+        set_value and valid_level and primary
+        and primary.get("value") is not None and primary.get("unit") in {"flat", "percentagePoints"}
+        and all(item.get("value") is not None and item.get("unit") in {"flat", "percentagePoints"} for item in secondaries)
+    )
+    return json.dumps({"set": set_value, "setName": set_value, "slot": slot_value,
+                       "primary": primary, "secondaries": secondaries, "level": mod.get("level"),
+                       "complete": complete})
+
+optimizer_module.set_mod_engine_bridge(_test_engine_bridge, _test_normalize_bridge)
 
 from python.optimizer import (
     normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
@@ -8,6 +119,23 @@ from python.optimizer import (
 
 
 class OptimizerProfileResolutionTests(unittest.TestCase):
+    def test_profile_base_stats_equal_current_minus_mod_stat_diffs(self):
+        path = Path(__file__).resolve().parents[1] / "python" / "optimizer_profiles.json"
+        profiles = json.loads(path.read_text(encoding="utf-8"))
+        checked = 0
+        for base_id, profile in profiles.items():
+            base = profile.get("base_stats") or {}
+            current = profile.get("current_stats") or {}
+            diffs = profile.get("mod_stat_diffs") or {}
+            for stat, mod_delta in diffs.items():
+                if stat not in base or stat not in current:
+                    continue
+                with self.subTest(base_id=base_id, stat=stat):
+                    residual = float(current[stat]) - float(base[stat]) - float(mod_delta)
+                    self.assertAlmostEqual(residual, 0.0, delta=1e-6)
+                    checked += 1
+        self.assertGreater(checked, 0, "profile dataset must contain comparable mod deltas")
+
     def test_resolves_profile_by_base_id_even_when_name_differs(self):
         profiles = {
             "APPO": {"base_id": "APPO", "name": 'CC-1119 "Appo"',
@@ -53,17 +181,33 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertIsNone(normalize_slot(None))
         self.assertIsNone(normalize_slot(True))
         self.assertEqual(normalize_slot("unknown-slot"), "unknown-slot")
+        self.assertEqual(normalize_slot("8"), "8")
+        self.assertEqual(normalize_slot("12"), "12")
 
     def test_set_aliases_and_numeric_ids(self):
         self.assertEqual(normalize_set("speed"), "Speed")
         self.assertEqual(normalize_set("Crit Damage"), "Critical Damage")
         self.assertEqual(normalize_set("4"), "Speed")
+        self.assertIsNone(normalize_set("9"))
+        self.assertIsNone(normalize_set("10"))
+        self.assertIsNone(normalize_set("11"))
         self.assertIsNone(normalize_set(""))
 
     def test_slot_field_aliases(self):
         self.assertEqual(mod_slot_value({"slotId": 3}), 3)
         self.assertEqual(mod_slot_value({"mod_slot": "Cross"}), "Cross")
         self.assertIsNone(mod_slot_value("not a mod"))
+        normalized = optimizer_module._normalized_mod({
+            "definitionId": "111", "set": "Health", "level": 15,
+            "primary_stat": "Speed", "primary_value": 10,
+        })
+        self.assertEqual(normalized["slot"], "Square")
+        self.assertEqual(optimizer_module._normalized_mod({"definitionId": "112", "slot_id": 2})["slot"], "Arrow")
+        self.assertEqual(optimizer_module._normalized_mod({"slot_id": 7})["slot"], "Cross")
+        self.assertFalse(optimizer_module._normalized_mod({
+            "set_name": "Health", "slot": "Square", "level": 16,
+            "primary_stat": "Health", "primary_value": 10,
+        })["complete"])
 
     def test_empty_mod_list_has_clear_error(self):
         with self.assertRaisesRegex(RuntimeError, "Aucun mod disponible"):
@@ -71,7 +215,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
 
     def test_missing_slot_has_diagnostic_error(self):
         one_mod = [{"id": "only", "slot": "Square", "set": "Speed", "primary_stat": "Speed", "primary_value": 10}]
-        with self.assertRaisesRegex(RuntimeError, "slot"):
+        with self.assertRaisesRegex(RuntimeError, "données incomplètes"):
             optimize_kyber(one_mod, kyber={}, base_stats={})
 
     def test_nominal_six_slot_build(self):
@@ -83,12 +227,17 @@ class OptimizerNormalizationTests(unittest.TestCase):
                 "secondary_1_stat": "Speed", "secondary_1_value": 5,
                 "level": 15, "rarity": 5,
             })
+        mods.append({
+            "id": "incomplete-duplicate", "slot": "Square", "set": "Speed",
+            "primary_stat": "Speed", "primary_value": 10, "level": None,
+        })
         builds = optimize_kyber(
             mods, base_stats={"Speed": 100, "Health": 10000, "Protection": 10000},
             kyber={}, number_of_builds=1, limit_per_slot=1,
         )
         self.assertEqual(len(builds), 1)
         self.assertEqual(len(builds[0]["build"]), 6)
+        self.assertNotIn("incomplete-duplicate", {mod.get("id") for mod in builds[0]["build"]})
 
     def test_impossible_kyber_set_plan_falls_back_to_best_available_build(self):
         slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
@@ -100,7 +249,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
             for slot, set_name in zip(slots, sets)
         ]
         kyber = {"specific_sets": [{"name": "Health x6", "counts": {"Health": 6}, "weight": 1.0}]}
-        builds = optimize_kyber(mods, base_stats={"Speed": 100}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
+        builds = optimize_kyber(mods, base_stats={"Speed": 100, "Health": 1000}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
         self.assertEqual(len(builds), 1)
         self.assertEqual(len(builds[0]["build"]), 6)
         self.assertEqual(builds[0]["set_plan"], {})
@@ -120,7 +269,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
 
     def test_lower_gac_usage_donor_is_preferred_after_mod_fit(self):
         low_use = {
-            "id": "low-use", "slot": "Square", "set": "Speed",
+            "id": "low-use", "slot": "Square", "set": "Speed", "level": 15,
             "primary_stat": "Offense", "primary_value": 5.88,
             "secondary_1_stat": "Speed", "secondary_1_value": 10,
             "_source_usage": 5,
@@ -135,8 +284,8 @@ class OptimizerNormalizationTests(unittest.TestCase):
         build_low = [low_use]
         build_high = [high_use]
         self.assertGreater(
-            build_score(build_low, {}, weights, {}),
-            build_score(build_high, {}, weights, {}),
+            build_score(build_low, {}, weights, {"Speed": 100, "Physical Damage": 500, "Special Damage": 500}),
+            build_score(build_high, {}, weights, {"Speed": 100, "Physical Damage": 500, "Special Damage": 500}),
         )
 
     def test_seigneur_speed_floor_filters_builds_and_retries_without_kyber_set_plan(self):
@@ -145,11 +294,13 @@ class OptimizerNormalizationTests(unittest.TestCase):
         for slot in slots:
             mods.append({
                 "id": f"slow-{slot}", "slot": slot, "set": "Health",
+                "primary_stat": "Speed", "primary_value": 0,
                 "secondary_1_stat": "Speed", "secondary_1_value": 0,
                 "level": 15, "rarity": 5,
             })
             mods.append({
                 "id": f"fast-{slot}", "slot": slot, "set": "Speed",
+                "primary_stat": "Speed", "primary_value": 0,
                 "secondary_1_stat": "Speed", "secondary_1_value": 10,
                 "level": 15, "rarity": 5,
             })
@@ -167,22 +318,23 @@ class OptimizerNormalizationTests(unittest.TestCase):
         slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
         mods = [{
             "id": slot, "slot": slot, "set": "Health",
+            "primary_stat": "Speed", "primary_value": 0,
             "secondary_1_stat": "Speed", "secondary_1_value": 2,
             "level": 15, "rarity": 5,
         } for slot in slots]
         with self.assertRaisesRegex(RuntimeError, "Vitesse actuelle : 200.0"):
             optimize_kyber(
-                mods, base_stats={"Speed": 100}, kyber={},
+                mods, base_stats={"Speed": 100, "Health": 1000}, kyber={},
                 number_of_builds=3, limit_per_slot=1, minimum_speed=200,
             )
 
     def test_speed_set_bonus_is_ten_percent_of_base_speed(self):
-        build = [{"set": "Speed"} for _ in range(4)]
+        build = [{"set": "Speed", "level": 15, "primary_stat": "Speed", "primary_value": 0} for _ in range(4)]
         stats = final_stats(build, {"Speed": 200})
         self.assertAlmostEqual(stats["Speed"], 220.0)
 
     def test_critical_damage_set_bonus_is_thirty_percentage_points(self):
-        build = [{"set": "Critical Damage"} for _ in range(4)]
+        build = [{"set": "Critical Damage", "level": 15, "primary_stat": "Critical Damage %", "primary_value": 0} for _ in range(4)]
         stats = final_stats(build, {"Critical Damage": 1.50})
         self.assertAlmostEqual(stats["Critical Damage"], 1.80)
 

@@ -26,6 +26,10 @@ function extractFunction(source,name){
 const seigneur=read('../modules/seigneur.js');
 const impact=read('../modules/seigneur-impact.js');
 const core=read('../modules/core.js');
+const engineSandbox={module:{exports:{}}};
+vm.createContext(engineSandbox);
+vm.runInContext(read('../modules/mod-engine.js'),engineSandbox);
+const sharedEngine=engineSandbox.module.exports;
 const compactKey=v=>String(v??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const numericValue=(v,fallback=0)=>Number.isFinite(Number(v))?Number(v):fallback;
 const modTotalSpeed=m=>Number(m?.speed||0);
@@ -35,16 +39,16 @@ const roster=[
   {baseId:'DONOR',name:'Donor',base_stats:{Speed:100}}
 ];
 const equipped={
-  TARGET:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map(slot=>({id:'t-'+slot,game_id:'t-'+slot,character:'TARGET',slot,set_name:'Offense',speed:10})),
-  DONOR:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>({id:'d-'+slot,game_id:'d-'+slot,character:'DONOR',slot,set_name:'Offense',speed:[2,3,4,5,6,7][i]}))
+  TARGET:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map(slot=>({id:'t-'+slot,game_id:'t-'+slot,character:'TARGET',slot,set_name:'Offense',level:15,speed:10,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:10,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0})),
+  DONOR:['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>({id:'d-'+slot,game_id:'d-'+slot,character:'DONOR',slot,set_name:'Offense',level:15,speed:[2,3,4,5,6,7][i],primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:[2,3,4,5,6,7][i],secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}))
 };
 const context=vm.createContext({
+  window:{HolocronModEngine:sharedEngine},
   compactKey,numericValue,modTotalSpeed,optimizerSlotKey,
   rosterCharacters:roster,
   getCharacterMods:c=>equipped[c.baseId]||[],
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
-  forgeSpeedSetCount:list=>list.filter(m=>m.set_name==='Speed').length,
-  v176ModStatus:list=>({status:list.length===6?'FAIBLES':list.length?'INCOMPLETS':'SANS MODS'}),
+  v176ModStatus:list=>({status:list.some(m=>!sharedEngine.normalizeMod(m)?.complete)?'DONNÉES INCOMPLÈTES':list.length===6?'FAIBLES':list.length?'INCOMPLETS':'SANS MODS'}),
   seigneurDonorPriority:c=>({known:true,uses:c.baseId==='TARGET'?100:10}),
   seigneurLatestGacUsageSeason:()=>({evidenceType:'defense-composition',sourceStatus:'partial'}),
   buildRosterOwnerResolver:characters=>({resolve:value=>{
@@ -64,15 +68,15 @@ vm.runInContext([
 ].join('\n'),context);
 
 const current=equipped.TARGET;
-const safeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',speed:15}];
-const unsafeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',speed:5}];
+const safeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:15,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:15,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}];
+const unsafeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:5,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:5,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}];
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,safeBuild),true);
 assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,unsafeBuild),false,
-  'A six-mod build that reduces the recipient speed must be rejected');
-assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,[...current.slice(0,5),{slot:'Circle',speed:20}]),false,
+  'A six-mod build that reduces the recipient speed must be rejected; before='+JSON.stringify(context.forgeProjectedModSpeed(roster[0],{base_stats:{Speed:100}},current))+' after='+JSON.stringify(context.forgeProjectedModSpeed(roster[0],{base_stats:{Speed:100}},unsafeBuild)));
+assert.equal(context.forgeBuildPreservesSpeed(roster[0],{base_stats:{Speed:100}},current,[...current.slice(0,5),{slot:'Circle',speed:20,secondary_1_stat:'Speed',secondary_1_value:20}]),false,
   'A six-mod build with a duplicate slot must be rejected');
 
-const speedSetCurrent=current.map((m,i)=>({...m,set_name:i<4?'Speed':'Offense'}));
+const speedSetCurrent=current.map((m,i)=>({...m,set_name:i<4?'Speed':'Offense',level:15}));
 const speedSetReplacement=speedSetCurrent.map((m,i)=>({...m,set_name:i===0?'Offense':m.set_name}));
 assert.equal(context.forgeBuildPreservesSpeed({baseId:'TARGET'}, {}, speedSetCurrent,speedSetReplacement),false,
   'Losing a four-piece Speed set is unsafe when base speed is unknown');
@@ -84,6 +88,18 @@ assert.equal(impactData.donors[0].modsTaken,1);
 assert.equal(impactData.donors[0].beforeCount,6);
 assert.equal(impactData.donors[0].afterCount,5);
 assert.equal(impactData.donors[0].speedLoss,7);
+
+// An unverified donor mod level must not be rendered as a zero speed loss.
+const donorCross = equipped.DONOR[5];
+const previousLevel = donorCross.level;
+donorCross.level = null;
+const incompleteDonorImpact = context.forgeBuildGlobalImpact(roster[0],{base_stats:{Speed:100}},safeBuild);
+assert.equal(incompleteDonorImpact.donors[0].speedLoss,null);
+assert.equal(incompleteDonorImpact.donorSpeedLoss,null);
+assert.match(context.forgeBuildGlobalImpactMarkup(incompleteDonorImpact),/Vitesse non calculable/);
+assert.match(context.forgeBuildGlobalImpactMarkup(incompleteDonorImpact),/IMPACT PARTIEL/);
+assert.equal(incompleteDonorImpact.donors[0].statusWorsened,false);
+donorCross.level = previousLevel;
 assert.equal(impactData.donors[0].statusWorsened,true);
 assert.equal(impactData.priorityGap,90);
 const markup=context.forgeBuildGlobalImpactMarkup(impactData);

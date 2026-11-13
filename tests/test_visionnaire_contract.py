@@ -19,8 +19,8 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.69-balanced-speed-prefilter-v1", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.69-balanced-speed-prefilter-v1", sw)
+        self.assertIn("modules/visionnaire.js?v=4.1.78-kyber-percent-only-units", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.78-kyber-percent-only-units", sw)
         self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
@@ -129,6 +129,11 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertNotIn("proposals.length<30", js)
         self.assertIn("return !reference.length||reference.some", js)
         self.assertIn("afterSpeed+1e-9<beforeSpeed", js)
+        self.assertIn("baseSpeed+retainedSpeed+combo.reduce", js)
+        self.assertIn("if(!beforeProjection.complete||!afterProjection.complete)", js)
+        self.assertIn("if(!donorBeforeSpeed.complete||!donorAfterSpeed.complete)", js)
+        self.assertIn("const KYBER_PERCENT_PRIMARY_KEYS", js)
+        self.assertIn("raw.includes('%')", js)
         self.assertIn("beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet", js)
         self.assertIn("afterSetDistance>=beforeSetDistance", js)
         self.assertIn("targetPrimarySafe(chosen)", js)

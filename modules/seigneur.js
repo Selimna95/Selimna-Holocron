@@ -336,13 +336,14 @@ function forgeKyberSetRules(profile){
   return rules;
 }
 function forgeModSetConformity(mod,profile){
-  const actual=compactKey(mod?.set_name||mod?.set||'');
+  const engine=window.HolocronModEngine;
+  const actual=engine.canonicalSetFromMod(mod);
   const distribution=forgeKyberSetDistribution(profile);
   const rules=forgeKyberSetRules(profile);
   if(!actual||(!distribution.length&&!rules.length))return {ok:null,reason:'Référence de set indisponible'};
-  const observed=distribution.some(item=>item.key===actual) ||
-    rules.some(rule=>Object.keys(rule.counts).some(name=>compactKey(name)===actual));
-  const weight=distribution.find(item=>item.key===actual)?.weight||0;
+  const observed=distribution.some(item=>engine.canonicalSet(item.name)===actual) ||
+    rules.some(rule=>Object.keys(rule.counts).some(name=>engine.canonicalSet(name)===actual));
+  const weight=distribution.find(item=>engine.canonicalSet(item.name)===actual)?.weight||0;
   return {ok:observed,weight,reason:observed?'Set observé dans les données Kyber':'Set absent de la référence Kyber'};
 }
 function forgeModPrimaryConformity(mod,profile){
@@ -350,8 +351,9 @@ function forgeModPrimaryConformity(mod,profile){
   const expected=optimizerPrimaryReference(profile,slot);
   const entries=Object.entries(expected).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0));
   if(!entries.length)return {ok:null,expected:'Référence indisponible'};
-  const actual=compactKey(mod?.primary_stat||'');
-  const match=entries.find(([name])=>compactKey(name)===actual);
+  const canonical=value=>window.HolocronModEngine.canonicalStatKey(value).replace(/PERCENT$/,'');
+  const actual=canonical(mod?.primary_stat||'');
+  const match=entries.find(([name])=>canonical(name)===actual);
   return {ok:!!match,expected:entries[0]?.[0]||'—',expectedPct:match?Number(match[1]||0):Number(entries[0]?.[1]||0)};
 }
 function forgeCharacterAudit(character,profile){
@@ -455,17 +457,14 @@ function forgeSearchSourceSummary(){
   return a.join(' + ')||'AUCUNE SOURCE';
 }
 function forgeSecondaryStats(m){
-  const out=[];
-  for(let i=1;i<=4;i++){
-    const stat=String(m?.[`secondary_${i}_stat`]||'').trim();
-    if(!stat||compactKey(stat)==='SPEED')continue;
-    out.push({stat,value:Number(m?.[`secondary_${i}_value`]||0)});
-  }
-  return out;
+  const normalized=window.HolocronModEngine.normalizeMod(m);
+  return (normalized?.secondaries||[])
+    .filter(stat=>stat.complete&&stat.key&&stat.key!=='speed')
+    .map(stat=>({stat:stat.name+(stat.unit==='percentagePoints'?' %':''),value:Number(stat.value),key:window.HolocronModEngine.canonicalStatKey({name:stat.name,unit:stat.unit})}));
 }
 function forgeHasSecondary(m,wanted){
-  const target=compactKey(wanted); if(!target)return false;
-  return forgeSecondaryStats(m).some(x=>compactKey(x.stat)===target || compactKey(x.stat).includes(target) || target.includes(compactKey(x.stat)));
+  const target=window.HolocronModEngine.canonicalStatKey(wanted); if(!target)return false;
+  return forgeSecondaryStats(m).some(x=>x.key===target || x.key.includes(target) || target.includes(x.key));
 }
 function forgeSlotCompatible(m,slot){return optimizerSlotKey(m?.slot)===optimizerSlotKey(slot);}
 function forgeSetCompatible(m,profile){
@@ -477,27 +476,24 @@ function forgeCandidateScore(m,profile,secA,secB){
   const speed=modTotalSpeed(m);
   const set=forgeSetCompatible(m,profile), primary=forgePrimaryCompatible(m,profile);
   let contribution=0;
-  for(const x of forgeSecondaryStats(m)) if(compactKey(x.stat)===compactKey(secA)||compactKey(x.stat)===compactKey(secB)) contribution+=Number(x.value||0);
+  const wantedA=window.HolocronModEngine.canonicalStatKey(secA),wantedB=window.HolocronModEngine.canonicalStatKey(secB);
+  for(const x of forgeSecondaryStats(m)) if(x.key===wantedA||x.key===wantedB) contribution+=Number(x.value||0);
   return {both:a&&b,one:(a||b),a,b,speed,set,primary,contribution};
-}
-function forgeIsSpeedSet(mod){
-  const key=compactKey(mod?.set_name??mod?.set??mod?.setId??mod?.set_id??'');
-  return ['SPEED','SPEEDSET','SPEEDMODSET','4'].includes(key);
-}
-function forgeSpeedSetCount(modList){
-  return (Array.isArray(modList)?modList:[]).filter(forgeIsSpeedSet).length;
 }
 function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
-  const modSpeed=list.reduce((sum,m)=>sum+numericValue(modTotalSpeed(m),0),0);
-  // Do not mistake a displayed/current stat block for a base stat: that could
-  // overestimate the 4-piece Speed-set bonus and let a real speed loss through.
   const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
     character?.raw?.baseStats||character?.data?.base_stats||optimizerProfileForCharacter(character)?.base_stats||{};
-  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,0);
-  const hasFourPieceSpeedSet=forgeSpeedSetCount(list)>=4;
-  const setBonus=hasFourPieceSpeedSet&&baseSpeed>0?baseSpeed*0.1:0;
-  return {total:modSpeed+setBonus,modSpeed,setBonus,hasFourPieceSpeedSet,baseSpeed};
+  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
+  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list);
+  return {
+    complete:projection.complete===true&&projection.total!=null,
+    total:projection.complete===true&&projection.total!=null?projection.total:null,
+    modSpeed:projection.modSpeed,
+    setBonus:projection.setBonus,
+    hasFourPieceSpeedSet:projection.hasFourPieceSpeedSet,
+    baseSpeed
+  };
 }
 function forgeCandidatePreservesSpeed(character,profile,equipped,current,candidate){
   if(!current)return true;
@@ -505,6 +501,7 @@ function forgeCandidatePreservesSpeed(character,profile,equipped,current,candida
   const after=(Array.isArray(equipped)?equipped:[]).filter(m=>currentId?String(m.game_id||m.id||'')!==currentId:optimizerSlotKey(m.slot)!==currentSlot);
   after.push(candidate);
   const beforeProjection=forgeProjectedModSpeed(character,profile,equipped),afterProjection=forgeProjectedModSpeed(character,profile,after);
+  if(!beforeProjection.complete||!afterProjection.complete)return false;
   if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return false;
   return afterProjection.total+1e-9>=beforeProjection.total;
 }

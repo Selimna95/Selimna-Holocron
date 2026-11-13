@@ -37,7 +37,8 @@ function load(source, names, context) {
 }
 const compactKey = (value) => String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const numericValue = (value, fallback = 0) => {
-  const n = Number(String(value ?? '').replace(',', '.'));
+  if (value == null || String(value).trim() === '') return fallback;
+  const n = Number(String(value).replace(',', '.'));
   return Number.isFinite(n) ? n : fallback;
 };
 const speed = (mod) => Number(mod?.speed ?? 0);
@@ -72,6 +73,15 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
+
+
+// Missing mod metadata must remain unknown rather than being fabricated.
+const iconContext = vm.createContext({});
+load(core, ['modIconTier','modDots'], iconContext);
+assert.equal(iconContext.modIconTier({}), '');
+assert.equal(iconContext.modDots({}), null);
+
+
 
 // SWGOH.GG's live Kyber page uses plain slot headings and focus rows such as
 // "+19.6 avg 23.68%". Keep these exact live-format regressions covered.
@@ -185,7 +195,146 @@ for (const baseId of ['REY', 'GRANDMASTERYODA', 'JEDIKNIGHTLUKE', 'STARKILLER', 
 
 // 3) Acolyte: the target must gain mod speed and total equipped speed.
 const acolyte = read('../modules/acolyte.js');
-const acContext = vm.createContext({ compactKey, numericValue, modTotalSpeed: speed });
+const engineSandbox = { module: { exports: {} } };
+vm.createContext(engineSandbox);
+vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
+const sharedEngine = engineSandbox.module.exports;
+const modStatusContext = vm.createContext({ window: { HolocronModEngine: sharedEngine } });
+load(core, ['v176ModStatus'], modStatusContext);
+const completeStatusMods = Array.from({ length: 6 }, (_, index) => ({
+  id: 'status-' + index, slot: ['Square','Arrow','Diamond','Triangle','Circle','Cross'][index],
+  set_name: 'Health', level: 15, primary_stat: 'Health', primary_value: 0,
+  secondary_1_stat: 'Protection', secondary_1_value: 0,
+  secondary_2_stat: 'Potency %', secondary_2_value: 0,
+  secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
+  secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
+}));
+assert.equal(modStatusContext.v176ModStatus(completeStatusMods).status, 'TRÈS FAIBLES');
+const incompleteStatusMods = completeStatusMods.map(mod => ({ ...mod }));
+delete incompleteStatusMods[0].secondary_4_stat;
+delete incompleteStatusMods[0].secondary_4_value;
+assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).status, 'DONNÉES INCOMPLÈTES');
+assert.equal(modStatusContext.v176ModStatus(incompleteStatusMods).totalSpeed, null);
+assert.equal(modStatusContext.v176ModStatus(completeStatusMods.slice(0,5)).status, 'INCOMPLETS');
+const fiveWithIncomplete = completeStatusMods.slice(0,5).map(mod => ({ ...mod }));
+delete fiveWithIncomplete[0].secondary_4_stat;
+delete fiveWithIncomplete[0].secondary_4_value;
+assert.equal(modStatusContext.v176ModStatus(fiveWithIncomplete).status, 'DONNÉES INCOMPLÈTES');
+
+// Shared import normalization keeps Comlink stat IDs and units intact.
+const importContext = vm.createContext({
+  window: { HolocronModEngine: sharedEngine },
+  numericValue: (value, fallback=0) => value == null || String(value).trim() === '' ? fallback : (Number.isFinite(Number(value)) ? Number(value) : fallback)
+});
+load(core, ['statNameFromAny','statValueFromAny','statObjectFromAny','normalizeMod'], importContext);
+const unknownDotMod = importContext.normalizeMod({ slot: 'Square', set_name: 'Health', dots: 6 });
+assert.equal(unknownDotMod.pips, 6);
+assert.equal(unknownDotMod.level, null);
+const unknownTierMod = importContext.normalizeMod({ slot: 'Square', set_name: 'Health' });
+assert.equal(unknownTierMod.pips, null);
+const importedMod = importContext.normalizeMod({
+  id: 'comlink-unit-fixture',
+  primary_stat: { unitStatId: 48, unscaledDecimalValue: 2500000 },
+  secondary_stats: [{ unitStatId: 17, unscaledDecimalValue: 2500000 }]
+});
+assert.equal(importedMod.primary_stat, 'Offense %');
+assert.equal(importedMod.primary_stat_unit, 'percentagePoints');
+assert.equal(importedMod.primary_value, 2.5);
+assert.equal(importedMod.secondary_1_stat, 'Potency %');
+assert.equal(importedMod.secondary_1_unit, 'percentagePoints');
+assert.equal(importedMod.secondary_1_value, 2.5);
+
+// HTML fallback values carry their displayed unit (e.g. +2.5%) into the shared normalizer.
+const htmlImportContext = vm.createContext({
+  window: { HolocronModEngine: sharedEngine },
+  numericValue
+});
+load(core, ['firstText','firstAttr','parseNumberValue','parseOptionalNumberValue','statNameFromAny','statValueFromAny','statObjectFromAny','normalizeMod','parseStatGeneric','slotFromShape','parseModsPage'], htmlImportContext);
+const htmlStatNode = {
+  querySelector(selector) {
+    if (selector === '.statmod-stat-label') return { textContent: 'Potency' };
+    if (selector === '.statmod-stat-value') return { textContent: '+2.5%' };
+    return null;
+  },
+  getAttribute() { return null; },
+  textContent: ''
+};
+const htmlStat = htmlImportContext.parseStatGeneric(htmlStatNode);
+assert.deepEqual({ stat: htmlStat.stat, value: htmlStat.value, unit: htmlStat.unit },
+  { stat: 'Potency %', value: 2.5, unit: 'percentagePoints' });
+const htmlNormalizedMod = htmlImportContext.normalizeMod({
+  primary_stat: htmlStat.stat, primary_value: htmlStat.value, primary_stat_unit: htmlStat.unit
+});
+assert.equal(htmlNormalizedMod.primary_stat_unit, 'percentagePoints');
+assert.equal(htmlNormalizedMod.primary_value, 2.5);
+const ambiguousHtmlStatNode = {
+  querySelector(selector) {
+    if (selector === '.statmod-stat-label') return { textContent: 'Potency' };
+    if (selector === '.statmod-stat-value') return { textContent: '2.5' };
+    return null;
+  },
+  getAttribute() { return null; },
+  textContent: ''
+};
+assert.equal(htmlImportContext.parseStatGeneric(ambiguousHtmlStatNode).unit, 'unknown');
+
+const missingHtmlStatNode = {
+  querySelector(selector) {
+    if (selector === '.statmod-stat-label') return { textContent: 'Speed' };
+    if (selector === '.statmod-stat-value') return { textContent: '—' };
+    return null;
+  },
+  getAttribute() { return null; },
+  textContent: ''
+};
+assert.equal(htmlImportContext.parseStatGeneric(missingHtmlStatNode).value, null);
+assert.equal(htmlImportContext.statValueFromAny('not-a-number'), null);
+const missingSourceMod = htmlImportContext.normalizeMod({
+  set_name: 'Speed', level: null, primary_stat: 'Speed', primary_value: null
+});
+assert.equal(missingSourceMod.level, null);
+assert.equal(missingSourceMod.primary_value, null);
+const missingSourceProjection = sharedEngine.calculateSpeed(100, [missingSourceMod]);
+assert.equal(missingSourceProjection.complete, false);
+assert.equal(missingSourceProjection.total, null);
+assert.ok(missingSourceProjection.missing.includes('mod:level_unknown'));
+assert.ok(missingSourceProjection.missing.includes('mod:primary_incomplete'));
+const rawComlinkMod = htmlImportContext.normalizeMod({ definitionId: '111', level: 15, primary_stat: 'Speed', primary_value: 15 });
+assert.equal(rawComlinkMod.slot, 'Square');
+assert.equal(sharedEngine.normalizeMod(rawComlinkMod).slot, 'Square');
+const rawComlinkArrow = htmlImportContext.normalizeMod({ definitionId: '112', level: 15, primary_stat: 'Speed', primary_value: 15 });
+assert.equal(rawComlinkArrow.slot, 'Arrow');
+assert.equal(sharedEngine.normalizeMod(rawComlinkArrow).slot, 'Arrow');
+const swgohGgSlotMod = htmlImportContext.normalizeMod({ slot_id: 7, level: 15, set_name: 'Health', primary_stat: 'Speed', primary_value: 15 });
+assert.equal(sharedEngine.normalizeMod(swgohGgSlotMod).slot, 'Cross');
+
+const primaryNode = {
+  querySelector(selector) {
+    if (selector === '.statmod-stat-label') return { textContent: 'Speed' };
+    if (selector === '.statmod-stat-value') return { textContent: '+15' };
+    return null;
+  },
+  getAttribute() { return null; },
+  textContent: ''
+};
+const imageNode = { getAttribute: name => name === 'alt' ? 'Mod Set Speed Square' : null };
+const modNode = {
+  querySelector(selector) {
+    if (selector.startsWith('.statmod-img')) return imageNode;
+    if (selector.startsWith('.statmod-stats-1')) return primaryNode;
+    return null;
+  },
+  querySelectorAll() { return []; },
+  getAttribute(name) { return name === 'data-id' ? 'missing-level-mod' : null; }
+};
+const parsedHtmlMods = htmlImportContext.parseModsPage({ querySelectorAll: () => [modNode] }, 1);
+assert.equal(parsedHtmlMods.length, 1);
+assert.equal(parsedHtmlMods[0].level, null);
+assert.equal(parsedHtmlMods[0].primary_value, 15);
+assert.equal(parsedHtmlMods[0].primary_stat_unit, 'flat');
+
+
+const acContext = vm.createContext({ window: { HolocronModEngine: sharedEngine }, compactKey, numericValue, modTotalSpeed: speed });
 load(acolyte, ['holocronModSecondarySpeed', 'holocronAcolyteTransferPreservesSpeed'], acContext);
 const current = { speed: 4, secondary_1_stat: 'Speed', secondary_1_value: 4 };
 const faster = { speed: 12, secondary_1_stat: 'Speed', secondary_1_value: 12 };
@@ -197,36 +346,52 @@ assert.equal(acContext.holocronAcolyteTransferPreservesSpeed(current, slower, [c
 // target/donor pair. This catches missing score variables at proposal time.
 const acolyteFixture = [
   { baseId: 'TARGET', name: 'Target' },
-  { baseId: 'DONOR', name: 'Donor' }
+  { baseId: 'DONOR', name: 'Donor' },
+  { baseId: 'EMPTY_DONOR', name: 'Empty donor' }
 ];
-const fixtureMod = (owner, index, slot, value) => ({
-  owner, _index: index, slot, set_name: 'Speed',
-  primary_stat: 'Offense %', primary_value: 5.88,
+const primaryForSlot = {
+  Square: ['Offense', 5.88], Arrow: ['Speed', 30], Diamond: ['Defense', 5],
+  Triangle: ['Critical Damage %', 30], Circle: ['Health %', 5], Cross: ['Potency %', 5]
+};
+const fixtureMod = (owner, index, slot, value, complete=true) => ({
+  owner, _index: index, slot, set_name: 'Speed', level: 15,
+  primary_stat: primaryForSlot[slot][0], primary_value: primaryForSlot[slot][1],
   secondary_1_stat: 'Speed', secondary_1_value: value,
-  speed: value, level: 15
+  ...(complete ? {
+    secondary_2_stat: 'Protection', secondary_2_value: 0,
+    secondary_3_stat: 'Potency %', secondary_3_value: 0,
+    secondary_4_stat: 'Tenacity %', secondary_4_value: 0
+  } : {}),
+  speed: value
 });
 const acolyteFixtureMods = [
   fixtureMod('TARGET', 0, 'Square', 4),
-  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,10)),
+  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('TARGET',i+1,slot,slot==='Arrow'?4:20)),
   fixtureMod('DONOR', 6, 'Square', 12),
-  ...['Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>fixtureMod('DONOR',i+7,slot,0))
+  ...['Arrow','Diamond','Triangle','Circle'].map((slot,i)=>fixtureMod('DONOR',i+7,slot,0)),
 ];
+const incompleteDonorMod = fixtureMod('ORPHAN', 12, 'Cross', 20, false);
 Object.assign(acContext, {
   rosterCharacters: acolyteFixture,
-  window: { __SWGOH_GAC_USAGE__: { seasons: [] } },
+  window: { HolocronModEngine: sharedEngine, __SWGOH_GAC_USAGE__: { seasons: [] } },
   HOLOCRON_GALACTIC_LEGENDS: new Set(),
   characterKey: c => String(c?.baseId || ''),
   rosterUnitType: () => 'character',
   getCharacterMods: c => acolyteFixtureMods.filter(m => m.owner === c.baseId),
-  v176ModStatus: list => {
-    const totalSpeed = list.reduce((sum,m)=>sum+Number(m.speed||0),0);
-    return { totalSpeed, status: list.length < 6 ? 'INCOMPLETS' : totalSpeed < 30 ? 'TRÈS FAIBLES' : totalSpeed < 50 ? 'FAIBLES' : totalSpeed < 70 ? 'MOYENS' : 'BONS' };
-  },
+  v176ModStatus: list => modStatusContext.v176ModStatus(list),
   holocronModScoreForCharacter: m => Number(m.speed||0),
   holocronKyberFit: () => 0,
   profileForCharacter: () => null
 });
-load(acolyte, ['holocronIsGalacticLegend','holocronLatestGacSeason','holocronGacUsage','holocronTopChangeCandidates'], acContext);
+load(acolyte, ['holocronIsGalacticLegend','holocronLatestGacSeason','holocronGacUsage','holocronModIsComplete','holocronTopChangeCandidates'], acContext);
+assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[0]), true, 'target fixture mod is complete');
+assert.equal(acContext.holocronModIsComplete(acolyteFixtureMods[6]), true, 'donor Square fixture mod is complete');
+assert.equal(acContext.holocronModSecondarySpeed(acolyteFixtureMods[0]), 4);
+assert.equal(acContext.holocronModSecondarySpeed(acolyteFixtureMods[6]), 12);
+assert.equal(acContext.holocronAcolyteTransferPreservesSpeed(acolyteFixtureMods[0], acolyteFixtureMods[6], acolyteFixtureMods.filter(m=>m.owner==='TARGET')), true);
+assert.equal(acContext.holocronModIsComplete(incompleteDonorMod), false, 'incomplete source mod is rejected');
+assert.equal(modStatusContext.v176ModStatus(acolyteFixtureMods.filter(m=>m.owner==='DONOR')).status, 'INCOMPLETS');
+assert.equal(modStatusContext.v176ModStatus([incompleteDonorMod]).status, 'DONNÉES INCOMPLÈTES');
 const acolyteRows = acContext.holocronTopChangeCandidates();
 assert.equal(acolyteRows.length, 1, 'Acolyte must produce the valid fixture exchange');
 assert.equal(acolyteRows[0].recipient.baseId, 'TARGET');
@@ -402,38 +567,44 @@ assert.deepEqual(Array.from(scoped,x=>x.id).sort(),['free-mod','incomplete-mod',
 
 // 5) Seigneur: allow a set change only when known base speed proves the net is safe.
 const forgeContext = vm.createContext({
+  window: { HolocronModEngine: sharedEngine },
   numericValue, modTotalSpeed: speed, optimizerSlotKey: (v) => String(v ?? ''),
-  optimizerProfileForCharacter: () => ({}),
-  forgeSpeedSetCount: (list) => list.filter(m => m.set_name === 'Speed').length
+  optimizerProfileForCharacter: () => ({})
 });
 load(seigneur, ['forgeProjectedModSpeed', 'forgeCandidatePreservesSpeed'], forgeContext);
 const baseSpeedCharacter = { base_stats: { Speed: 100 } };
+const makeSpeedMod = (id, slot, set_name, speedValue) => ({
+  id, slot, set_name, level: 1, speed: speedValue,
+  primary_stat: 'Health', primary_value: 0,
+  secondary_1_stat: 'Speed', secondary_1_value: speedValue
+});
 const equipped = [
-  { id: 'cur', slot: 'Square', set_name: 'Speed', speed: 5 },
-  { id: 'a', slot: 'Arrow', set_name: 'Speed', speed: 5 },
-  { id: 'd', slot: 'Diamond', set_name: 'Speed', speed: 5 },
-  { id: 't', slot: 'Triangle', set_name: 'Speed', speed: 5 },
-  { id: 'c', slot: 'Circle', set_name: 'Offense', speed: 5 },
-  { id: 'x', slot: 'Cross', set_name: 'Offense', speed: 5 }
+  makeSpeedMod('cur', 'Square', 'Speed', 5),
+  makeSpeedMod('a', 'Arrow', 'Speed', 5),
+  makeSpeedMod('d', 'Diamond', 'Speed', 5),
+  makeSpeedMod('t', 'Triangle', 'Speed', 5),
+  makeSpeedMod('c', 'Circle', 'Offense', 5),
+  makeSpeedMod('x', 'Cross', 'Offense', 5)
 ];
-assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'gain', slot: 'Square', set_name: 'Offense', speed: 25 }), true);
-assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], { id: 'loss', slot: 'Square', set_name: 'Offense', speed: 10 }), false);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], makeSpeedMod('gain', 'Square', 'Offense', 25)), true);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, equipped, equipped[0], makeSpeedMod('loss', 'Square', 'Offense', 9)), false);
 const threeSpeedSets = [
-  { id: 'cur-offense', slot: 'Square', set_name: 'Offense', speed: 10 },
-  { id: 'a', slot: 'Arrow', set_name: 'Speed', speed: 5 },
-  { id: 'd', slot: 'Diamond', set_name: 'Speed', speed: 5 },
-  { id: 't', slot: 'Triangle', set_name: 'Speed', speed: 5 },
-  { id: 'c', slot: 'Circle', set_name: 'Offense', speed: 5 },
-  { id: 'x', slot: 'Cross', set_name: 'Offense', speed: 5 }
+  makeSpeedMod('cur-offense', 'Square', 'Offense', 10),
+  makeSpeedMod('a', 'Arrow', 'Speed', 5),
+  makeSpeedMod('d', 'Diamond', 'Speed', 5),
+  makeSpeedMod('t', 'Triangle', 'Speed', 5),
+  makeSpeedMod('c', 'Circle', 'Offense', 5),
+  makeSpeedMod('x', 'Cross', 'Offense', 5)
 ];
-assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, threeSpeedSets, threeSpeedSets[0], { id: 'fourth-speed', slot: 'Square', set_name: 'Speed', speed: 5 }), true);
-assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'unknown', slot: 'Square', set_name: 'Offense', speed: 25 }), false);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed(baseSpeedCharacter, {}, threeSpeedSets, threeSpeedSets[0], makeSpeedMod('fourth-speed', 'Square', 'Speed', 5)), true);
+assert.equal(forgeContext.forgeCandidatePreservesSpeed({}, {}, equipped, equipped[0], { id: 'unknown', slot: 'Square', set_name: 'Offense', speed: 25, secondary_1_stat: 'Speed', secondary_1_value: 25 }), false);
 
 
 // 5b) Seigneur: a Kyber set distribution is not an exact six-mod composition.
-const seigneurCoreContext = vm.createContext({ compactKey });
+const seigneurCoreContext = vm.createContext({ compactKey, window: { HolocronModEngine: sharedEngine } });
 load(core, ['optimizerRecommendationSummary', 'optimizerSlotKey', 'optimizerPrimaryReference'], seigneurCoreContext);
 const forgeReferenceContext = vm.createContext({
+  window: { HolocronModEngine: sharedEngine },
   compactKey, optimizerRecommendationSummary: seigneurCoreContext.optimizerRecommendationSummary,
   optimizerSlotKey: seigneurCoreContext.optimizerSlotKey,
   optimizerPrimaryReference: seigneurCoreContext.optimizerPrimaryReference

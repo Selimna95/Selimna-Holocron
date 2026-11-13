@@ -100,27 +100,82 @@ try {
   // when the incoming mod has the same individual speed as the equipped mod.
   const speedGuard = await page.evaluate(() => {
     const character = { baseId: "TEST", name: "Test", characterId: "UNIT-SPEED" };
-    const make = (id, set, speed) => ({game_id:id,character:"TEST",slot:"Square",set_name:set,primary_stat:"Offense",primary_value:5,secondary_1_stat:"Speed",secondary_1_value:speed});
+    const make = (id, set, speed) => ({game_id:id,character:"TEST",slot:"Square",set_name:set,level:15,primary_stat:"Offense",primary_value:5,secondary_1_stat:"Speed",secondary_1_value:speed,secondary_2_stat:"Protection",secondary_2_value:0,secondary_3_stat:"Potency %",secondary_3_value:0,secondary_4_stat:"Tenacity %",secondary_4_value:0});
     const equipped = [make("a","Speed",5),make("b","Speed",5),make("c","Speed",5),make("d","Speed",5),make("e","Health",0),make("f","Health",0)];
     const before = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},equipped);
     const after = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},[...equipped.slice(1),make("replacement","Health",5)]);
-    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total};
+    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total,beforeSet:before.hasFourPieceSpeedSet,afterSet:after.hasFourPieceSpeedSet,beforeBonus:before.setBonus,afterBonus:after.setBonus};
   });
-  assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus");
+  assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus: "+JSON.stringify(speedGuard));
 
   // Mod P0 regressions: keep arithmetic numeric and preserve stat identity.
   const modMath = await page.evaluate(() => ({
     localized: numericValue("1 234,5"),
-    forgeTotal: forgeProjectedModSpeed({baseId:"TEST",name:"Test"},{},Array.from({length:6},(_,i)=>({game_id:"m"+i,slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",secondary_1_stat:"Speed",secondary_1_value:5}))).total,
+    forgeTotal: forgeProjectedModSpeed({baseId:"TEST",name:"Test"},{},Array.from({length:6},(_,i)=>({game_id:"m"+i,slot:["Square","Arrow","Diamond","Triangle","Circle","Cross"][i],set_name:"Health",level:15,primary_stat:"Health",primary_value:100,secondary_1_stat:"Speed",secondary_1_value:5,secondary_2_stat:"Protection",secondary_2_value:0,secondary_3_stat:"Potency %",secondary_3_value:0,secondary_4_stat:"Tenacity %",secondary_4_value:0}))).modSpeed,
     offenseFlat: discipleCanonicalStat("Offense"),
     offensePercent: discipleCanonicalStat("Offense %"),
     healthFlat: discipleCanonicalStat("Health"),
     healthPercent: discipleCanonicalStat("Health %"),
+    secondaryUnitIdentity: forgeSecondaryStats({level:15,primary_stat:"Health",primary_value:100,
+      secondary_1_stat:"Offense",secondary_1_value:20,
+      secondary_2_stat:"Offense %",secondary_2_value:5,
+      secondary_3_stat:"Potency %",secondary_3_value:2.5,
+      secondary_4_stat:"Tenacity %",secondary_4_value:3}).map(x=>({stat:x.stat,key:x.key})),
   }));
   assert.equal(modMath.localized, 1234.5);
   assert.equal(modMath.forgeTotal, 30, "Forge must add six mod speeds numerically, not concatenate strings");
   assert.notEqual(modMath.offenseFlat, modMath.offensePercent, "Offense and Offense % are distinct secondary stats");
   assert.notEqual(modMath.healthFlat, modMath.healthPercent, "Health and Health % are distinct secondary stats");
+  assert.equal(modMath.secondaryUnitIdentity[0].key, "OFFENSE");
+  assert.equal(modMath.secondaryUnitIdentity[1].key, "OFFENSEPERCENT");
+  assert.equal(modMath.secondaryUnitIdentity[2].stat, "Potency %");
+  assert.equal(modMath.secondaryUnitIdentity[3].stat, "Tenacity %");
+
+  const incompleteSpeedUi = await page.evaluate(() => {
+    const incomplete = {slot:"Square",set_name:"Health",level:15,primary_stat:"Offense",primary_value:50,secondary_1_stat:"Speed",secondary_1_value:5};
+    const completeWithoutSpeed = {slot:"Square",set_name:"Health",level:15,primary_stat:"Offense",primary_value:50,secondary_1_stat:"Protection",secondary_1_value:0,secondary_2_stat:"Potency %",secondary_2_value:0,secondary_3_stat:"Tenacity %",secondary_3_value:0,secondary_4_stat:"Critical Damage %",secondary_4_value:0};
+    const originalMods = mods;
+    try {
+      const summary = speedBreakdown([incomplete, completeWithoutSpeed]);
+      mods = [incomplete];
+      const row = inventoryRows()[0];
+      return {unknown:summary.unknown,noSpeed:summary.no_speed,rowSpeed:row._speed,rowCategory:row._speedCategory,card:renderModCard(incomplete)};
+    } finally { mods = originalMods; }
+  });
+  assert.equal(incompleteSpeedUi.unknown, 1, "Incomplete mod data must have its own summary category");
+  assert.equal(incompleteSpeedUi.noSpeed, 1, "A complete mod with no Speed secondary is genuinely in the no-speed category");
+  assert.equal(incompleteSpeedUi.rowSpeed, null, "An unknown speed value must remain null in the inventory model");
+  assert.equal(incompleteSpeedUi.rowCategory, "unknown");
+  assert.match(incompleteSpeedUi.card, /Données incomplètes/);
+  assert.doesNotMatch(incompleteSpeedUi.card, /Sans Speed/);
+
+  const discipleUnitSafety = await page.evaluate(() => {
+    const make = secondary => ({slot:"Square",set_name:"Health",level:15,primary_stat:"Offense",primary_value:50,
+      secondary_1_stat:secondary,secondary_1_value:secondary==="Offense %"?5:20,
+      secondary_2_stat:"Protection",secondary_2_value:0,
+      secondary_3_stat:"Potency %",secondary_3_value:0,
+      secondary_4_stat:"Tenacity %",secondary_4_value:0});
+    const flat=make("Offense"),percent=make("Offense %");
+    const incomplete={slot:"Square",set_name:"Health",level:15,primary_stat:"Offense",primary_value:50,secondary_1_stat:"Speed",secondary_1_value:5};
+    const originalMods=mods;
+    try {
+      mods=[flat,percent];
+      return {
+        labels:reallocationSecondaryOptions(),
+        flatKey:discipleCanonicalStat(secondaryDisplayName("Offense")),
+        percentKey:discipleCanonicalStat(secondaryDisplayName("Offense %")),
+        flatMatchesPercent:reallocationCandidateSecondary(flat,"Offense %"),
+        percentMatchesPercent:reallocationCandidateSecondary(percent,"Offense %"),
+        incompleteTierMatch:reallocationSpeedTierMatch(incomplete,"speed_1_5")
+      };
+    } finally { mods=originalMods; }
+  });
+  assert.ok(discipleUnitSafety.labels.includes("Offense"));
+  assert.ok(discipleUnitSafety.labels.includes("Offense %"));
+  assert.notEqual(discipleUnitSafety.flatKey,discipleUnitSafety.percentKey,"Disciple must keep flat Offense distinct from Offense %");
+  assert.equal(discipleUnitSafety.flatMatchesPercent,null,"A flat Offense secondary must not satisfy an Offense % search");
+  assert.equal(discipleUnitSafety.percentMatchesPercent.value,5);
+  assert.equal(discipleUnitSafety.incompleteTierMatch,false,"Incomplete mod data must not be classified into a numeric speed tier");
 
   // Disciple: consecutive searches must refresh the visible candidates every
   // time, including when the user changes the secondary and then clicks search.

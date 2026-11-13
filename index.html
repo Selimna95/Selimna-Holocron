@@ -293,10 +293,10 @@
             <select id="analysisCharacter"></select>
           </label>
           <label>STATUT
-            <select id="analysisStatus"><option value="TOUS">TOUS</option><option>SANS MODS</option><option>INCOMPLETS</option><option>TRÈS FAIBLES</option><option>FAIBLES</option><option>MOYENS</option><option>BONS</option></select>
+            <select id="analysisStatus"><option value="TOUS">TOUS</option><option>SANS MODS</option><option>INCOMPLETS</option><option>DONNÉES INCOMPLÈTES</option><option>TRÈS FAIBLES</option><option>FAIBLES</option><option>MOYENS</option><option>BONS</option></select>
           </label>
           <label>VITESSE
-            <select id="analysisAuditSpeed"><option value="TOUS">TOUS</option><option value="1_10">1 – 10</option><option value="11_15">11 – 15</option><option value="16_21">16 – 21</option><option value="22plus">&gt; 21</option><option value="primary_speed">PRIMAIRE SPEED</option><option value="no_speed">SANS SPEED</option></select>
+            <select id="analysisAuditSpeed"><option value="TOUS">TOUS</option><option value="1_10">1 – 10</option><option value="11_15">11 – 15</option><option value="16_19">16 – 19</option><option value="20_24">20 – 24</option><option value="25plus">25+</option><option value="primary_speed">PRIMAIRE SPEED</option><option value="no_speed">SANS SPEED</option></select>
           </label>
           <label>TRI
             <select id="analysisAuditSort"><option value="priority">Priorité</option><option value="speed">Speed sec. ↑</option><option value="mods">Mods ↑</option><option value="relic">Relic ↓</option></select>
@@ -398,7 +398,7 @@
           <select id="analysisPrimaryFilter"><option value="">Toutes les primaires</option></select>
           <select id="analysisSecondaryFilter"><option value="">Toutes les secondaires</option></select>
           <select id="analysisSpeedFilter">
-            <option value="">Toutes les vitesses</option><option value="1_10">1 – 10</option><option value="11_15">11 – 15</option><option value="16_21">16 – 21</option><option value="22plus">&gt; 21</option><option value="primary_speed">Primaire Speed</option><option value="no_speed">Sans Speed</option>
+            <option value="">Toutes les vitesses</option><option value="1_10">1 – 10</option><option value="11_15">11 – 15</option><option value="16_19">16 – 19</option><option value="20_24">20 – 24</option><option value="25plus">25+</option><option value="primary_speed">Primaire Speed</option><option value="no_speed">Sans Speed</option><option value="unknown">Données incomplètes</option>
           </select>
         </div>
         <div id="inventoryMeta" class="table-meta"></div>
@@ -492,12 +492,13 @@
 <script src="modules/seigneur-gac.js?v=1.1.0-history-fallback"></script>
 
 <script src="interface-adapter.js?v=4.0.47-crawl-restart-v2"></script>
-<script src="modules/core.js?v=4.2.16-live-kyber-only"></script>
-<script src="modules/acolyte.js?v=3.4.5-candidate-score"></script>
-<script src="modules/disciple.js?v=3.5.2-ranked-candidates"></script>
-<script src="modules/seigneur.js?v=3.9.6-gac-freshness-legacy"></script>
-<script src="modules/seigneur-impact.js?v=1.0.0-roster-impact"></script>
-<script src="modules/visionnaire.js?v=4.1.69-balanced-speed-prefilter-v1"></script>
+<script src="modules/mod-engine.js?v=0.3.22"></script>
+<script src="modules/core.js?v=4.2.32-unknown-speed-category"></script>
+<script src="modules/acolyte.js?v=3.4.9-weak-donor-recipient"></script>
+<script src="modules/disciple.js?v=3.5.9-complete-secondary-options"></script>
+<script src="modules/seigneur.js?v=3.9.9-stat-unit-preservation"></script>
+<script src="modules/seigneur-impact.js?v=1.0.2-partial-impact-status"></script>
+<script src="modules/visionnaire.js?v=4.1.78-kyber-percent-only-units"></script>
 <script src="modules/runtime.js?v=3.7.1-visionnaire-page"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {

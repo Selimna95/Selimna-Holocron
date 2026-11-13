@@ -23,9 +23,11 @@ function holocronGacUsage(c, season=holocronLatestGacSeason()){
   const uses=Number(record.uses ?? record.usage);
   return Number.isFinite(uses)?Math.max(0,uses):null;
 }
+function holocronModIsComplete(mod){
+  return window.HolocronModEngine.normalizeMod(mod)?.complete===true;
+}
 function holocronModSecondarySpeed(mod){
-  for(let i=1;i<=4;i++){const stat=compactKey(mod?.[`secondary_${i}_stat`]);if(stat==='SPEED'||stat==='VITESSE')return numericValue(mod?.[`secondary_${i}_value`],0);}
-  return 0;
+  return Number(window.HolocronModEngine.speedMetrics(mod).secondary||0);
 }
 function holocronAcolyteTransferPreservesSpeed(currentMod,candidateMod,recipientMods){
   const oldSecondary=holocronModSecondarySpeed(currentMod),newSecondary=holocronModSecondarySpeed(candidateMod);
@@ -61,8 +63,9 @@ function holocronTopChangeCandidates(){
   // Un mod individuellement rapide reste éligible s'il appartient à un donneur
   // globalement faible : c'est précisément le stock intéressant à redistribuer.
   const donorWeakness=unit=>{
-    const speeds=unit.mods.map(holocronModSecondarySpeed).sort((a,b)=>a-b);
-    const count=speeds.length||1;
+    const speeds=unit.mods.filter(holocronModIsComplete).map(holocronModSecondarySpeed).sort((a,b)=>a-b);
+    if(!speeds.length)return 0;
+    const count=speeds.length;
     const noSpeed=speeds.filter(v=>v===0).length;
     const veryLow=speeds.filter(v=>v>0&&v<=5).length;
     const low=speeds.filter(v=>v>5&&v<=9).length;
@@ -128,11 +131,14 @@ function holocronTopChangeCandidates(){
   // Seuls les non-GL incomplets/faibles/très faibles sont donneurs ; tous leurs mods
   // peuvent être proposés, même un mod individuel avec une vitesse élevée.
   for(const r of units){
+    // Un personnage classé donneur faible ne doit pas être traité simultanément comme receveur.
+    if(r.isWeakDonor)continue;
     const targetMods=[...r.mods].sort((a,b)=>
       holocronModSecondarySpeed(a)-holocronModSecondarySpeed(b) ||
       numericValue(modTotalSpeed(a),0)-numericValue(modTotalSpeed(b),0)
     );
     for(const currentMod of targetMods){
+      if(!holocronModIsComplete(currentMod))continue;
       if(!isUnambiguouslyOwnedBy(currentMod,r.c))continue;
       const oldSecondarySpeed=holocronModSecondarySpeed(currentMod);
       if(oldSecondarySpeed>9)continue;
@@ -150,6 +156,8 @@ function holocronTopChangeCandidates(){
         // pas de prérequis obligatoire.
         if(!r.isGL && r.gacUses!==null && d.gacUses!==null && d.gacUses>=r.gacUses)continue;
         for(const donorMod of d.mods){
+          // Aucune projection ni recommandation ne part d'un mod incomplet.
+          if(!holocronModIsComplete(donorMod))continue;
           // Sécurité impérative : le mod proposé doit être équipé exclusivement sur ce donneur.
           if(!isUnambiguouslyOwnedBy(donorMod,d.c))continue;
           if(donorMod.slot!==currentMod.slot)continue;
@@ -233,26 +241,34 @@ function topChangeStatDelta(fromMod,toMod){
   if(!stats.has(key))stats.set(key,{name,from:0,to:0});
   stats.get(key)[side]+=Number(value||0);
  };
- const fromPrimary=String(fromMod?.primary_stat||'').trim();
- const toPrimary=String(toMod?.primary_stat||'').trim();
- // Séparer les primaires par nom : une primaire différente ne doit jamais
- // être présentée comme un simple gain numérique sur la même caractéristique.
- if(fromPrimary)add('__primary__'+compactKey(fromPrimary),'Primaire · '+fromPrimary,fromMod?.primary_value,'from');
- if(toPrimary)add('__primary__'+compactKey(toPrimary),'Primaire · '+toPrimary,toMod?.primary_value,'to');
- for(const [m,side] of [[fromMod,'from'],[toMod,'to']]) for(let i=1;i<=4;i++){
-  const name=String(m?.[`secondary_${i}_stat`]||'').trim();
-  if(!name)continue;
-  const normalized=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  const key=['speed','vitesse'].includes(normalized)?'__speed__':normalized;
-  add(key,key==='__speed__'?'Vitesse':name,m[`secondary_${i}_value`],side);
+ const engine=window.HolocronModEngine;
+ const primary=(mod,side)=>{
+  const raw=String(mod?.primary_stat||'').trim();
+  if(!raw)return;
+  const normalized=engine.normalizeStat(raw);
+  const key=engine.canonicalStatKey(raw);
+  const label=(normalized?.name||raw)+((normalized?.unit==='percentagePoints'&&['offense','defense','health','protection'].includes(normalized.key))?' %':'');
+  add('__primary__'+key,'Primaire · '+label,mod?.primary_value,side);
+ };
+ primary(fromMod,'from');
+ primary(toMod,'to');
+ for(const [mod,side] of [[fromMod,'from'],[toMod,'to']]) for(let i=1;i<=4;i++){
+  const raw=String(mod?.[`secondary_${i}_stat`]||'').trim();
+  if(!raw)continue;
+  const normalized=engine.normalizeStat(raw);
+  const key=engine.canonicalStatKey(raw);
+  const label=(normalized?.name||raw)+((normalized?.unit==='percentagePoints'&&['offense','defense','health','protection'].includes(normalized.key))?' %':'');
+  add(key,key==='SPEED'?'Vitesse':label,mod[`secondary_${i}_value`],side);
  }
  return [...stats.values()].map(x=>({...x,delta:x.to-x.from}))
   .filter(x=>Math.abs(x.delta)>0.00001)
   .sort((a,b)=>Math.abs(a.delta)-Math.abs(b.delta));
 }
 function topChangeStatValue(value,name){
- const percent=/%|potency|tenacity|critical|chance|avoidance/i.test(name);
- return `${num(value,percent?2:1)}${percent&&!String(name).includes('%')?' pt':''}${String(name).includes('%')?'%':''}`;
+ const normalized=window.HolocronModEngine.normalizeStat(name);
+ const percent=normalized?.unit==='percentagePoints';
+ const explicitPercent=String(name).includes('%');
+ return `${num(value,percent?2:1)}${percent&&!explicitPercent?' pt':''}${explicitPercent?'%':''}`;
 }
 function essentialPortraitCandidates(character){
  const name=String(character?.name||'').trim().toLowerCase();

@@ -44,75 +44,102 @@ function extractGalacticPowerFromProfile(text){const body=String(text||'');let t
 function renderGalacticPower(){const gp=accountGalacticPower||{total:0,characters:0,ships:0};setText('gpTotal',gp.total?num(gp.total):'0');setText('gpCharacters',gp.characters?num(gp.characters):'0');setText('gpShips',gp.ships?num(gp.ships):'0');setText('gpBreakdown',gp.total?`${num(gp.characters)} terrestre · ${num(gp.ships)} spatial`:'En attente de synchronisation');}
 
 function statNameFromAny(value) {
-  const rawNames = {1:'Health',5:'Speed',17:'Potency',18:'Tenacity',28:'Protection',41:'Offense',42:'Defense',45:'Critical Chance',48:'Offense',49:'Defense',53:'Critical Chance',55:'Health',56:'Protection',57:'Speed'};
+  const engine = window.HolocronModEngine;
+  const normalized = engine?.normalizeStat(value);
+  if (normalized?.key) return normalized.name + (normalized.unit === 'percentagePoints' ? ' %' : '');
   if (value == null) return '';
-  if (typeof value === 'number') return rawNames[value] || String(value);
-  if (typeof value === 'string' || typeof value === 'number') {
-    const text=String(value).trim();
-    if (/^\d+$/.test(text) && rawNames[Number(text)]) return rawNames[Number(text)];
-    return text;
+  if (typeof value === 'object') {
+    const raw = value.name ?? value.stat ?? value.unitStat ?? value.unitStatId ?? value.statId ?? value.type ?? '';
+    return String(raw?.name ?? raw ?? '').trim();
   }
-  if (typeof value !== 'object') return '';
-  let raw=value.name ?? value.stat ?? value.unitStat ?? value.unitStatId ?? value.statId ?? value.type ?? '';
-  if (raw && typeof raw === 'object') raw=raw.name ?? raw.unitStat ?? raw.unitStatId ?? raw.statId ?? '';
-  if (/^\d+$/.test(String(raw)) && rawNames[Number(raw)]) return rawNames[Number(raw)];
-  return String(raw).trim();
+  return String(value).trim();
 }
 function statValueFromAny(value) {
-  if (value == null) return 0;
-  if (typeof value === 'number') return value;
+  if (value == null) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value === 'string') {
     const text=value.trim();
     const m=text.match(/[-+]?\d+(?:[.,]\d+)?/);
-    return m ? Number(m[0].replace(',','.')) : 0;
+    return m ? Number(m[0].replace(',','.')) : null;
   }
   if (typeof value === 'object') {
     if (value.display_value != null) return statValueFromAny(value.display_value);
     if (value.displayValue != null) return statValueFromAny(value.displayValue);
     if (value.value != null && typeof value.value !== 'object') return statValueFromAny(value.value);
     if (value.amount != null) return statValueFromAny(value.amount);
-    if (value.unscaledDecimalValue != null) return Number(value.unscaledDecimalValue) / 100000000;
-    if (value.unscaled_decimal_value != null) return Number(value.unscaled_decimal_value) / 100000000;
+    if (value.unscaledDecimalValue != null) {
+      const n=Number(value.unscaledDecimalValue);
+      return Number.isFinite(n)?n/100000000:null;
+    }
+    if (value.unscaled_decimal_value != null) {
+      const n=Number(value.unscaled_decimal_value);
+      return Number.isFinite(n)?n/100000000:null;
+    }
   }
-  return 0;
+  return null;
 }
-function statObjectFromAny(value) {
-  if (value == null) return {stat:'', value:0};
+function statObjectFromAny(value, explicitValue, explicitUnit) {
+  if (value == null) return {stat:'', value:null, unit:'unknown'};
+  const normalized = window.HolocronModEngine?.normalizeStat(value, explicitValue, explicitUnit);
+  if (normalized?.key) {
+    const display = value && typeof value === 'object'
+      ? (value.display_value ?? value.displayValue ?? value.stat?.display_value ?? value.stat?.displayValue ?? '')
+      : '';
+    return {
+      stat: normalized.name + (normalized.unit === 'percentagePoints' ? ' %' : ''),
+      value: normalized.value,
+      unit: normalized.unit,
+      display_value: display
+    };
+  }
   if (typeof value === 'object') {
     const nested = value.stat && typeof value.stat === 'object' ? value.stat : value;
     const display = nested.display_value ?? nested.displayValue ?? value.display_value ?? value.displayValue;
-    let stat = statNameFromAny(nested.name ?? nested.stat ?? nested.unitStat ?? nested.unitStatId ?? value.name ?? value.stat ?? value.unitStat ?? value.unitStatId);
-    if (display != null && /%/.test(String(display)) && stat && !/%$/.test(stat)) stat += ' %';
+    const stat = statNameFromAny(nested.name ?? nested.stat ?? nested.unitStat ?? nested.unitStatId ?? value.name ?? value.stat ?? value.unitStat ?? value.unitStatId);
     const val = display != null ? statValueFromAny(display) : statValueFromAny(nested.value ?? nested.amount ?? nested.unscaledDecimalValue ?? nested.unscaled_decimal_value ?? value.value ?? value.amount);
-    return {stat, value:val, display_value:display ?? ''};
+    return {stat, value:val, unit:'unknown', display_value:display ?? ''};
   }
-  return {stat:String(value).trim(), value:0, display_value:''};
+  return {stat:String(value).trim(), value:numericValue(explicitValue,null), unit:'unknown', display_value:''};
 }
 function normalizeMod(m, index=0) {
   if (!m || typeof m !== 'object') return null;
   const out = {...m};
   out.game_id = out.game_id ?? out.id ?? out.modId ?? out.uid ?? `web-${index}`;
   out.slot = out.slot ?? out.slot_id ?? out.slotId ?? out.mod_slot ?? out.modSlot ?? out.shape;
+  if (out.definitionId != null) {
+    const definitionSlot = window.HolocronModEngine?.slotFromDefinitionId(out.definitionId);
+    if (definitionSlot) out.slot = definitionSlot;
+  }
   out.set_name = out.set_name ?? out.set ?? out.setName ?? out.setId ?? out.modSetId ?? out.mod_set_id;
   if (out.set_name && typeof out.set_name === 'object') out.set_name = out.set_name.name ?? out.set_name.id ?? out.set_name.setId ?? out.set_name.modSetId;
 
   const primaryRaw = out.primary_stat ?? out.primaryStat ?? out.primary ?? out.primaryStatValue;
-  const primary = statObjectFromAny(primaryRaw);
+  const primary = statObjectFromAny(primaryRaw, typeof primaryRaw === 'string' ? (out.primary_value ?? out.primaryValue) : undefined, out.primary_stat_unit ?? out.primaryUnit);
   out.primary_stat = primary.stat || (typeof out.primary_stat === 'string' ? out.primary_stat : '');
-  out.primary_value = primary.display_value ? primary.value : statValueFromAny(out.primary_value ?? out.primaryValue ?? primaryRaw?.value ?? primaryRaw?.amount ?? 0);
+  out.primary_stat_unit = primary.unit || out.primary_stat_unit;
+  out.primary_value = primary.value ?? statValueFromAny(out.primary_value ?? out.primaryValue ?? primaryRaw?.value ?? primaryRaw?.amount);
 
   const secs = out.secondary_stats ?? out.secondaryStats ?? out.secondaryStat ?? out.secondary ?? [];
   if (Array.isArray(secs)) secs.slice(0,4).forEach((raw,i)=>{
-    const s=statObjectFromAny(raw);
+    const s=statObjectFromAny(raw, typeof raw === 'string' ? out[`secondary_${i+1}_value`] : undefined, out[`secondary_${i+1}_unit`]);
     out[`secondary_${i+1}_stat`] = s.stat;
-    out[`secondary_${i+1}_value`] = s.display_value ? s.value : statValueFromAny(raw?.value ?? raw?.amount ?? raw?.unscaledDecimalValue ?? raw?.unscaled_decimal_value ?? s.value);
+    out[`secondary_${i+1}_unit`] = s.unit;
+    out[`secondary_${i+1}_value`] = s.value ?? statValueFromAny(raw?.value ?? raw?.amount ?? raw?.unscaledDecimalValue ?? raw?.unscaled_decimal_value);
   });
+  else for(let i=1;i<=4;i++){
+    const raw=out[`secondary_${i}_stat`];
+    if(!raw)continue;
+    const s=statObjectFromAny(raw,out[`secondary_${i}_value`],out[`secondary_${i}_unit`]);
+    out[`secondary_${i}_stat`]=s.stat;
+    out[`secondary_${i}_unit`]=s.unit;
+    out[`secondary_${i}_value`]=s.value ?? statValueFromAny(out[`secondary_${i}_value`]);
+  }
 
-  out.level = Number(out.level ?? 0);
+  out.level = numericValue(out.level, null);
   // Keep the real tier supplied by the player API. It is independent from dots and level.
   out.tier = out.tier ?? out.quality ?? out.grade ?? out.modTier ?? out.mod_tier ?? out.rarityTier ?? out.rarity_tier ?? '';
-  out.pips = Number(out.pips ?? out.dotCount ?? out.dot_count ?? 0) || 0;
-  out.rarity = Number(out.rarity ?? out.pips ?? 0);
+  out.pips = numericValue(out.pips ?? out.dots ?? out.dotCount ?? out.dot_count, null);
+  out.rarity = numericValue(out.rarity ?? out.pips, null);
   out.character = out.character ?? out.characterName ?? out.equippedTo ?? out.equipped_to ?? out.unit_equiped ?? out.unitEquiped ?? out.location ?? out.usingIn ?? '';
   return out;
 }
@@ -616,11 +643,7 @@ function optimizerRecommendationSummary(profile){
   out.secondaries=Object.entries(focus).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0)).slice(0,6).map(([name,avg])=>({name,avg:Number(avg)}));
   return out;
 }
-function optimizerSlotKey(slot){
-  const k=String(slot||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/g,'');
-  const map={square:'Square',carre:'Square',arrow:'Arrow',fleche:'Arrow',diamond:'Diamond',diamant:'Diamond',triangle:'Triangle',circle:'Circle',cercle:'Circle',cross:'Cross',croix:'Cross'};
-  return map[k]||String(slot||'');
-}
+function optimizerSlotKey(slot){ return window.HolocronModEngine.canonicalSlot(slot)||''; }
 function optimizerPrimaryReference(profile, slot){
   const key=optimizerSlotKey(slot);
   return profile?.slots?.[key]?.primaries||{};
@@ -752,8 +775,9 @@ function parseHTML(text){return new DOMParser().parseFromString(text,'text/html'
 function firstText(root,selectors){for(const sel of selectors){const n=root.querySelector(sel);if(n){const t=n.textContent?.trim();if(t)return t;}}return '';}
 function firstAttr(root,selectors,attr){for(const sel of selectors){const n=root.querySelector(sel);const v=n?.getAttribute(attr);if(v)return v;}return '';}
 function parseNumberValue(v){const m=String(v??'').replace(/\s/g,'').match(/[+-]?[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):0;}
+function parseOptionalNumberValue(v){const m=String(v??'').replace(/\s/g,'').match(/[+-]?[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):null;}
 function slotFromShape(shape){const s=String(shape||'').toLowerCase();return ({'1':'Square','2':'Square','3':'Arrow','4':'Diamond','5':'Triangle','6':'Circle','7':'Cross',transmitter:'Square',receiver:'Arrow',processor:'Diamond','holo-array':'Triangle','data-bus':'Circle',multiplexer:'Cross'})[s]||shape;}
-function parseStatGeneric(node){if(!node)return{stat:'',value:0};const label=firstText(node,['.statmod-stat-label','[class*="statmod-stat-label"]','[data-stat-name]'])||node.getAttribute?.('data-stat-name')||'';const raw=firstText(node,['.statmod-stat-value','[class*="statmod-stat-value"]','[data-stat-value]'])||node.getAttribute?.('data-stat-value')||node.textContent||'';return{stat:label.trim(),value:parseNumberValue(raw)};}
+function parseStatGeneric(node){if(!node)return{stat:'',value:null,unit:'unknown'};const label=firstText(node,['.statmod-stat-label','[class*="statmod-stat-label"]','[data-stat-name]'])||node.getAttribute?.('data-stat-name')||'';const raw=firstText(node,['.statmod-stat-value','[class*="statmod-stat-value"]','[data-stat-value]'])||node.getAttribute?.('data-stat-value')||node.textContent||'';const percent=/%/.test(String(label))||/%/.test(String(raw));const stat=percent&&!/%/.test(String(label))?String(label).trim()+' %':String(label).trim();const flatKey=String(label).toLowerCase().replace(/[^a-z]/g,'');const flat=['health','maxhealth','protection','maxprotection','speed','vitesse','offense','attack','defense'].includes(flatKey);return{stat,value:parseOptionalNumberValue(raw),unit:percent?'percentagePoints':flat?'flat':'unknown'};}
 function parseModsPage(doc,page){
   const nodes=[...doc.querySelectorAll('.collection-mod, [class*=\"collection-mod\"], [data-mod-id], [data-id].mod')],result=[];
   nodes.forEach((node,idx)=>{
@@ -766,16 +790,16 @@ function parseModsPage(doc,page){
     const primary=parseStatGeneric(node.querySelector('.statmod-stats-1 .statmod-stat, [class*=\"statmod-stats-1\"] [class*=\"statmod-stat\"]'));
     const secondary=[...node.querySelectorAll('.statmod-stats-2 .statmod-stat, [class*=\"statmod-stats-2\"] [class*=\"statmod-stat\"]')].map(parseStatGeneric).filter(x=>x.stat);
     const char=firstAttr(node,['img.char-portrait-img','img[class*=\"char-portrait-img\"]'],'alt');
-    const level=parseNumberValue(firstText(node,['.statmod-level','[class*=\"statmod-level\"]']));
+    const level=parseOptionalNumberValue(firstText(node,['.statmod-level','[class*=\"statmod-level\"]']));
     const rarity=node.querySelectorAll('.statmod-pip, [class*=\"statmod-pip\"]').length;
     const id=node.getAttribute('data-id')||node.getAttribute('data-mod-id')||`gg-${page}-${idx}`;
     if(shape||set||primary.stat||secondary.length){
-      result.push(normalizeMod({game_id:id,slot:slotFromShape(shape),set_name:set,rarity,dots:rarity,level,primary_stat:primary.stat,primary_value:primary.value,secondary_stats:secondary,character:char,asset_src:src,raw_alt:alt},page*1000+idx));
+      result.push(normalizeMod({game_id:id,slot:slotFromShape(shape),set_name:set,rarity,dots:rarity,level,primary_stat:primary.stat,primary_value:primary.value,primary_stat_unit:primary.unit,secondary_stats:secondary,character:char,asset_src:src,raw_alt:alt},page*1000+idx));
     }
   });
   return result.filter(Boolean);
 }
-function parseCharacters(doc){const result=[],nodes=[...doc.querySelectorAll('.collection-char-list .collection-char, .collection-char, [class*="collection-char"]')],seen=new Set();for(const node of nodes){const name=firstText(node,['.collection-char-name-link','[class*="collection-char-name"]','a[href*="/character/"]']);if(!name||seen.has(name))continue;seen.add(name);const level=parseNumberValue(firstText(node,['.char-portrait-full-level','[class*="char-portrait-full-level"]']));let gear=0;const portrait=node.querySelector('.player-char-portrait,[class*="player-char-portrait"]');for(let i=1;i<=13;i++)if(portrait?.classList.contains(`char-portrait-full-gear-t${i}`))gear=i;const stars=[...node.querySelectorAll('.star, [class*="star"]')].filter(x=>!String(x.className).includes('inactive')).length;result.push({name,level,gear,stars});}return result;}
+function parseCharacters(doc){const result=[],nodes=[...doc.querySelectorAll('.collection-char-list .collection-char, .collection-char, [class*="collection-char"]')],seen=new Set();for(const node of nodes){const name=firstText(node,['.collection-char-name-link','[class*="collection-char-name"]','a[href*="/character/"]']);if(!name||seen.has(name))continue;seen.add(name);const level=parseOptionalNumberValue(firstText(node,['.char-portrait-full-level','[class*="char-portrait-full-level"]']));let gear=0;const portrait=node.querySelector('.player-char-portrait,[class*="player-char-portrait"]');for(let i=1;i<=13;i++)if(portrait?.classList.contains(`char-portrait-full-gear-t${i}`))gear=i;const stars=[...node.querySelectorAll('.star, [class*="star"]')].filter(x=>!String(x.className).includes('inactive')).length;result.push({name,level,gear,stars});}return result;}
 function looksLikeMod(o){
   if(!o||typeof o!=='object')return false;
   const keys=Object.keys(o).map(k=>k.toLowerCase());
@@ -896,17 +920,11 @@ async function loadRemotePlayer(){
 }
 function updateAccountSummary(title,fmt){if($('playerName'))$('playerName').textContent=title||'Profil';if($('playerAlly'))$('playerAlly').textContent=fmt||'—';if($('heroPlayerName'))$('heroPlayerName').textContent=title||'Profil';if($('heroPlayerAlly'))$('heroPlayerAlly').textContent=fmt||'—';setText('topAccountName',title||'—');setText('topProfileState','CONNECTÉ');setText('heroProfileState','CONNECTÉ');}
 function modSetLabel(value){
-  const raw=String(value??'').trim();
-  if(!raw)return '';
-  const key=raw.toLowerCase().replace(/[_-]+/g,' ');
-  const map={'1':'Health','2':'Offense','3':'Defense','4':'Speed','5':'Crit Chance','6':'Crit Damage','7':'Potency','8':'Tenacity','health':'Health','offense':'Offense','defense':'Defense','speed':'Speed','crit chance':'Crit Chance','crit damage':'Crit Damage','potency':'Potency','tenacity':'Tenacity'};
-  return map[raw]||map[key]||raw;
+  const key=window.HolocronModEngine.canonicalSet(value);
+  return key?window.HolocronModEngine.setDefinitions[key]?.name||'':String(value??'').trim();
 }
 function modSlotLabel(value){
-  const raw=String(value??'').trim();
-  const key=raw.toLowerCase().replace(/[_-]+/g,' ');
-  const map={'1':'Square','2':'Square','3':'Arrow','4':'Diamond','5':'Triangle','6':'Circle','7':'Cross','square':'Square','arrow':'Arrow','diamond':'Diamond','triangle':'Triangle','circle':'Circle','cross':'Cross','transmitter':'Square','receiver':'Arrow','processor':'Diamond','holo array':'Triangle','data bus':'Circle','multiplexer':'Cross'};
-  return map[raw]||map[key]||raw;
+  return window.HolocronModEngine.canonicalSlot(value)||String(value??'').trim();
 }
 function modIconTier(m){
   const rawValue=m?.tier??m?.quality??m?.grade??m?.modTier??m?.mod_tier??m?.rarityTier??m?.rarity_tier??'';
@@ -923,7 +941,7 @@ function modIconTier(m){
   if(assetHit)return assetHit[1].toUpperCase();
   const text=String(m?.name??m?.displayName??m?.raw_alt??m?.alt??'');
   const hit=text.match(/(?:^|[\s_-])([A-E])(?:$|[\s_-])/i);
-  return hit?hit[1].toUpperCase():'E';
+  return hit?hit[1].toUpperCase():'';
 }
 function modDots(m){
   const candidates=[
@@ -938,17 +956,20 @@ function modDots(m){
   if(mk)return Number(mk[1]);
   const roman=text.match(/(?:^|[\s_-])(VI|V|IV|III|II|I)(?:[-\s]|$)/i);
   if(roman){
-    return ({I:1,II:2,III:3,IV:4,V:5,VI:6}[roman[1].toUpperCase()]||5);
+    return ({I:1,II:2,III:3,IV:4,V:5,VI:6})[roman[1].toUpperCase()] ?? null;
   }
-  return 5;
+  return null;
 }
 function modDotsClass(m){
-  return modDots(m)===6?'dots-6':'dots-1-5';
+  const dots=modDots(m);
+  return dots===6?'dots-6':dots?'dots-1-5':'dots-unknown';
 }
 function modAssetName(m){
   const set=modSetLabel(m?.set_name??m?.set??m?.setId??m?.set_id).trim();
   const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot).trim();
-  const shape={Square:'Transmitter',Arrow:'Receiver',Diamond:'Processor',Triangle:'Holo-Array',Circle:'Data-Bus',Cross:'Multiplexer'}[slot]||'Transmitter';
+  const shape={Square:'Transmitter',Arrow:'Receiver',Diamond:'Processor',Triangle:'Holo-Array',Circle:'Data-Bus',Cross:'Multiplexer'}[slot];
+  const tier=modIconTier(m);
+  if(!set||!shape||!tier)return '';
   const assetSet={
     'Crit Chance':'Critical Chance',
     'Crit Damage':'Critical Damage',
@@ -956,7 +977,7 @@ function modAssetName(m){
     'Critical Damage':'Critical Damage'
   }[set]||set;
   const safeSet=assetSet.replace(/\s+/g,'-');
-  return `Mod-${safeSet}-${shape}-${modIconTier(m)}.png`;
+  return `Mod-${safeSet}-${shape}-${tier}.png`;
 }
 function modIconUrl(m){ return ''; }
 function modDotsUrl(m){ return ''; }
@@ -966,9 +987,10 @@ function modIconHtml(m, size='56'){
   const tier=modIconTier(m);
   const slot=modSlotLabel(m?.slot??m?.slot_id??m?.slotId??m?.modSlot);
   const slotClass=slot.toLowerCase().replace(/[^a-z]+/g,'-');
-  const dotsColor=dots===6?'gold':'white';
-  const tierClass={A:'tier-a',B:'tier-b',C:'tier-c',D:'tier-d',E:'tier-e'}[tier]||'tier-e';
-  return `<span class="mod-visual slot-${slotClass}" data-dots="${dots}" data-tier="${tier}" data-slot="${esc(slot)}" title="${name} — ${dots} dots · Tier ${tier} · Niveau ${num(m?.level)}"><span class="mod-visual-grade"><span class="mod-visual-dots-number dots-${dotsColor}">${dots}</span><span class="mod-visual-tier ${tierClass}">${tier}</span></span><span class="mod-visual-level">Niv. ${num(m?.level)}</span></span>`;
+  const dotsColor=dots===6?'gold':dots?'white':'unknown';
+  const dotsLabel=dots==null?'?':String(dots),tierLabel=tier||'?';
+  const tierClass={A:'tier-a',B:'tier-b',C:'tier-c',D:'tier-d',E:'tier-e'}[tier]||'tier-unknown';
+  return `<span class="mod-visual slot-${slotClass}" data-dots="${dots??''}" data-tier="${tier}" data-slot="${esc(slot)}" title="${name} — ${dotsLabel} dots · ${tier?'Tier '+tier:'Tier inconnu'} · Niveau ${m?.level==null?'?':num(m.level)}"><span class="mod-visual-grade"><span class="mod-visual-dots-number dots-${dotsColor}">${dotsLabel}</span><span class="mod-visual-tier ${tierClass}">${tierLabel}</span></span><span class="mod-visual-level">Niv. ${m?.level==null?'?':num(m.level)}</span></span>`;
 }
 function normalizeModForDisplay(m){
   if(!m)return m;
@@ -992,9 +1014,9 @@ function normalizeModForDisplay(m){
   out.character=owner;
   out.ownerKey=compactKey(owner);
   out.ownerBaseId=compactKey(out.characterId??out.character_id??out.equippedToId??out.equipped_to_id??'');
-  out.level=Number(out.level??0);
-  out.rarity=Number(out.rarity??out.pips??0);
-  out.dots=Number(out.dots??out.dotCount??out.pips??out.rarity??0);
+  out.level=numericValue(out.level,null);
+  out.rarity=numericValue(out.rarity??out.pips,null);
+  out.dots=modDots(out);
   out.tier=out.tier??out.quality??out.grade??out.modTier??out.mod_tier??out.rarityTier??'';
   out.raw_alt=out.raw_alt??out.alt??out.imageAlt??out.name??'';
   out.asset_src=out.asset_src??out.icon_url??out.iconUrl??out.image_url??out.imageUrl??out.icon??out.image??'';
@@ -1092,7 +1114,7 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.3-seigneur-speed-floor', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.11-required-speed-floor', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
@@ -1119,7 +1141,7 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
       }
     };
     worker.addEventListener('message', onMessage);
-    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
+    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_level: Number(character?.level)||null, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
   });
 }
 
@@ -1269,16 +1291,9 @@ function getCharacterMods(c){
   }
   return slots.map(slot=>bySlot.get(slot)).filter(Boolean);
 }
-function modSpeedMetrics(m){
-  const primary=['SPEED','VITESSE'].includes(compactKey(m.primary_stat));
-  let secondary=null;
-  for(let i=1;i<=4;i++){
-    if(['SPEED','VITESSE'].includes(compactKey(m[`secondary_${i}_stat`]))){ secondary=Number(m[`secondary_${i}_value`]); break; }
-  }
-  return {secondary:Number.isFinite(secondary)?secondary:null,primary};
-}
-function modPrimarySpeed(m){ return modSpeedMetrics(m).primary ? Number(m.primary_value||0) : 0; }
-function modTotalSpeed(m){ const x=modSpeedMetrics(m); return (x.secondary||0)+modPrimarySpeed(m); }
+function modSpeedMetrics(m){ return window.HolocronModEngine.speedMetrics(m); }
+function modPrimarySpeed(m){ return window.HolocronModEngine.speedMetrics(m).primarySpeed; }
+function modTotalSpeed(m){ return window.HolocronModEngine.speedMetrics(m).total; }
 function speedCategory(v){
   const n=Number(v||0);
   if(n<=0)return 'no_speed';
@@ -1288,13 +1303,17 @@ function speedCategory(v){
   if(n<=24)return '20_24';
   return '25plus';
 }
-function speedCategoryLabel(k){ return ({'1_10':'1 – 10','11_15':'11 – 15','16_19':'16 – 19','20_24':'20 – 24','25plus':'25+','no_speed':'Sans Speed','primary_speed':'Primaire Speed'})[k]||k; }
+function speedCategoryLabel(k){ return ({'1_10':'1 – 10','11_15':'11 – 15','16_19':'16 – 19','20_24':'20 – 24','25plus':'25+','no_speed':'Sans Speed','primary_speed':'Primaire Speed','unknown':'Données incomplètes'})[k]||k; }
 function v176ModStatus(modsForCharacter){
   const list=Array.isArray(modsForCharacter)?modsForCharacter:[];
   const count=Math.min(6,list.length);
-  const totalSpeed=list.reduce((s,m)=>s+modTotalSpeed(m),0);
-  if(count===0)return {status:'SANS MODS',class:'critical',totalSpeed};
-  if(count<6)return {status:'INCOMPLETS',class:'incomplete',totalSpeed};
+  if(count===0)return {status:'SANS MODS',class:'critical',totalSpeed:null};
+  const normalized=list.map(mod=>window.HolocronModEngine.normalizeMod(mod));
+  if(list.length>6||normalized.some(mod=>!mod?.complete)){
+    return {status:'DONNÉES INCOMPLÈTES',class:'incomplete',totalSpeed:null};
+  }
+  if(count<6)return {status:'INCOMPLETS',class:'incomplete',totalSpeed:null};
+  const totalSpeed=normalized.reduce((sum,mod)=>sum+window.HolocronModEngine.speedMetrics(mod).total,0);
   if(totalSpeed<30)return {status:'TRÈS FAIBLES',class:'verylow',totalSpeed};
   if(totalSpeed<50)return {status:'FAIBLES',class:'low',totalSpeed};
   if(totalSpeed<70)return {status:'MOYENS',class:'medium',totalSpeed};
@@ -1333,10 +1352,12 @@ function allFactions(){
   return [...set].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function speedBreakdown(list=mods){
-  const out={'1_10':0,'11_15':0,'16_19':0,'20_24':0,'25plus':0,'no_speed':0,'primary_speed':0,total:0};
+  const out={'1_10':0,'11_15':0,'16_19':0,'20_24':0,'25plus':0,'no_speed':0,'primary_speed':0,'unknown':0,total:0};
   for(const raw of list){
     const m=normalizeModForDisplay(raw); out.total++;
-    const x=modSpeedMetrics(m);
+    const normalized=window.HolocronModEngine.normalizeMod(raw);
+    if(!normalized?.complete){out.unknown++;continue;}
+    const x=modSpeedMetrics(normalized);
     if(x.primary) out.primary_speed++;
     else out[speedCategory(x.secondary)]++;
   }
@@ -1345,8 +1366,10 @@ function speedBreakdown(list=mods){
 function inventoryRows(){
   return mods.map((raw,i)=>{
     const m=normalizeModForDisplay(raw);
-    const x=modSpeedMetrics(m);
-    return {...m,_index:i,_speed:x.secondary||0,_primarySpeed:x.primary,_totalSpeed:modTotalSpeed(m),_speedCategory:x.primary?'primary_speed':speedCategory(x.secondary)};
+    const normalized=window.HolocronModEngine.normalizeMod(raw);
+    const x=modSpeedMetrics(normalized||m);
+    const complete=normalized?.complete===true;
+    return {...m,_index:i,_speed:complete?(x.secondary??0):null,_primarySpeed:complete?x.primary:null,_totalSpeed:complete?x.total:null,_speedCategory:!complete?'unknown':x.primary?'primary_speed':speedCategory(x.secondary)};
   });
 }
 function renderV18SpeedRecap(containerId='v18SpeedRecap'){
@@ -1354,7 +1377,7 @@ function renderV18SpeedRecap(containerId='v18SpeedRecap'){
   const b=speedBreakdown(mods);
   const cards=[
     ['1_10','1 – 10','secondary'],['11_15','11 – 15','secondary'],['16_19','16 – 19','secondary'],['20_24','20 – 24','secondary'],['25plus','25+','secondary'],
-    ['primary_speed','Primaire Speed','primary'],['no_speed','Sans Speed','secondary']
+    ['primary_speed','Primaire Speed','primary'],['no_speed','Sans Speed','secondary'],['unknown','Données incomplètes','secondary']
   ];
   box.innerHTML=cards.map(([k,label])=>`<button class="speed-recap-card speed-${k}" data-speed-category="${k}"><span>${label}</span><strong>${num(b[k])}</strong><small>${b.total?((b[k]/b.total)*100).toFixed(1):'0.0'} %</small></button>`).join('');
   box.querySelectorAll('[data-speed-category]').forEach(el=>el.addEventListener('click',()=>{
@@ -1364,40 +1387,28 @@ function renderV18SpeedRecap(containerId='v18SpeedRecap'){
   }));
 }
 function holocronModScore(m){
-  // Score de comparaison indicatif : vitesse prioritaire, puis valeur des secondaires.
-  // Les valeurs sont normalisées pour éviter de comparer directement des unités différentes.
-  const weights={SPEED:1,OFFENSE:0.32,OFFENSEPERCENT:0.42,HEALTH:0.12,HEALTHPERCENT:0.22,PROTECTION:0.10,PROTECTIONPERCENT:0.18,POTENCY:0.24,TENACITY:0.20,CRITICALCHANCE:0.20,CRITICALDAMAGE:0.22,CRITICALAVOIDANCE:0.18};
-  let score=modTotalSpeed(m)*1.8;
-  for(let i=1;i<=4;i++){
-    const key=compactKey(m[`secondary_${i}_stat`]); const val=Number(m[`secondary_${i}_value`]||0);
-    if(!key||!Number.isFinite(val))continue;
-    let v=val;
-    if(key.endsWith('PERCENT')||['POTENCY','TENACITY','CRITICALCHANCE','CRITICALDAMAGE','CRITICALAVOIDANCE'].includes(key))v*=100;
-    score+=v*(weights[key]||0.08);
-  }
-  const level=Number(m.level||0); score+=Math.max(0,level-12)*0.25;
-  return score;
+  return window.HolocronModEngine.scoreMod(m);
 }
 function holocronKyberFit(mod, character){
-  // Ajuste indicatif selon les préférences Kyber du personnage (sets, primaires et secondaires).
-  // Il ne représente pas une simulation de combat ni des stats adverses observées.
   const p=profileForCharacter(character); if(!p)return 0;
-  const set=String(mod?.set_name||'').trim().toLowerCase();
-  const primary=String(mod?.primary_stat||'').trim().toLowerCase();
-  const slot=String(mod?.slot||'');
-  let fit=0;
+  const engine=window.HolocronModEngine;
+  const setKey=engine.canonicalSetFromMod(mod);
   const sets=Array.isArray(p.sets)?p.sets:[];
-  const sw=sets.find(x=>String(x.name||'').toLowerCase()===set);
+  const sw=sets.find(x=>engine.canonicalSet(x.name)===setKey);
+  let fit=0;
   if(sw)fit+=Math.min(5,Number(sw.weight||0)*5);
+  const slot=String(mod?.slot||'');
   const slotData=p.slots?.[slot];
   const primaries=slotData?.primaries||{};
-  const pw=Object.entries(primaries).find(([k])=>String(k).toLowerCase()===primary)?.[1];
+  const primaryKey=engine.canonicalStatKey(mod?.primary_stat||'').replace(/PERCENT$/,'');
+  const pw=Object.entries(primaries).find(([name])=>engine.canonicalStatKey(name).replace(/PERCENT$/,'')===primaryKey)?.[1];
   if(Number.isFinite(Number(pw)))fit+=Math.min(4,Number(pw)*4);
   const focus=p.secondary_focus||{};
   for(let i=1;i<=4;i++){
-    const stat=String(mod?.[`secondary_${i}_stat`]||'').toLowerCase();
+    const stat=mod?.[`secondary_${i}_stat`];
     if(!stat)continue;
-    const entry=Object.entries(focus).find(([k])=>k.toLowerCase().replace(/[^a-z%]/g,'')===stat.replace(/[^a-z%]/g,''));
+    const key=engine.canonicalStatKey(stat).toLowerCase();
+    const entry=Object.entries(focus).find(([name])=>engine.canonicalStatKey(name).toLowerCase()===key);
     if(entry)fit+=Math.min(1.5,Math.max(0,Number(entry[1]||0)/20));
   }
   return fit;

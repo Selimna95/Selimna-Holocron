@@ -19,16 +19,12 @@
   const key = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const labelSet = value => {
-    const k=key(value).replace(/^(double|triple)/,'');
-    const aliases={critchance:'criticalchance',critdamage:'criticaldamage'};
-    return aliases[k]||k;
+    const raw=key(value).replace(/^(double|triple)/,'');
+    return window.HolocronModEngine.canonicalSet(raw)||raw;
   };
-  const slotOf = mod => {
-    const raw=mod?.slot ?? mod?.slot_id ?? mod?.slotId ?? mod?.modSlot ?? '';
-    if(SLOTS.includes(raw)) return raw;
-    const n=Number(raw);
-    return SLOTS[n-1] || SLOTS[n] || '';
-  };
+  const slotOf = mod => window.HolocronModEngine.canonicalSlot(
+    mod?.slot ?? mod?.slot_id ?? mod?.slotId ?? mod?.modSlot ?? ''
+  ) || '';
   const modsOf = character => {
     const list=typeof getCharacterMods==='function' ? (getCharacterMods(character)||[]) : [];
     const bySlot=new Map();
@@ -39,7 +35,21 @@
     });
     return SLOTS.map(slot=>({slot,mod:bySlot.get(slot)||null}));
   };
-  const statKey = value => key(String(value??'').replace(/%/g,'').replace(/^Crit Damage$/i,'Critical Damage').replace(/^Crit Chance$/i,'Critical Chance'));
+  const KYBER_PERCENT_PRIMARY_KEYS=new Set(['OFFENSE','DEFENSE','HEALTH','PROTECTION','CRITICALDAMAGE','POTENCY','TENACITY','CRITICALCHANCE','CRITICALAVOIDANCE','ACCURACY','EVASION']);
+  const statKey = (value,slot=null,fromKyber=false) => {
+    const raw=String(value??'').trim();
+    let canonical=window.HolocronModEngine.canonicalStatKey(raw).toUpperCase();
+    if(!canonical)canonical=key(raw).toUpperCase();
+    const plain=canonical.replace(/PERCENT$/,'');
+    if(raw.includes('%')&&KYBER_PERCENT_PRIMARY_KEYS.has(plain)&&!canonical.endsWith('PERCENT'))canonical+='PERCENT';
+    const variableSlot=['Arrow','Triangle','Circle','Cross'].includes(slot);
+    if(fromKyber&&variableSlot&&!canonical.endsWith('PERCENT')&&KYBER_PERCENT_PRIMARY_KEYS.has(canonical)){
+      const percent=window.HolocronModEngine.canonicalStatKey(raw+' %').toUpperCase();
+      canonical=percent||canonical;
+      if(!canonical.endsWith('PERCENT'))canonical+='PERCENT';
+    }
+    return canonical.toLowerCase();
+  };
   const normalizeCounts = counts => Object.fromEntries(Object.entries(counts||{})
     .map(([name,count])=>[labelSet(name),Number(count)||0]).filter(([name,count])=>name&&count>0));
   const rankedSetConfigurations = profile => {
@@ -107,7 +117,7 @@
       const setName=labelSet(mod?.set_name??mod?.set??'');
       const distribution=primaryDistribution(profile,slot);
       const hasPrimaryReference=distribution.length>0;
-      const currentPrimary=distribution.find(x=>statKey(x.name)===statKey(mod?.primary_stat));
+      const currentPrimary=distribution.find(x=>statKey(x.name,slot,true)===statKey(mod?.primary_stat,slot,false));
       const primaryShare=currentPrimary?.weight||0;
       const primaryOk=!hasPrimaryReference||primaryShare>0;
       return {slot,mod,setOk:setVerifiable&&!differingSets.includes(setName),primaryOk,
@@ -229,45 +239,17 @@
       secondary.join(' · ')].filter(Boolean).join(' · ');
   };
   const exchangeStatName = value => {
-    const raw=String(value??'').trim().replace(/%$/,'').trim();
-    const aliases={critdamage:'Critical Damage',criticaldamage:'Critical Damage',critchance:'Critical Chance',criticalchance:'Critical Chance',critavoidance:'Critical Avoidance',criticalavoidance:'Critical Avoidance'};
-    return aliases[key(raw)]||raw;
+    const normalized=window.HolocronModEngine.normalizeStat(value);
+    return normalized?.key ? normalized.name : String(value??'').trim().replace(/%$/,'').trim();
   };
   function exchangeFinalStats(character,build){
     const profile=typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{};
-    const base=typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):profile.base_stats;
+    const base=profile.base_stats || (typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null);
     if(!base||typeof base!=='object'||!Object.keys(base).length)return null;
-    const result=Object.fromEntries(Object.entries(base).map(([name,value])=>[exchangeStatName(name),Number(value)||0]));
-    const flat={},percent={};
-    for(const mod of Array.isArray(build)?build:[]){
-      let raw=mod?.stats;
-      if(typeof raw==='string'){try{raw=JSON.parse(raw);}catch{raw=null;}}
-      const entries=raw&&typeof raw==='object'&&!Array.isArray(raw)?Object.entries(raw):
-        [[mod?.primary_stat,mod?.primary_value],...Array.from({length:4},(_,i)=>[mod?.[`secondary_${i+1}_stat`],mod?.[`secondary_${i+1}_value`]])];
-      for(const [label,value] of entries){
-        if(!label||value==null)continue;
-        const text=String(label).trim(),name=exchangeStatName(text),amount=Number(value)||0;
-        if(text.endsWith('%'))percent[name]=(percent[name]||0)+amount/100;
-        else flat[name]=(flat[name]||0)+amount;
-      }
-    }
-    const counts=exchangeSetCounts(build);
-    const display={health:'Health',protection:'Protection',offense:'Offense',speed:'Speed',defense:'Defense',
-      criticaldamage:'Critical Damage',criticalchance:'Critical Chance',potency:'Potency',tenacity:'Tenacity',criticalavoidance:'Critical Avoidance'};
-    const relative={health:[2,.10],protection:[2,.10],offense:[4,.15],speed:[4,.10],defense:[2,.25]};
-    const additive={criticaldamage:[4,.30],criticalchance:[2,.08],potency:[2,.15],tenacity:[2,.20],criticalavoidance:[2,.20]};
-    for(const [name,[required,bonus]] of Object.entries(relative)){
-      const count=counts[name]||0;if(count>=required)percent[display[name]]=(percent[display[name]]||0)+bonus*Math.floor(count/required);
-    }
-    for(const [name,[required,bonus]] of Object.entries(additive)){
-      const count=counts[name]||0;if(count>=required)percent[display[name]]=(percent[display[name]]||0)+bonus*Math.floor(count/required);
-    }
-    for(const [name,value] of Object.entries(flat))result[name]=(Number(result[name])||0)+value;
-    for(const [name,ratio] of Object.entries(percent)){
-      if(['Potency','Tenacity','Critical Chance','Critical Damage','Critical Avoidance'].includes(name))result[name]=(Number(result[name])||0)+ratio;
-      else result[name]=(Number(result[name])||0)+(Number(base[name])||0)*ratio;
-    }
-    return result;
+    const source=profile.base_stats ? profile : base;
+    const calculation=window.HolocronModEngine.calculateFinalStats(source,build,character?.level);
+    if(!calculation.complete)return null;
+    return Object.fromEntries(Object.entries(calculation.stats||{}).map(([name,value])=>[exchangeStatName(name),Number(value)]));
   }
   const exchangeStatsDelta = (before,after) => {
     if(!before||!after)return null;
@@ -323,7 +305,7 @@
       return {name,before:from,after:to,expected:reference,delta,relative:delta/reference};
     });
     const losses=rows.filter(row=>row.delta < -Math.max(1,row.expected*.25));
-    const protectedStats=new Set(['health','protection','offense','defense']);
+    const protectedStats=new Set(['health','protection','offense','defense','physicaldamage','specialdamage','armor','resistance','speed']);
     const coreLosses=beforeStats&&afterStats?Object.keys(beforeStats).filter(name=>protectedStats.has(key(name))).map(name=>{
       const from=Number(beforeStats[name])||0,to=Number(afterStats[name])||0;
       return {name,before:from,after:to,delta:to-from,relative:from?(to-from)/Math.abs(from):null};
@@ -385,6 +367,7 @@
       return {proposals:[],reason:'Les services partagés de donneurs ou de calcul de vitesse ne sont pas disponibles.'};
     const targetKey=characterKey(character);
     const source=forgeAllSourceMods(character).filter(mod=>{
+      if(window.HolocronModEngine.normalizeMod(mod)?.complete!==true)return false;
       const ownerKey=mod?._sourceOwnerKey;
       const isFree=!ownerKey&&(!mod?._sourceOwner||mod._sourceOwner==='Libre')&&mod?._sourcePriorityKnown===true;
       if(!forgeSourceAllowedForSearch(mod,character)||(!isFree&&!ownerKey)||ownerKey===targetKey)return false;
@@ -403,12 +386,12 @@
           String(a._visionnaireDonor?.name||'').localeCompare(String(b._visionnaireDonor?.name||''),'fr'));
       const reference=primaryDistribution(profile,slot);
       const eligible=state.mode==='sets'||!reference.length?ordered:
-        ordered.filter(mod=>reference.some(entry=>statKey(entry.name)===statKey(mod?.primary_stat)));
+        ordered.filter(mod=>reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false)));
       primaryFilteredBySlot[LABELS[slot]]=ordered.length-eligible.length;
       // Preserve speed-oriented ordering while retaining set/primary diversity.
       const diverse=[],setCounts={},buildCounts={},selectedIds=new Set();
       for(const mod of eligible){
-        const set=labelSet(mod.set_name??mod.set??''),primary=statKey(mod.primary_stat),build=set+'|'+primary;
+        const set=labelSet(mod.set_name??mod.set??''),primary=statKey(mod.primary_stat,slot,false),build=set+'|'+primary;
         if((setCounts[set]||0)>=8||(buildCounts[build]||0)>=4)continue;
         diverse.push(mod);selectedIds.add(exchangeModId(mod));
         setCounts[set]=(setCounts[set]||0)+1;buildCounts[build]=(buildCounts[build]||0)+1;
@@ -423,16 +406,19 @@
     const empty=slots.filter(slot=>!(optionsBySlot.get(slot)||[]).length);
     if(empty.length)return {proposals:[],reason:exchangeGacSourceDiagnostic()||('Aucun donneur vérifié pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.')};
     const beforeSetDistance=exchangeSetDistance(current,profile);
-    const beforeSpeed=forgeProjectedModSpeed(character,profile,current).total;
+    const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
+    if(!beforeProjectionSummary.complete)return {proposals:[],reason:'La vitesse actuelle de la cible est non calculable : données de base ou mods incomplets.'};
+    const beforeSpeed=beforeProjectionSummary.total;
     const targetPrimarySafe=chosen=>slots.every(slot=>{
       const mod=chosen.find(x=>slotOf(x)===slot),reference=primaryDistribution(profile,slot);
       // Missing Kyber data is unknown, not evidence that a primary is invalid.
-      return !reference.length||reference.some(entry=>statKey(entry.name)===statKey(mod?.primary_stat));
+      return !reference.length||reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false));
     });
     const proposals=[];let tested=0,acceptedCount=0,chosen=[],sampled=0,speedPruned=0;
-    const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
+    const baseSpeed=beforeProjectionSummary.baseSpeed;
+    const maximumSpeedSetBonus=baseSpeed>0?baseSpeed*.1:0;
     const retainedSpeed=current.filter(mod=>!slots.includes(slotOf(mod))).reduce((sum,mod)=>sum+modTotalSpeed(mod),0);
-    const candidateSpeedCeiling=retainedSpeed+slots.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0);
+    const candidateSpeedCeiling=baseSpeed+retainedSpeed+slots.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0)+maximumSpeedSetBonus;
     const searchSpace=slots.reduce((product,slot)=>product*(optionsBySlot.get(slot)||[]).length,1);
     const diagnostics={limit:15000,sourceCount:source.length,beforeSpeed:beforeProjectionSummary.total,
       retainedSpeed,candidateSpeedCeiling,searchSpace,
@@ -453,6 +439,7 @@
         const finalTarget=current.filter(mod=>!slots.includes(slotOf(mod))).concat(chosen);
         const beforeProjection=forgeProjectedModSpeed(character,profile,current);
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
+        if(!beforeProjection.complete||!afterProjection.complete){reject('vitesse_cible_inconnue','Vitesse cible non calculable : données de base ou mods incomplets');return;}
         const afterSpeed=afterProjection.total;
         if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet){reject('bonus_vitesse_cible','Perte du bonus de set Vitesse');return;}
         if(afterSpeed+1e-9<beforeSpeed){reject('vitesse_cible','La vitesse totale de la cible diminuerait',null,{targetSpeedBefore:beforeSpeed,targetSpeedAfter:afterSpeed,speedLoss:beforeSpeed-afterSpeed});return;}
@@ -483,22 +470,27 @@
           if(before.length!==6||after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after)){reject('bonus_sets_donneur','Le donneur perdrait un bonus de set ou son build est incomplet',owner.name||owner.baseId);return;}
           const donorProfile=optimizerProfileForCharacter(owner)||{};
           const beforeStats=exchangeFinalStats(owner,before),afterStats=exchangeFinalStats(owner,after);
+          if(!beforeStats||!afterStats){reject('stats_donneur_incompletes','Calcul des statistiques du donneur incomplet : données de base ou formule non disponible',owner.name||owner.baseId);return;}
+          const donorBeforeSpeed=forgeProjectedModSpeed(owner,donorProfile,before);
+          const donorAfterSpeed=forgeProjectedModSpeed(owner,donorProfile,after);
+          if(!donorBeforeSpeed.complete||!donorAfterSpeed.complete){reject('vitesse_donneur_inconnue','Vitesse du donneur non calculable : données de base ou mods incomplets',null,{donor:owner.name||owner.baseId});return;}
           const donorImpact=exchangeStatsDelta(beforeStats,afterStats);
           const beforeStatus=typeof v176ModStatus==='function'?v176ModStatus(before).status:'INCONNU';
           const afterStatus=typeof v176ModStatus==='function'?v176ModStatus(after).status:'INCONNU';
           const statusRank={'BONS':0,'MOYENS':1,'FAIBLES':2,'TRÈS FAIBLES':3,'INCOMPLETS':4,'SANS MODS':5,'SANS MOD':5};
-          donors.push({owner,transfers,beforeSpeed:forgeProjectedModSpeed(owner,donorProfile,before).total,
-            afterSpeed:forgeProjectedModSpeed(owner,donorProfile,after).total,
+          donors.push({owner,transfers,beforeSpeed:donorBeforeSpeed.total,
+            afterSpeed:donorAfterSpeed.total,
             beforeSets:exchangeSetCounts(before),afterSets:exchangeSetCounts(after),
             beforeStats,afterStats,statDeltas:donorImpact,statBalance:exchangeStatBalance(beforeStats,afterStats),
             uses:Number(transfers[0]._sourceUsage)||0,beforeStatus,afterStatus,
             statusWorsened:(statusRank[afterStatus]??0)>(statusRank[beforeStatus]??0)});
         }
         const targetStatsBefore=exchangeFinalStats(character,current),targetStatsAfter=exchangeFinalStats(character,finalTarget);
+        if(!targetStatsBefore||!targetStatsAfter){reject('stats_cible_incompletes','Calcul des statistiques de la cible incomplet : données de base ou formule non disponible');return;}
         const targetStatDeltas=exchangeStatsDelta(targetStatsBefore,targetStatsAfter);
         const primaryShares=slots.map(slot=>{
           const mod=chosen.find(item=>slotOf(item)===slot);
-          return primaryDistribution(profile,slot).find(entry=>statKey(entry.name)===statKey(mod?.primary_stat))?.weight??null;
+          return primaryDistribution(profile,slot).find(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false))?.weight??null;
         });
         const knownPrimaryShares=primaryShares.filter(value=>Number.isFinite(value));
         const primaryShare=knownPrimaryShares.length?knownPrimaryShares.reduce((sum,value)=>sum+value,0)/knownPrimaryShares.length:null;
@@ -524,7 +516,6 @@
     const seed=Array.from(String(targetKey||'visionnaire')).reduce((hash,char)=>(Math.imul(hash^char.charCodeAt(0),16777619)>>>0),2166136261);
     const seen=new Set();
     const attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000);
-    const maximumSpeedSetBonus=beforeProjectionSummary.baseSpeed>0?beforeProjectionSummary.baseSpeed*.1:0;
     for(let sample=0;sample<attemptLimit&&tested<diagnostics.limit&&seen.size<searchSpace;sample++){
       const combo=slots.map((slot,index)=>{
         const options=optionsBySlot.get(slot)||[];
@@ -533,7 +524,7 @@
       const signature=combo.map(exchangeModId).join('|');
       if(seen.has(signature))continue;
       seen.add(signature);sampled++;
-      const theoreticalMaximum=retainedSpeed+combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+maximumSpeedSetBonus;
+      const theoreticalMaximum=baseSpeed+retainedSpeed+combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+maximumSpeedSetBonus;
       if(theoreticalMaximum+1e-9<beforeSpeed)speedPruned++;
       else{
         tested++;chosen=combo;
@@ -555,7 +546,7 @@
   }
   function renderExchangeDiagnostics(diagnostics){
     if(!diagnostics)return '';
-    const labels={bonus_vitesse_cible:'Bonus Vitesse cible',vitesse_cible:'Vitesse cible',reference_sets:'Référence des sets',primaire_cible:'Primaires Kyber',donneur_incomplet:'Donneur incomplet',bonus_sets_donneur:'Bonus de sets donneur',perte_stat_cible:'Pertes statistiques cible',doublon:'Doublons'};
+    const labels={bonus_vitesse_cible:'Bonus Vitesse cible',vitesse_cible:'Vitesse cible',vitesse_cible_inconnue:'Vitesse cible non calculable',vitesse_donneur_inconnue:'Vitesse donneur non calculable',reference_sets:'Référence des sets',primaire_cible:'Primaires Kyber',donneur_incomplet:'Donneur incomplet',bonus_sets_donneur:'Bonus de sets donneur',perte_stat_cible:'Pertes statistiques cible',doublon:'Doublons'};
     const rejected=Object.entries(diagnostics.rejected||{}).sort((a,b)=>b[1]-a[1]);
     return '<details class="visionnaire-search-diagnostics" open><summary>DIAGNOSTIC DE RECHERCHE · '+diagnostics.tested.toLocaleString('fr-FR')+' combinaisons testées · '+diagnostics.sourceCount+' mods sources</summary>'+
       '<p>Mods candidats par slot : '+Object.entries(diagnostics.optionsBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
