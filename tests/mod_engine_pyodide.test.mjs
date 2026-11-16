@@ -79,6 +79,24 @@ pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Healt
 const incompleteDefense = pyodide.runPython('incomplete_defense_error');
 assert.match(incompleteDefense, /defense:gear_component_required/);
 
+
+const optimizerProfiles = JSON.parse(read('../python/optimizer_profiles.json'));
+const moffGideonProfile = optimizerProfiles.MOFFGIDEONS3;
+assert.ok(moffGideonProfile && moffGideonProfile.base_stats && moffGideonProfile.gear_level === 13);
+assert.equal(moffGideonProfile.gear, undefined, 'profile must not be mistaken for a Crinolo gear-component breakdown');
+pyodide.globals.set('moff_gideon_profile_json', JSON.stringify(moffGideonProfile));
+pyodide.runPython(`try:
+ optimizer.final_stats(
+  [{'level': 15, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}],
+  json.loads(moff_gideon_profile_json)['base_stats'],
+  json.loads(moff_gideon_profile_json)
+ )
+ real_profile_defense_error = ''
+except RuntimeError as error:
+ real_profile_defense_error = str(error)
+`);
+assert.match(pyodide.runPython('real_profile_defense_error'), /defense:gear_component_required/);
+
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
