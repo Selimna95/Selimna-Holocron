@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 import json
 from pathlib import Path
 import python.optimizer as optimizer_module
@@ -410,6 +411,28 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertFalse(_partial_matches_set_plan(build, {"Speed": 6}))
         self.assertTrue(_partial_matches_set_plan(build[:1], {"Health": 2, "Speed": 4}))
 
+
+    def test_set_plan_matching_reuses_pre_normalized_candidate_set_names(self):
+        build = [
+            {"set_name": "Speed", "set": "not-used-by-fast-path"},
+            {"set_name": "Health", "set": "not-used-by-fast-path"},
+        ]
+        plan = {"Speed": 1, "Health": 1}
+        with mock.patch.object(
+            optimizer_module, "normalize_set",
+            side_effect=AssertionError("set was normalized again during beam expansion"),
+        ):
+            self.assertTrue(optimizer_module._partial_matches_set_plan(build[:1], plan))
+            self.assertTrue(optimizer_module._matches_set_plan(build, plan))
+            self.assertFalse(optimizer_module._partial_matches_set_plan(
+                build + [{"set_name": "Speed"}], plan
+            ))
+
+    def test_set_plan_matching_keeps_legacy_normalization_fallback(self):
+        build = [{"set": "Speed"}, {"set": "Health"}]
+        self.assertTrue(optimizer_module._matches_set_plan(
+            build, {"Speed": 1, "Health": 1}
+        ))
 
 if __name__ == "__main__":
     unittest.main()

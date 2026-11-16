@@ -467,12 +467,25 @@ def _kyber_set_plan(kyber):
     return best
 
 
+def _build_set_name(mod):
+    """Read the canonical set cached during candidate preparation.
+
+    Optimizer candidates always carry set_name after shared normalization.
+    Keep the normalization fallback for legacy/direct callers and tests.
+    """
+    if isinstance(mod, dict):
+        cached = mod.get("set_name")
+        if cached:
+            return cached
+    return normalize_set(mod_set(mod))
+
+
 def _partial_matches_set_plan(build, plan):
     if not plan:
         return True
     counts = {}
     for mod in build:
-        s = normalize_set(mod_set(mod))
+        s = _build_set_name(mod)
         counts[s] = counts.get(s, 0) + 1
     return all(counts.get(name, 0) <= target for name, target in plan.items()) and all(name in plan for name in counts)
 
@@ -482,7 +495,7 @@ def _matches_set_plan(build, plan):
         return True
     counts = {}
     for mod in build:
-        s = normalize_set(mod_set(mod))
+        s = _build_set_name(mod)
         counts[s] = counts.get(s, 0) + 1
     return counts == plan
 
