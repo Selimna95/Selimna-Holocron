@@ -18,12 +18,14 @@ try {
 }
 console.log('Pyodide runtime loaded.');
 pyodide.FS.writeFile('/home/pyodide/optimizer.py', read('../python/optimizer.py'));
-const engineBridge = (baseJson, modsJson, level) => JSON.stringify(
-  engine.calculateFinalStats(JSON.parse(baseJson), JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null)
-);
+const engineBridge = (baseJson, modsJson, level) => {
+  scalarBridgeCalls++;
+  return JSON.stringify(engine.calculateFinalStats(JSON.parse(baseJson), JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null));
+};
 const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse(modJson)));
 let batchBridgeCalls = 0;
 let batchProjectedBuilds = 0;
+let scalarBridgeCalls = 0;
 const batchBridge = (baseJson, buildsJson, level) => {
   batchBridgeCalls++;
   const builds = JSON.parse(buildsJson);
@@ -89,12 +91,14 @@ const batchParity = JSON.parse(pyodide.runPython("import json\nbuilds = [[], [{'
 assert.deepEqual(batchParity[0], base);
 assert.equal(batchParity[1].Accuracy, 0.12);
 batchProjectedBuilds = 0;
+scalarBridgeCalls = 0;
 
 const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
 assert.equal(batchSearch.count, 1);
 assert.equal(batchSearch.mods, 6);
 assert.equal(batchProjectedBuilds, 60);
-assert.equal(batchBridgeCalls, 7, `expected one bridge call per slot plus parity check, got ${batchBridgeCalls}`);
+assert.equal(scalarBridgeCalls, 0, `optimizer repeated ${scalarBridgeCalls} scalar projections after batching`);
+assert.equal(batchBridgeCalls, 6, `expected one batch bridge call per slot, got ${batchBridgeCalls}`);
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 10, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_secondary_error = str(error)\nelse:\n incomplete_secondary_error = ''\n");
 const incompleteSecondary = pyodide.runPython('incomplete_secondary_error');
 assert.match(incompleteSecondary, /mod:secondary_incomplete/);
