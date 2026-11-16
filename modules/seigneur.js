@@ -741,6 +741,10 @@ function renderResults(data,profileOverride=null){
   const rec=optimizerRecommendationSummary(profile);
   const refSets=rec.sets.slice(0,3).map(x=>`${x.label}${x.weight!=null?' · '+(x.weight*100).toFixed(1)+' %':''}`).join(' · ')||'Référence Kyber non détaillée';
   const refSecondaries=rec.secondaries.slice(0,4).map(x=>x.name).join(' · ')||'Secondaires Kyber non détaillées';
+  const warningCodes=[...new Set(data.flatMap(row=>Array.isArray(row.warnings)?row.warnings:[]))];
+  const warningMarkup=warningCodes.includes('defense_percent_unavailable')
+    ? '<div class="forge-result-warning"><strong>DÉFENSE % NON ÉVALUÉE</strong><span>Les mods Défense % ont été écartés du calcul : le profil ne fournit pas la composante Armor/Resistance de base séparée de l’équipement secondaire. Les configurations affichées sont calculées sans ce bonus.</span></div>'
+    : '';
   $('results').innerHTML=`<div class="forge-results-intro forge-results-command">
     <div class="forge-results-heading"><span class="forge-kicker">RÉSULTATS // SEIGNEUR SITH</span><strong>Configurations optimisées</strong><small>${esc(character?.name||'Personnage')} · recherche guidée par la référence Kyber et limitée à <b>${esc(scope)}</b>.</small></div>
     <div class="forge-result-count"><b>${data.length}</b><span>BUILDS</span></div>
@@ -749,7 +753,7 @@ function renderResults(data,profileOverride=null){
     <div><span>RÉFÉRENCE KYBER</span><b>${esc(refSets)}</b></div>
     <div><span>SECONDAIRES PRIORITAIRES</span><b>${esc(refSecondaries)}</b></div>
     <div><span>SOURCE MODS</span><b>${esc(scope)} · GL EXCLUES</b></div>
-  </div>`+data.map((r,i)=>{
+  </div>`+warningMarkup+data.map((r,i)=>{
     const build=r.build||[];
     const setCounts={};
     build.forEach(m=>{const set=String(m.set_name||m.set||'').trim();if(set)setCounts[set]=(setCounts[set]||0)+1;});

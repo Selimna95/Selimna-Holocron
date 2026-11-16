@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.101-score-metadata-cache';
+const CACHE_NAME = 'holocron-static-v4.4.102-defense-percent-warning';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -15,7 +15,7 @@ const STATIC_ASSETS = [
   './blue-gac/gac-catalog.json?v=4.1.2',
   './assets/image/padawan.png',
   './assets/image/jpeg.jpg',
-  './app.css?v=4.1.3-visionnaire-cleanup',
+  './app.css?v=4.1.4-defense-percent-diagnostics',
   './visionnaire.css?v=4.1.60-search-diagnostics-v1',
   './holocron-system.css?v=4.0.0-disciple-clarity',
   './entrance.css?v=4.0.46-crawl-restart',
@@ -27,12 +27,12 @@ const STATIC_ASSETS = [
   './modules/core.js?v=4.2.32-unknown-speed-category',
   './modules/acolyte.js?v=3.4.9-weak-donor-recipient',
   './modules/disciple.js?v=3.5.9-complete-secondary-options',
-  './modules/seigneur.js?v=3.9.9-stat-unit-preservation',
+  './modules/seigneur.js?v=3.9.10-defense-percent-diagnostics',
   './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
   './modules/visionnaire.js?v=4.1.78-kyber-percent-only-units',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
   './optimizer-worker.mjs?v=3.5.13-indexed-batch',
-  './python/optimizer.py?v=3.5.9-score-metadata-cache',
+  './python/optimizer.py?v=3.5.10-defense-percent-warning',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',

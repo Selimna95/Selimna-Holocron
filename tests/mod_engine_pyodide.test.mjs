@@ -96,6 +96,34 @@ except RuntimeError as error:
  real_profile_defense_error = str(error)
 `);
 assert.match(pyodide.runPython('real_profile_defense_error'), /defense:gear_component_required/);
+assert.match(pyodide.runPython('real_profile_defense_error'), /Défense %/);
+
+const defenseWarningResult = JSON.parse(pyodide.runPython(`import json
+mods = []
+for slot in ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']:
+    mod = {'game_id': 'valid-' + slot, 'slot': slot, 'level': 15, 'set_name': 'Health',
+           'primary_stat': 'Health', 'primary_value': 100,
+           'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
+           'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
+           'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
+           'secondary_4_stat': 'Offense %', 'secondary_4_value': 1}
+    mods.append(mod)
+mods.append({'game_id': 'unsupported-defense', 'slot': 'Square', 'level': 15,
+             'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10,
+             'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
+             'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
+             'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
+             'secondary_4_stat': 'Offense %', 'secondary_4_value': 1})
+result = optimizer.optimize_kyber(
+    mods, base_stats=json.loads(base_json),
+    base_profile={'base_stats': json.loads(base_json), 'level': 85},
+    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+)
+json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else []})
+`));
+assert.equal(defenseWarningResult.count, 1);
+assert.ok(defenseWarningResult.warnings.includes('defense_percent_unavailable'));
+
 
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');

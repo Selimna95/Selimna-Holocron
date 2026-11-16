@@ -2674,3 +2674,9 @@ textarea:disabled{
 #optimizer .forge-slot-compare>strong.gain{color:#70d991}
 #optimizer .forge-slot-compare>strong.neutral{color:#f0cf72}
 #optimizer .forge-slot-compare>strong.same{color:#a9a09e}
+
+
+/* Explain stat projections safely excluded because profile inputs are incomplete. */
+#optimizer .forge-result-warning{display:grid;gap:4px;padding:10px 12px;margin:0 0 11px;border:1px solid rgba(255,181,74,.28);border-radius:6px;background:linear-gradient(90deg,rgba(55,30,7,.48),rgba(29,15,5,.36));}
+#optimizer .forge-result-warning strong{font-size:9px;letter-spacing:.14em;color:#ffbf67;}
+#optimizer .forge-result-warning span{font-size:10px;line-height:1.5;color:#d5b69a;}
