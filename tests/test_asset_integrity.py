@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.99-reuse-batched-projections", self.sw)
+        self.assertIn("holocron-static-v4.4.100-indexed-batch-projections", self.sw)
         self.assertIn("modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.html)
         self.assertIn("./modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
@@ -113,7 +113,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("minimum_speed=minimum_speed", worker)
         self.assertIn("mod-engine.js?v=0.3.23", worker)
         self.assertIn("minimum_speed=None", optimizer)
-        self.assertIn("python/optimizer.py?v=3.5.7-reuse-batched-projections", worker)
+        self.assertIn("python/optimizer.py?v=3.5.8-indexed-batch-projections", worker)
         self.assertIn("normalized.get(\"complete\") is not True", optimizer)
         self.assertIn("if minimum_speed is None or float(minimum_speed) <= 0:", worker)
         self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
