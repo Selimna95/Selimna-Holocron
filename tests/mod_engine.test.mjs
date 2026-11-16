@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.22');
+assert.equal(engine.version, '0.3.23');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -79,7 +79,7 @@ const comlinkStatCases = [
   [37, 'physicalAccuracy', 'flat'], [38, 'specialAccuracy', 'flat'],
   [39, 'physicalCriticalAvoidance', 'flat'], [40, 'specialCriticalAvoidance', 'flat'],
   [41, 'offense', 'flat'], [42, 'defense', 'flat'],
-  [48, 'offense', 'percentagePoints'], [49, 'defense', 'percentagePoints'],
+  [48, 'offense', 'percentagePoints'], [49, 'defense', 'percentagePoints'], [52, 'accuracy', 'percentagePoints'],
   [53, 'criticalChance', 'percentagePoints'], [54, 'criticalAvoidance', 'percentagePoints'],
   [55, 'health', 'percentagePoints'], [56, 'protection', 'percentagePoints'],
   [57, 'speed', 'percentagePoints']
@@ -90,7 +90,7 @@ for (const [id, key, unit] of comlinkStatCases) {
   assert.equal(stat.unit, unit, 'Comlink UnitStat ' + id + ' unit');
   assert.equal(stat.complete, true, 'Comlink UnitStat ' + id + ' is recognized');
 }
-for (const id of [43, 44, 45, 46, 47, 50, 51, 52, 58, 59, 60, 61]) {
+for (const id of [43, 44, 45, 46, 47, 50, 51, 58, 59, 60, 61]) {
   const stat = engine.normalizeStat({ unitStatId: id, unscaledDecimalValue: 100000000 });
   assert.equal(stat.complete, false, 'unsupported Comlink UnitStat ' + id + ' must remain unknown');
 }
@@ -120,6 +120,8 @@ assert.equal(specialCritRating.key, 'specialCriticalChance');
 assert.equal(specialCritRating.value, 48);
 assert.equal(engine.normalizeStat({ unitStatId: 45, unscaledDecimalValue: 2400000000 }).complete, false);
 assert.equal(engine.normalizeStat({ unitStatId: 47, unscaledDecimalValue: 2400000000 }).complete, false);
+assert.equal(engine.normalizeStat('Accuracy', 30).key, 'accuracy');
+assert.equal(engine.normalizeStat('Accuracy', 30).unit, 'percentagePoints');
 assert.equal(engine.normalizeStat('Potency', 2.5).unit, 'unknown');
 assert.equal(engine.normalizeStat('Potency', 2.5).complete, false);
 assert.equal(engine.normalizeStat('Speed', 5).unit, 'flat');
@@ -250,9 +252,15 @@ const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: inde
 assert.equal(engine.calculateSpeed(153, halfSpeedSet).setBonus, 7);
 assert.equal(engine.calculateSpeed(153, halfSpeedSet).total, 160);
 
-const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 } }]);
-assert.equal(unsupportedProjection.complete, false);
-assert.ok(unsupportedProjection.missing.includes('stat:physicalAccuracy:unsupported') || unsupportedProjection.missing.includes('stat:specialAccuracy:unsupported'));
+const accuracyProjection = engine.calculateFinalStats(projectionBase, [
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 34, unscaledDecimalValue: 6000000 }, secondary_1_stat: { unitStatId: 38, unscaledDecimalValue: 2400000000 } },
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 52, unscaledDecimalValue: 12000000 } }
+]);
+assert.equal(accuracyProjection.complete, true, JSON.stringify(accuracyProjection.missing));
+assert.equal(accuracyProjection.stats['Physical Accuracy'], 13);
+assert.equal(accuracyProjection.stats['Special Accuracy'], 8);
+assert.equal(accuracyProjection.stats.Accuracy, 0.12);
 
 const offenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 15, set_name: 'Offense', primary_stat: 'Offense', primary_value: 40, ...zeroSecondaries },

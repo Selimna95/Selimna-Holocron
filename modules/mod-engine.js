@@ -34,6 +34,7 @@
     42: { key: 'defense', name: 'Defense', unit: 'flat' },
     48: { key: 'offense', name: 'Offense', unit: 'percentagePoints' },
     49: { key: 'defense', name: 'Defense', unit: 'percentagePoints' },
+    52: { key: 'accuracy', name: 'Accuracy', unit: 'percentagePoints' },
     53: { key: 'criticalChance', name: 'Critical Chance', unit: 'percentagePoints' },
     54: { key: 'criticalAvoidance', name: 'Critical Avoidance', unit: 'percentagePoints' },
     55: { key: 'health', name: 'Health', unit: 'percentagePoints' },
@@ -79,7 +80,7 @@
     physicaldamage: 'physicalDamage', specialdamage: 'specialDamage',
     armor: 'armor', resistance: 'resistance',
     armorpenetration: 'armorPenetration', resistancepenetration: 'resistancePenetration',
-    physicalaccuracy: 'physicalAccuracy', specialaccuracy: 'specialAccuracy',
+    physicalaccuracy: 'physicalAccuracy', specialaccuracy: 'specialAccuracy', accuracy: 'accuracy',
     physicalcriticalavoidance: 'physicalCriticalAvoidance',
     specialcriticalavoidance: 'specialCriticalAvoidance',
     physicalcriticalchance: 'physicalCriticalChance',
@@ -119,6 +120,7 @@
     const suppliedUnit = nested.unit ?? raw.unit ?? explicitUnit;
     if (!known && ['flat', 'percentagePoints'].includes(suppliedUnit)) unit = suppliedUnit;
     if (!known && !unit && rawName && /%|percent|percentage/i.test(String(rawName))) unit = 'percentagePoints';
+    if (!known && !unit && key === 'accuracy') unit = 'percentagePoints';
     if (!known && !unit && ['health', 'protection', 'speed', 'offense', 'defense'].includes(key)) unit = 'flat';
     let value = numeric(sourceValue);
     const isUnscaled = !hasExplicitValue && (nested.unscaledDecimalValue != null || nested.unscaled_decimal_value != null ||
@@ -221,10 +223,10 @@
     const totals = {};
     const missing = [];
     const supportedStatKeys = new Set([
-      'health','protection','speed','offense','defense','physicalDamage','specialDamage',
+      'health','protection','speed','offense','defense','accuracy','physicalDamage','specialDamage',
       'armor','resistance','potency','tenacity','criticalDamage','criticalChance',
       'criticalAvoidance','physicalCriticalChance','specialCriticalChance',
-      'physicalCriticalAvoidance','specialCriticalAvoidance'
+      'physicalCriticalAvoidance','specialCriticalAvoidance','physicalAccuracy','specialAccuracy'
     ]);
     const add = (key, value) => { totals[key] = (totals[key] || 0) + value; };
 
@@ -307,9 +309,8 @@
       if (!Number.isFinite(characterLevel) || characterLevel <= 0) missing.push('level');
       else {
         const levelEffect = characterLevel * 7.5;
-        // Defense % applies only to compoundable defense. SWGOH.GG base profiles
-        // expose displayed Armor/Resistance but not the current gear-tier
-        // non-compoundable component. Do not invent that missing component.
+        // Defense % needs the current gear-tier compoundable component, which is not
+        // present in the SWGOH.GG base profile. Do not infer it from displayed percentages.
         if (defenseRatio) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
@@ -343,6 +344,26 @@
       }
     }
 
+    // Accuracy IDs 33/34 are additive percentage points; IDs 37/38 are ratings.
+    // Crinolo converts accuracy rating with rating / 1200 as a decimal, i.e. /12 percentage points.
+    for (const key of ['physicalAccuracy', 'specialAccuracy']) {
+      const percentagePoints = totals[key + ':percentagePoints'] || 0;
+      const baseRating = has(key) ? get(key) : 0;
+      const ratingBonus = flat(key);
+      if (percentagePoints || ratingBonus) {
+        const displayName = key === 'physicalAccuracy' ? 'Physical Accuracy' : 'Special Accuracy';
+        result[displayName] = (baseRating + ratingBonus) / 12 + percentagePoints;
+      }
+    }
+
+    const genericAccuracyPoints = totals['accuracy:percentagePoints'] || 0;
+    if (genericAccuracyPoints) {
+      const baseAccuracy = has('accuracy') ? get('accuracy') : 0;
+      // UnitStat 52 is stored as a decimal percentage in final character stats
+      // (e.g. 12% => 0.12), unlike the percentage-point display used by mod data.
+      result.Accuracy = baseAccuracy + genericAccuracyPoints / 100;
+    }
+
     const criticalChancePoints = totals['criticalChance:percentagePoints'] || 0;
     const criticalAvoidancePoints = totals['criticalAvoidance:percentagePoints'] || 0;
     if (flat('criticalChance')) missing.push('stat:criticalChance:flat_unsupported');
@@ -361,7 +382,10 @@
         physicalCriticalChance: 'Physical Critical Chance',
         specialCriticalChance: 'Special Critical Chance',
         physicalCriticalAvoidance: 'Physical Critical Avoidance',
-        specialCriticalAvoidance: 'Special Critical Avoidance'
+        specialCriticalAvoidance: 'Special Critical Avoidance',
+        physicalAccuracy: 'Physical Accuracy',
+        specialAccuracy: 'Special Accuracy',
+        accuracy: 'Accuracy'
       })[key];
       result[displayName] = get(key) + amount + ratingPoints;
     }
@@ -485,7 +509,7 @@
       'physicalCriticalChance', 'specialCriticalChance',
       'physicalCriticalAvoidance', 'specialCriticalAvoidance',
       'armor', 'resistance', 'physicalDamage', 'specialDamage',
-      'physicalAccuracy', 'specialAccuracy', 'armorPenetration', 'resistancePenetration'
+      'physicalAccuracy', 'specialAccuracy', 'accuracy', 'armorPenetration', 'resistancePenetration'
     ];
     const suffix = stat.unit === 'percentagePoints' && unitVariantKeys.includes(stat.key) ? 'PERCENT' : '';
     return (stat.key + suffix).toUpperCase();
@@ -557,7 +581,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.22',
+    version: '0.3.23',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
