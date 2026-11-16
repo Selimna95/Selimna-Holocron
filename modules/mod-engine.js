@@ -307,18 +307,16 @@
       if (!Number.isFinite(characterLevel) || characterLevel <= 0) missing.push('level');
       else {
         const levelEffect = characterLevel * 7.5;
-        // Defense % applies only to compoundable defense. SWGOH.GG base profiles
-        // expose displayed Armor/Resistance but not the current gear-tier
-        // non-compoundable component. Do not invent that missing component.
+        // Defense % needs the current gear-tier compoundable component, which is not
+        // present in the SWGOH.GG base profile. Do not infer it from displayed percentages.
+        if (defenseRatio) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
           const displayPercent = get(key) > 1 ? get(key) : get(key) * 100;
           const ratio = displayPercent / 100;
           if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
           const baseRating = ratio * levelEffect / (1 - ratio);
-          // Crinolo's calculateModStats applies Defense % to the base Armor/Resistance rating,
-          // then adds flat Defense rating. Convert back to the displayed percentage afterward.
-          const finalRating = baseRating * (1 + defenseRatio) + defenseFlat;
+          const finalRating = baseRating + defenseFlat;
           const finalPercent = finalRating / (levelEffect + finalRating) * 100;
           setResult(key, finalPercent);
         }
