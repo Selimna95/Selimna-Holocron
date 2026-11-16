@@ -494,6 +494,15 @@ async function fetchKyberProfile(character){
   if(!character)return null;
   const display=character.name||character.character||character.baseId||character.base_id||'';
   const requestKey=normalizeKyberKey(display)||slug(character.baseId||character.base_id||'');
+  // Reuse a validated SWGOH.GG profile collected in the last 12 hours.
+  // Without this fast path, every Visionnaire visit refetched the full roster
+  // despite persistKyberProfile() already writing the same data to localStorage.
+  const cached=readKyberPersistentCache()[requestKey];
+  if(cached&&kyberProfileValid(cached.profile)){
+    profiles[cached.slug]=cached.profile;
+    window.__kyberReferenceStatuses[requestKey]={status:'available',label:'Référence Kyber disponible'};
+    return cached.profile;
+  }
   if(kyberProfileInflight.has(requestKey))return kyberProfileInflight.get(requestKey);
   const request=(async()=>{
     window.__kyberLastFetchError='';
