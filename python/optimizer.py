@@ -620,6 +620,11 @@ def optimize_kyber(
     # the hard constraint instead of returning an empty result.
     projection_failures = []
     projection_warnings = set()
+    if any(
+        metadata.get("primary") == "Defense %" or "Defense %" in metadata.get("stats", {})
+        for metadata in mod_metadata.values()
+    ):
+        projection_warnings.add("defense_percent_unavailable")
 
     def record_projection_failure(error):
         message = str(error)
