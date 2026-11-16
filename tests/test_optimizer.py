@@ -113,9 +113,65 @@ optimizer_module.set_mod_engine_bridge(_test_engine_bridge, _test_normalize_brid
 
 from python.optimizer import (
     normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
-    _partial_matches_set_plan, _mod_score, build_score,
+    _partial_matches_set_plan, _mod_score, build_score, _mod_metadata, _prepare_scoring_context,
     resolve_character_base_stats,
 )
+
+
+
+
+class OptimizerScoringMetadataTests(unittest.TestCase):
+    def test_precomputed_metadata_matches_existing_mod_helpers(self):
+        mod = {
+            "game_id": "metadata-check", "slot": "Arrow", "level": 15,
+            "set_name": "Speed", "primary_stat": "Speed", "primary_value": 30,
+            "secondary_1_stat": "Speed", "secondary_1_value": 12,
+            "secondary_2_stat": "Offense %", "secondary_2_value": 5,
+            "secondary_3_stat": "Potency %", "secondary_3_value": 3,
+            "secondary_4_stat": "Tenacity %", "secondary_4_value": 4,
+            "_source_usage": 17,
+        }
+        metadata = _mod_metadata(mod)
+        from python.optimizer import normalize_slot, mod_set, primary_name, mod_stats
+        self.assertEqual(metadata["slot"], normalize_slot(mod["slot"]))
+        self.assertEqual(metadata["set"], mod_set(mod))
+        self.assertEqual(metadata["primary"], primary_name(mod))
+        self.assertEqual(metadata["stats"], mod_stats(mod))
+        self.assertEqual(metadata["donor_uses"], 17.0)
+
+    def test_cached_build_score_matches_uncached_score(self):
+        build = [
+            {"game_id": "m1", "slot": "Square", "level": 15, "set_name": "Health",
+             "primary_stat": "Health", "primary_value": 100,
+             "secondary_1_stat": "Speed", "secondary_1_value": 10},
+            {"game_id": "m2", "slot": "Arrow", "level": 15, "set_name": "Speed",
+             "primary_stat": "Speed", "primary_value": 30,
+             "secondary_1_stat": "Speed", "secondary_1_value": 12},
+            {"game_id": "m3", "slot": "Diamond", "level": 15, "set_name": "Health",
+             "primary_stat": "Health", "primary_value": 100,
+             "secondary_1_stat": "Offense %", "secondary_1_value": 5},
+            {"game_id": "m4", "slot": "Triangle", "level": 15, "set_name": "Offense",
+             "primary_stat": "Offense %", "primary_value": 5,
+             "secondary_1_stat": "Speed", "secondary_1_value": 8},
+            {"game_id": "m5", "slot": "Circle", "level": 15, "set_name": "Health",
+             "primary_stat": "Health", "primary_value": 100,
+             "secondary_1_stat": "Potency %", "secondary_1_value": 3},
+            {"game_id": "m6", "slot": "Cross", "level": 15, "set_name": "Tenacity",
+             "primary_stat": "Tenacity %", "primary_value": 10,
+             "secondary_1_stat": "Speed", "secondary_1_value": 9},
+        ]
+        kyber = {
+            "sets": {"Health": 0.7, "Speed": 0.2},
+            "slots": {"Arrow": {"primaries": {"Speed": 0.8, "Health": 0.2}}},
+            "averages": {"Speed": 200, "Health": 10000, "Protection": 5000},
+        }
+        weights = {"Speed": 1.0, "Health": 0.01, "Offense": 0.5, "Potency": 0.1}
+        projected = {"Speed": 220, "Health": 12000, "Protection": 6000}
+        uncached = build_score(build, kyber, weights, {}, projected_stats=projected)
+        metadata = {id(mod): _mod_metadata(mod) for mod in build}
+        cached = build_score(build, kyber, weights, {}, projected_stats=projected,
+                             mod_metadata=metadata, scoring_context=_prepare_scoring_context(kyber))
+        self.assertAlmostEqual(cached, uncached, places=12)
 
 
 class OptimizerProfileResolutionTests(unittest.TestCase):
