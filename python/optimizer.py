@@ -193,6 +193,19 @@ def _mod_metadata(mod):
     }
 
 
+def _format_missing_stats(missing):
+    details = []
+    for code in missing or []:
+        if code == "defense:gear_component_required":
+            details.append(
+                "Défense % : le profil ne sépare pas les valeurs Armor/Resistance de base "
+                "des statistiques secondaires d'équipement (defense:gear_component_required)"
+            )
+        else:
+            details.append(str(code))
+    return ", ".join(details)
+
+
 def final_stats(build, base_stats=None, base_profile=None):
     """Delegate every stat projection to the shared JavaScript engine."""
     if _MOD_ENGINE_BRIDGE is None:
@@ -209,7 +222,7 @@ def final_stats(build, base_stats=None, base_profile=None):
         raise RuntimeError("Réponse invalide du moteur de calcul partagé.") from exc
     if not isinstance(result, dict) or not result.get("complete") or not isinstance(result.get("stats"), dict):
         missing = result.get("missing", []) if isinstance(result, dict) else []
-        raise RuntimeError("Calcul de statistiques incomplet : " + ", ".join(map(str, missing)))
+        raise RuntimeError("Calcul de statistiques incomplet : " + _format_missing_stats(missing))
     return result["stats"]
 
 
@@ -270,7 +283,7 @@ def final_stats_many(builds, base_stats=None, base_profile=None):
             results.append(result["stats"])
         else:
             missing = result.get("missing", []) if isinstance(result, dict) else []
-            results.append(RuntimeError("Calcul de statistiques incomplet : " + ", ".join(map(str, missing))))
+            results.append(RuntimeError("Calcul de statistiques incomplet : " + _format_missing_stats(missing)))
     return results
 
 
@@ -675,7 +688,7 @@ def optimize_kyber(
         beam = search_builds(None)
     if not beam:
         detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
-        if "defense:gear_component_required" in detail:
+        if "defense_percent_unavailable" in projection_warnings:
             detail = ("Défense % non calculable : le profil ne fournit pas les valeurs Armor/Resistance "
                       "de base séparées des statistiques secondaires d'équipement.")
         raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
