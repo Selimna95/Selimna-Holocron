@@ -95,11 +95,11 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.html)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.sw)
         self.assertIn("modules/seigneur.js?v=3.9.10-defense-percent-diagnostics", self.html)
-        self.assertIn("modules/seigneur.js?v=3.9.9-stat-unit-preservation", self.sw)
+        self.assertIn("modules/seigneur.js?v=3.9.10-defense-percent-diagnostics", self.sw)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.sw)
         self.assertIn("app.css?v=4.1.4-defense-percent-diagnostics", self.html)
-        self.assertIn("app.css?v=4.1.3-visionnaire-cleanup", self.sw)
+        self.assertIn("app.css?v=4.1.4-defense-percent-diagnostics", self.sw)
         self.assertIn("PRIORITÉ GAC", (ROOT / "modules" / "core.js").read_text(encoding="utf-8"))
 
     def test_seigneur_worker_receives_current_mods_and_enforces_speed_floor(self):
