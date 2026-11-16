@@ -160,10 +160,9 @@ json.dumps([
 }
 
 function optimizerBridgeReset(useBatch) {
-  pyodide.runPython("optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge if benchmark_use_batch else None)");
   pyodide.globals.set('benchmark_use_batch', useBatch);
-  // Set the bridge after the flag is visible in Python; this also clears the
-  // normalizer cache so both benchmark passes pay the same normalization cost.
+  // Reset the bridge and normalizer cache so both passes pay the same
+  // normalization cost; only the bridge batching differs.
   pyodide.runPython("optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge if benchmark_use_batch else None)");
 }
 
