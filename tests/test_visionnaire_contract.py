@@ -61,6 +61,15 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("z-index:1000", css)
         self.assertIn("pointer-events:auto!important", css)
 
+    def test_kyber_profile_cache_is_read_before_network_fetch(self):
+        core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        fetch_start = core.index("async function fetchKyberProfile(character)")
+        cache_lookup = core.index("const cached=readKyberPersistentCache()[requestKey]", fetch_start)
+        network_lookup = core.index("await loadKyberUnitIndex()", fetch_start)
+        self.assertLess(cache_lookup, network_lookup)
+        self.assertIn("profiles[cached.slug]=cached.profile", core[fetch_start:network_lookup])
+        self.assertIn("KYBER_PROFILE_CACHE_TTL=12*60*60*1000", core)
+
     def test_incomplete_kyber_data_is_not_counted_as_a_mismatch(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
         self.assertIn("setVerifiable:false", js)
