@@ -71,6 +71,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertLess(cache_lookup, network_lookup)
         self.assertIn("profiles[cached.slug]=cached.profile", core[fetch_start:network_lookup])
         self.assertIn("KYBER_PROFILE_CACHE_TTL=12*60*60*1000", core)
+        self.assertIn("cacheAge<KYBER_PROFILE_CACHE_TTL", core)
+        self.assertIn("Keep expired but valid snapshots as a last-known-good fallback", core)
         self.assertIn("options?.forceRefresh===true", core)
         self.assertIn("status:'stale'", core)
         self.assertIn("status:'cached'", core)
