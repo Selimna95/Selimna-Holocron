@@ -144,7 +144,7 @@ result = optimizer.optimize_kyber(
     number_of_builds=5,
     limit_per_slot=40,
     beam_width=240,
-    projection_batch_size=batchSize,
+    projection_batch_size=${batchSize},
     minimum_speed=150,
 )
 json.dumps([
