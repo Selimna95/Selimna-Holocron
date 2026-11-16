@@ -138,6 +138,17 @@ class OptimizerScoringMetadataTests(unittest.TestCase):
         self.assertEqual(metadata["primary"], primary_name(mod))
         self.assertEqual(metadata["stats"], mod_stats(mod))
         self.assertEqual(metadata["donor_uses"], 17.0)
+        kyber = {
+            "sets": {"Speed": 0.7},
+            "slots": {"Arrow": {"primaries": {"Speed": 0.8, "Health": 0.2}}},
+        }
+        weights = {"Speed": 1.0, "Offense": 0.5, "Potency": 0.1}
+        context = _prepare_scoring_context(kyber)
+        self.assertAlmostEqual(
+            _mod_score(mod, kyber, weights),
+            _mod_score(mod, kyber, weights, metadata, context),
+            places=12,
+        )
 
     def test_cached_build_score_matches_uncached_score(self):
         build = [
