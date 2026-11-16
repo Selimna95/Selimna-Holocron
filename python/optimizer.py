@@ -532,10 +532,12 @@ def optimize_kyber(
     projection_failures = []
 
     def search_builds(plan_constraint):
-        current_beam = [()]
+        # Keep each projection attached to its build throughout the beam search.
+        # Speed filtering and final result assembly must reuse this exact projection.
+        current_beam = [((), None)]
         for slot_index, slot in enumerate(SLOTS, 1):
             def candidate_builds():
-                for partial in current_beam:
+                for partial, _ in current_beam:
                     used = {mod_id(m) for m in partial}
                     for mod in candidates[slot]:
                         if mod_id(mod) in used:
@@ -571,9 +573,9 @@ def optimize_kyber(
                             projection_failures.append(str(projected_stats))
                         continue
                     score = build_score(build, kyber, weights, base_stats, base_profile, projected_stats)
-                    expanded.append((score, build))
+                    expanded.append((score, build, projected_stats))
             expanded.sort(key=lambda x: x[0], reverse=True)
-            current_beam = [build for _, build in expanded[:beam_width]]
+            current_beam = [(build, stats) for _, build, stats in expanded[:beam_width]]
             if progress_callback:
                 try:
                     progress_callback(slot_index, slot, len(current_beam))
@@ -584,20 +586,20 @@ def optimize_kyber(
         return current_beam
 
     beam = search_builds(set_plan)
-    applied_set_plan = set_plan if set_plan and any(_matches_set_plan(build, set_plan) for build in beam) else None
+    applied_set_plan = set_plan if set_plan and any(_matches_set_plan(build, set_plan) for build, _ in beam) else None
     if set_plan and applied_set_plan is None:
         beam = search_builds(None)
     if not beam:
         detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
         raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
 
-    def speed_safe(build):
+    def speed_safe(projected_stats):
         if minimum_speed is None:
             return True
-        projected_speed = to_float(final_stats(build, base_stats, base_profile).get("Speed"), None)
+        projected_speed = to_float(projected_stats.get("Speed"), None)
         return projected_speed is not None and projected_speed + 1e-9 >= to_float(minimum_speed)
 
-    safe_beam = [build for build in beam if speed_safe(build)]
+    safe_beam = [(build, stats) for build, stats in beam if speed_safe(stats)]
     # A Kyber set plan is a preference, never a reason to violate the target's
     # absolute speed floor. If its builds all lose speed, retry without it.
     if applied_set_plan and not safe_beam:
@@ -606,13 +608,13 @@ def optimize_kyber(
         if not beam:
             detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
             raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
-        safe_beam = [build for build in beam if speed_safe(build)]
+        safe_beam = [(build, stats) for build, stats in beam if speed_safe(stats)]
 
     if minimum_speed is not None and not safe_beam:
         speed_values = [
             value for value in (
-                to_float(final_stats(build, base_stats, base_profile).get("Speed"), None)
-                for build in beam
+                to_float(stats.get("Speed"), None)
+                for _, stats in beam
             ) if value is not None
         ]
         if not speed_values:
@@ -626,11 +628,10 @@ def optimize_kyber(
         )
 
     results = []
-    for build in safe_beam:
-        stats = final_stats(build, base_stats, base_profile)
+    for build, stats in safe_beam:
         results.append({
             "build": list(build),
-            "score": build_score(build, kyber, weights, base_stats, base_profile),
+            "score": build_score(build, kyber, weights, base_stats, base_profile, stats),
             "stats": stats,
             "set_plan": applied_set_plan or {},
         })
