@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.106-kyber-unavailable-priority';
+const CACHE_NAME = 'holocron-static-v4.4.107-kyber-expired-fallback';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -24,7 +24,7 @@ const STATIC_ASSETS = [
   './gac-usage.js?v=3.6.0-gac-freshness',
   './modules/seigneur-gac.js?v=1.1.0-history-fallback',
   './modules/mod-engine.js?v=0.3.23',
-  './modules/core.js?v=4.2.36-kyber-unavailable-priority',
+  './modules/core.js?v=4.2.37-kyber-expired-fallback',
   './modules/acolyte.js?v=3.4.9-weak-donor-recipient',
   './modules/disciple.js?v=3.5.9-complete-secondary-options',
   './modules/seigneur.js?v=3.9.10-defense-percent-diagnostics',
