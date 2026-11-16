@@ -26,12 +26,13 @@ const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse
 let batchBridgeCalls = 0;
 let batchProjectedBuilds = 0;
 let scalarBridgeCalls = 0;
-const batchBridge = (baseJson, buildsJson, level) => {
+const batchBridge = (baseJson, indexedBuildsJson, level) => {
   batchBridgeCalls++;
-  const builds = JSON.parse(buildsJson);
-  batchProjectedBuilds += builds.length;
-  return JSON.stringify(builds.map(mods => engine.calculateFinalStats(
-    JSON.parse(baseJson), mods, Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
+  const payload = JSON.parse(indexedBuildsJson);
+  batchProjectedBuilds += payload.builds.length;
+  return JSON.stringify(payload.builds.map(indexes => engine.calculateFinalStats(
+    JSON.parse(baseJson), indexes.map(index => payload.mods[index]),
+    Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
   )));
 };
 pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
