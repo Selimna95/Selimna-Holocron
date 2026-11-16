@@ -22,9 +22,13 @@ const engineBridge = (baseJson, modsJson, level) => JSON.stringify(
   engine.calculateFinalStats(JSON.parse(baseJson), JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null)
 );
 const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse(modJson)));
+const batchBridge = (baseJson, buildsJson, level) => JSON.stringify(
+  JSON.parse(buildsJson).map(mods => engine.calculateFinalStats(JSON.parse(baseJson), mods, Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null))
+);
 pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
 pyodide.globals.set('holocron_mod_normalize_bridge', normalizeBridge);
-pyodide.runPython("import sys\nsys.path.insert(0, '/home/pyodide')\nimport optimizer\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge)\n");
+pyodide.globals.set('holocron_mod_engine_batch_bridge', batchBridge);
+pyodide.runPython("import sys\nsys.path.insert(0, '/home/pyodide')\nimport optimizer\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge)\n");
 
 const base = {
   Health: 1000, Protection: 2000, Speed: 100,
@@ -73,6 +77,10 @@ const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level':
 assert.equal(accuracy['Physical Accuracy'], 13);
 assert.equal(accuracy['Special Accuracy'], 8);
 assert.equal(accuracy['Accuracy'], 12);
+
+const batchParity = JSON.parse(pyodide.runPython("import json\nbuilds = [[], [{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}]]\njson.dumps(optimizer.final_stats_many(builds, json.loads(base_json)))\n"));
+assert.deepEqual(batchParity[0], base);
+assert.equal(batchParity[1].Accuracy, 12);
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 10, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_secondary_error = str(error)\nelse:\n incomplete_secondary_error = ''\n");
 const incompleteSecondary = pyodide.runPython('incomplete_secondary_error');
 assert.match(incompleteSecondary, /mod:secondary_incomplete/);

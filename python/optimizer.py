@@ -23,13 +23,15 @@ except Exception:
 SLOTS = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
 _MOD_ENGINE_BRIDGE = None
 _MOD_NORMALIZE_BRIDGE = None
+_MOD_ENGINE_BATCH_BRIDGE = None
 
 
-def set_mod_engine_bridge(bridge, normalize_bridge=None):
-    """Inject the single JavaScript calculation and normalization engine."""
-    global _MOD_ENGINE_BRIDGE, _MOD_NORMALIZE_BRIDGE
+def set_mod_engine_bridge(bridge, normalize_bridge=None, batch_bridge=None):
+    """Inject the single JavaScript calculation, batch calculation and normalization engine."""
+    global _MOD_ENGINE_BRIDGE, _MOD_NORMALIZE_BRIDGE, _MOD_ENGINE_BATCH_BRIDGE
     _MOD_ENGINE_BRIDGE = bridge
     _MOD_NORMALIZE_BRIDGE = normalize_bridge
+    _MOD_ENGINE_BATCH_BRIDGE = batch_bridge
     _normalized_mod_cached.cache_clear()
 
 
@@ -183,6 +185,45 @@ def final_stats(build, base_stats=None, base_profile=None):
     return result["stats"]
 
 
+def final_stats_many(builds, base_stats=None, base_profile=None):
+    """Project many candidate builds through the shared JS engine in one bridge call.
+
+    The scalar bridge remains the compatibility fallback for standalone callers/tests.
+    Each returned item is either a stats dict or a RuntimeError describing that build.
+    """
+    builds = list(builds or [])
+    if not builds:
+        return []
+    if _MOD_ENGINE_BATCH_BRIDGE is None:
+        results = []
+        for build in builds:
+            try:
+                results.append(final_stats(build, base_stats, base_profile))
+            except RuntimeError as exc:
+                results.append(exc)
+        return results
+    source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
+    payload = _MOD_ENGINE_BATCH_BRIDGE(
+        json.dumps(source, ensure_ascii=False, separators=(",", ":")),
+        json.dumps(builds, ensure_ascii=False, separators=(",", ":")),
+        to_float(source.get("level"), None) if isinstance(source, dict) else None,
+    )
+    try:
+        projections = json.loads(str(payload))
+    except Exception as exc:
+        raise RuntimeError("Réponse invalide du moteur partagé (lot de projections).") from exc
+    if not isinstance(projections, list) or len(projections) != len(builds):
+        raise RuntimeError("Réponse incomplète du moteur partagé (taille du lot incorrecte).")
+    results = []
+    for result in projections:
+        if isinstance(result, dict) and result.get("complete") and isinstance(result.get("stats"), dict):
+            results.append(result["stats"])
+        else:
+            missing = result.get("missing", []) if isinstance(result, dict) else []
+            results.append(RuntimeError("Calcul de statistiques incomplet : " + ", ".join(map(str, missing))))
+    return results
+
+
 def _get_kyber_set_distribution(kyber):
     """Return set usage weights from either dict or Kyber's list format."""
     sets = kyber.get("sets", {}) if isinstance(kyber, dict) else {}
@@ -257,9 +298,9 @@ def _mod_score(mod, kyber, weights):
     return score
 
 
-def build_score(build, kyber, weights, base_stats, base_profile=None):
+def build_score(build, kyber, weights, base_stats, base_profile=None, projected_stats=None):
     score = 0.0
-    stats = final_stats(build, base_stats, base_profile)
+    stats = projected_stats if isinstance(projected_stats, dict) else final_stats(build, base_stats, base_profile)
 
     set_dist = _get_kyber_set_distribution(kyber)
     counts = {}
@@ -493,7 +534,7 @@ def optimize_kyber(
     def search_builds(plan_constraint):
         current_beam = [()]
         for slot_index, slot in enumerate(SLOTS, 1):
-            expanded = []
+            pending_builds = []
             for partial in current_beam:
                 used = {mod_id(m) for m in partial}
                 for mod in candidates[slot]:
@@ -502,12 +543,26 @@ def optimize_kyber(
                     build = partial + (mod,)
                     if plan_constraint and not _partial_matches_set_plan(build, plan_constraint):
                         continue
-                    try:
-                        score = build_score(build, kyber, weights, base_stats, base_profile)
-                    except RuntimeError as exc:
+                    pending_builds.append(build)
+
+            expanded = []
+            # Batch across the Python↔JavaScript boundary. The shared engine still
+            # calculates every candidate; only repeated bridge/JSON overhead is removed.
+            projection_batch_size = 256
+            for offset in range(0, len(pending_builds), projection_batch_size):
+                batch = pending_builds[offset:offset + projection_batch_size]
+                try:
+                    projections = final_stats_many(batch, base_stats, base_profile)
+                except RuntimeError as exc:
+                    if len(projection_failures) < 12:
+                        projection_failures.append(str(exc))
+                    continue
+                for build, projected_stats in zip(batch, projections):
+                    if isinstance(projected_stats, RuntimeError):
                         if len(projection_failures) < 12:
-                            projection_failures.append(str(exc))
+                            projection_failures.append(str(projected_stats))
                         continue
+                    score = build_score(build, kyber, weights, base_stats, base_profile, projected_stats)
                     expanded.append((score, build))
             expanded.sort(key=lambda x: x[0], reverse=True)
             current_beam = [build for _, build in expanded[:beam_width]]
