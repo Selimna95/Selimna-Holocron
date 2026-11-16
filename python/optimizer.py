@@ -606,6 +606,15 @@ def optimize_kyber(
     # First try the exact Kyber set composition. If unavailable, retry without
     # the hard constraint instead of returning an empty result.
     projection_failures = []
+    projection_warnings = set()
+
+    def record_projection_failure(error):
+        message = str(error)
+        if "defense:gear_component_required" in message:
+            projection_warnings.add("defense_percent_unavailable")
+        if len(projection_failures) < 12:
+            projection_failures.append(message)
+
     projection_batch_size = max(1, min(2048, int(to_float(projection_batch_size, 512))))
 
     def search_builds(plan_constraint):
@@ -640,13 +649,11 @@ def optimize_kyber(
                 try:
                     projections = final_stats_many(batch, base_stats, base_profile)
                 except RuntimeError as exc:
-                    if len(projection_failures) < 12:
-                        projection_failures.append(str(exc))
+                    record_projection_failure(exc)
                     continue
                 for build, projected_stats in zip(batch, projections):
                     if isinstance(projected_stats, RuntimeError):
-                        if len(projection_failures) < 12:
-                            projection_failures.append(str(projected_stats))
+                        record_projection_failure(projected_stats)
                         continue
                     score = build_score(build, kyber, weights, base_stats, base_profile, projected_stats,
                                         mod_metadata, scoring_context)
@@ -668,6 +675,9 @@ def optimize_kyber(
         beam = search_builds(None)
     if not beam:
         detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
+        if "defense:gear_component_required" in detail:
+            detail = ("Défense % non calculable : le profil ne fournit pas les valeurs Armor/Resistance "
+                      "de base séparées des statistiques secondaires d'équipement.")
         raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
 
     def speed_safe(projected_stats):
@@ -712,6 +722,7 @@ def optimize_kyber(
                                  mod_metadata, scoring_context),
             "stats": stats,
             "set_plan": applied_set_plan or {},
+            "warnings": sorted(projection_warnings),
         })
 
     results.sort(key=lambda item: item["score"], reverse=True)
