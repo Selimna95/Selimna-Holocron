@@ -436,6 +436,7 @@ def optimize_kyber(
     number_of_builds=10,
     limit_per_slot=80,
     beam_width=1200,
+    projection_batch_size=512,
     progress_callback=None,
     minimum_speed=None,
     **kwargs,
@@ -552,6 +553,7 @@ def optimize_kyber(
     # First try the exact Kyber set composition. If unavailable, retry without
     # the hard constraint instead of returning an empty result.
     projection_failures = []
+    projection_batch_size = max(1, min(2048, int(to_float(projection_batch_size, 512))))
 
     def search_builds(plan_constraint):
         # Keep each projection attached to its build throughout the beam search.
@@ -572,7 +574,6 @@ def optimize_kyber(
             expanded = []
             # Batch across the Python↔JavaScript boundary. The shared engine still
             # calculates every candidate; only repeated bridge/JSON overhead is removed.
-            projection_batch_size = 256
             build_iterator = iter(candidate_builds())
             while True:
                 batch = []
