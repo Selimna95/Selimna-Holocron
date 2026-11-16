@@ -191,5 +191,43 @@ console.log(JSON.stringify({
   speedup1024: Number((scalarBenchmark.elapsedMs / batch1024.elapsedMs).toFixed(2)),
   identicalResults: true
 }));
+
+const scoreCacheBenchmark = JSON.parse(pyodide.runPython(`import json, time
+mods = json.loads(benchmark_mods_json)
+by_slot = {slot: [] for slot in ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']}
+for mod in mods:
+    if len(by_slot[mod['slot']]) < 40:
+        by_slot[mod['slot']].append(mod)
+builds = [
+    tuple(by_slot[slot][(index * (slot_index + 3)) % 40]
+          for slot_index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']))
+    for index in range(5000)
+]
+metadata = {id(mod): optimizer._mod_metadata(mod) for slot_mods in by_slot.values() for mod in slot_mods}
+context = optimizer._prepare_scoring_context({})
+projected = {'Speed': 200, 'Health': 100000, 'Protection': 50000}
+weights = {'Speed': 1.0, 'Health': 0.01, 'Protection': 0.01, 'Offense': 0.5}
+started = time.perf_counter()
+cached_scores = [optimizer.build_score(build, {}, weights, {}, projected_stats=projected,
+                                       mod_metadata=metadata, scoring_context=context)
+                 for build in builds]
+cached_ms = (time.perf_counter() - started) * 1000
+started = time.perf_counter()
+uncached_scores = [optimizer.build_score(build, {}, weights, {}, projected_stats=projected)
+                   for build in builds]
+uncached_ms = (time.perf_counter() - started) * 1000
+json.dumps({'builds': len(builds), 'cachedMs': cached_ms, 'uncachedMs': uncached_ms,
+            'identicalScores': cached_scores == uncached_scores})
+`));
+assert.equal(scoreCacheBenchmark.builds, 5000);
+assert.equal(scoreCacheBenchmark.identicalScores, true);
+console.log('Optimizer scoring metadata benchmark (5,000 six-mod builds):');
+console.log(JSON.stringify({
+  cachedMs: Number(scoreCacheBenchmark.cachedMs.toFixed(1)),
+  uncachedMs: Number(scoreCacheBenchmark.uncachedMs.toFixed(1)),
+  speedup: Number((scoreCacheBenchmark.uncachedMs / scoreCacheBenchmark.cachedMs).toFixed(2)),
+  identicalScores: true
+}));
+
 console.log('Real Pyodide ↔ JavaScript shared mod-engine integration tests passed.');
 
