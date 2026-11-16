@@ -101,4 +101,3 @@
 .visionnaire-refresh{padding:10px 12px;border:1px solid #65404a;background:#21191c;color:#e7c4c8;font-size:10px;font-weight:700;letter-spacing:.09em;cursor:pointer}
 .visionnaire-refresh:hover:not(:disabled){background:#342126;border-color:#a85c69}
 .visionnaire-refresh:disabled{opacity:.55;cursor:wait}
-@media(max-width:720px){.visionnaire-header-actions{align-items:stretch;width:100%}.visionnaire-refresh{width:100%}}
