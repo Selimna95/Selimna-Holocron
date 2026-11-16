@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.22');
+assert.equal(engine.version, '0.3.23');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -250,9 +250,13 @@ const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: inde
 assert.equal(engine.calculateSpeed(153, halfSpeedSet).setBonus, 7);
 assert.equal(engine.calculateSpeed(153, halfSpeedSet).total, 160);
 
-const unsupportedProjection = engine.calculateFinalStats(projectionBase, [{ level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 } }]);
-assert.equal(unsupportedProjection.complete, false);
-assert.ok(unsupportedProjection.missing.includes('stat:physicalAccuracy:unsupported') || unsupportedProjection.missing.includes('stat:specialAccuracy:unsupported'));
+const accuracyProjection = engine.calculateFinalStats(projectionBase, [
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },
+  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 34, unscaledDecimalValue: 6000000 }, secondary_1_stat: { unitStatId: 38, unscaledDecimalValue: 2400000000 } }
+]);
+assert.equal(accuracyProjection.complete, true, JSON.stringify(accuracyProjection.missing));
+assert.equal(accuracyProjection.stats['Physical Accuracy'], 13);
+assert.equal(accuracyProjection.stats['Special Accuracy'], 8);
 
 const offenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 15, set_name: 'Offense', primary_stat: 'Offense', primary_value: 40, ...zeroSecondaries },
@@ -268,8 +272,9 @@ const defenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 },
   { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 }
 ], 85);
-assert.equal(defenseProjection.complete, false);
-assert.ok(defenseProjection.missing.includes('defense:gear_component_required'));
+assert.equal(defenseProjection.complete, true, JSON.stringify(defenseProjection.missing));
+assert.ok(Math.abs(defenseProjection.stats.Armor - 53.762466) < 0.001);
+assert.ok(Math.abs(defenseProjection.stats.Resistance - 44.323144) < 0.001);
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
 ], 85);
