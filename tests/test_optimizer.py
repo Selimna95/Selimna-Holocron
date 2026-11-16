@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 import json
 from pathlib import Path
 import python.optimizer as optimizer_module
@@ -417,7 +418,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
             {"set_name": "Health", "set": "not-used-by-fast-path"},
         ]
         plan = {"Speed": 1, "Health": 1}
-        with unittest.mock.patch.object(
+        with mock.patch.object(
             optimizer_module, "normalize_set",
             side_effect=AssertionError("set was normalized again during beam expansion"),
         ):
