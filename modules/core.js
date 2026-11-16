@@ -447,9 +447,11 @@ function readKyberPersistentCache(){
     const value=raw?JSON.parse(raw):{};
     if(value&&typeof value==='object'&&!Array.isArray(value))parsed=value;
   }catch(_){}
-  const now=Date.now();
+  // Keep expired but valid snapshots as a last-known-good fallback. Freshness
+  // is enforced when fetching; dropping expired entries here would make an
+  // automatic revalidation failure erase the only usable Kyber reference.
   kyberPersistentCache=Object.fromEntries(Object.entries(parsed)
-    .filter(([,entry])=>entry&&Number(entry.savedAt)>0&&now-Number(entry.savedAt)<KYBER_PROFILE_CACHE_TTL&&kyberProfileValid(entry.profile))
+    .filter(([,entry])=>entry&&Number(entry.savedAt)>0&&kyberProfileValid(entry.profile))
     .slice(-500));
   return kyberPersistentCache;
 }
@@ -502,10 +504,12 @@ async function fetchKyberProfile(character,options={}){
   if(!character)return null;
   const display=character.name||character.character||character.baseId||character.base_id||'';
   const requestKey=normalizeKyberKey(display)||slug(character.baseId||character.base_id||'');
-  // Normal audits reuse the 12-hour cache. Explicit refreshes bypass it,
-  // while keeping the last validated profile available as a failure fallback.
+  // Normal audits reuse a fresh 12-hour cache. Once it expires, the next
+  // audit automatically revalidates SWGOH.GG while retaining this snapshot
+  // as a fallback if the upstream request fails.
   const cached=readKyberPersistentCache()[requestKey];
-  if(!forceRefresh&&cached&&kyberProfileValid(cached.profile)){
+  const cacheAge=cached?Math.max(0,Date.now()-Number(cached.savedAt)):Infinity;
+  if(!forceRefresh&&cached&&cacheAge<KYBER_PROFILE_CACHE_TTL&&kyberProfileValid(cached.profile)){
     profiles[cached.slug]=cached.profile;
     window.__kyberReferenceStatuses[requestKey]={status:'cached',label:'Référence Kyber en cache',cachedAt:cached.savedAt};
     return cached.profile;
