@@ -23,9 +23,12 @@ const engineBridge = (baseJson, modsJson, level) => JSON.stringify(
 );
 const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse(modJson)));
 let batchBridgeCalls = 0;
+let batchProjectedBuilds = 0;
 const batchBridge = (baseJson, buildsJson, level) => {
   batchBridgeCalls++;
-  return JSON.stringify(JSON.parse(buildsJson).map(mods => engine.calculateFinalStats(
+  const builds = JSON.parse(buildsJson);
+  batchProjectedBuilds += builds.length;
+  return JSON.stringify(builds.map(mods => engine.calculateFinalStats(
     JSON.parse(baseJson), mods, Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
   )));
 };
@@ -86,10 +89,11 @@ const batchParity = JSON.parse(pyodide.runPython("import json\nbuilds = [[], [{'
 assert.deepEqual(batchParity[0], base);
 assert.equal(batchParity[1].Accuracy, 12);
 
-const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n mod = {'game_id': f'batch-{index}', 'slot': slot, 'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 100, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85}, kyber={}, number_of_builds=1, limit_per_slot=1, beam_width=8)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
+const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
 assert.equal(batchSearch.count, 1);
 assert.equal(batchSearch.mods, 6);
-assert.ok(batchBridgeCalls >= 7, `expected batched bridge use, got ${batchBridgeCalls} calls`);
+assert.equal(batchProjectedBuilds, 60);
+assert.equal(batchBridgeCalls, 7, `expected one bridge call per slot plus parity check, got ${batchBridgeCalls}`);
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 10, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_secondary_error = str(error)\nelse:\n incomplete_secondary_error = ''\n");
 const incompleteSecondary = pyodide.runPython('incomplete_secondary_error');
 assert.match(incompleteSecondary, /mod:secondary_incomplete/);
