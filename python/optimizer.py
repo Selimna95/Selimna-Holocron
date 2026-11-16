@@ -534,23 +534,31 @@ def optimize_kyber(
     def search_builds(plan_constraint):
         current_beam = [()]
         for slot_index, slot in enumerate(SLOTS, 1):
-            pending_builds = []
-            for partial in current_beam:
-                used = {mod_id(m) for m in partial}
-                for mod in candidates[slot]:
-                    if mod_id(mod) in used:
-                        continue
-                    build = partial + (mod,)
-                    if plan_constraint and not _partial_matches_set_plan(build, plan_constraint):
-                        continue
-                    pending_builds.append(build)
+            def candidate_builds():
+                for partial in current_beam:
+                    used = {mod_id(m) for m in partial}
+                    for mod in candidates[slot]:
+                        if mod_id(mod) in used:
+                            continue
+                        build = partial + (mod,)
+                        if plan_constraint and not _partial_matches_set_plan(build, plan_constraint):
+                            continue
+                        yield build
 
             expanded = []
             # Batch across the Python↔JavaScript boundary. The shared engine still
             # calculates every candidate; only repeated bridge/JSON overhead is removed.
             projection_batch_size = 256
-            for offset in range(0, len(pending_builds), projection_batch_size):
-                batch = pending_builds[offset:offset + projection_batch_size]
+            build_iterator = iter(candidate_builds())
+            while True:
+                batch = []
+                for _ in range(projection_batch_size):
+                    try:
+                        batch.append(next(build_iterator))
+                    except StopIteration:
+                        break
+                if not batch:
+                    break
                 try:
                     projections = final_stats_many(batch, base_stats, base_profile)
                 except RuntimeError as exc:
