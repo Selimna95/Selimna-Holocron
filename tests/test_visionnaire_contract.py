@@ -65,7 +65,7 @@ class VisionnaireContractTests(unittest.TestCase):
 
     def test_kyber_profile_cache_is_read_before_network_fetch(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
-        fetch_start = core.index("async function fetchKyberProfile(character)")
+        fetch_start = core.index("async function fetchKyberProfile(character,options={})")
         cache_lookup = core.index("const cached=readKyberPersistentCache()[requestKey]", fetch_start)
         network_lookup = core.index("await loadKyberUnitIndex()", fetch_start)
         self.assertLess(cache_lookup, network_lookup)
@@ -100,7 +100,7 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("updated_label", core)
         self.assertIn("kyberProfileHasFullDistribution", core)
         self.assertIn("AbortSignal.timeout(12000)", core)
-        self.assertIn("fetchKyberProfile(character)", js)
+        self.assertIn("fetchKyberProfile(character,{forceRefresh})", js)
         self.assertIn("if(!/kyber|swgoh", core)
         self.assertIn("Array.isArray(p.specific_sets)&&p.specific_sets.length>0", core)
         self.assertIn("const directCandidate=slug(display)", core)
