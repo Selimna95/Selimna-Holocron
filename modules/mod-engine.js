@@ -34,6 +34,7 @@
     42: { key: 'defense', name: 'Defense', unit: 'flat' },
     48: { key: 'offense', name: 'Offense', unit: 'percentagePoints' },
     49: { key: 'defense', name: 'Defense', unit: 'percentagePoints' },
+    52: { key: 'accuracy', name: 'Accuracy', unit: 'percentagePoints' },
     53: { key: 'criticalChance', name: 'Critical Chance', unit: 'percentagePoints' },
     54: { key: 'criticalAvoidance', name: 'Critical Avoidance', unit: 'percentagePoints' },
     55: { key: 'health', name: 'Health', unit: 'percentagePoints' },
@@ -79,7 +80,7 @@
     physicaldamage: 'physicalDamage', specialdamage: 'specialDamage',
     armor: 'armor', resistance: 'resistance',
     armorpenetration: 'armorPenetration', resistancepenetration: 'resistancePenetration',
-    physicalaccuracy: 'physicalAccuracy', specialaccuracy: 'specialAccuracy',
+    physicalaccuracy: 'physicalAccuracy', specialaccuracy: 'specialAccuracy', accuracy: 'accuracy',
     physicalcriticalavoidance: 'physicalCriticalAvoidance',
     specialcriticalavoidance: 'specialCriticalAvoidance',
     physicalcriticalchance: 'physicalCriticalChance',
@@ -119,6 +120,7 @@
     const suppliedUnit = nested.unit ?? raw.unit ?? explicitUnit;
     if (!known && ['flat', 'percentagePoints'].includes(suppliedUnit)) unit = suppliedUnit;
     if (!known && !unit && rawName && /%|percent|percentage/i.test(String(rawName))) unit = 'percentagePoints';
+    if (!known && !unit && key === 'accuracy') unit = 'percentagePoints';
     if (!known && !unit && ['health', 'protection', 'speed', 'offense', 'defense'].includes(key)) unit = 'flat';
     let value = numeric(sourceValue);
     const isUnscaled = !hasExplicitValue && (nested.unscaledDecimalValue != null || nested.unscaled_decimal_value != null ||
@@ -221,7 +223,7 @@
     const totals = {};
     const missing = [];
     const supportedStatKeys = new Set([
-      'health','protection','speed','offense','defense','physicalDamage','specialDamage',
+      'health','protection','speed','offense','defense','accuracy','physicalDamage','specialDamage',
       'armor','resistance','potency','tenacity','criticalDamage','criticalChance',
       'criticalAvoidance','physicalCriticalChance','specialCriticalChance',
       'physicalCriticalAvoidance','specialCriticalAvoidance','physicalAccuracy','specialAccuracy'
@@ -354,6 +356,12 @@
       }
     }
 
+    const genericAccuracyPoints = totals['accuracy:percentagePoints'] || 0;
+    if (genericAccuracyPoints || flat('accuracy')) {
+      const baseAccuracy = has('accuracy') ? get('accuracy') : 0;
+      result.Accuracy = baseAccuracy + genericAccuracyPoints + flat('accuracy');
+    }
+
     const criticalChancePoints = totals['criticalChance:percentagePoints'] || 0;
     const criticalAvoidancePoints = totals['criticalAvoidance:percentagePoints'] || 0;
     if (flat('criticalChance')) missing.push('stat:criticalChance:flat_unsupported');
@@ -374,7 +382,8 @@
         physicalCriticalAvoidance: 'Physical Critical Avoidance',
         specialCriticalAvoidance: 'Special Critical Avoidance',
         physicalAccuracy: 'Physical Accuracy',
-        specialAccuracy: 'Special Accuracy'
+        specialAccuracy: 'Special Accuracy',
+        accuracy: 'Accuracy'
       })[key];
       result[displayName] = get(key) + amount + ratingPoints;
     }
@@ -498,7 +507,7 @@
       'physicalCriticalChance', 'specialCriticalChance',
       'physicalCriticalAvoidance', 'specialCriticalAvoidance',
       'armor', 'resistance', 'physicalDamage', 'specialDamage',
-      'physicalAccuracy', 'specialAccuracy', 'armorPenetration', 'resistancePenetration'
+      'physicalAccuracy', 'specialAccuracy', 'accuracy', 'armorPenetration', 'resistancePenetration'
     ];
     const suffix = stat.unit === 'percentagePoints' && unitVariantKeys.includes(stat.key) ? 'PERCENT' : '';
     return (stat.key + suffix).toUpperCase();
