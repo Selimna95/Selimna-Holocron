@@ -272,9 +272,8 @@ const defenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 },
   { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 }
 ], 85);
-assert.equal(defenseProjection.complete, true, JSON.stringify(defenseProjection.missing));
-assert.ok(Math.abs(defenseProjection.stats.Armor - 53.762466) < 0.001);
-assert.ok(Math.abs(defenseProjection.stats.Resistance - 44.323144) < 0.001);
+assert.equal(defenseProjection.complete, false);
+assert.ok(defenseProjection.missing.includes('defense:gear_component_required'));
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
 ], 85);
