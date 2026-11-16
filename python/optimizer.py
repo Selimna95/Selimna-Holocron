@@ -165,6 +165,34 @@ def primary_name(mod):
     return name
 
 
+def _mod_metadata(mod):
+    """Extract immutable scoring metadata once per candidate mod."""
+    normalized = _normalized_mod(mod)
+    primary = normalized.get("primary") or {}
+    primary_label = primary.get("name") or primary.get("key") or ""
+    if primary.get("unit") == "percentagePoints" and primary.get("key") in {
+        "offense", "defense", "health", "protection", "speed"
+    }:
+        primary_label += " %"
+    stats = {}
+    percent_suffix = {"offense", "defense", "health", "protection", "speed"}
+    for stat in [primary] + list(normalized.get("secondaries") or []):
+        if not isinstance(stat, dict) or not stat.get("key") or stat.get("unit") not in {"flat", "percentagePoints"}:
+            continue
+        key = stat["key"]
+        name = stat.get("name") or key
+        if stat.get("unit") == "percentagePoints" and key in percent_suffix:
+            name += " %"
+        stats[name] = stats.get(name, 0.0) + to_float(stat.get("value"))
+    return {
+        "slot": normalized.get("slot") or normalize_slot(mod.get("slot")),
+        "set": normalized.get("setName"),
+        "primary": primary_label,
+        "stats": stats,
+        "donor_uses": to_float(mod.get("_source_usage"), 0.0),
+    }
+
+
 def final_stats(build, base_stats=None, base_profile=None):
     """Delegate every stat projection to the shared JavaScript engine."""
     if _MOD_ENGINE_BRIDGE is None:
@@ -276,19 +304,36 @@ def _reference_average(kyber, stat):
     return to_float(averages.get(stat))
 
 
-def _mod_score(mod, kyber, weights):
+
+def _prepare_scoring_context(kyber):
+    """Resolve Kyber distributions and averages once for the whole search."""
+    return {
+        "set_distribution": _get_kyber_set_distribution(kyber),
+        "slot_distributions": {slot: _get_slot_distribution(kyber, slot)
+                               for slot in ("Arrow", "Triangle", "Circle", "Cross")},
+        "averages": {stat: _reference_average(kyber, stat)
+                     for stat in ("Speed", "Health", "Protection")},
+    }
+
+
+def _mod_score(mod, kyber, weights, metadata=None, scoring_context=None):
     score = 0.0
-    slot = normalize_slot(mod.get("slot"))
-    primary = primary_name(mod)
-    stats = mod_stats(mod)
+    metadata = metadata or _mod_metadata(mod)
+    slot = metadata["slot"]
+    primary = metadata["primary"]
+    stats = metadata["stats"]
 
     # Kyber set distribution has priority.
-    set_dist = _get_kyber_set_distribution(kyber)
-    set_share = set_dist.get(str(mod_set(mod)), 0.0)
+    set_dist = (scoring_context or {}).get("set_distribution")
+    if set_dist is None:
+        set_dist = _get_kyber_set_distribution(kyber)
+    set_share = set_dist.get(str(metadata["set"]), 0.0)
     score += set_share * 5000.0
 
     # Kyber primary distribution has very strong priority.
-    distribution = _get_slot_distribution(kyber, slot)
+    distribution = (scoring_context or {}).get("slot_distributions", {}).get(slot)
+    if distribution is None:
+        distribution = _get_slot_distribution(kyber, slot)
     if distribution:
         dominant = max(distribution.values(), default=0.0)
         own = distribution.get(primary, 0.0)
@@ -320,14 +365,17 @@ def _mod_score(mod, kyber, weights):
     return score
 
 
-def build_score(build, kyber, weights, base_stats, base_profile=None, projected_stats=None):
+def build_score(build, kyber, weights, base_stats, base_profile=None, projected_stats=None,
+                mod_metadata=None, scoring_context=None):
     score = 0.0
     stats = projected_stats if isinstance(projected_stats, dict) else final_stats(build, base_stats, base_profile)
-
-    set_dist = _get_kyber_set_distribution(kyber)
+    scoring_context = scoring_context or _prepare_scoring_context(kyber)
+    set_dist = scoring_context["set_distribution"]
+    metadata_for = lambda mod: (mod_metadata or {}).get(id(mod)) or _mod_metadata(mod)
     counts = {}
     for mod in build:
-        counts[mod_set(mod)] = counts.get(mod_set(mod), 0) + 1
+        set_name = metadata_for(mod)["set"]
+        counts[set_name] = counts.get(set_name, 0) + 1
 
     # Strongly reward dominant Kyber set compositions.
     for name, share in set_dist.items():
@@ -343,11 +391,11 @@ def build_score(build, kyber, weights, base_stats, base_profile=None, projected_
         mod = next((m for m in build if normalize_slot(m.get("slot")) == slot), None)
         if not mod:
             continue
-        dist = _get_slot_distribution(kyber, slot)
+        dist = scoring_context["slot_distributions"].get(slot, {})
         if not dist:
             continue
         dominant = max(dist.values(), default=0.0)
-        primary = primary_name(mod)
+        primary = metadata_for(mod)["primary"]
         own = dist.get(primary, 0.0)
         if own == 0.0:
             target = re.sub(r"\s*%\s*$", "", str(primary).strip()).casefold()
@@ -359,7 +407,7 @@ def build_score(build, kyber, weights, base_stats, base_profile=None, projected_
 
     # Match Kyber reference stats without making them hard constraints.
     for stat in ("Speed", "Health", "Protection"):
-        ref = _reference_average(kyber, stat)
+        ref = scoring_context["averages"].get(stat, 0.0)
         if ref <= 0:
             continue
         ratio = to_float(stats.get(stat)) / ref
@@ -368,7 +416,7 @@ def build_score(build, kyber, weights, base_stats, base_profile=None, projected_
     # Aggregate donor-use preference across the complete six-mod build.
     donor_priority = 0.0
     for mod in build:
-        donor_uses = to_float(mod.get("_source_usage"), 0.0)
+        donor_uses = metadata_for(mod)["donor_uses"]
         donor_priority += max(0.0, 1000.0 - min(1000.0, donor_uses)) * 0.15
     score += donor_priority
 
@@ -541,10 +589,15 @@ def optimize_kyber(
         )
 
     candidates = {}
+    mod_metadata = {
+        id(mod): _mod_metadata(mod)
+        for slot in SLOTS for mod in grouped[slot]
+    }
+    scoring_context = _prepare_scoring_context(kyber)
     for slot_index, slot in enumerate(SLOTS, 1):
         ranked = sorted(
             grouped[slot],
-            key=lambda m: _mod_score(m, kyber, weights),
+            key=lambda m: _mod_score(m, kyber, weights, mod_metadata[id(m)], scoring_context),
             reverse=True,
         )
         candidates[slot] = ranked[:max(1, int(limit_per_slot))]
@@ -595,7 +648,8 @@ def optimize_kyber(
                         if len(projection_failures) < 12:
                             projection_failures.append(str(projected_stats))
                         continue
-                    score = build_score(build, kyber, weights, base_stats, base_profile, projected_stats)
+                    score = build_score(build, kyber, weights, base_stats, base_profile, projected_stats,
+                                        mod_metadata, scoring_context)
                     expanded.append((score, build, projected_stats))
             expanded.sort(key=lambda x: x[0], reverse=True)
             current_beam = [(build, stats) for _, build, stats in expanded[:beam_width]]
@@ -654,7 +708,8 @@ def optimize_kyber(
     for build, stats in safe_beam:
         results.append({
             "build": list(build),
-            "score": build_score(build, kyber, weights, base_stats, base_profile, stats),
+            "score": build_score(build, kyber, weights, base_stats, base_profile, stats,
+                                 mod_metadata, scoring_context),
             "stats": stats,
             "set_plan": applied_set_plan or {},
         })
