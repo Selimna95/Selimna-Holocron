@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.102-defense-percent-warning", self.sw)
+        self.assertIn("holocron-static-v4.4.103-defense-warning-worker", self.sw)
         self.assertIn("modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.html)
         self.assertIn("./modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
@@ -114,6 +114,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("mod-engine.js?v=0.3.23", worker)
         self.assertIn("minimum_speed=None", optimizer)
         self.assertIn("python/optimizer.py?v=3.5.10-defense-percent-warning", worker)
+        self.assertIn("optimizer-worker.mjs?v=3.5.14-defense-percent-warning", core)
+        self.assertIn("modules/core.js?v=4.2.33-defense-warning-worker", self.sw)
         self.assertIn("normalized.get(\"complete\") is not True", optimizer)
         self.assertIn("if minimum_speed is None or float(minimum_speed) <= 0:", worker)
         self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
@@ -189,14 +191,14 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.32-unknown-speed-category", self.html)
+        self.assertIn("modules/core.js?v=4.2.33-defense-warning-worker", self.html)
         self.assertIn("modules/mod-engine.js?v=0.3.23", self.html)
         self.assertIn("modules/disciple.js?v=3.5.9-complete-secondary-options", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.sw)
         self.assertIn("modules/disciple.js?v=3.5.9-complete-secondary-options", self.sw)
         self.assertIn("modules/mod-engine.js?v=0.3.23", self.sw)
-        self.assertIn("modules/core.js?v=4.2.32-unknown-speed-category", self.sw)
+        self.assertIn("modules/core.js?v=4.2.33-defense-warning-worker", self.sw)
         self.assertIn("holocron-static-v4.4.98-batched-mod-engine", self.sw)
 
 
