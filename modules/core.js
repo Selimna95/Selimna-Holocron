@@ -490,17 +490,17 @@ async function loadKyberUnitIndex(){
     throw error;
   }
 }
-async function fetchKyberProfile(character){
+async function fetchKyberProfile(character,options={}){
+  const forceRefresh=options?.forceRefresh===true;
   if(!character)return null;
   const display=character.name||character.character||character.baseId||character.base_id||'';
   const requestKey=normalizeKyberKey(display)||slug(character.baseId||character.base_id||'');
-  // Reuse a validated SWGOH.GG profile collected in the last 12 hours.
-  // Without this fast path, every Visionnaire visit refetched the full roster
-  // despite persistKyberProfile() already writing the same data to localStorage.
+  // Normal audits reuse the 12-hour cache. Explicit refreshes bypass it,
+  // while keeping the last validated profile available as a failure fallback.
   const cached=readKyberPersistentCache()[requestKey];
-  if(cached&&kyberProfileValid(cached.profile)){
+  if(!forceRefresh&&cached&&kyberProfileValid(cached.profile)){
     profiles[cached.slug]=cached.profile;
-    window.__kyberReferenceStatuses[requestKey]={status:'available',label:'Référence Kyber disponible'};
+    window.__kyberReferenceStatuses[requestKey]={status:'cached',label:'Référence Kyber en cache',cachedAt:cached.savedAt};
     return cached.profile;
   }
   if(kyberProfileInflight.has(requestKey))return kyberProfileInflight.get(requestKey);
@@ -519,8 +519,14 @@ async function fetchKyberProfile(character){
         }
         const parsed=parseKyberProfileHTML(await response.text(),display,candidate);
         if(parsed?.reference_status==='unavailable'){
-          window.__kyberReferenceStatuses[requestKey]={status:'unavailable',label:'Pas de référence Kyber disponible',reason:parsed.unavailable_reason||''};
-          log(`${display} : pas de référence Kyber disponible sur SWGOH.GG (${candidate}).`);
+          const reason=parsed.unavailable_reason||'Aucun échantillon Kyber disponible.';
+          if(cached&&kyberProfileValid(cached.profile)){
+            window.__kyberReferenceStatuses[requestKey]={status:'stale',label:'Référence en cache — actualisation non confirmée',reason,cachedAt:cached.savedAt};
+            log(display+' : SWGOH.GG ne confirme plus la référence ; conservation de la dernière version en cache.');
+            return {profile:cached.profile,stale:true,terminal:false};
+          }
+          window.__kyberReferenceStatuses[requestKey]={status:'unavailable',label:'Pas de référence Kyber disponible',reason};
+          log(display+' : pas de référence Kyber disponible sur SWGOH.GG ('+candidate+').');
           return {profile:null,unavailable:true,terminal:false};
         }
         if(!parsed)log(`Référence Kyber ${candidate} ignorée : ${window.__kyberLastFetchError||'contenu non reconnu'}.`);
@@ -546,13 +552,23 @@ async function fetchKyberProfile(character){
     for(const candidate of candidates){
       const result=await tryCandidate(candidate);
       if(result.profile){
+        if(result.stale){
+          profiles[cached.slug]=result.profile;
+          return result.profile;
+        }
         profiles[candidate]=result.profile;
-        window.__kyberReferenceStatuses[requestKey]={status:'available',label:'Référence Kyber disponible'};
+        const checkedAt=Date.now();
+        window.__kyberReferenceStatuses[requestKey]={status:'fresh',label:'Référence Kyber actualisée',checkedAt};
         persistKyberProfile(requestKey,candidate,result.profile);
         return result.profile;
       }
       if(result.unavailable)return null;
       if(result.terminal)break;
+    }
+    if(cached&&kyberProfileValid(cached.profile)){
+      profiles[cached.slug]=cached.profile;
+      window.__kyberReferenceStatuses[requestKey]={status:'stale',label:'Référence en cache — actualisation échouée',reason:window.__kyberLastFetchError||'SWGOH.GG ou le relais ne répond pas.',cachedAt:cached.savedAt};
+      return cached.profile;
     }
     window.__kyberReferenceStatuses[requestKey]={status:'error',label:'Référence Kyber non vérifiable',reason:window.__kyberLastFetchError||'SWGOH.GG ou le relais ne répond pas.'};
     return null;

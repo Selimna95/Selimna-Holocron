@@ -19,9 +19,9 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.78-kyber-percent-only-units", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.78-kyber-percent-only-units", sw)
-        self.assertIn("visionnaire.css?v=4.1.60-search-diagnostics-v1", html)
+        self.assertIn("modules/visionnaire.js?v=4.1.79-kyber-refresh-status", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.79-kyber-refresh-status", sw)
+        self.assertIn("visionnaire.css?v=4.1.61-kyber-refresh", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -41,6 +41,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("factionsOf(row).includes(state.faction)", js)
         self.assertNotIn("visionnaireSearch", js)
         self.assertIn("const criteria=activeIssues(row)", js)
+        self.assertIn("buildAudit({forceRefresh:true})", js)
+        self.assertIn("ACTUALISER LES RÉFÉRENCES KYBER", js)
         self.assertIn("Set hors de la configuration Kyber la plus proche", js)
         self.assertIn("Primaire non observée en Kyber", js)
         self.assertIn("data-slot", js)
@@ -63,12 +65,16 @@ class VisionnaireContractTests(unittest.TestCase):
 
     def test_kyber_profile_cache_is_read_before_network_fetch(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
-        fetch_start = core.index("async function fetchKyberProfile(character)")
+        fetch_start = core.index("async function fetchKyberProfile(character,options={})")
         cache_lookup = core.index("const cached=readKyberPersistentCache()[requestKey]", fetch_start)
         network_lookup = core.index("await loadKyberUnitIndex()", fetch_start)
         self.assertLess(cache_lookup, network_lookup)
         self.assertIn("profiles[cached.slug]=cached.profile", core[fetch_start:network_lookup])
         self.assertIn("KYBER_PROFILE_CACHE_TTL=12*60*60*1000", core)
+        self.assertIn("options?.forceRefresh===true", core)
+        self.assertIn("status:'stale'", core)
+        self.assertIn("status:'cached'", core)
+        self.assertIn("status:'fresh'", core)
 
     def test_incomplete_kyber_data_is_not_counted_as_a_mismatch(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")
@@ -94,7 +100,7 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("updated_label", core)
         self.assertIn("kyberProfileHasFullDistribution", core)
         self.assertIn("AbortSignal.timeout(12000)", core)
-        self.assertIn("fetchKyberProfile(character)", js)
+        self.assertIn("fetchKyberProfile(character,{forceRefresh})", js)
         self.assertIn("if(!/kyber|swgoh", core)
         self.assertIn("Array.isArray(p.specific_sets)&&p.specific_sets.length>0", core)
         self.assertIn("const directCandidate=slug(display)", core)

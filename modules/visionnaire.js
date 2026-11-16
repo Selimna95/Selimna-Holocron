@@ -135,7 +135,8 @@
       setCoverage:coverage,bestSetConfiguration:best};
   };
   const characters = () => (Array.isArray(rosterCharacters)?rosterCharacters:[]).filter(c=>typeof rosterUnitType!=='function'||rosterUnitType(c)!=='ship');
-  async function buildAudit(){
+  async function buildAudit(options={}){
+    const forceRefresh=options?.forceRefresh===true;
     if(state.loading)return;
     const roster=characters();
     if(!roster.length){state.rows=[];state.progress={done:0,total:0,profiles:0,failures:0,lastError:''};render();return;}
@@ -155,10 +156,12 @@
         let row;
         try{
           // Visionnaire audits the live SWGOH.GG Kyber slice, never a local optimizer snapshot.
-          const fetched=typeof fetchKyberProfile==='function'?await fetchKyberProfile(character):null;
+          const fetched=typeof fetchKyberProfile==='function'?await fetchKyberProfile(character,{forceRefresh}):null;
           const profile=fetched&&(typeof kyberProfileValid!=='function'||kyberProfileValid(fetched))?fetched:null;
           if(profile && (typeof kyberProfileValid!=='function'||kyberProfileValid(profile))) {
             row=inspectCharacter(character,profile);
+            const requestKey=key(character?.name||character?.character||character?.baseId||character?.base_id||'');
+            row.referenceStatus=window.__kyberReferenceStatuses?.[requestKey]||{status:'unknown',label:'Référence Kyber non vérifiable'};
             state.progress.profiles++;
           } else {
             if(window.__kyberLastFetchError)state.progress.lastError=String(window.__kyberLastFetchError);
@@ -606,10 +609,12 @@
     const knownPrimaries=state.rows.filter(r=>r.primaryVerifiable).length;
     const noReferenceRows=state.rows.filter(r=>!r.profile&&r.referenceStatus?.status==='unavailable');
     const unverifiableRows=state.rows.filter(r=>!r.profile&&r.referenceStatus?.status!=='unavailable');
+    const cachedRows=state.rows.filter(r=>r.profile&&r.referenceStatus?.status==='cached');
+    const staleRows=state.rows.filter(r=>r.profile&&r.referenceStatus?.status==='stale');
     root.innerHTML=`
       <header class="visionnaire-header">
         <div><small>HOLOCRON // LE VISIONNAIRE</small><h2>LE VISIONNAIRE</h2><p>Repère les écarts avec Kyber, choisis les slots à travailler et décide des échanges en connaissance de cause.</p></div>
-        <div class="visionnaire-state">${state.loading?'ANALYSE '+state.progress.done+'/'+state.progress.total:'AUDIT '+state.rows.length+' PERSONNAGES'}</div>
+        <div class="visionnaire-header-actions"><div class="visionnaire-state">${state.loading?'ANALYSE '+state.progress.done+'/'+state.progress.total:'AUDIT '+state.rows.length+' PERSONNAGES'}</div><button type="button" class="visionnaire-refresh" data-refresh-kyber ${state.loading?'disabled':''}>${state.loading?'ACTUALISATION EN COURS…':'ACTUALISER LES RÉFÉRENCES KYBER'}</button></div>
       </header>
       <section class="visionnaire-domain">
         <div class="visionnaire-section-kicker">ÉTAPE 1 · FILTRER LES ÉCARTS KYBER</div>
@@ -618,7 +623,7 @@
           <button type="button" data-mode="primaries" class="${state.mode==='primaries'?'active':''}"><b>PRIMAIRES</b><span>${modeCount('primaries')}</span></button>
           <button type="button" data-mode="both" class="${state.mode==='both'?'active':''}"><b>SETS + PRIMAIRES</b><span>${modeCount('both')}</span></button>
         </div>
-        <div class="visionnaire-kpis"><span><b>${state.loading?state.progress.done:state.rows.length}${state.loading?' / '+state.progress.total:''}</b> personnages analysés</span><span><b>${state.progress.profiles}</b> profils Kyber exploitables</span><span><b>${knownSets}</b> références de sets</span><span><b>${knownPrimaries}</b> références de primaires</span><span><b>${noReferenceRows.length}</b> sans référence Kyber</span><span><b>${unverifiableRows.length}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
+        <div class="visionnaire-kpis"><span><b>${state.loading?state.progress.done:state.rows.length}${state.loading?' / '+state.progress.total:''}</b> personnages analysés</span><span><b>${state.progress.profiles}</b> profils Kyber exploitables</span><span><b>${knownSets}</b> références de sets</span><span><b>${knownPrimaries}</b> références de primaires</span><span><b>${cachedRows.length}</b> profils en cache</span><span><b>${staleRows.length}</b> références anciennes conservées</span><span><b>${noReferenceRows.length}</b> sans référence Kyber</span><span><b>${unverifiableRows.length}</b> non vérifiables</span><span><b>${rows.length}</b> à examiner</span></div>
       </section>
       <section class="visionnaire-list">
         <div class="visionnaire-list-head"><div><div class="visionnaire-section-kicker">ÉTAPE 2 · FILTRER PAR FACTION</div><h3>${modeLabel()} · ${rows.length} résultat(s)</h3></div><div class="visionnaire-faction-filter">
@@ -645,6 +650,7 @@
       </section>
       ${state.selected?renderSelected():''}
     `;
+    root.querySelector('[data-refresh-kyber]')?.addEventListener('click',()=>buildAudit({forceRefresh:true}));
     root.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{state.mode=btn.dataset.mode;state.selected=null;state.slots.clear();state.proposals=[];state.searchError='';render();}));
     root.querySelectorAll('[data-character]').forEach(btn=>btn.addEventListener('click',()=>{
       const row=state.rows.find(r=>String(characterKey(r.character))===btn.dataset.character);
