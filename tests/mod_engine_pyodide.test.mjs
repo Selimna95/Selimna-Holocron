@@ -96,6 +96,7 @@ except RuntimeError as error:
  real_profile_defense_error = str(error)
 `);
 assert.match(pyodide.runPython('real_profile_defense_error'), /defense:gear_component_required/);
+assert.match(pyodide.runPython('real_profile_defense_error'), /Défense %/);
 
 const defenseWarningResult = JSON.parse(pyodide.runPython(`import json
 mods = []
