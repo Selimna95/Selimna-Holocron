@@ -260,7 +260,7 @@ const accuracyProjection = engine.calculateFinalStats(projectionBase, [
 assert.equal(accuracyProjection.complete, true, JSON.stringify(accuracyProjection.missing));
 assert.equal(accuracyProjection.stats['Physical Accuracy'], 13);
 assert.equal(accuracyProjection.stats['Special Accuracy'], 8);
-assert.equal(accuracyProjection.stats.Accuracy, 12);
+assert.equal(accuracyProjection.stats.Accuracy, 0.12);
 
 const offenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 15, set_name: 'Offense', primary_stat: 'Offense', primary_value: 40, ...zeroSecondaries },

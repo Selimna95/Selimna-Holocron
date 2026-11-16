@@ -357,9 +357,11 @@
     }
 
     const genericAccuracyPoints = totals['accuracy:percentagePoints'] || 0;
-    if (genericAccuracyPoints || flat('accuracy')) {
+    if (genericAccuracyPoints) {
       const baseAccuracy = has('accuracy') ? get('accuracy') : 0;
-      result.Accuracy = baseAccuracy + genericAccuracyPoints + flat('accuracy');
+      // UnitStat 52 is stored as a decimal percentage in final character stats
+      // (e.g. 12% => 0.12), unlike the percentage-point display used by mod data.
+      result.Accuracy = baseAccuracy + genericAccuracyPoints / 100;
     }
 
     const criticalChancePoints = totals['criticalChance:percentagePoints'] || 0;
