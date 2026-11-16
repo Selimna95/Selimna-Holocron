@@ -203,9 +203,31 @@ def final_stats_many(builds, base_stats=None, base_profile=None):
                 results.append(exc)
         return results
     source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
+    # Candidate builds repeatedly reference the same small pool of mods. Send
+    # each normalized mod once per batch and encode builds as integer indexes,
+    # rather than serializing the same full mod objects thousands of times.
+    mod_indexes = {}
+    mod_table = []
+    indexed_builds = []
+    for build in builds:
+        indexes = []
+        for mod in build:
+            marker = id(mod)
+            index = mod_indexes.get(marker)
+            if index is None:
+                index = len(mod_table)
+                mod_indexes[marker] = index
+                try:
+                    mod_table.append(_normalized_mod(mod))
+                except RuntimeError:
+                    # Preserve invalid-mod diagnostics in the shared JS engine.
+                    mod_table.append(mod)
+            indexes.append(index)
+        indexed_builds.append(indexes)
+    indexed_payload = {"mods": mod_table, "builds": indexed_builds}
     payload = _MOD_ENGINE_BATCH_BRIDGE(
         json.dumps(source, ensure_ascii=False, separators=(",", ":")),
-        json.dumps(builds, ensure_ascii=False, separators=(",", ":")),
+        json.dumps(indexed_payload, ensure_ascii=False, separators=(",", ":")),
         to_float(source.get("level"), None) if isinstance(source, dict) else None,
     )
     try:
@@ -414,6 +436,7 @@ def optimize_kyber(
     number_of_builds=10,
     limit_per_slot=80,
     beam_width=1200,
+    projection_batch_size=512,
     progress_callback=None,
     minimum_speed=None,
     **kwargs,
@@ -530,6 +553,7 @@ def optimize_kyber(
     # First try the exact Kyber set composition. If unavailable, retry without
     # the hard constraint instead of returning an empty result.
     projection_failures = []
+    projection_batch_size = max(1, min(2048, int(to_float(projection_batch_size, 512))))
 
     def search_builds(plan_constraint):
         # Keep each projection attached to its build throughout the beam search.
@@ -550,7 +574,6 @@ def optimize_kyber(
             expanded = []
             # Batch across the Python↔JavaScript boundary. The shared engine still
             # calculates every candidate; only repeated bridge/JSON overhead is removed.
-            projection_batch_size = 256
             build_iterator = iter(candidate_builds())
             while True:
                 batch = []

@@ -26,12 +26,13 @@ const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse
 let batchBridgeCalls = 0;
 let batchProjectedBuilds = 0;
 let scalarBridgeCalls = 0;
-const batchBridge = (baseJson, buildsJson, level) => {
+const batchBridge = (baseJson, indexedBuildsJson, level) => {
   batchBridgeCalls++;
-  const builds = JSON.parse(buildsJson);
-  batchProjectedBuilds += builds.length;
-  return JSON.stringify(builds.map(mods => engine.calculateFinalStats(
-    JSON.parse(baseJson), mods, Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
+  const payload = JSON.parse(indexedBuildsJson);
+  batchProjectedBuilds += payload.builds.length;
+  return JSON.stringify(payload.builds.map(indexes => engine.calculateFinalStats(
+    JSON.parse(baseJson), indexes.map(index => payload.mods[index]),
+    Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
   )));
 };
 pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
@@ -104,4 +105,91 @@ pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Heal
 const incompleteSecondary = pyodide.runPython('incomplete_secondary_error');
 assert.match(incompleteSecondary, /mod:secondary_incomplete/);
 
+
+const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
+  const slot = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'][index % 6];
+  const speed = 1 + ((index * 7) % 20);
+  return {
+    game_id: `bench-${index}`,
+    slot,
+    level: 15,
+    set_name: ['Health', 'Offense', 'Speed', 'Defense'][index % 4],
+    primary_stat: slot === 'Arrow' ? 'Speed' : 'Health',
+    primary_value: slot === 'Arrow' ? 30 : 100,
+    secondary_1_stat: 'Speed',
+    secondary_1_value: speed,
+    secondary_2_stat: 'Offense %',
+    secondary_2_value: 1 + (index % 5),
+    secondary_3_stat: 'Potency %',
+    secondary_3_value: 1,
+    secondary_4_stat: 'Tenacity %',
+    secondary_4_value: 1
+  };
+});
+pyodide.globals.set('benchmark_mods_json', JSON.stringify(benchmarkMods));
+
+function runOptimizerBridgeBenchmark(useBatch, batchSize) {
+  scalarBridgeCalls = 0;
+  batchBridgeCalls = 0;
+  batchProjectedBuilds = 0;
+  optimizerBridgeReset(useBatch);
+  const started = performance.now();
+  const result = JSON.parse(pyodide.runPython(`import json
+mods = json.loads(benchmark_mods_json)
+result = optimizer.optimize_kyber(
+    mods,
+    base_stats=json.loads(base_json),
+    base_profile={'base_stats': json.loads(base_json), 'level': 85},
+    kyber={},
+    number_of_builds=5,
+    limit_per_slot=40,
+    beam_width=240,
+    projection_batch_size=${batchSize},
+    minimum_speed=150,
+)
+json.dumps([
+    {'ids': [m.get('game_id') or m.get('id') for m in item['build']],
+     'score': item['score'], 'stats': item['stats']}
+    for item in result
+])`));
+  return {
+    elapsedMs: performance.now() - started,
+    result,
+    scalarCalls: scalarBridgeCalls,
+    batchCalls: batchBridgeCalls,
+    projectedBuilds: batchProjectedBuilds
+  };
+}
+
+function optimizerBridgeReset(useBatch) {
+  pyodide.globals.set('benchmark_use_batch', useBatch);
+  // Reset the bridge and normalizer cache so both passes pay the same
+  // normalization cost; only the bridge batching differs.
+  pyodide.runPython("optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge if benchmark_use_batch else None)");
+}
+
+const scalarBenchmark = runOptimizerBridgeBenchmark(false, 256);
+const batch256 = runOptimizerBridgeBenchmark(true, 256);
+const batch512 = runOptimizerBridgeBenchmark(true, 512);
+const batch1024 = runOptimizerBridgeBenchmark(true, 1024);
+assert.equal(scalarBenchmark.projectedBuilds, 0);
+assert.equal(scalarBenchmark.scalarCalls, 40040);
+for (const benchmark of [batch256, batch512, batch1024]) {
+  assert.equal(benchmark.scalarCalls, 0);
+  assert.equal(benchmark.projectedBuilds, 40040);
+  assert.deepEqual(benchmark.result, scalarBenchmark.result, 'scalar and indexed batch bridges must return identical top builds and stats');
+}
+assert.ok(batch512.batchCalls < batch256.batchCalls);
+assert.ok(batch1024.batchCalls < batch512.batchCalls);
+console.log('Optimizer bridge benchmark (synthetic 2,000-mod inventory; 40 candidates/slot; beam 240):');
+console.log(JSON.stringify({
+  scalar: { elapsedMs: Number(scalarBenchmark.elapsedMs.toFixed(1)), bridgeCalls: scalarBenchmark.scalarCalls },
+  batch256: { elapsedMs: Number(batch256.elapsedMs.toFixed(1)), bridgeCalls: batch256.batchCalls },
+  batch512: { elapsedMs: Number(batch512.elapsedMs.toFixed(1)), bridgeCalls: batch512.batchCalls },
+  batch1024: { elapsedMs: Number(batch1024.elapsedMs.toFixed(1)), bridgeCalls: batch1024.batchCalls, projectedBuilds: batch1024.projectedBuilds },
+  speedup512: Number((scalarBenchmark.elapsedMs / batch512.elapsedMs).toFixed(2)),
+  speedup1024: Number((scalarBenchmark.elapsedMs / batch1024.elapsedMs).toFixed(2)),
+  identicalResults: true
+}));
 console.log('Real Pyodide ↔ JavaScript shared mod-engine integration tests passed.');
+

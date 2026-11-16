@@ -3,7 +3,7 @@ import "./modules/mod-engine.js?v=0.3.23";
 
 let pyodideReadyPromise = (async () => {
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
-  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.7-reuse-batched-projections", import.meta.url), { cache: "force-cache" });
+  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.8-indexed-batch-projections", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
   const optimizerSource = await optimizerResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer.py", optimizerSource);
@@ -29,11 +29,23 @@ let pyodideReadyPromise = (async () => {
   const modNormalizeBridge = (modJson) => {
     return JSON.stringify(self.HolocronModEngine.normalizeMod(JSON.parse(modJson)));
   };
-  const modEngineBatchBridge = (baseJson, buildsJson, level) => {
+  const modEngineBatchBridge = (baseJson, indexedBuildsJson, level) => {
     const base = JSON.parse(baseJson);
-    const builds = JSON.parse(buildsJson);
+    const payload = JSON.parse(indexedBuildsJson);
+    if (!Array.isArray(payload.mods) || !Array.isArray(payload.builds)) {
+      throw new Error("Lot de projections indexé invalide.");
+    }
     const resolvedLevel = Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null;
-    return JSON.stringify(builds.map(mods => self.HolocronModEngine.calculateFinalStats(base, mods, resolvedLevel)));
+    return JSON.stringify(payload.builds.map(indexes => {
+      if (!Array.isArray(indexes)) throw new Error("Index de build invalide.");
+      const mods = indexes.map(index => {
+        if (!Number.isInteger(index) || index < 0 || index >= payload.mods.length) {
+          throw new Error("Référence de mod invalide dans le lot de projections.");
+        }
+        return payload.mods[index];
+      });
+      return self.HolocronModEngine.calculateFinalStats(base, mods, resolvedLevel);
+    }));
   };
   pyodide.globals.set("holocron_mod_engine_bridge", modEngineBridge);
   pyodide.globals.set("holocron_mod_normalize_bridge", modNormalizeBridge);

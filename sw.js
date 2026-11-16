@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.99-reuse-batched-projections';
+const CACHE_NAME = 'holocron-static-v4.4.100-indexed-batch-projections';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -31,8 +31,8 @@ const STATIC_ASSETS = [
   './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
   './modules/visionnaire.js?v=4.1.78-kyber-percent-only-units',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
-  './optimizer-worker.mjs?v=3.5.12-batched-engine',
-  './python/optimizer.py?v=3.5.7-reuse-batched-projections',
+  './optimizer-worker.mjs?v=3.5.13-indexed-batch',
+  './python/optimizer.py?v=3.5.8-indexed-batch-projections',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
