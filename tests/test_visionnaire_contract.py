@@ -75,6 +75,12 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("status:'stale'", core)
         self.assertIn("status:'cached'", core)
         self.assertIn("status:'fresh'", core)
+        self.assertIn("function discardKyberPersistentCacheEntry(requestKey)", core)
+        unavailable_start = core.index("if(parsed?.reference_status==='unavailable')")
+        unavailable_end = core.index("if(!parsed)", unavailable_start)
+        unavailable_branch = core[unavailable_start:unavailable_end]
+        self.assertIn("discardKyberPersistentCacheEntry(requestKey)", unavailable_branch)
+        self.assertNotIn("return {profile:cached.profile", unavailable_branch)
 
     def test_incomplete_kyber_data_is_not_counted_as_a_mismatch(self):
         js = (ROOT / "modules" / "visionnaire.js").read_text(encoding="utf-8")

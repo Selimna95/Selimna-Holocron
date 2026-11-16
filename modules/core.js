@@ -459,6 +459,13 @@ function persistKyberProfile(requestKey,slugValue,profile){
   kyberPersistentCache=Object.fromEntries(Object.entries(cache).slice(-500));
   try{localStorage.setItem(KYBER_PROFILE_CACHE_KEY,JSON.stringify(kyberPersistentCache));}catch(_){}
 }
+function discardKyberPersistentCacheEntry(requestKey){
+  const cache=readKyberPersistentCache();
+  if(!Object.prototype.hasOwnProperty.call(cache,requestKey))return;
+  delete cache[requestKey];
+  kyberPersistentCache=cache;
+  try{localStorage.setItem(KYBER_PROFILE_CACHE_KEY,JSON.stringify(kyberPersistentCache));}catch(_){}
+}
 async function loadKyberUnitIndex(){
   if(kyberUnitIndexPromise)return kyberUnitIndexPromise;
   if(Date.now()<kyberUnitIndexFailureUntil){
@@ -520,11 +527,8 @@ async function fetchKyberProfile(character,options={}){
         const parsed=parseKyberProfileHTML(await response.text(),display,candidate);
         if(parsed?.reference_status==='unavailable'){
           const reason=parsed.unavailable_reason||'Aucun échantillon Kyber disponible.';
-          if(cached&&kyberProfileValid(cached.profile)){
-            window.__kyberReferenceStatuses[requestKey]={status:'stale',label:'Référence en cache — actualisation non confirmée',reason,cachedAt:cached.savedAt};
-            log(display+' : SWGOH.GG ne confirme plus la référence ; conservation de la dernière version en cache.');
-            return {profile:cached.profile,stale:true,terminal:false};
-          }
+          // A confirmed absence on SWGOH.GG outranks any older local snapshot.
+          discardKyberPersistentCacheEntry(requestKey);
           window.__kyberReferenceStatuses[requestKey]={status:'unavailable',label:'Pas de référence Kyber disponible',reason};
           log(display+' : pas de référence Kyber disponible sur SWGOH.GG ('+candidate+').');
           return {profile:null,unavailable:true,terminal:false};
