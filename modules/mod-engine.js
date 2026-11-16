@@ -224,7 +224,7 @@
       'health','protection','speed','offense','defense','physicalDamage','specialDamage',
       'armor','resistance','potency','tenacity','criticalDamage','criticalChance',
       'criticalAvoidance','physicalCriticalChance','specialCriticalChance',
-      'physicalCriticalAvoidance','specialCriticalAvoidance'
+      'physicalCriticalAvoidance','specialCriticalAvoidance','physicalAccuracy','specialAccuracy'
     ]);
     const add = (key, value) => { totals[key] = (totals[key] || 0) + value; };
 
@@ -310,14 +310,15 @@
         // Defense % applies only to compoundable defense. SWGOH.GG base profiles
         // expose displayed Armor/Resistance but not the current gear-tier
         // non-compoundable component. Do not invent that missing component.
-        if (defenseRatio) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
           const displayPercent = get(key) > 1 ? get(key) : get(key) * 100;
           const ratio = displayPercent / 100;
           if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
           const baseRating = ratio * levelEffect / (1 - ratio);
-          const finalRating = baseRating + defenseFlat;
+          // Crinolo's calculateModStats applies Defense % to the base Armor/Resistance rating,
+          // then adds flat Defense rating. Convert back to the displayed percentage afterward.
+          const finalRating = baseRating * (1 + defenseRatio) + defenseFlat;
           const finalPercent = finalRating / (levelEffect + finalRating) * 100;
           setResult(key, finalPercent);
         }
@@ -343,6 +344,18 @@
       }
     }
 
+    // Accuracy IDs 33/34 are additive percentage points; IDs 37/38 are ratings.
+    // Crinolo converts accuracy rating with rating / 1200 as a decimal, i.e. /12 percentage points.
+    for (const key of ['physicalAccuracy', 'specialAccuracy']) {
+      const percentagePoints = totals[key + ':percentagePoints'] || 0;
+      const baseRating = has(key) ? get(key) : 0;
+      const ratingBonus = flat(key);
+      if (percentagePoints || ratingBonus) {
+        const displayName = key === 'physicalAccuracy' ? 'Physical Accuracy' : 'Special Accuracy';
+        result[displayName] = (baseRating + ratingBonus) / 12 + percentagePoints;
+      }
+    }
+
     const criticalChancePoints = totals['criticalChance:percentagePoints'] || 0;
     const criticalAvoidancePoints = totals['criticalAvoidance:percentagePoints'] || 0;
     if (flat('criticalChance')) missing.push('stat:criticalChance:flat_unsupported');
@@ -361,7 +374,9 @@
         physicalCriticalChance: 'Physical Critical Chance',
         specialCriticalChance: 'Special Critical Chance',
         physicalCriticalAvoidance: 'Physical Critical Avoidance',
-        specialCriticalAvoidance: 'Special Critical Avoidance'
+        specialCriticalAvoidance: 'Special Critical Avoidance',
+        physicalAccuracy: 'Physical Accuracy',
+        specialAccuracy: 'Special Accuracy'
       })[key];
       result[displayName] = get(key) + amount + ratingPoints;
     }
@@ -557,7 +572,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.22',
+    version: '0.3.23',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
