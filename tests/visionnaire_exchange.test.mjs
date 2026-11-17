@@ -85,12 +85,12 @@ const sandbox={
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   baseStatsForCharacter:character=>character.base_stats||{},
   optimizerProfileForCharacter:()=>({}),
-  optimizerValidatedProfileForCharacter:character=>({base_stats:character.base_stats||{},gear_level:13}),
+  optimizerValidatedProfileForCharacter:character=>({base_stats:character.base_stats||{},gear_level:13,stat_components:character.stat_components||null}),
   modTotalSpeed:mod=>Number(mod.speed||0)
 };
 vm.createContext(sandbox);
 vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;this.focus=exchangeSecondaryFocusScore;this.focusImpact=exchangeTargetFocusImpact;',sandbox);
-const fixture={baseId:'GLREY',gear_level:13,base_stats:{Health:1000,Speed:100,Potency:0.1}};
+const fixture={baseId:'GLREY',gear_level:13,base_stats:{Health:1000,Speed:100,Potency:0.1},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
 const healthMods=[
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0},
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}
