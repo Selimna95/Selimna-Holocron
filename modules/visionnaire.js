@@ -230,6 +230,18 @@
     });
   };
   const exchangeModId = mod => String(mod?.game_id??mod?.id??mod?.uid??'');
+  function visionnaireCandidatePriority(a,b){
+    const freeA=!a?._sourceOwnerKey,freeB=!b?._sourceOwnerKey;
+    if(freeA!==freeB)return freeA?-1:1;
+    const usage=mod=>{
+      const value=Number(mod?._sourceUsage);
+      return Number.isFinite(value)?Math.max(0,value):Infinity;
+    };
+    // Free inventory has no donor cost; otherwise prefer the least-used GAC
+    // donor first. Speed is a tie-breaker, never the primary donor criterion.
+    return usage(a)-usage(b)||modTotalSpeed(b)-modTotalSpeed(a)||
+      String(a._visionnaireDonor?.name||'').localeCompare(String(b._visionnaireDonor?.name||''),'fr');
+  }
   const exchangeModSummary = mod => {
     if(!mod)return 'Aucun mod';
     const secondary=[];
@@ -389,9 +401,7 @@
       const ordered=source.filter(mod=>slotOf(mod)===slot&&exchangeModId(mod)!==exchangeModId(currentBySlot.get(slot)))
         .map(mod=>({...mod,_visionnaireDonor:mod._sourceOwnerKey?rosterCharacters.find(c=>characterKey(c)===mod._sourceOwnerKey):null}))
         .filter(mod=>!mod._sourceOwnerKey||mod._visionnaireDonor)
-        .sort((a,b)=>modTotalSpeed(b)-modTotalSpeed(a)||
-          Number(a._sourceUsage)-Number(b._sourceUsage)||
-          String(a._visionnaireDonor?.name||'').localeCompare(String(b._visionnaireDonor?.name||''),'fr'));
+        .sort(visionnaireCandidatePriority);
       const reference=primaryDistribution(profile,slot);
       const eligible=state.mode==='sets'||!reference.length?ordered:
         ordered.filter(mod=>reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false)));
