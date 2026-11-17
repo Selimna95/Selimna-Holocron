@@ -164,7 +164,7 @@ const kyber={specific_sets:[{name:'4 Speed + 2 Potency',counts:{Speed:4,Potency:
 const weakDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('d'+i,slot,'Speed',10,'Speed',10));
 const dangerousGlDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('g'+i,slot,'Speed',25,'Speed',25));
 const glSearch=await runSearch(glTarget,weakDonor,[],kyber,'sets',dangerousGlDonor);
-assert.ok(glSearch.proposals.length>0,'A Galactic Legend is a valid recipient');
+assert.ok(glSearch.proposals.length>0,'A Galactic Legend is a valid recipient: '+JSON.stringify(glSearch));
 assert.equal(glSearch.proposals[0].donors[0].owner.baseId,'DONOR','The non-GL donor is selected');
 assert.ok(glSearch.proposals[0].targetStatsAfter,'Recipient global stats are calculated');
 assert.ok(glSearch.proposals[0].donors[0].afterStats,'Donor global stats are calculated');
