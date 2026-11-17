@@ -1,6 +1,6 @@
 # Architecture — moteur unique des mods
 
-- Statut : moteur unifié intégré à `main` ; audit de fiabilité des profils et de Défense % en cours sur `fix/defense-percent-g13`
+- Statut : moteur unifié intégré à `main` ; audit de fiabilité des profils, Défense %, index des mods et protections GL en cours sur `fix/defense-percent-g13`
 - Moteur de référence : `modules/mod-engine.js` v0.3.27
 - Base de travail : `main@f2c66705f28bdd060f0e99e37235bfdc76360eca`
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
@@ -22,7 +22,7 @@ Les modules métier gardent leurs critères de décision (Kyber, GAC, sélection
 | Zone | Responsabilité |
 |---|---|
 | `modules/mod-engine.js` | Normalisation canonique, règles de jeu, calculs communs, complétude des résultats |
-| `modules/core.js` v4.2.31 | Import des données, wrappers historiques temporaires et présentation |
+| `modules/core.js` v4.2.40 | Import des données, wrappers historiques temporaires et présentation |
 | Acolyte | Priorisation GAC et choix des changements ; score générique délégué ; mods incomplets exclus des échanges |
 | Disciple | Filtres de réallocation et choix des donneurs ; identité stat/set/slot et vitesse projetée déléguées |
 | Seigneur Sith | Objectifs Kyber/GAC et recherche de mods ; calculs de vitesse et identité délégués |
@@ -58,7 +58,7 @@ Une unité inconnue ou une formule non implémentée rend le calcul incomplet. A
 | Visionnaire | Projection finale déléguée ; identité stat/set/slot déléguée ; scoring de scénario conservé |
 | Optimizer Python | `final_stats`, `mod_stats`, primaire et set délégués au pont JavaScript ; recherche conservée en Python |
 | Worker Pyodide | Runtime Python chargé une seule fois dans le Worker ; aucun runtime Pyodide principal inutilisé ; pont de normalisation et de projection initialisé |
-| Cache/version | Références index, service worker et Worker réalignées pour cette branche |
+| Cache/version | Références index, service worker et Worker réalignées pour cette branche |\n| Propriétaires de mods | Index global construit une fois par snapshot roster/inventaire ; résolution exacte des alias et slots ambigus conservée |\n| Légendes galactiques | Une liste canonique partagée entre Core, Seigneur Sith et Visionnaire ; Hondo GL et Mando/Grogu GL protégés |
 
 Les anciennes fonctions qui ne font que transmettre les données au moteur peuvent rester temporairement comme adaptateurs d'interface. Toute fonction qui recalcule une formule commune doit être supprimée.
 
@@ -119,7 +119,7 @@ Le fichier `python/optimizer_profiles.json` contient 334 profils. La relation at
 
 Cela confirme, pour les champs couverts par ces profils, que `base_stats` est le point de départ avant bonus de mods et que `mod_stat_diffs` représente l'écart de mods vers `current_stats`. Le test Python relit désormais le fichier complet et vérifie cette relation sur chaque profil à chaque exécution. La provenance externe initiale de ces profils reste à documenter ; ce contrôle valide leur cohérence interne, pas l'exactitude de leur collecte d'origine.
 
-Le Worker ne réutilise un snapshot que si le niveau, la rareté, le palier d'équipement et le palier de relique du roster correspondent exactement aux métadonnées du profil. Une métadonnée absente ou divergente invalide le snapshot ; les stats courantes ne sont pas substituées. Les profils sont répartis entre 328 profils G13 et 6 profils sous G13 ; seuls les premiers permettent actuellement la projection Défense % sans composante d'équipement manquante.
+Le Worker ne réutilise un snapshot que si le niveau, la rareté, le palier d'équipement et le palier de relique du roster correspondent exactement aux métadonnées du profil. Les métadonnées Comlink (`currentLevel`, `currentRarity`, `currentTier`) sont reconnues ; un profil n'est jamais associé par nom si un `baseId` explicite ne correspond pas. Les mods équipés sont indexés une fois par snapshot, et non renormalisés pour chaque personnage. La protection des Légendes galactiques utilise un jeu d'identifiants canonique partagé, incluant GLHONDO et GLMANDOGROGU. Une métadonnée absente ou divergente invalide le snapshot ; les stats courantes ne sont pas substituées. Les profils sont répartis entre 328 profils G13 et 6 profils sous G13 ; seuls les premiers permettent actuellement la projection Défense % sans composante d'équipement manquante.
 
 ## Tests et critères d'intégration
 
