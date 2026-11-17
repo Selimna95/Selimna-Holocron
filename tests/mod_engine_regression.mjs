@@ -609,6 +609,10 @@ const donorContext = vm.createContext({
     { baseId: 'HIGHSHIP', raw: { data: { crew: [{ baseId: 'PILOTHIGH' }] } } }
   ]
 });
+const shipCrewMapStart=seigneur.indexOf('const SEIGNEUR_SHIP_CREW_BY_BASE_ID =');
+const shipCrewMapEnd=seigneur.indexOf('function seigneurUsageKey(',shipCrewMapStart);
+assert.ok(shipCrewMapStart>=0&&shipCrewMapEnd>shipCrewMapStart,'Canonical ship crew map must be present');
+vm.runInContext(seigneur.slice(shipCrewMapStart,shipCrewMapEnd),donorContext);
 load(seigneur, [
   'seigneurUsageKey','seigneurUsageRecord','seigneurUsageCount','seigneurLatestGacUsageSeason',
   'seigneurCharacterGacUsage','seigneurShipCrewAliases','seigneurShipUsageMap',
