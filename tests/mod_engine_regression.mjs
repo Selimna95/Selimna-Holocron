@@ -161,6 +161,23 @@ assert.equal(profileResolverContext.optimizerProfileForCharacter({ baseId: 'UNKN
 assert.equal(profileResolverContext.optimizerProfileForCharacter({ name: 'Ahsoka Tano' }), null,
   'Name-only profile lookup must reject ambiguous aliases');
 
+// Comlink roster records may expose progression as currentLevel/currentRarity/currentTier.
+// Verify the API adapter accepts these fields, not just the downstream metadata reader.
+const comlinkUnitContext = vm.createContext({});
+load(core, ['unitToCharacter'], comlinkUnitContext);
+const rawComlinkUnit = { data: {
+  baseId: 'MOFFGIDEONS3', name: 'Dark Trooper Moff Gideon',
+  currentLevel: 85, currentRarity: 7, currentTier: 13,
+  relic: { currentTier: 8 }
+} };
+const parsedComlinkUnit = comlinkUnitContext.unitToCharacter(rawComlinkUnit);
+assert.ok(parsedComlinkUnit, 'Comlink progression fields must be sufficient to recognize a roster unit');
+assert.deepEqual(
+  { baseId: parsedComlinkUnit.baseId, level: parsedComlinkUnit.level, stars: parsedComlinkUnit.stars, gear: parsedComlinkUnit.gear, relic_tier: parsedComlinkUnit.relic_tier },
+  { baseId: 'MOFFGIDEONS3', level: 85, stars: 7, gear: 13, relic_tier: 8 }
+);
+assert.equal(parsedComlinkUnit.raw, rawComlinkUnit, 'The original Comlink payload must remain available for profile validation');
+
 // Roster metadata must support both SWGOH.GG fields and raw Comlink progression fields.
 const rosterMetadataContext = vm.createContext({ numericValue });
 load(core, ['optimizerRosterMetadata'], rosterMetadataContext);
