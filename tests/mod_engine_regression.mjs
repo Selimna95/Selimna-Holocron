@@ -113,13 +113,13 @@ const ownerIndexContext=vm.createContext({
 load(core,['getCharacterModsIndex','getCharacterMods'],ownerIndexContext);
 const indexedGlMods=ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]);
 const indexedSnipsMods=ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[1]);
-assert.deepEqual(indexedGlMods.map(m=>m.id),['gl-square','gl-arrow']);
-assert.deepEqual(indexedSnipsMods.map(m=>m.id),['snips-square']);
+assert.deepEqual(JSON.parse(JSON.stringify(indexedGlMods.map(m=>m.id))),['gl-square','gl-arrow']);
+assert.deepEqual(JSON.parse(JSON.stringify(indexedSnipsMods.map(m=>m.id))),['snips-square']);
 assert.equal(normalizedOwnerMods,3,'The inventory must be normalized once for the whole ownership index');
 ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]);
 assert.equal(normalizedOwnerMods,3,'Repeated lookups must reuse the same roster/inventory index');
 ownerIndexContext.mods=[...ownerIndexContext.mods,{id:'gl-diamond',slot:'Diamond',characterId:'GLAHSOKATANO'}];
-assert.deepEqual(ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]).map(m=>m.id),['gl-square','gl-arrow','gl-diamond']);
+assert.deepEqual(JSON.parse(JSON.stringify(ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]).map(m=>m.id))),['gl-square','gl-arrow','gl-diamond']);
 assert.equal(normalizedOwnerMods,6,'Replacing the inventory snapshot must rebuild the index exactly once');
 
 // Static snapshots must never be attached by a colliding display name when a baseId exists.
