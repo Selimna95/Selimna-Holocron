@@ -10,6 +10,7 @@ Important:
 """
 
 import json
+import heapq
 import re
 import os
 import unicodedata
@@ -544,6 +545,14 @@ def _matches_set_plan(build, plan):
     return counts == plan
 
 
+def _retain_best_beam(expanded, beam_width):
+    """Keep the exact stable top-k beam without sorting every rejected candidate."""
+    if beam_width > 0 and len(expanded) > beam_width:
+        return heapq.nlargest(beam_width, expanded, key=lambda item: item[0])
+    expanded.sort(key=lambda item: item[0], reverse=True)
+    return expanded[:beam_width]
+
+
 def optimize_kyber(
     mods,
     base_stats=None,
@@ -748,8 +757,8 @@ def optimize_kyber(
                     score = build_score(build, kyber, weights, base_stats, base_profile, projected_stats,
                                         mod_metadata, scoring_context)
                     expanded.append((score, build, projected_stats))
-            expanded.sort(key=lambda x: x[0], reverse=True)
-            current_beam = [(build, stats) for _, build, stats in expanded[:beam_width]]
+            retained = _retain_best_beam(expanded, beam_width)
+            current_beam = [(build, stats) for _, build, stats in retained]
             if progress_callback:
                 try:
                     progress_callback(slot_index, slot, len(current_beam))
