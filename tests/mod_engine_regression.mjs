@@ -75,6 +75,21 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 const core = read('../modules/core.js');
 
 
+// Static snapshots must never be attached by a colliding display name when a baseId exists.
+const profileResolverContext = vm.createContext({
+  optimizerProfiles: {
+    AHSOKATANO: { base_id: 'AHSOKATANO', name: 'Ahsoka Tano', marker: 'snips' },
+    GLAHSOKATANO: { base_id: 'GLAHSOKATANO', name: 'Ahsoka Tano', marker: 'galactic-legend' }
+  },
+  slug: value => String(value || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+});
+load(core, ['optimizerProfileForCharacter'], profileResolverContext);
+assert.equal(profileResolverContext.optimizerProfileForCharacter({ baseId: 'GLAHSOKATANO', name: 'Ahsoka Tano' }).marker, 'galactic-legend');
+assert.equal(profileResolverContext.optimizerProfileForCharacter({ baseId: 'UNKNOWN_AHSOKA', name: 'Ahsoka Tano' }), null,
+  'A supplied but unmatched baseId must not fall back to a colliding display name');
+assert.equal(profileResolverContext.optimizerProfileForCharacter({ name: 'Ahsoka Tano' }), null,
+  'Name-only profile lookup must reject ambiguous aliases');
+
 // Roster metadata must support both SWGOH.GG fields and raw Comlink progression fields.
 const rosterMetadataContext = vm.createContext({ numericValue });
 load(core, ['optimizerRosterMetadata'], rosterMetadataContext);
