@@ -351,15 +351,15 @@ assert.ok(g13DirectDamageProjection.missing.includes('offense:gear_component_req
 const gearDependentPercentCases = [
   ['health', [
     { level: 1, set_name: 'Health', primary_stat: 'Health %', primary_value: 10 },
-    { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+    { level: 1, set_name: 'Defense', primary_stat: 'Health', primary_value: 0 }
   ]],
   ['protection', [
     { level: 1, set_name: 'Health', primary_stat: 'Protection %', primary_value: 10 },
-    { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+    { level: 1, set_name: 'Defense', primary_stat: 'Health', primary_value: 0 }
   ]],
   ['speed', [
     { level: 1, set_name: 'Health', primary_stat: 'Speed %', primary_value: 10 },
-    { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+    { level: 1, set_name: 'Defense', primary_stat: 'Health', primary_value: 0 }
   ]]
 ];
 for (const [key, mods] of gearDependentPercentCases) {
