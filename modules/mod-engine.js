@@ -379,7 +379,7 @@
         // Defense % applies to the base Defense rating before equipped-gear
         // secondaries. G13 has no equipped gear; lower tiers need Crinolo's split.
         const defenseComponents = defenseRatio ? percentBase('Defense', get('defense')) : null;
-        const canProjectDefensePercent = !defenseRatio || !!defenseComponents;
+        const canProjectDefensePercent = !defenseRatio || numeric(gearLevel) === 13 || !!defenseComponents;
         if (defenseRatio && !canProjectDefensePercent) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
