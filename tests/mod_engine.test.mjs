@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.23');
+assert.equal(engine.version, '0.3.24');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -278,6 +278,17 @@ const defenseProjection = engine.calculateFinalStats(projectionBase, [
 ], 85);
 assert.equal(defenseProjection.complete, false);
 assert.ok(defenseProjection.missing.includes('defense:gear_component_required'));
+const defensePercentMods = [
+  { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+];
+const nonG13DefenseProjection = engine.calculateFinalStats({ gear_level: 12, base_stats: projectionBase }, defensePercentMods, 85);
+assert.equal(nonG13DefenseProjection.complete, false);
+assert.ok(nonG13DefenseProjection.missing.includes('defense:gear_component_required'));
+const g13DefenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, defensePercentMods, 85);
+assert.equal(g13DefenseProjection.complete, true, JSON.stringify(g13DefenseProjection.missing));
+assert.ok(Math.abs(g13DefenseProjection.stats.Armor - 52.38095238095239) < 1e-9);
+assert.ok(Math.abs(g13DefenseProjection.stats.Resistance - 42.30769230769231) < 1e-9);
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
 ], 85);
