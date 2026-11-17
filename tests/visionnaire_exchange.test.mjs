@@ -131,7 +131,7 @@ vm.createContext(buildSandbox);
 vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,primary_stat:primary,primary_value:value,secondary_1_stat:'Speed',secondary_1_value:speed,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0});
 async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[],selectedSlots=['Square','Circle']){
-  const donor={baseId:'DONOR',name:'Donneur',gear_level:13,base_stats:{Speed:100,Health:1000,Offense:500}};
+  const donor={baseId:'DONOR',name:'Donneur',gear_level:13,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5}};
   donor.mods=donorMods;
   const glDonor={baseId:'GLDONOR',name:'Donneur GL',gear_level:13,base_stats:{Speed:100},mods:glDonorMods};
   const roster=[target,...(donorMods.length?[donor]:[]),...(glDonorMods.length?[glDonor]:[])];
@@ -154,7 +154,7 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
   });
   return buildSandbox.search({character:target,profile},selectedSlots);
 }
-const glTarget={baseId:'GLREY',name:'Rey',gear_level:13,base_stats:{Speed:100,Health:1000,Offense:500}};
+const glTarget={baseId:'GLREY',name:'Rey',gear_level:13,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5}};
 glTarget.mods=[
  makeMod('t1','Square','Tenacity',1,'Health',100),makeMod('t2','Arrow','Speed',1),
  makeMod('t3','Diamond','Potency',1,'Health',100),makeMod('t4','Triangle','Speed',1),
