@@ -104,6 +104,8 @@ class AssetIntegrityTests(unittest.TestCase):
 
     def test_seigneur_worker_receives_current_mods_and_enforces_speed_floor(self):
         core = (ROOT / "modules" / "core.js").read_text(encoding="utf-8")
+        engine = (ROOT / "modules" / "mod-engine.js").read_text(encoding="utf-8")
+        disciple = (ROOT / "modules" / "disciple.js").read_text(encoding="utf-8")
         seigneur = (ROOT / "modules" / "seigneur.js").read_text(encoding="utf-8")
         worker = (ROOT / "optimizer-worker.mjs").read_text(encoding="utf-8")
         optimizer = (ROOT / "python" / "optimizer.py").read_text(encoding="utf-8")
@@ -126,6 +128,10 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if minimum_speed is None or float(minimum_speed) <= 0:", worker)
         self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
         self.assertIn("Aucun transfert entraînant une perte de vitesse", optimizer)
+        self.assertIn("speed:gear_component_required", engine)
+        self.assertIn("calculateSpeed(baseSpeed,cm,p.gear_level)", disciple)
+        self.assertIn("optimizerValidatedProfileForCharacter(c)", disciple)
+        self.assertIn("calculateSpeed(baseSpeed,list,gearLevel)", seigneur)
         self.assertIn("defense_percent_unavailable", optimizer)
         self.assertIn("gear_percent_unavailable", optimizer)
         self.assertIn("BONUS MULTIPLICATEURS EN % NON ÉVALUÉS", seigneur)
