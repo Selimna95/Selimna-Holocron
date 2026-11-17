@@ -298,6 +298,8 @@ for (const [key, mods] of gearDependentPercentCases) {
   const projection = engine.calculateFinalStats(gear12Profile, mods, 85);
   assert.equal(projection.complete, false, `${key} % must not use aggregated gear stats`);
   assert.ok(projection.missing.includes(key + ':gear_component_required'));
+  const g13Projection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, mods, 85);
+  assert.equal(g13Projection.complete, true, `${key} % should be supported when the gear component is zero`);
 }
 
 const defenseProjection = engine.calculateFinalStats(projectionBase, [
