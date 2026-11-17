@@ -44,7 +44,7 @@ def _test_engine_bridge(base_json, mods_json, level):
     result["Speed"] = base_speed + totals.get("Speed", 0)
     result["Speed"] += base_speed * totals.get("Speed %", 0) / 100
     if sets.get("Speed", 0) >= 4:
-        result["Speed"] += int(base_speed * (0.10 if all(x >= 15 for x in sorted(levels["Speed"], reverse=True)[:4]) else 0.05))
+        result["Speed"] += base_speed * (0.10 if all(x >= 15 for x in sorted(levels["Speed"], reverse=True)[:4]) else 0.05)
     if "Critical Damage" in result and sets.get("Critical Damage", 0) >= 4:
         result["Critical Damage"] += 0.30 if all(x >= 15 for x in sorted(levels["Critical Damage"], reverse=True)[:4]) else 0.15
     return json.dumps({"complete": not missing, "stats": result, "missing": sorted(set(missing))})
