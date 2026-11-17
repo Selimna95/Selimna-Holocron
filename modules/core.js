@@ -1288,74 +1288,69 @@ function modOwnerKey(m){
   }
   return '';
 }
-function getCharacterMods(c){
-  if(!c) return [];
+let characterModsIndexCache=null;
+function getCharacterModsIndex(){
+  if(characterModsIndexCache?.roster===rosterCharacters&&characterModsIndexCache?.sourceMods===mods)return characterModsIndexCache.index;
+  const characters=Array.isArray(rosterCharacters)?rosterCharacters:[];
+  const sourceMods=Array.isArray(mods)?mods:[];
   const aliasOwners=new Map(),baseIdOwners=new Map();
-  for(const unit of rosterCharacters||[]){
-    const ck=characterKey(unit);
+  for(const unit of characters){
+    const owner=characterKey(unit);
     const base=compactKey(unit?.baseId??unit?.base_id??unit?.characterId??unit?.character_id);
-    if(base){
-      if(!baseIdOwners.has(base))baseIdOwners.set(base,new Set());
-      baseIdOwners.get(base).add(ck);
-    }
+    if(base){if(!baseIdOwners.has(base))baseIdOwners.set(base,new Set());baseIdOwners.get(base).add(owner);}
     const keys=new Set([unit?.baseId,unit?.base_id,unit?.characterId,unit?.character_id,unit?.name,unit?.character].map(compactKey).filter(Boolean));
-    for(const key of keys){
-      if(!aliasOwners.has(key))aliasOwners.set(key,new Set());
-      aliasOwners.get(key).add(ck);
-    }
+    for(const key of keys){if(!aliasOwners.has(key))aliasOwners.set(key,new Set());aliasOwners.get(key).add(owner);}
   }
-  // Le baseId est l'identité canonique : il reste prioritaire même si sa chaîne
-  // ressemble au nom affiché d'une autre unité (ex. AHSOKATANO / GLAHSOKATANO).
-  const ownKey=characterKey(c);
-  const ownBase=compactKey(c.baseId??c.base_id??c.characterId??c.character_id);
-  const aliases=new Set();
-  if(ownBase&&baseIdOwners.get(ownBase)?.size===1&&baseIdOwners.get(ownBase).has(ownKey))aliases.add(ownBase);
-  for(const key of [c.baseId,c.base_id,c.characterId,c.character_id,c.name,c.character].map(compactKey).filter(Boolean)){
-    const owners=aliasOwners.get(key),baseOwners=baseIdOwners.get(key);
-    if(owners?.size===1&&owners.has(ownKey)&&(!baseOwners||(baseOwners.size===1&&baseOwners.has(ownKey))))aliases.add(key);
+  // Seuls les alias non ambigus sont utilisables. Le baseId garde la priorité.
+  const uniqueOwners=new Map();
+  for(const [key,owners] of aliasOwners){
+    const baseOwners=baseIdOwners.get(key);
+    if(owners.size===1&&(!baseOwners||baseOwners.size===1))uniqueOwners.set(key,[...owners][0]);
   }
   const slots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
-  const rankOwner=(m)=>{
-    const raw=m?._rawOwnerFields||[];
-    // Prefer an explicit equipped-unit base ID over a display label.
-    for(const value of raw){
-      if(value==null)continue;
-      const k=compactKey(typeof value==='object'?(value.baseId??value.base_id??value.characterId??value.character_id??value.id??value.name??''):value);
-      if(k&&aliases.has(k))return 3;
+  const byOwner=new Map();
+  const add=(owner,mod,score)=>{
+    if(!owner)return;
+    if(!byOwner.has(owner))byOwner.set(owner,{slots:new Map(),ambiguous:new Set()});
+    const state=byOwner.get(owner),slot=String(mod.slot||'');
+    if(!slots.includes(slot)||state.ambiguous.has(slot))return;
+    const previous=state.slots.get(slot),previousScore=previous?previous._ownerScore:0;
+    if(!previous||score>previousScore){state.slots.set(slot,{...mod,_ownerScore:score});return;}
+    if(score===previousScore){
+      const previousId=String(previous.game_id||previous.id||'');
+      const currentId=String(mod.game_id||mod.id||'');
+      if(!previousId||!currentId||previousId!==currentId){state.slots.delete(slot);state.ambiguous.add(slot);}
     }
-    const owner=modOwnerKey(m);
-    if(owner&&aliases.has(owner))return 2;
-    const base=compactKey(m?.ownerBaseId||m?.equippedToId||m?.equipped_to_id||'');
-    if(base&&aliases.has(base))return 3;
-    return 0;
   };
-  const matched=mods.map((raw,i)=>{
+  for(let index=0;index<sourceMods.length;index++){
+    const raw=sourceMods[index];
     const normalized=normalizeModForDisplay(raw);
-    return {...normalized,_index:i,_rawOwnerFields:[
+    const mod={...normalized,_index:index,_rawOwnerFields:[
       raw?.characterId,raw?.character_id,raw?.equippedToId,raw?.equipped_to_id,
       raw?.unit_equiped,raw?.unitEquiped,raw?.equippedTo,raw?.equipped_to,
       raw?.characterName,raw?.character,raw?.location,raw?.usingIn
     ]};
-  }).filter(m=>rankOwner(m)>0);
-  // One equipped mod per physical slot. Duplicate API aliases/rows must never
-  // inflate a character's equipment grid beyond the six real slots.
-  const bySlot=new Map(),ambiguousSlots=new Set();
-  for(const m of matched){
-    const slot=String(m.slot||'');
-    if(!slots.includes(slot)||ambiguousSlots.has(slot))continue;
-    const previous=bySlot.get(slot);
-    const score=rankOwner(m);
-    const previousScore=previous?rankOwner(previous):0;
-    if(!previous||score>previousScore){bySlot.set(slot,m);continue;}
-    if(score===previousScore){
-      const previousId=String(previous.game_id||previous.id||'');
-      const currentId=String(m.game_id||m.id||'');
-      // Des lignes dupliquées portant le même identifiant sont fusionnables.
-      // Deux mods distincts revendiquant le même slot sont ambigus : aucun n'est choisi.
-      if(!previousId||!currentId||previousId!==currentId){bySlot.delete(slot);ambiguousSlots.add(slot);}
+    const rawOwners=new Set();
+    for(const value of mod._rawOwnerFields){
+      if(value==null)continue;
+      const key=compactKey(typeof value==='object'?(value.baseId??value.base_id??value.characterId??value.character_id??value.id??value.name??''):value);
+      const owner=uniqueOwners.get(key);if(owner)rawOwners.add(owner);
     }
+    if(rawOwners.size){for(const owner of rawOwners)add(owner,mod,3);continue;}
+    const normalizedOwner=uniqueOwners.get(modOwnerKey(mod));
+    if(normalizedOwner){add(normalizedOwner,mod,2);continue;}
+    const base=compactKey(mod.ownerBaseId||mod.equippedToId||mod.equipped_to_id||'');
+    const baseOwner=uniqueOwners.get(base);
+    if(baseOwner)add(baseOwner,mod,3);
   }
-  return slots.map(slot=>bySlot.get(slot)).filter(Boolean);
+  const index=new Map();
+  for(const [owner,state] of byOwner)index.set(owner,slots.map(slot=>state.slots.get(slot)).filter(Boolean).map(({_ownerScore,...mod})=>mod));
+  characterModsIndexCache={roster:rosterCharacters,sourceMods:mods,index};
+  return index;
+}
+function getCharacterMods(c){
+  if(!c)return [];
+  return getCharacterModsIndex().get(characterKey(c))||[];
 }
 function modSpeedMetrics(m){ return window.HolocronModEngine.speedMetrics(m); }
 function modPrimarySpeed(m){ return window.HolocronModEngine.speedMetrics(m).primarySpeed; }
