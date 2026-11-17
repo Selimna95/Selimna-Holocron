@@ -137,7 +137,7 @@ const verifiedG13SpeedProfile = {
 };
 const verifiedG13Speed = engine.calculateFinalStats(verifiedG13SpeedProfile, g13SpeedSetMods, verifiedG13SpeedProfile.level);
 assert.equal(verifiedG13Speed.complete, true);
-assert.equal(verifiedG13Speed.stats.Speed, 168.3);
+assert.equal(verifiedG13Speed.stats.Speed, 168, 'Pyodide uses Crinolo integer flooring for Speed set bonuses');
 const r5d4Profile = optimizerProfiles.R5D4;
 assert.ok(r5d4Profile && r5d4Profile.gear_level === 12);
 const r5d4OffenseProjection = engine.calculateFinalStats(r5d4Profile, offenseMods, r5d4Profile.level);
