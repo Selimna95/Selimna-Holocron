@@ -107,7 +107,7 @@ const missingLevel = pyodide.runPython('missing_level_error');
 assert.match(missingLevel, /level/);
 
 
-const critRating = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 14, 'unscaledDecimalValue': 2400000000}}, {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 15, 'unscaledDecimalValue': 4800000000}}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
+const critRating = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 14, 'unscaledDecimalValue': 2400000000}}, {'level': 1, 'set_name': 'Defense', 'primary_stat': {'unitStatId': 15, 'unscaledDecimalValue': 4800000000}}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
 assert.equal(critRating['Physical Critical Chance'], 41);
 assert.equal(critRating['Special Critical Chance'], 32);
 
@@ -272,7 +272,7 @@ pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Healt
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
 
-const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 33, 'unscaledDecimalValue': 12000000}, 'secondary_1_stat': {'unitStatId': 37, 'unscaledDecimalValue': 1200000000}},\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 34, 'unscaledDecimalValue': 6000000}, 'secondary_1_stat': {'unitStatId': 38, 'unscaledDecimalValue': 2400000000}},\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}\n]\nresult = optimizer.final_stats(mods, json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
+const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 33, 'unscaledDecimalValue': 12000000}, 'secondary_1_stat': {'unitStatId': 37, 'unscaledDecimalValue': 1200000000}},\n {'level': 1, 'set_name': 'Defense', 'primary_stat': {'unitStatId': 34, 'unscaledDecimalValue': 6000000}, 'secondary_1_stat': {'unitStatId': 38, 'unscaledDecimalValue': 2400000000}},\n {'level': 1, 'set_name': 'Speed', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}\n]\nresult = optimizer.final_stats(mods, json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
 assert.equal(accuracy['Physical Accuracy'], 13);
 assert.equal(accuracy['Special Accuracy'], 8);
 assert.equal(accuracy['Accuracy'], 0.12);
@@ -284,7 +284,7 @@ batchProjectedBuilds = 0;
 batchBridgeCalls = 0;
 scalarBridgeCalls = 0;
 
-const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
+const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Potency', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
 assert.equal(batchSearch.count, 1);
 assert.equal(batchSearch.mods, 6);
 assert.equal(batchProjectedBuilds, 60);
@@ -302,7 +302,7 @@ const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
     game_id: `bench-${index}`,
     slot,
     level: 15,
-    set_name: ['Health', 'Offense', 'Speed', 'Defense'][index % 4],
+    set_name: ['Tenacity', 'Potency', 'Speed', 'Critical Damage'][index % 4],
     primary_stat: slot === 'Arrow' ? 'Speed' : 'Health',
     primary_value: slot === 'Arrow' ? 30 : 100,
     secondary_1_stat: 'Speed',
