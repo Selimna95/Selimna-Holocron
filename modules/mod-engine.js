@@ -590,6 +590,10 @@
     const level = numeric(mod.level);
     const validLevel = Number.isInteger(level) && level >= 1 && level <= 15;
     const expectedSecondaries = validLevel ? Math.min(4, Math.floor(level / 3)) : null;
+    // Some Comlink snapshots serialize pips as 0 while rarity carries the actual 1–6 dots.
+    // Select the first valid dot count instead of letting the zero sentinel mask rarity.
+    const pips = [mod.pips, mod.dots, mod.dotCount, mod.rarity]
+      .map(numeric).find(value => Number.isInteger(value) && value >= 1 && value <= 6) ?? null;
     const slot = slotFromDefinitionId(mod.definitionId) ||
       canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot);
     const normalized = Object.freeze({
@@ -598,7 +602,7 @@
       set,
       setName: SET_DEFINITIONS[set]?.name || null,
       slot,
-      pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
+      pips,
       primary,
       secondaries: Object.freeze(secondaries),
       expectedSecondaries,
