@@ -273,7 +273,7 @@ mods = json.loads(benchmark_mods_json)
 result = optimizer.optimize_kyber(
     mods,
     base_stats=json.loads(base_json),
-    base_profile={'base_stats': json.loads(base_json), 'level': 85},
+    base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13},
     kyber={},
     number_of_builds=5,
     limit_per_slot=40,
