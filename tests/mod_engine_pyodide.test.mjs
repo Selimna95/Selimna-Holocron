@@ -232,12 +232,10 @@ try:
 except RuntimeError as error:
     result = []
     warning_error = str(error)
-json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else [], 'error': warning_error})
+json.dumps({'count': len(result), 'missing': result[0].get('missing_stats', []) if result else [], 'error': warning_error})
 `));
-assert.equal(defenseWarningResult.count, 0);
-assert.match(defenseWarningResult.error, /Bonus multiplicateurs en % non calculables/);
-assert.match(defenseWarningResult.error, /séparation base\/équipement vérifiée/);
-assert.match(defenseWarningResult.error, /defense:gear_component_required/);
+assert.equal(defenseWarningResult.count, 1, 'Defense % alone must not reject a build when score stats are complete');
+assert.ok(defenseWarningResult.missing.includes('defense:gear_component_required'), 'The result must disclose the uncalculated Defense %');
 
 const g13CandidateMods = JSON.parse(pyodide.runPython('json.dumps(mods)'));
 const g13DirectCandidateProjection = engine.calculateFinalStats(moffGideonProfile, g13CandidateMods, moffGideonProfile.level);
