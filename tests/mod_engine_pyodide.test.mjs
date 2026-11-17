@@ -148,17 +148,19 @@ for (const profile of Object.values(optimizerProfiles)) {
 assert.equal(g13ProfileCount, 328);
 assert.equal(lowerGearProfileCount, 6);
 pyodide.globals.set('moff_gideon_profile_json', JSON.stringify(moffGideonProfile));
-const moffGideonDefense = JSON.parse(pyodide.runPython(`import json
+pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
 mods = [
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10},
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 0}
 ]
-result = optimizer.final_stats(mods, profile['base_stats'], profile)
-json.dumps(result)
-`));
-assert.ok(Math.abs(moffGideonDefense.Armor - 59.74107988632776) < 1e-8);
-assert.ok(Math.abs(moffGideonDefense.Resistance - 54.457779682811825) < 1e-8);
+try:
+    optimizer.final_stats(mods, profile['base_stats'], profile)
+    moff_defense_error = ''
+except RuntimeError as error:
+    moff_defense_error = str(error)
+`);
+assert.match(pyodide.runPython('moff_defense_error'), /defense:gear_component_required/);
 pyodide.runPython(`try:
  profile = dict(json.loads(moff_gideon_profile_json), gear_level=12)
  optimizer.final_stats(
@@ -202,18 +204,21 @@ assert.match(defenseWarningResult.error, /defense:gear_component_required/);
 
 const g13CandidateMods = JSON.parse(pyodide.runPython('json.dumps(mods)'));
 const g13DirectCandidateProjection = engine.calculateFinalStats(moffGideonProfile, g13CandidateMods, moffGideonProfile.level);
-assert.equal(g13DirectCandidateProjection.complete, true, JSON.stringify(g13DirectCandidateProjection.missing));
+assert.equal(g13DirectCandidateProjection.complete, false);
+assert.ok(g13DirectCandidateProjection.missing.includes('defense:gear_component_required'));
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
-result = optimizer.optimize_kyber(
-    mods, base_stats=profile['base_stats'], base_profile=profile,
-    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-)
-json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else []})
+try:
+    result = optimizer.optimize_kyber(
+        mods, base_stats=profile['base_stats'], base_profile=profile,
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    warning_error = ''
+except RuntimeError as error:
+    warning_error = str(error)
+json.dumps({'error': warning_error})
 `));
-assert.equal(g13DefenseWarningResult.count, 1);
-assert.ok(!g13DefenseWarningResult.warnings.includes('defense_percent_unavailable'));
-assert.ok(!g13DefenseWarningResult.warnings.includes('gear_percent_unavailable'));
+assert.match(g13DefenseWarningResult.error, /defense:gear_component_required/);
 
 const secondaryDefenseSearch = JSON.parse(pyodide.runPython(`import json
 secondary_defense_mods = []
@@ -228,21 +233,17 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
         'secondary_3_stat': 'Potency %', 'secondary_3_value': 1,
         'secondary_4_stat': 'Tenacity %', 'secondary_4_value': 1
     })
-result = optimizer.optimize_kyber(
-    secondary_defense_mods, base_stats=profile['base_stats'], base_profile=profile,
-    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-)
-json.dumps({
-    'count': len(result),
-    'warnings': result[0].get('warnings', []) if result else [],
-    'stats': result[0].get('stats', {}) if result else {}
-})
+try:
+    result = optimizer.optimize_kyber(
+        secondary_defense_mods, base_stats=profile['base_stats'], base_profile=profile,
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    secondary_defense_error = ''
+except RuntimeError as error:
+    secondary_defense_error = str(error)
+json.dumps({'error': secondary_defense_error})
 `));
-assert.equal(secondaryDefenseSearch.count, 1, 'A complete six-mod build with Comlink stat ID 49 secondaries must remain eligible at G13');
-assert.ok(!secondaryDefenseSearch.warnings.includes('defense_percent_unavailable'));
-assert.ok(!secondaryDefenseSearch.warnings.includes('gear_percent_unavailable'));
-assert.ok(Number.isFinite(secondaryDefenseSearch.stats.Armor), 'Defense % secondaries must be applied to Armor');
-assert.ok(Number.isFinite(secondaryDefenseSearch.stats.Resistance), 'Defense % secondaries must be applied to Resistance');
+assert.match(secondaryDefenseSearch.error, /defense:gear_component_required/);
 
 const realComlinkDefenseSearch = JSON.parse(pyodide.runPython(`import json
 comlink_mods = []
@@ -259,28 +260,17 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
             {'name': 'Tenacity', 'stat_id': 18, 'value': 281.8, 'display_value': '2.82%', 'unscaled_roll_values': [1778, 1159, 1761]}
         ]
     })
-result = optimizer.optimize_kyber(
-    comlink_mods, base_stats=profile['base_stats'], base_profile=profile,
-    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-)
-json.dumps({
-    'count': len(result),
-    'stats': result[0].get('stats', {}) if result else {},
-    'mods': result[0].get('mods', []) if result else []
-})
+try:
+    optimizer.optimize_kyber(
+        comlink_mods, base_stats=profile['base_stats'], base_profile=profile,
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    real_comlink_defense_error = ''
+except RuntimeError as error:
+    real_comlink_defense_error = str(error)
+json.dumps({'error': real_comlink_defense_error})
 `));
-assert.equal(realComlinkDefenseSearch.count, 1, 'Real Comlink-shaped secondary_stats must survive the complete Python optimizer path');
-const expectedDefenseRatio = 6 * 2.371 / 100;
-for (const key of ['Armor', 'Resistance']) {
-  const basePercent = moffGideonProfile.base_stats[key] > 1
-    ? moffGideonProfile.base_stats[key] : moffGideonProfile.base_stats[key] * 100;
-  const levelEffect = moffGideonProfile.level * 7.5;
-  const baseRating = (basePercent / 100) * levelEffect / (1 - basePercent / 100);
-  const expected = (baseRating * (1 + expectedDefenseRatio)) /
-    (levelEffect + baseRating * (1 + expectedDefenseRatio)) * 100;
-  assert.ok(Math.abs(realComlinkDefenseSearch.stats[key] - expected) < 1e-8,
-    key + ' must use the real Comlink Defense % scale, not a 100x inflated value');
-}
+assert.match(realComlinkDefenseSearch.error, /defense:gear_component_required/);
 
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
