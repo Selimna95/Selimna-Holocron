@@ -171,12 +171,14 @@ function optimizerProfileForCharacter(character) {
   if (!character || !optimizerProfiles || typeof optimizerProfiles !== 'object') return null;
   const base=String(character?.baseId||character?.base_id||'').toUpperCase();
   const name=slug(character?.name||character?.character||'');
-  if (base && optimizerProfiles[base]) return optimizerProfiles[base];
-  for (const p of Object.values(optimizerProfiles)) {
-    if (base && String(p?.base_id||'').toUpperCase()===base) return p;
-    if (name && slug(p?.name||p?.character)===name) return p;
+  if (base) {
+    if (optimizerProfiles[base]) return optimizerProfiles[base];
+    const exact=Object.values(optimizerProfiles).filter(p=>String(p?.base_id||'').toUpperCase()===base);
+    return exact.length===1?exact[0]:null;
   }
-  return null;
+  if (!name) return null;
+  const matches=Object.values(optimizerProfiles).filter(p=>slug(p?.name||p?.character)===name);
+  return matches.length===1?matches[0]:null;
 }
 function optimizerRosterMetadata(character) {
   const raw=character?.raw?.data && typeof character.raw.data === 'object'
