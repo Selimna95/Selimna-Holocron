@@ -1,844 +1,844 @@
-async function loadOptimizerReferenceData(){
-  // V44: les profils Optimizer ne doivent plus être une dépendance bloquante.
-  // Le Worker sait maintenant charger optimizer_profiles.json lui-même.
-  // On tente les sources locales pour l'UI, mais l'Optimizer peut démarrer même
-  // si le script embarqué n'a pas été publié par GitHub Pages.
-  const candidates=[
-    new URL('./python/optimizer_profiles.json',document.baseURI).href,
-  ];
-  let loaded=null;
-  for(const url of candidates){
-    try{
-      const r=await fetch(url+'?v=3.4.4-cache-sync',{cache:'force-cache'});
-      if(!r.ok)continue;
-      const json=await r.json();
-      if(json&&typeof json==='object'&&Object.keys(json).length){loaded=json;break;}
-    }catch(e){}
-  }
-  if(loaded){
-    optimizerProfiles=loaded;
-    log(`Profils Optimizer UI chargés depuis la source JSON unique : ${Object.keys(optimizerProfiles).length}.`);
-  }else{
-    optimizerProfiles={};
-    log('Profils Optimizer UI non chargés : le Worker tentera de lire python/optimizer_profiles.json.');
-  }
-  // Kyber est une référence facultative : SWGOH.GG sera interrogé au besoin,
-  // puis le profil local du Worker sert de secours.
-  const kyberCandidates=[
-    new URL('./python/kyber_profiles.json',document.baseURI).href,
-  ];
-  profiles={};
-  for(const url of kyberCandidates){
-    try{
-      const r=await fetch(url+'?v=3.4.4-cache-sync',{cache:'force-cache'});
-      if(r.ok){const json=await r.json();if(json&&typeof json==='object'){profiles=json;break;}}
-    }catch(e){}
-  }
-  log(`Références Kyber locales : ${Object.keys(profiles||{}).length}.`);
-  return true;
-}
-
-async function boot(){
-  // V45: l'activation de l'Optimizer ne dépend plus des téléchargements
-  // de références UI. V44 pouvait laisser optimizerReady=false pendant ces
-  // requêtes et afficher "Le moteur Optimizer n'est pas prêt".
-  optimizerReady=true;
-  $('pythonState').textContent='WORKER';
-  setRuntime('MOTEUR OPTIMIZER PRÊT',true);
-  log('Moteur Optimizer autorisé immédiatement. Initialisation du Worker en arrière-plan…');
-
-  try{
-    getOptimizerWorker();
-    log('Worker Optimizer initialisé.');
-  }catch(e){
-    log('Initialisation du Worker différée : '+(e?.message||e));
-  }
-
-  // Les profils UI/Kyber sont facultatifs pour l'activation du moteur.
-  try{
-    optimizerProfilesReady = loadOptimizerReferenceData();
-    await optimizerProfilesReady;
-    log(`Références UI chargées. Profils Optimizer locaux : ${Object.keys(optimizerProfiles||{}).length}.`);
-  }catch(e){
-    log('Références UI non disponibles : le Worker reste autonome.');
-  }
-
-}
-
-$('fileInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{currentData=JSON.parse(await file.text());mods=extractMods(currentData);const importedUnits=extractCharacters(currentData);const split=splitRosterUnits(importedUnits);rosterCharacters=split.characters;rosterShips=split.ships;buildFactionMap();updateRosterCounts(rosterCharacters,rosterShips);fillCharacters(rosterCharacters);updateAccountSummary(file.name,'IMPORT JSON');renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();$('dataInfo').textContent=`Fichier: ${file.name}\nMods détectés: ${mods.length}\nPersonnages détectés: ${rosterCharacters.length}\nVaisseaux détectés: ${rosterShips.length}`;$('log').textContent='';log(`Import: ${file.name}`);log(`${mods.length} mods détectés.`);log(`${rosterCharacters.length} personnages + ${rosterShips.length} vaisseaux détectés.`);showPage('dashboard');}catch(e){log('JSON invalide: '+e.message);}});
-
-
-const KNOWN_GALACTIC_LEGEND_IDS=new Set(['GLREY','SUPREMELEADERKYLOREN','GRANDMASTERLUKE','JEDIMASTERKENOBI','LORDVADER','JABBATHEHUTT','GLLEIA','SITHPALPATINE','GLAHSOKATANO']);
-function isGalacticLegendCharacter(c){
-  const raw=c?.raw||c?.data||c||{};
-  const base=compactKey(c?.baseId||c?.base_id||c?.id||'');
-  if(KNOWN_GALACTIC_LEGEND_IDS.has(base))return true;
-  const explicit=[raw?.isGalacticLegend,raw?.is_galactic_legend,c?.isGalacticLegend,c?.is_galactic_legend];
-  if(explicit.some(v=>v===true||v===1||String(v).toLowerCase()==='true'))return true;
-  const values=[];
-  const collect=(v)=>{if(v==null)return;if(Array.isArray(v))return v.forEach(collect);if(typeof v==='object'){for(const k of ['name','displayName','nameKey','id','categoryId','category','faction','tags','categories','role'])collect(v[k]);return;}values.push(String(v));};
-  collect(raw);
-  const text=compactKey(values.join(' '));
-  return text.includes('GALACTICLEGEND');
-}
-// Classement des donneurs : l'utilisation GAC terrestre et l'utilisation des vaisseaux
-// sont indépendantes de la qualité des mods. Une donnée absente reste inconnue,
-// jamais assimilée à zéro utilisation.
-function seigneurUsageKey(value){
-  return compactKey(typeof value==='object'&&value
-    ? value.baseId??value.base_id??value.characterId??value.character_id??value.unitId??value.unit_id??value.shipId??value.ship_id??value.id??value.name??''
-    : value);
-}
-function seigneurUsageRecord(collection,aliases){
-  if(!collection||typeof collection!=='object')return null;
-  const keys=Object.keys(collection);
-  for(const alias of aliases){
-    const key=seigneurUsageKey(alias);
-    if(!key)continue;
-    const found=keys.find(candidate=>seigneurUsageKey(candidate)===key);
-    if(found)return collection[found];
-  }
-  return null;
-}
-function seigneurUsageCount(record){
-  if(record==null)return null;
-  const raw=typeof record==='number'?record:record.uses??record.usage??record.count??record.seen??record.battles;
-  const value=Number(raw);
-  return Number.isFinite(value)&&value>=0?value:null;
-}
-function seigneurLatestGacUsageSeason(){
-  const data=window.__SWGOH_GAC_USAGE__||{};
-  const seasons=Array.isArray(data.seasons)?data.seasons.filter(s=>s&&Number(s.season)>0):[];
-  if(!seasons.length)return null;
-  const hasFormatBreakdown=seasons.some(s=>Object.values(s.characters||{}).some(record=>
-    record&&record.byFormat&&Object.keys(record.byFormat).length
-  ));
-  if(!hasFormatBreakdown){
-    const latest=seasons.filter(s=>(s.characters&&Object.keys(s.characters).length)||(s.ships&&Object.keys(s.ships).length)||(Array.isArray(s.fleets)&&s.fleets.length))
-      .sort((a,b)=>Number(b.season)-Number(a.season))[0]||null;
-    return latest?{...latest,sourceStatus:data.sourceStatus||'observed',
-      source:data.source||'SWGOH.GG GAC usage',evidenceType:data.evidenceType||'unit-usage'}:null;
-  }
-  const combined={season:0,characters:{},ships:{},fleets:[],coverage:[],
-    formatSeasons:{},sourceStatus:data.sourceStatus||'observed',
-    source:data.source||'SWGOH.GG GAC usage',evidenceType:data.evidenceType||'unit-usage'};
-  for(const format of ['5v5','3v3']){
-    const matching=seasons.filter(s=>
-      (s.coverage||[]).some(c=>c?.format===format) ||
-      Object.values(s.characters||{}).some(r=>Number(r?.byFormat?.[format])>0)
-    ).sort((a,b)=>Number(b.season)-Number(a.season));
-    const ceiling=Number(data.currentSeasons?.[format])||Number(matching[0]?.season)||0;
-    if(!ceiling)continue;
-    const eligible=matching.filter(s=>Number(s.season)<=ceiling);
-    if(!eligible.length)continue;
-    combined.formatSeasons[format]=Number(eligible[0].season);
-    const names=new Set(eligible.flatMap(s=>Object.keys(s.characters||{})));
-    for(const name of names){
-      for(const season of eligible){
-        const record=season.characters?.[name];
-        const count=Number(record?.byFormat?.[format]);
-        if(!Number.isFinite(count)||count<=0)continue;
-        const target=combined.characters[name]||(combined.characters[name]={uses:0,byFormat:{},bySide:{},seasonsByFormat:{}});
-        target.uses+=count;
-        target.byFormat[format]=count;
-        target.seasonsByFormat[format]=Number(season.season);
-        for(const [side,value] of Object.entries(record.bySide||{})){
-          target.bySide[side]=(target.bySide[side]||0)+Number(value||0);
-        }
-        break;
-      }
-    }
-    combined.coverage.push(...eligible.flatMap(s=>(s.coverage||[]).filter(c=>c?.format===format)));
-  }
-  const fleetSeasons=seasons.filter(s=>(s.ships&&Object.keys(s.ships).length)||Array.isArray(s.fleets)&&s.fleets.length)
-    .sort((a,b)=>Number(b.season)-Number(a.season));
-  const seenShips=new Set();
-  for(const season of fleetSeasons){
-    for(const [name,record] of Object.entries(season.ships||{})){
-      if(seenShips.has(name))continue;
-      combined.ships[name]=record;seenShips.add(name);
-    }
-    if(!combined.fleets.length&&Array.isArray(season.fleets))combined.fleets=season.fleets;
-    combined.coverage.push(...(season.coverage||[]).filter(c=>c?.format==='fleet'));
-  }
-  combined.season=Math.max(0,...Object.values(combined.formatSeasons),...fleetSeasons.map(s=>Number(s.season)||0));
-  return Object.keys(combined.characters).length||Object.keys(combined.ships).length||combined.fleets.length?combined:null;
-}
-function seigneurCharacterGacUsage(character,season=seigneurLatestGacUsageSeason()){
-  if(!season)return null;
-  const aliases=[character?.baseId,character?.base_id,character?.characterId,character?.character_id,character?.id,character?.name];
-  return seigneurUsageCount(seigneurUsageRecord(season.characters,aliases));
-}
-function seigneurShipCrewAliases(ship){
-  const raw=ship?.raw?.data||ship?.data||ship?.raw||ship||{};
-  const fields=['crew','crewMembers','crew_members','crewIds','crew_ids','crewUnit','crew_unit','crewUnits','crew_units','pilots','crewMember'];
-  const out=new Set();
-  const add=value=>{
-    if(value==null)return;
-    if(Array.isArray(value)){value.forEach(add);return;}
-    if(typeof value==='object'){
-      const key=seigneurUsageKey(value);
-      if(key)out.add(key);
-      return;
-    }
-    const key=seigneurUsageKey(value);
-    if(key)out.add(key);
-  };
-  for(const field of fields)add(raw[field]);
-  return [...out];
-}
-function seigneurShipUsageMap(season){
-  const source=season?.ships||season?.shipUsage||season?.ship_usage||{};
-  const out=new Map();
-  if(Array.isArray(source)){
-    for(const entry of source){
-      const key=seigneurUsageKey(entry);
-      const uses=seigneurUsageCount(entry);
-      if(key&&uses!==null)out.set(key,uses);
-    }
-  }else if(source&&typeof source==='object'){
-    for(const [id,record] of Object.entries(source)){
-      const key=seigneurUsageKey(id),uses=seigneurUsageCount(record);
-      if(key&&uses!==null)out.set(key,uses);
-    }
-  }
-  // Accepte aussi une source par compositions de flottes : chaque vaisseau
-  // reçoit le nombre d'apparitions des compositions dans lesquelles il figure.
-  const fleets=season?.fleets;
-  if(Array.isArray(fleets)){
-    for(const fleet of fleets){
-      const uses=seigneurUsageCount(fleet);
-      const ships=fleet?.ships||fleet?.units||[];
-      if(uses===null||!Array.isArray(ships))continue;
-      for(const ship of ships){
-        const key=seigneurUsageKey(ship);
-        if(key)out.set(key,(out.get(key)||0)+uses);
-      }
-    }
-  }
-  return out;
-}
-function seigneurCharacterFleetUsage(character,season=seigneurLatestGacUsageSeason()){
-  if(!season)return {uses:null,known:false,shipCount:0,reason:'Saison GAC indisponible'};
-  const ships=Array.isArray(rosterShips)?rosterShips:[];
-  if(!ships.length)return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau dans le roster'};
-  const crewRows=ships.map(ship=>({ship,crew:seigneurShipCrewAliases(ship)}));
-  if(!crewRows.some(row=>row.crew.length))return {uses:null,known:false,shipCount:0,reason:'Correspondance pilotes/vaisseaux indisponible'};
-  const aliases=new Set([character?.baseId,character?.base_id,character?.characterId,character?.character_id,character?.id,character?.name].map(seigneurUsageKey).filter(Boolean));
-  const assigned=crewRows.filter(row=>row.crew.some(key=>aliases.has(key)));
-  if(!assigned.length)return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau associé'};
-  const usage=seigneurShipUsageMap(season);
-  let total=0;
-  for(const row of assigned){
-    const shipAliases=[row.ship?.baseId,row.ship?.base_id,row.ship?.shipId,row.ship?.ship_id,row.ship?.id,row.ship?.name];
-    const key=shipAliases.map(seigneurUsageKey).find(value=>value&&usage.has(value));
-    if(!key)return {uses:null,known:false,shipCount:assigned.length,reason:'Utilisation GAC du vaisseau indisponible'};
-    total+=usage.get(key);
-  }
-  return {uses:total,known:true,shipCount:assigned.length,reason:'Utilisation GAC des vaisseaux vérifiée'};
-}
-function seigneurDonorPriority(character,season=seigneurLatestGacUsageSeason()){
-  const sourceStatus=season?.sourceStatus||'unavailable';
-  const formatSeasons=season?.formatSeasons||{};
-  if(['stale','unavailable','awaiting-source-access'].includes(sourceStatus)){
-    return {known:false,uses:null,characterUses:null,fleetUses:null,fleetKnown:false,
-      shipCount:0,reason:sourceStatus==='stale'?'Données GAC périmées · collecte à actualiser':'Source GAC indisponible',
-      sourceStatus,formatSeasons};
-  }
-  const characterUses=seigneurCharacterGacUsage(character,season);
-  const fleet=seigneurCharacterFleetUsage(character,season);
-  // Les données terrestres suffisent à classer un donneur. L'absence de
-  // métadonnées pilote/vaisseau ne doit pas neutraliser tout le vivier.
-  // En revanche, une association pilote connue sans statistique de flotte
-  // reste bloquante pour ce pilote : on ne suppose jamais une utilisation nulle.
-  if(characterUses===null)return {
-    known:false,uses:null,characterUses,fleetUses:fleet.uses,fleetKnown:fleet.known,
-    shipCount:fleet.shipCount,reason:'Utilisation GAC terrestre indisponible',
-    sourceStatus,formatSeasons
-  };
-  if(!fleet.known&&Number(fleet.shipCount)>0)return {
-    known:false,uses:null,characterUses,fleetUses:null,fleetKnown:false,
-    shipCount:fleet.shipCount,
-    reason:'Pilote identifié · utilisation GAC du vaisseau indisponible',
-    sourceStatus,formatSeasons
-  };
-  if(!fleet.known)return {
-    known:true,uses:characterUses,characterUses,fleetUses:null,fleetKnown:false,
-    shipCount:fleet.shipCount,
-    reason:'Classement terrestre uniquement · associations pilotes-vaisseaux indisponibles',
-    sourceStatus,formatSeasons
-  };
-  return {
-    known:true,uses:characterUses+fleet.uses,characterUses,fleetUses:fleet.uses,fleetKnown:true,
-    shipCount:fleet.shipCount,reason:'Classement GAC terrestre + flotte',
-    sourceStatus,formatSeasons
-  };
-}
-function forgeSourceStatusAllowed(status){
-  if($('optimizerAllRoster')?.checked===true)return true;
-  const enabled=(id,fallback)=>$(id)?$(id).checked:fallback;
-  if(status==='INCOMPLETS')return enabled('optimizerIncomplete',true);
-  if(status==='TRÈS FAIBLES')return enabled('optimizerVeryLow',true);
-  if(status==='FAIBLES')return enabled('optimizerLow',true);
-  if(status==='MOYENS')return enabled('optimizerMedium',false);
-  return false;
-}
-function forgeScopedMods(){
-  const all=$('optimizerAllRoster')?.checked===true;
-  const allowed=[];
-  for(const c of rosterCharacters){
-    if(isGalacticLegendCharacter(c))continue;
-    const st=v176ModStatus(getCharacterMods(c)).status;
-    if(!forgeSourceStatusAllowed(st))continue;
-    for(const m of getCharacterMods(c)) allowed.push(m);
-  }
-  return allowed;
-}
-
-function forgeKyberSetDistribution(profile){
-  const raw=profile?.sets;
-  const entries=Array.isArray(raw)
-    ? raw.map(item=>[item?.name,item?.weight])
-    : raw&&typeof raw==='object' ? Object.entries(raw) : [];
-  return entries.map(([name,weight])=>({name:String(name||'').trim(),key:compactKey(name),weight:Number(weight||0)}))
-    .filter(item=>item.name&&item.key&&item.weight>0);
-}
-function forgeKyberSetRules(profile){
-  // Seules les compositions explicites de six mods sont des plans exacts.
-  // `sets` contient une distribution de sets observés, pas une composition.
-  const entries=Array.isArray(profile?.specific_sets)?profile.specific_sets:[];
-  const rules=[];
-  for(const entry of entries){
-    const raw=entry?.counts;
-    if(!raw||typeof raw!=='object')continue;
-    const counts={};
-    for(const [name,value] of Object.entries(raw)){
-      const count=Number(value),key=String(name||'').trim();
-      if(key&&Number.isInteger(count)&&count>0)counts[key]=count;
-    }
-    if(Object.values(counts).reduce((sum,n)=>sum+n,0)!==6)continue;
-    rules.push({label:String(entry.name||Object.entries(counts).map(([name,n])=>`${name} ×${n}`).join(' + ')),counts,weight:Number(entry.weight||0)});
-  }
-  return rules;
-}
-function forgeModSetConformity(mod,profile){
-  const engine=window.HolocronModEngine;
-  const actual=engine.canonicalSetFromMod(mod);
-  const distribution=forgeKyberSetDistribution(profile);
-  const rules=forgeKyberSetRules(profile);
-  if(!actual||(!distribution.length&&!rules.length))return {ok:null,reason:'Référence de set indisponible'};
-  const observed=distribution.some(item=>engine.canonicalSet(item.name)===actual) ||
-    rules.some(rule=>Object.keys(rule.counts).some(name=>engine.canonicalSet(name)===actual));
-  const weight=distribution.find(item=>engine.canonicalSet(item.name)===actual)?.weight||0;
-  return {ok:observed,weight,reason:observed?'Set observé dans les données Kyber':'Set absent de la référence Kyber'};
-}
-function forgeModPrimaryConformity(mod,profile){
-  const slot=optimizerSlotKey(mod?.slot);
-  const expected=optimizerPrimaryReference(profile,slot);
-  const entries=Object.entries(expected).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0));
-  if(!entries.length)return {ok:null,expected:'Référence indisponible'};
-  const canonical=value=>window.HolocronModEngine.canonicalStatKey(value).replace(/PERCENT$/,'');
-  const actual=canonical(mod?.primary_stat||'');
-  const match=entries.find(([name])=>canonical(name)===actual);
-  return {ok:!!match,expected:entries[0]?.[0]||'—',expectedPct:match?Number(match[1]||0):Number(entries[0]?.[1]||0)};
-}
-function forgeCharacterAudit(character,profile){
-  const equipped=getCharacterMods(character);
-  const rules=forgeKyberSetRules(profile);
-  const primaryBySlot={};
-  for(const slot of ['Square','Arrow','Diamond','Triangle','Circle','Cross']){
-    const entries=Object.entries(optimizerPrimaryReference(profile,slot)).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0));
-    primaryBySlot[slot]=entries;
-  }
-  const issues=equipped.map((m,index)=>{
-    const set=forgeModSetConformity(m,profile), primary=forgeModPrimaryConformity(m,profile);
-    return {...m,_equippedIndex:index,_set:set,_primary:primary,_unknown:set.ok===null||primary.ok===null,_mismatch:set.ok===false||primary.ok===false};
-  });
-  return {equipped,issues,primaryBySlot,setRules:rules};
-}
-function forgeAllSourceMods(targetCharacter=null){
-  const out=[],ownerResolver=buildRosterOwnerResolver(rosterCharacters);
-  const season=seigneurLatestGacUsageSeason();
-  const targetKey=targetCharacter?characterKey(targetCharacter):'';
-  const priorities=new Map((rosterCharacters||[]).map(character=>[
-    characterKey(character),seigneurDonorPriority(character,season)
-  ]));
-  for(const raw of mods){
-    const m=normalizeModForDisplay(raw),ownerKey=resolveModOwnerKey(m,ownerResolver);
-    const owner=rosterCharacters.find(c=>characterKey(c)===ownerKey);
-    if(owner&&isGalacticLegendCharacter(owner)&&ownerKey!==targetKey)continue;
-    const st=owner?v176ModStatus(getCharacterMods(owner)).status:'INVENTAIRE';
-    const isTarget=!!owner&&ownerKey===targetKey;
-    if(owner&&!isTarget&&!forgeSourceStatusAllowed(st))continue;
-    const ownerLabel=owner?.name||m.character||'Libre';
-    const isFree=!owner&&!String(m.character||'').trim();
-    const priority=owner?priorities.get(ownerKey):isFree?{known:true,uses:0,characterUses:0,fleetUses:0,shipCount:0,reason:'Mod libre'}:{known:false,uses:null,characterUses:null,fleetUses:null,shipCount:0,reason:'Propriétaire non résolu'};
-    out.push({...m,_sourceStatus:st,_sourceOwner:ownerLabel,_sourceOwnerKey:ownerKey,
-      _sourcePriorityKnown:isTarget||priority?.known===true,_sourceUsage:isTarget?0:(priority?.uses??Number.POSITIVE_INFINITY),
-      _sourceCharacterUses:isTarget?0:(priority?.characterUses??null),_sourceFleetUses:isTarget?0:(priority?.fleetUses??null),
-      _sourceFleetKnown:isTarget||priority?.fleetKnown===true,_sourceFormatSeasons:priority?.formatSeasons||{},
-      _sourceEvidenceType:season?.evidenceType||'unit-usage',_sourceDataStatus:priority?.sourceStatus||season?.sourceStatus||'unavailable',
-      _sourceShipCount:priority?.shipCount??0,_sourcePriorityReason:isTarget?'Mod déjà équipé sur la cible':priority?.reason||'Usage GAC inconnue',
-      _source_usage:isTarget?0:(priority?.uses??Number.POSITIVE_INFINITY),
-      _source_character_uses:isTarget?0:(priority?.characterUses??null),_source_fleet_uses:isTarget?0:(priority?.fleetUses??null)});
-  }
-  return out;
-}
-function forgeSourceAllowedForSearch(m,targetCharacter=null){
-  const targetKey=targetCharacter?characterKey(targetCharacter):'';
-  if(targetKey&&m?._sourceOwnerKey===targetKey)return true;
-  // Un mod libre est disponible. Un mod équipé n'est récupérable que si les
-  // usages terrestre ET flotte du donneur sont connus : aucune protection
-  // implicite ne peut être levée sur une donnée manquante.
-  const isFree=!m?._sourceOwnerKey&&(!m?._sourceOwner||m._sourceOwner==='Libre');
-  return isFree||m?._sourcePriorityKnown===true;
-}
-function forgeScopedModsForCharacter(character){
-  return forgeAllSourceMods(character).filter(mod=>forgeSourceAllowedForSearch(mod,character));
-}
-function forgeDonorSummary(character){
-  const scoped=forgeScopedModsForCharacter(character),groups=new Map(),targetKey=characterKey(character);
-  for(const mod of scoped){
-    const key=mod._sourceOwnerKey||(mod._sourceOwner==='Libre'?'INVENTORY':'UNRESOLVED:'+compactKey(mod._sourceOwner));
-    if(!groups.has(key))groups.set(key,{key,name:mod._sourceOwner||'Inventaire libre',mods:0,
-      uses:mod._sourceUsage??0,characterUses:mod._sourceCharacterUses??0,
-      fleetUses:mod._sourceFleetUses??null,fleetKnown:mod._sourceFleetKnown===true,
-      formatSeasons:mod._sourceFormatSeasons||{},sourceStatus:mod._sourceDataStatus||'unavailable',
-      evidenceType:mod._sourceEvidenceType||'unit-usage',free:key==='INVENTORY'});
-    groups.get(key).mods++;
-  }
-  const donors=[...groups.values()].filter(x=>x.free||x.key!==targetKey).sort((a,b)=>a.uses-b.uses||b.mods-a.mods);
-  const usage=window.__SWGOH_GAC_USAGE__||{};
-  const season=seigneurLatestGacUsageSeason();
-  return {mods:scoped,donors,freeMods:donors.find(x=>x.free)?.mods||0,
-    source:usage.source||season?.source||'Données GAC',
-    sourceStatus:usage.sourceStatus||season?.sourceStatus||'unavailable',
-    evidenceType:usage.evidenceType||season?.evidenceType||'unit-usage',
-    formatSeasons:season?.formatSeasons||{}};
-}
-function renderSeigneurTargetAudit(character,profile){
-  const audit=forgeCharacterAudit(character,profile);
-  const mismatches=audit.issues.filter(x=>x._mismatch).length;
-  const unknown=audit.issues.filter(x=>x._unknown).length;
-  const cards=audit.issues.map(m=>`<div class="forge-current-mod ${m._mismatch?'is-mismatch':m._unknown?'is-unknown':'is-match'}"><span>${modIconHtml(m,'48')}</span><b>${esc(m.slot||'—')}</b><small>${m._mismatch?'ÉCART':m._unknown?'À VÉRIFIER':'CONFORME'}</small><em>${esc(m.set_name||'—')}</em></div>`).join('');
-  $('forgeCharacterAudit').innerHTML=`<div class="forge-audit-character"><div class="forge-audit-character-portrait">${essentialPortraitHtml(character)}</div><div><span>PERSONNAGE CIBLE</span><strong>${esc(character?.name||'Personnage')}</strong><small>Optimisation simultanée des six emplacements</small></div></div><div class="forge-audit-summary"><div><span>MODS ÉQUIPÉS</span><b>${audit.equipped.length}/6</b></div><div><span>ÉCARTS KYBER</span><b>${mismatches}</b></div><div><span>À VÉRIFIER</span><b>${unknown}</b></div><div><span>RÉFÉRENCE</span><b>${forgeKyberSetDistribution(profile).length?'CHARGÉE':'PARTIELLE'}</b></div></div><div class="forge-current-mods">${cards}</div><div class="forge-mismatch-list"><div class="forge-audit-empty">Le moteur va rechercher une configuration complète de six mods. Les sources sont classées selon l'utilisation GAC terrestre et celle des vaisseaux associés aux pilotes. La qualité actuelle des mods ne détermine pas la disponibilité du donneur.</div></div>`;
-}
-function renderSeigneurDonorPanel(character){
-  const summary=forgeDonorSummary(character);
-  const donors=summary.donors.filter(x=>!x.free).slice(0,12);
-  const donorRows=donors.map((d,i)=>`<div class="forge-ref-row"><span>${String(i+1).padStart(2,'0')}</span><b>${esc(d.name)}</b><em>${num(d.mods)} mods · GAC ${num(d.characterUses)} terrestre · ${d.fleetKnown?num(d.fleetUses)+' flotte':'flotte non mesurée'}</em></div>`).join('');
-  const known=donors.length;
-  const seasonsLabel=Object.entries(summary.formatSeasons||{}).map(([format,season])=>format+' S'+season).join(' · ')||'saison non identifiée';
-  const evidenceLabel=summary.evidenceType==='defense-composition'?'Défense uniquement':'Unités GAC';
-  const completenessLabel=summary.sourceStatus==='partial'?' · catalogue partiel':'';
-  $('forgeSearchPanel').innerHTML=`<div class="forge-reference-panel is-live"><div class="forge-reference-head"><div class="forge-reference-identity"><span class="forge-kicker">ARSENAL GLOBAL</span><strong>${summary.mods.length} mods candidats</strong><small>${known} donneurs classés par usage terrestre · ${summary.freeMods} mods libres · ${evidenceLabel}${completenessLabel} · ${seasonsLabel}</small></div><div class="forge-reference-status"><i></i><span>CLASSEMENT GAC ACTIF</span></div></div><div class="forge-reference-columns"><section class="forge-reference-column"><header><span>DONNEURS PRIORITAIRES</span><small>moins utilisés d'abord</small></header>${donorRows||'<div class="forge-ref-empty">Aucun donneur classable : vérifie les observations GAC terrestres et les filtres de statut des sources.</div>'}</section><section class="forge-reference-column"><header><span>RÈGLES DE PROTECTION</span><small>appliquées au vivier</small></header><div class="forge-ref-row"><span>01</span><b>Usage terrestre</b><em>personnages</em></div><div class="forge-ref-row"><span>02</span><b>Usage flotte</b><em>pilotes protégés</em></div><div class="forge-ref-row"><span>03</span><b>GL</b><em>exclues comme donneurs</em></div><div class="forge-ref-row"><span>04</span><b>Données absentes</b><em>donneur non retenu</em></div></section></div></div>`;
-}
-function forgeSearchSourceSummary(){
-  if($('optimizerAllRoster')?.checked===true)return 'TOUT LE ROSTER · GL EXCLUES';
-  const a=[];
-  if($('optimizerIncomplete')?.checked!==false)a.push('INCOMPLETS');
-  if($('optimizerVeryLow')?.checked!==false)a.push('TRÈS FAIBLES');
-  if($('optimizerLow')?.checked!==false)a.push('FAIBLES');
-  if($('optimizerMedium')?.checked===true)a.push('MOYENS');
-  return a.join(' + ')||'AUCUNE SOURCE';
-}
-function forgeSecondaryStats(m){
-  const normalized=window.HolocronModEngine.normalizeMod(m);
-  return (normalized?.secondaries||[])
-    .filter(stat=>stat.complete&&stat.key&&stat.key!=='speed')
-    .map(stat=>({stat:stat.name+(stat.unit==='percentagePoints'?' %':''),value:Number(stat.value),key:window.HolocronModEngine.canonicalStatKey({name:stat.name,unit:stat.unit})}));
-}
-function forgeHasSecondary(m,wanted){
-  const target=window.HolocronModEngine.canonicalStatKey(wanted); if(!target)return false;
-  return forgeSecondaryStats(m).some(x=>x.key===target || x.key.includes(target) || target.includes(x.key));
-}
-function forgeSlotCompatible(m,slot){return optimizerSlotKey(m?.slot)===optimizerSlotKey(slot);}
-function forgeSetCompatible(m,profile){
-  return forgeModSetConformity(m,profile).ok===true;
-}
-function forgePrimaryCompatible(m,profile){return forgeModPrimaryConformity(m,profile).ok===true;}
-function forgeCandidateScore(m,profile,secA,secB){
-  const a=forgeHasSecondary(m,secA), b=forgeHasSecondary(m,secB);
-  const speed=modTotalSpeed(m);
-  const set=forgeSetCompatible(m,profile), primary=forgePrimaryCompatible(m,profile);
-  let contribution=0;
-  const wantedA=window.HolocronModEngine.canonicalStatKey(secA),wantedB=window.HolocronModEngine.canonicalStatKey(secB);
-  for(const x of forgeSecondaryStats(m)) if(x.key===wantedA||x.key===wantedB) contribution+=Number(x.value||0);
-  return {both:a&&b,one:(a||b),a,b,speed,set,primary,contribution};
-}
-function forgeProjectedModSpeed(character,profile,modList){
-  const list=Array.isArray(modList)?modList:[];
-  const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
-    character?.raw?.baseStats||character?.data?.base_stats||optimizerProfileForCharacter(character)?.base_stats||{};
-  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
-  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list);
-  return {
-    complete:projection.complete===true&&projection.total!=null,
-    total:projection.complete===true&&projection.total!=null?projection.total:null,
-    modSpeed:projection.modSpeed,
-    setBonus:projection.setBonus,
-    hasFourPieceSpeedSet:projection.hasFourPieceSpeedSet,
-    baseSpeed
-  };
-}
-function forgeCandidatePreservesSpeed(character,profile,equipped,current,candidate){
-  if(!current)return true;
-  const currentId=String(current.game_id||current.id||''),currentSlot=optimizerSlotKey(current.slot);
-  const after=(Array.isArray(equipped)?equipped:[]).filter(m=>currentId?String(m.game_id||m.id||'')!==currentId:optimizerSlotKey(m.slot)!==currentSlot);
-  after.push(candidate);
-  const beforeProjection=forgeProjectedModSpeed(character,profile,equipped),afterProjection=forgeProjectedModSpeed(character,profile,after);
-  if(!beforeProjection.complete||!afterProjection.complete)return false;
-  if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet)return false;
-  return afterProjection.total+1e-9>=beforeProjection.total;
-}
-function forgeSearchCandidates(character,profile,slot,secA,secB){
-  const equipped=getCharacterMods(character),current=equipped.find(m=>forgeSlotCompatible(m,slot));
-  const source=forgeAllSourceMods(character).filter(m=>forgeSourceAllowedForSearch(m,character)&&forgeSlotCompatible(m,slot));
-  const candidates=source.filter(m=>{
-    if(String(m.game_id||m.id||'')===String(current?.game_id||current?.id||''))return false;
-    return forgeCandidatePreservesSpeed(character,profile,equipped,current,m);
-  });
-  const ranked=candidates.map(m=>({...m,_rank:forgeCandidateScore(m,profile,secA,secB)})).sort((x,y)=>{
-    if(Number(y._rank.both)-Number(x._rank.both))return Number(y._rank.both)-Number(x._rank.both);
-    if(Number(y._rank.one)-Number(x._rank.one))return Number(y._rank.one)-Number(x._rank.one);
-    if(Number(y._rank.primary)-Number(x._rank.primary))return Number(y._rank.primary)-Number(x._rank.primary);
-    if(Number(y._rank.set)-Number(x._rank.set))return Number(y._rank.set)-Number(x._rank.set);
-    if(Number(x._sourceUsage??Number.POSITIVE_INFINITY)!==Number(y._sourceUsage??Number.POSITIVE_INFINITY))return Number(x._sourceUsage??Number.POSITIVE_INFINITY)-Number(y._sourceUsage??Number.POSITIVE_INFINITY);
-    if(Number(y._rank.contribution)-Number(x._rank.contribution))return Number(y._rank.contribution)-Number(x._rank.contribution);
-    return Number(y._rank.speed)-Number(x._rank.speed);
-  });
-  const both=ranked.filter(x=>x._rank.both).slice(0,5);
-  const result=both.length?both:ranked.filter(x=>x._rank.one).slice(0,5);
-  return {current,sourceCount:source.length,candidates:result,usedBoth:both.length>0};
-}
-function forgeSecondaryOptions(profile){
-  const rec=optimizerRecommendationSummary(profile); const names=[];
-  for(const x of rec.secondaries||[]){const n=String(x.name||'').trim();if(n&&compactKey(n)!=='SPEED'&&!names.includes(n))names.push(n);}
-  ['Offense %','Health %','Protection %','Critical Chance %','Defense %','Potency','Tenacity','Critical Damage'].forEach(n=>{if(!names.includes(n))names.push(n);});
-  return names;
-}
-function renderForgeCharacterPanel(character,profile){
-  const audit=forgeCharacterAudit(character,profile);
-  const mismatches=audit.issues.filter(x=>x._mismatch);
-  const secondaries=forgeSecondaryOptions(profile);
-  const first=secondaries[0]||'Offense %', second=secondaries.find(x=>x!==first)||'Health %';
-  const characterPortrait=essentialPortraitHtml(character);
-  const currentSlots=audit.issues.map(m=>`<button type="button" class="forge-current-mod ${m._mismatch?'is-mismatch':m._unknown?'is-unknown':'is-match'}" data-forge-slot="${esc(m.slot)}"><span>${modIconHtml(m,'48')}</span><b>${esc(m.slot||'—')}</b><small>${m._mismatch?'ÉCART':m._unknown?'À VÉRIFIER':'CONFORME'}</small><em>${esc(m.set_name||'—')}</em></button>`).join('');
-  const unknownCount=audit.issues.filter(x=>x._unknown).length;
-  const mismatchHtml=mismatches.length
-    ? `<div class="forge-audit-empty">${mismatches.length} emplacement(s) présentent un écart.${unknownCount?` ${unknownCount} emplacement(s) restent aussi à vérifier faute de référence complète.`:''} Sélectionne l’un des 6 mods ci-dessus pour cibler son slot, puis lance explicitement la recherche.</div>`
-    : unknownCount
-      ? `<div class="forge-audit-empty">Référence Kyber incomplète : ${unknownCount} emplacement(s) ne peuvent pas être déclarés conformes. Leur statut reste « à vérifier ».</div>`
-      : `<div class="forge-audit-empty">Les mods équipés sont conformes aux critères disponibles. Aucun remplacement prioritaire détecté.</div>`;
-  $('forgeCharacterAudit').innerHTML=`<div class="forge-audit-character"><div class="forge-audit-character-portrait">${characterPortrait}</div><div><span>PERSONNAGE ANALYSÉ</span><strong>${esc(character?.name||'Personnage')}</strong><small>Référence Kyber vérifiée selon les données disponibles.</small></div></div><div class="forge-audit-summary"><div><span>MODS DU PERSONNAGE</span><b>${audit.equipped.length}/6</b></div><div><span>ÉCARTS DÉTECTÉS</span><b>${mismatches.length}</b></div><div><span>À VÉRIFIER</span><b>${unknownCount}</b></div><div><span>SETS KYBER</span><b>${forgeKyberSetDistribution(profile).length?'DISTRIBUTION':audit.setRules.length?'COMPOSITIONS':'INDISPONIBLE'}</b></div></div><div class="forge-current-mods">${currentSlots}</div><div class="forge-mismatch-list">${mismatchHtml}</div>`;
-  const selects=(id,val)=>`<select id="${id}">${secondaries.map(n=>`<option value="${esc(n)}" ${n===val?'selected':''}>${esc(n)}</option>`).join('')}</select>`;
-  $('forgeSearchPanel').innerHTML=`<div class="forge-search-grid"><label>MOD À REMPLACER<select id="forgeTargetSlot">${audit.issues.map(m=>`<option value="${esc(m.slot)}" ${m._mismatch?'selected':''}>${esc(m.slot)} · ${m._mismatch?'ÉCART':m._unknown?'À VÉRIFIER':'conforme'}</option>`).join('')}</select></label><label>SECONDAIRE 1 ${selects('forgeSecondaryA',first)}</label><label>SECONDAIRE 2 ${selects('forgeSecondaryB',second)}</label><button type="button" id="forgeSearchBtn" class="primary">RECHERCHER 5 OPTIONS</button></div><div class="forge-search-note">La vitesse n'est pas une secondaire recherchée. Elle sert uniquement à départager les candidats.</div><div id="forgeSearchResults"></div>`;
-  $('forgeSearchBtn')?.addEventListener('click',()=>renderForgeSearchResults(character,profile));
-  document.querySelectorAll('[data-forge-slot]').forEach(btn=>btn.addEventListener('click',()=>{
-    const slot=btn.dataset.forgeSlot;
-    const target=$('forgeTargetSlot');
-    if(target)target.value=slot;
-    document.querySelectorAll('.forge-current-mod').forEach(card=>card.classList.toggle('is-selected',card===btn));
-    const searchButton=$('forgeSearchBtn');
-    if(searchButton)searchButton.textContent='RECHERCHER CE SLOT';
-    const results=$('forgeSearchResults');
-    if(results)results.innerHTML='<div class="forge-audit-empty">Slot '+esc(slot)+' sélectionné. La recherche ne démarre qu’après validation du bouton.</div>';
-  }));
-}
-function forgeModDeltaMarkup(current,candidate,targetCharacterName){
-  if(!current||!candidate)return '<div class="forge-delta-empty">Comparaison indisponible.</div>';
-  const speedFrom=num(modTotalSpeed(current),0), speedTo=num(modTotalSpeed(candidate),0), speedDelta=speedTo-speedFrom;
-  const signed=(v)=>`${v>0?'+':''}${num(v,1)}`;
-  const primaryValue=(m)=>m.primary_value==null?'':` · ${num(m.primary_value,1)}`;
-  const primaryChanged=compactKey(current.primary_stat)!==compactKey(candidate.primary_stat)||Number(current.primary_value||0)!==Number(candidate.primary_value||0);
-  const setChanged=compactKey(current.set_name)!==compactKey(candidate.set_name);
-  const currentStats=new Map(), candidateStats=new Map();
-  const readStats=(m,map)=>{
-    for(let i=1;i<=4;i++){
-      const name=String(m?.[`secondary_${i}_stat`]||'').trim();
-      if(!name)continue;
-      const key=compactKey(name);
-      map.set(key,{name,value:Number(m?.[`secondary_${i}_value`]||0)});
-    }
-  };
-  readStats(current,currentStats); readStats(candidate,candidateStats);
-  const keys=new Set([...currentStats.keys(),...candidateStats.keys()]);
-  const rows=[...keys].map(key=>{
-    const from=currentStats.get(key),to=candidateStats.get(key);
-    return {name:(to||from).name,from:from?.value??null,to:to?.value??null,delta:(to?.value??0)-(from?.value??0)};
-  }).filter(x=>x.from===null||x.to===null||Math.abs(x.delta)>0.00001)
-   .sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
-  const secondaryRows=rows.length?rows.map(x=>{
-    const from=x.from===null?'—':num(x.from,1),to=x.to===null?'—':num(x.to,1);
-    const tone=x.delta>0?'gain':x.delta<0?'loss':'neutral';
-    const delta=x.from===null?'NOUVEAU':x.to===null?'RETIRÉ':signed(x.delta);
-    return `<div class="forge-delta-stat ${tone}"><span>${esc(x.name)}</span><b>${from} → ${to}</b><em>${delta}</em></div>`;
-  }).join(''):'<div class="forge-delta-stat neutral"><span>Secondaires</span><b>Identiques</b><em>0</em></div>';
-  const targetName=String(targetCharacterName||'personnage ciblé');
-  const donorName=String(candidate._sourceOwner||candidate.character||'Inventaire libre');
-  const donorSpeed=num(modTotalSpeed(candidate),0);
-  return `<section class="forge-delta">
-    <div class="forge-delta-head"><span>IMPACT DU TRANSFERT</span><small>MOD ACTUEL → MOD PROPOSÉ</small></div>
-    <div class="forge-delta-party forge-delta-target"><span>PERSONNAGE CIBLÉ · ${esc(targetName)}</span><b>Son mod actuel : ${speedFrom} vitesse → mod reçu : ${speedTo} vitesse</b><strong class="${speedDelta>0?'gain':speedDelta<0?'loss':'neutral'}">${signed(speedDelta)} vitesse portée par le mod</strong></div>
-    <div class="forge-delta-party forge-delta-donor"><span>PERSONNAGE DONNEUR · ${esc(donorName)}</span><b>Il cède le mod proposé</b><strong class="loss">${donorSpeed} vitesse portée par le mod cédé</strong></div>
-    <div class="forge-delta-explainer">Les écarts de primaires et secondaires ci-dessous décrivent le mod reçu par le personnage ciblé. Le donneur perd le mod proposé ; son bilan total dépend aussi des bonus de set et d’un éventuel mod de remplacement.</div>
-    <div class="forge-delta-speed"><div><span>VITESSE DU MOD DU PERSONNAGE CIBLÉ</span><b>${speedFrom} → ${speedTo}</b></div><strong class="${speedDelta>0?'gain':speedDelta<0?'loss':'neutral'}">${signed(speedDelta)} vitesse</strong></div>
-    <div class="forge-delta-changes">
-      <div class="forge-delta-change"><span>SET</span><b>${esc(current.set_name||'—')} → ${esc(candidate.set_name||'—')}</b><em>${setChanged?'modifié':'inchangé'}</em></div>
-      <div class="forge-delta-change"><span>PRIMAIRE</span><b>${esc(current.primary_stat||'—')}${esc(primaryValue(current))} → ${esc(candidate.primary_stat||'—')}${esc(primaryValue(candidate))}</b><em>${primaryChanged?'modifiée':'inchangée'}</em></div>
-    </div>
-    <div class="forge-delta-subtitle">SECONDAIRES · VALEUR ACTUELLE → PROPOSÉE · ÉCART</div>
-    <div class="forge-delta-stats">${secondaryRows}</div>
-    <small class="forge-delta-note">Comparaison du mod seul. Les bonus d’ensemble et les autres mods du personnage ne sont pas additionnés ici.</small>
-  </section>`;
-}
-
-function forgeSourcePortrait(ownerName){
-  const owner=rosterCharacters.find(c=>compactKey(c?.name||c?.character||c?.baseId)===compactKey(ownerName||''));
-  return owner?essentialPortraitHtml(owner):essentialPortraitHtml({name:ownerName||'?' });
-}
-function renderForgeSearchResults(character,profile){
-  const slot=$('forgeTargetSlot')?.value||''; const a=$('forgeSecondaryA')?.value||''; const b=$('forgeSecondaryB')?.value||'';
-  const box=$('forgeSearchResults'); if(!box)return;
-  if(!a||!b||compactKey(a)===compactKey(b)){box.innerHTML='<div class="forge-audit-empty">Choisis deux secondaires différentes. La vitesse est exclue de cette recherche.</div>';return;}
-  const result=forgeSearchCandidates(character,profile,slot,a,b);
-  // Seconde barrière au rendu : un candidat plus lent que le mod actuel
-  // ne doit jamais parvenir jusqu'à une carte de proposition.
-  const equipped=getCharacterMods(character);
-  const rows=result.candidates.filter(m=>forgeCandidatePreservesSpeed(character,profile,equipped,result.current,m));
-  if(!rows.length){
-    const noUsage=result.sourceCount===0;
-    box.innerHTML=`<div class="forge-no-result"><b>${noUsage?'DONNÉES GAC INSUFFISANTES POUR SÉCURISER LES DONNEURS':'AUCUN CANDIDAT SANS PERTE DE VITESSE'}</b><span>${noUsage?'Les usages GAC terrestres et les usages des vaisseaux ne sont pas tous disponibles ou reliés aux pilotes. Aucun mod équipé ne sera considéré récupérable tant que ces protections ne peuvent pas être vérifiées.':'Aucun mod du roster dont les usages GAC sont vérifiés ne respecte les secondaires recherchées tout en conservant la vitesse du personnage et ses bonus de set Speed.'}</span></div>`;return;
-  }
-  box.innerHTML=`<div class="forge-search-header"><div><span>ARSENAL DISPONIBLE</span><b>${result.sourceCount} mods · ${rows.length} choix affichés</b></div><strong>${result.usedBoth?'✓ DEUX SECONDAIRES':'→ UNE SECONDAIRE · MEILLEUR APPORT'}</strong></div><div class="forge-candidate-grid">${rows.map((m,i)=>{const r=m._rank;const secs=forgeSecondaryStats(m);const hit=secs.filter(x=>compactKey(x.stat)===compactKey(a)||compactKey(x.stat)===compactKey(b));return `<article class="forge-candidate ${r.both?'both':''}"><div class="forge-candidate-rank"><span>${String(i+1).padStart(2,'0')}</span><b>${r.both?'✓✓':'✓'}</b></div><div class="forge-candidate-icon">${modIconHtml(m,'58')}</div><div class="forge-candidate-main"><div class="forge-candidate-owner">${forgeSourcePortrait(m._sourceOwner)}<span>${esc(m._sourceOwner||'Libre')}</span></div><strong>${esc(m.slot)} · ${esc(m.set_name||'—')}</strong><small>${m._sourceOwner==='Libre'?'INVENTAIRE LIBRE':m._sourcePriorityKnown?`GAC ${num(m._sourceCharacterUses,0)} terrestre · ${num(m._sourceFleetUses,0)} flotte`:'USAGE GAC NON VÉRIFIÉ'}</small><div class="forge-candidate-primary"><span>PRIMAIRE</span><b>${esc(m.primary_stat||'—')}</b>${r.primary?'✓ KYBER':''}</div><div class="forge-candidate-seconds">${secs.map(x=>`<span class="${hit.some(h=>compactKey(h.stat)===compactKey(x.stat))?'hit':''}">${esc(x.stat)} <b>${num(x.value,1)}</b></span>`).join('')}</div></div>${forgeModDeltaMarkup(result.current,m,character?.name)}<div class="forge-candidate-speed"><span>VITESSE</span><b>${num(modTotalSpeed(m),0)}</b><small>${r.set?'SET KYBER':'SET différent'}</small></div></article>`;}).join('')}</div>`;
-}
-
-$('runOptimizer').addEventListener('click',async()=>{
-  $('optimizerError').textContent='';
-  const character=selectedCharacter();
-  if(!character){$('optimizerError').textContent='Sélectionnez un personnage.';return;}
-  $('runOptimizer').disabled=true;$('runOptimizer').textContent='CHARGEMENT PUIS OPTIMISATION…';
-  $('results').innerHTML='<div class="calculating">Préparation du moteur et du vivier GAC… L’optimisation démarre automatiquement, sans second clic.</div>';
-  try{
-    const profile=await ensureSelectedKyberProfile();
-    if(!profile || !kyberProfileValid(profile))throw new Error(`Référence Kyber indisponible pour « ${character.name||character.baseId} ».`);
-    renderSeigneurTargetAudit(character,profile);
-    const summary=forgeDonorSummary(character);
-    const scopedMods=summary.mods;
-    const donorModCount=scopedMods.filter(mod=>mod._sourceOwnerKey&&mod._sourceOwnerKey!==characterKey(character)).length;
-    if(donorModCount===0&&summary.freeMods===0)throw new Error('Aucun mod donneur vérifiable : la base GAC personnages/flottes est vide ou les associations pilotes-vaisseaux ne sont pas disponibles. Le moteur ne dépouillera pas un personnage sur une supposition.');
-    const slotCounts=Object.fromEntries(['Square','Arrow','Diamond','Triangle','Circle','Cross'].map(slot=>[slot,scopedMods.filter(m=>forgeSlotCompatible(m,slot)).length]));
-    const missing=Object.entries(slotCounts).filter(([,count])=>count===0).map(([slot])=>slot);
-    if(missing.length)throw new Error(`Recherche impossible : aucun mod candidat pour ${missing.join(', ')}. Les usages GAC terrestres/flottes ou les associations pilotes-vaisseaux sont incomplets. Aucun donneur non vérifié ne sera utilisé.`);
-    renderSeigneurDonorPanel(character);
-    $('results').innerHTML='<div class="calculating">Recherche des meilleures configurations complètes, avec conservation obligatoire de la vitesse actuelle…</div>';
-    const currentTargetMods=getCharacterMods(character);
-    const currentSpeed=forgeProjectedModSpeed(character,profile,currentTargetMods).total;
-    const builds=await runOptimizationInWorker(character,profile,5,180,{mode:'seigneur-six-mods',donor_priority:'gac-terrestrial-plus-fleet'},scopedMods,currentTargetMods);
-    if(!Array.isArray(builds)||!builds.length)throw new Error('Le moteur n’a retourné aucune configuration complète respectant la vitesse actuelle.');
-    const safeBuilds=builds.filter(row=>forgeBuildPreservesSpeed(character,profile,currentTargetMods,row?.build));
-    if(!safeBuilds.length)throw new Error('Contrôle final : les configurations reçues ne respectent pas la vitesse actuelle. Aucune proposition n’est affichée.');
-    renderResults(safeBuilds,profile);
-    log(`Seigneur Sith : ${safeBuilds.length} configurations sûres · vitesse cible maintenue à ${num(currentSpeed,1)} minimum.`);
-  }catch(e){
-    const message=String(e?.message||e);
-    $('optimizerError').textContent=message;
-    $('results').innerHTML=`<section class="forge-no-result"><b>ANALYSE SANS PROPOSITION</b><span>${esc(message)}</span><small>La vitesse actuelle du personnage reste la limite absolue. Aucun mod n’a été transféré ni proposé en perte de vitesse.</small></section>`;
-  }
-  finally{$('runOptimizer').disabled=false;$('runOptimizer').textContent='OPTIMISER LES 6 MODS';}
-});
-function optimizerStatLabel(key){
-  const labels={
-    Speed:'VITESSE',Health:'SANTÉ',Protection:'PROTECTION',
-    'Physical Damage':'DÉGÂTS PHYS.', 'Special Damage':'DÉGÂTS SPÉC.',
-    Potency:'PUISSANCE',Tenacity:'TÉNACITÉ',Armor:'ARMURE',Resistance:'RÉSISTANCE',
-    'Critical Damage':'DÉGÂTS CRIT.', 'Critical Chance':'CHANCE CRIT.',
-    'Special Critical Chance':'CRIT. SPÉC.', 'Physical Critical Chance':'CRIT. PHYS.',
-    'Armor Penetration':'PÉN. ARMURE','Resistance Penetration':'PÉN. RÉSIST.',
-    Accuracy:'PRÉCISION','Critical Avoidance':'ÉVITEMENT CRIT.',
-    'Dodge Chance':'ESQUIVE','Deflection Chance':'DÉVIATION','Mastery':'MAÎTRISE'
-  };
-  return labels[key]||String(key||'').replace(/_/g,' ').toUpperCase();
-}
-function optimizerStatValue(key,value){
-  if(typeof value!=='number') return esc(value);
-  if(['Potency','Tenacity','Critical Chance','Critical Avoidance','Critical Damage','Mastery'].includes(key)){
-    return num(value,3);
-  }
-  return num(value,1);
-}
-function optimizerModSecondaries(m){
-  const out=[];
-  for(let j=1;j<=4;j++){
-    const stat=m?.[`secondary_${j}_stat`];
-    if(!stat) continue;
-    const value=m?.[`secondary_${j}_value`];
-    out.push(displayModStat(stat,value));
-  }
-  return out;
-}
-function optimizerBuildReferenceAudit(build, profile){
-  const rec=optimizerRecommendationSummary(profile);
-  const topSet=rec.sets[0]?.label||'';
-  // Une distribution (Health 90 %, Offense 4 %) n'est pas un plan de six mods.
-  // On mesure seulement la présence de sets observés, sans inventer 6/6.
-  const hasSetReference=forgeKyberSetDistribution(profile).length>0||forgeKyberSetRules(profile).length>0;
-  const setHits=hasSetReference?build.filter(mod=>forgeModSetConformity(mod,profile).ok===true).length:0;
-  const primary=optimizerPrimaryConformity(build,profile);
-  const focus=rec.secondaries.map(x=>String(x.name||'').toLowerCase().replace(/[^a-z0-9%]/g,''));
-  let secondaryHits=0;
-  build.forEach(m=>{
-    for(let i=1;i<=4;i++){
-      const stat=String(m[`secondary_${i}_stat`]||'').toLowerCase().replace(/[^a-z0-9%]/g,'');
-      if(stat && focus.some(f=>stat===f || stat.includes(f) || f.includes(stat))){secondaryHits++;break;}
-    }
-  });
-  const secondaryTotal=build.length;
-  const setDistribution=forgeKyberSetDistribution(profile);
-  const maxSetWeight=Math.max(0,...setDistribution.map(item=>item.weight));
-  const setFitValues=build.map(mod=>{
-    const conformity=forgeModSetConformity(mod,profile);
-    if(conformity.ok!==true)return 0;
-    return maxSetWeight>0?Math.min(1,conformity.weight/maxSetWeight)*100:100;
-  });
-  const setPct=hasSetReference&&setFitValues.length?Math.round(setFitValues.reduce((sum,value)=>sum+value,0)/setFitValues.length):0;
-  const primaryPct=primary.known?Math.round((primary.hits/primary.known)*100):0;
-  const secondaryPct=secondaryTotal?Math.round((secondaryHits/secondaryTotal)*100):0;
-  const compliance=Math.round(setPct*.4+primaryPct*.4+secondaryPct*.2);
-  return {topSet,setHits,setPct,primaryHits:primary.hits,primaryKnown:primary.known,primaryPct,primaryDetails:primary.details,secondaryHits,secondaryTotal,secondaryPct,focusCount:focus.length,compliance};
-}
-function optimizerVerdictForBuild(audit, scope, index){
-  const gaps=[];
-  if(audit.setPct<100)gaps.push(`Fréquence des sets : ${audit.setPct}% du poids du set Kyber le plus utilisé en moyenne`);
-  if(audit.primaryKnown && audit.primaryPct<100)gaps.push(`Primaires : ${audit.primaryHits}/${audit.primaryKnown} conformes à Kyber`);
-  if(audit.secondaryTotal && audit.secondaryPct<70)gaps.push(`Secondaires : ${audit.secondaryHits}/${audit.secondaryTotal} mods portent un focus Kyber`);
-  const canBroaden=false;
-  if(canBroaden && audit.compliance<75) return {kind:'action',title:'Élargir le périmètre',text:'Le meilleur candidat reste éloigné de la doctrine Kyber dans le périmètre actuel. Active MOYENS pour donner à la Forge davantage de choix.'};
-  if(audit.compliance>=90) return {kind:'strong',title:'Configuration proche de la doctrine',text:'Le candidat respecte fortement la référence Kyber tout en restant dans l’arsenal disponible.'};
-  if(gaps.length) return {kind:'warn',title:'Compromis identifié',text:`La Forge retient ce candidat avec ${audit.compliance}% d’adéquation. ${gaps.slice(0,2).join(' · ')}.`};
-  return {kind:'neutral',title:`Candidat ${index+1} analysé`,text:'La configuration est évaluée par rapport aux sets, primaires et secondaires de référence Kyber.'};
-}
-
-function renderResults(data,profileOverride=null){
-  if(!data.length){$('results').textContent='Aucun build.';return;}
-  const character=selectedCharacter();
-  const profile=profileOverride||profileForCharacter(character);
-  const scope='DONNEURS FAIBLES / TRÈS FAIBLES / INCOMPLETS · PRIORITÉ GAC';
-  const rec=optimizerRecommendationSummary(profile);
-  const refSets=rec.sets.slice(0,3).map(x=>`${x.label}${x.weight!=null?' · '+(x.weight*100).toFixed(1)+' %':''}`).join(' · ')||'Référence Kyber non détaillée';
-  const refSecondaries=rec.secondaries.slice(0,4).map(x=>x.name).join(' · ')||'Secondaires Kyber non détaillées';
-  const warningCodes=[...new Set(data.flatMap(row=>Array.isArray(row.warnings)?row.warnings:[]))];
-  const warningMarkup=warningCodes.includes('gear_percent_unavailable')
-    ? '<div class="forge-result-warning"><strong>BONUS MULTIPLICATEURS EN % NON ÉVALUÉS</strong><span>Certains bonus % (Offense, Défense, Santé, Protection ou Vitesse) ont été écartés : le profil ne sépare pas les statistiques de base des secondaires des pièces d’équipement. Un profil G13 compatible est nécessaire pour calculer ces bonus sans approximation.</span></div>'
-    : warningCodes.includes('defense_percent_unavailable')
-      ? '<div class="forge-result-warning"><strong>DÉFENSE % NON ÉVALUÉE</strong><span>Les mods Défense % ont été écartés du calcul : le profil ne fournit pas la composante Armor/Resistance de base séparée de l’équipement secondaire.</span></div>'
-      : '';
-  $('results').innerHTML=`<div class="forge-results-intro forge-results-command">
-    <div class="forge-results-heading"><span class="forge-kicker">RÉSULTATS // SEIGNEUR SITH</span><strong>Configurations optimisées</strong><small>${esc(character?.name||'Personnage')} · recherche guidée par la référence Kyber et limitée à <b>${esc(scope)}</b>.</small></div>
-    <div class="forge-result-count"><b>${data.length}</b><span>BUILDS</span></div>
-  </div>
-  <div class="forge-result-reference-strip">
-    <div><span>RÉFÉRENCE KYBER</span><b>${esc(refSets)}</b></div>
-    <div><span>SECONDAIRES PRIORITAIRES</span><b>${esc(refSecondaries)}</b></div>
-    <div><span>SOURCE MODS</span><b>${esc(scope)} · GL EXCLUES</b></div>
-  </div>`+warningMarkup+data.map((r,i)=>{
-    const build=r.build||[];
-    const setCounts={};
-    build.forEach(m=>{const set=String(m.set_name||m.set||'').trim();if(set)setCounts[set]=(setCounts[set]||0)+1;});
-    const setSummary=Object.entries(setCounts).map(([set,n])=>`${set} ×${n}`).join(' · ')||'Sets non renseignés';
-    const audit=optimizerBuildReferenceAudit(build,profile);
-    const currentMods=getCharacterMods(character);
-    const beforeSpeed=forgeProjectedModSpeed(character,profile,currentMods);
-    const afterSpeed=forgeProjectedModSpeed(character,profile,build);
-    const beforeCharacterSpeed=beforeSpeed.baseSpeed+beforeSpeed.total;
-    const afterCharacterSpeed=afterSpeed.baseSpeed+afterSpeed.total;
-    const totalSpeedDelta=afterCharacterSpeed-beforeCharacterSpeed;
-    const signedSpeed=value=>`${value>0?'+':''}${num(value,1)}`;
-    const modComparisonLine=m=>{
-      if(!m)return 'Aucun mod équipé';
-      const primary=String(m.primary_stat||'Primaire inconnue');
-      const primaryValue=m.primary_value==null?'':` ${num(m.primary_value,1)}${primary.endsWith('%')?'%':''}`;
-      const secondaries=optimizerModSecondaries(m).slice(0,2).join(' · ');
-      return `${String(m.set_name||m.set||'Set inconnu')} · ${primary}${primaryValue} · ${num(modTotalSpeed(m),0)} Vitesse${secondaries?' · '+secondaries:''}`;
-    };
-    const currentBySlot=new Map(currentMods.map(m=>[optimizerSlotKey(m.slot),m]));
-    const slotComparisonMarkup=build.map(m=>{
-      const slot=optimizerSlotKey(m.slot)||String(m.slot||'Slot');
-      const previous=currentBySlot.get(slot);
-      const delta=previous?modTotalSpeed(m)-modTotalSpeed(previous):modTotalSpeed(m);
-      const deltaClass=delta>0?'gain':delta<0?'neutral':'same';
-      const donor=String(m._sourceOwner||m.character||'Inventaire libre');
-      return `<div class="forge-slot-compare">
-        <b class="forge-slot-compare-name">${esc(slot)}</b>
-        <div><small>ACTUEL</small><span>${esc(modComparisonLine(previous))}</span></div>
-        <div><small>PROPOSÉ · ${esc(donor)}</small><span>${esc(modComparisonLine(m))}</span></div>
-        <strong class="${deltaClass}">${previous?signedSpeed(delta):'NOUVEAU'} V</strong>
-      </div>`;
-    }).join('');
-    const speedComparisonMarkup=`<section class="forge-speed-comparison">
-      <div><span>VITESSE TOTALE ESTIMÉE</span><strong>${beforeSpeed.baseSpeed>0?`${num(beforeCharacterSpeed,1)} → ${num(afterCharacterSpeed,1)}`:'Base Speed indisponible'}</strong></div>
-      <b class="${totalSpeedDelta>=0?'gain':'loss'}">${signedSpeed(totalSpeedDelta)} V</b>
-      <small>Bonus du set Speed inclus · aucune baisse autorisée</small>
-    </section>
-    <section class="forge-slot-comparison">
-      <div class="forge-section-title"><span>COMPARAISON DES SIX SLOTS</span><small>Mod équipé → mod proposé · source du transfert</small></div>
-      <div class="forge-slot-compare-grid">${slotComparisonMarkup}</div>
-    </section>`;
-    const statsEntries=Object.entries(r.stats||{});
-    const featured=['Speed','Health','Protection','Physical Damage','Special Damage','Potency'].filter(k=>Object.prototype.hasOwnProperty.call(r.stats||{},k));
-    const featuredStats=featured.map(k=>`<div class="forge-stat featured"><span>${optimizerStatLabel(k)}</span><b>${optimizerStatValue(k,r.stats[k])}</b></div>`).join('');
-    const otherStats=statsEntries.filter(([k])=>!featured.includes(k)).map(([k,v])=>`<span class="forge-stat-pill"><b>${optimizerStatLabel(k)}</b><em>${optimizerStatValue(k,v)}</em></span>`).join('');
-    const score=typeof r.score==='number'?r.score.toFixed(0):'—';
-    const utility=typeof r.utility==='number'?r.utility.toFixed(3):'—';
-    const pareto=r.pareto_rank==='PARETO';
-    const compliance=audit.compliance;
-    const complianceLabel=compliance>=90?'FORTE':compliance>=75?'SOLIDE':compliance>=55?'PARTIELLE':'À AFFINER';
-    const verdict=optimizerVerdictForBuild(audit,scope,i);
-    const impactMarkup=forgeBuildGlobalImpactMarkup(forgeBuildGlobalImpact(character,profile,build));
-    return `<article class="result forge-result">
-      <header class="forge-result-head">
-        <div class="forge-rank"><span>CONFIGURATION</span><b>${i+1}</b></div>
-        <div class="forge-result-title"><strong>${i===0?'Configuration principale':'Configuration '+String(i+1).padStart(2,'0')}</strong><small>${esc(setSummary)}</small></div>
-        <div class="forge-score"><span>ADÉQUATION À LA RÉFÉRENCE</span><b>${compliance}%</b><small>${esc(complianceLabel)} · Kyber ${esc(score)}</small></div>
-      </header>
-      <div class="forge-build-meta forge-build-doctrine">
-        <div><span>DOCTRINE</span><strong>${audit.topSet?`Set le plus fréquent : ${esc(audit.topSet)}`:'Référence de set non détaillée'}</strong></div>
-        <div><span>PRIMAIRES</span><strong>${audit.primaryKnown?`${audit.primaryHits}/${audit.primaryKnown} conformes`:'Référence indisponible'}</strong></div>
-        <div><span>SECONDAIRES</span><strong>${audit.secondaryHits} slot${audit.secondaryHits>1?'s':''} avec focus Kyber</strong></div>
-      </div>
-      ${speedComparisonMarkup}
-      <section class="forge-reasoning-block">
-        <div class="forge-section-title"><span>VERDICT DE L’HOLOCRON</span><small>${pareto?'FRONT DE PARETO':'CANDIDAT RETENU'}</small></div>
-        <div class="forge-verdict-main ${verdict.kind}"><div class="forge-verdict-mark">${verdict.kind==='strong'?'✓':verdict.kind==='action'?'→':'!'}</div><div><strong>${esc(verdict.title)}</strong><p>${esc(verdict.text)}</p></div></div>
-        <div class="forge-verdict-list">
-          <span class="${audit.setPct===100?'ok':'warn'}"><b>${audit.setPct===100?'✓':'!'}</b> Sets observés : ${audit.setHits}/6 · fréquence moyenne ${audit.setPct}%</span>
-          <span class="${audit.primaryKnown&&audit.primaryHits===audit.primaryKnown?'ok':'warn'}"><b>${audit.primaryKnown&&audit.primaryHits===audit.primaryKnown?'✓':'!'}</b> Primaires : ${audit.primaryKnown?`${audit.primaryHits}/${audit.primaryKnown} conformes à la référence`:'données Kyber non disponibles'}</span>
-          <span class="${audit.secondaryHits?'ok':'warn'}"><b>${audit.secondaryHits?'✓':'!'}</b> Secondaires : ${audit.secondaryHits}/${audit.secondaryTotal} mods avec focus Kyber</span>
-          <span class="ok"><b>✓</b> Mods recherchés sur : ${esc(scope)}</span>
-        </div>
-      </section>
-      ${impactMarkup}
-      <section class="forge-stats-block">
-        <div class="forge-section-title"><span>ÉTAT APRÈS APPLICATION</span><small>6 mods · comparaison immédiate</small></div>
-        <div class="forge-featured-stats">${featuredStats}</div>
-        ${otherStats?`<div class="forge-all-stats">${otherStats}</div>`:''}
-      </section>
-      <section class="forge-mods-block">
-        <div class="forge-section-title"><span>ARSENAL DE LA CONFIGURATION</span><small>6 slots · détails complets</small></div>
-        <div class="forge-mod-grid">${build.map((m,mi)=>{
-          const primary=String(m.primary_stat||'?');
-          const primaryValue=m.primary_value!=null?` ${num(m.primary_value,1)}${String(primary).endsWith('%')?'':' '}`:'';
-          const secondaries=optimizerModSecondaries(m);
-          const owner=String(m.character||m.equippedTo||m.equipped_to||'').trim();
-          return `<article class="forge-mod-card">
-            <div class="forge-mod-top"><div class="forge-mod-icon">${modIconHtml(m,'52')}</div><div><span class="forge-slot-index">${mi+1}/6 · ${esc(m.slot||'?')}</span><strong>${esc(m.set_name||m.set||'SET INCONNU')}</strong></div></div>
-            <div class="forge-mod-primary"><span>PRIMAIRE</span><b>${esc(primary)}${esc(primaryValue)}</b></div>
-            <div class="forge-mod-secondaries"><span>SECONDAIRES</span>${secondaries.length?secondaries.map(x=>`<b>${esc(x)}</b>`).join(''):'<em>Aucune secondaire renseignée</em>'}</div>
-            ${owner?`<div class="forge-mod-owner"><span>ACTUELLEMENT</span><b>${esc(owner)}</b></div>`:''}
-          </article>`;
-        }).join('')}</div>
-      </section>
-    </article>`;
-  }).join('');
-}
-
+a,,,s,,,y,,,n,,,c,,, ,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,l,,,o,,,a,,,d,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,D,,,a,,,t,,,a,,,(,,,),,,{,,,
+,,, ,,, ,,,/,,,/,,, ,,,V,,,4,,,4,,,:,,, ,,,l,,,e,,,s,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,,s,,, ,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,n,,,e,,, ,,,d,,,o,,,i,,,v,,,e,,,n,,,t,,, ,,,p,,,l,,,u,,,s,,, ,,,ê,,,t,,,r,,,e,,, ,,,u,,,n,,,e,,, ,,,d,,,é,,,p,,,e,,,n,,,d,,,a,,,n,,,c,,,e,,, ,,,b,,,l,,,o,,,q,,,u,,,a,,,n,,,t,,,e,,,.,,,
+,,, ,,, ,,,/,,,/,,, ,,,L,,,e,,, ,,,W,,,o,,,r,,,k,,,e,,,r,,, ,,,s,,,a,,,i,,,t,,, ,,,m,,,a,,,i,,,n,,,t,,,e,,,n,,,a,,,n,,,t,,, ,,,c,,,h,,,a,,,r,,,g,,,e,,,r,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,_,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,.,,,j,,,s,,,o,,,n,,, ,,,l,,,u,,,i,,,-,,,m,,,ê,,,m,,,e,,,.,,,
+,,, ,,, ,,,/,,,/,,, ,,,O,,,n,,, ,,,t,,,e,,,n,,,t,,,e,,, ,,,l,,,e,,,s,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,s,,, ,,,l,,,o,,,c,,,a,,,l,,,e,,,s,,, ,,,p,,,o,,,u,,,r,,, ,,,l,,,',,,U,,,I,,,,,,, ,,,m,,,a,,,i,,,s,,, ,,,l,,,',,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,p,,,e,,,u,,,t,,, ,,,d,,,é,,,m,,,a,,,r,,,r,,,e,,,r,,, ,,,m,,,ê,,,m,,,e,,,
+,,, ,,, ,,,/,,,/,,, ,,,s,,,i,,, ,,,l,,,e,,, ,,,s,,,c,,,r,,,i,,,p,,,t,,, ,,,e,,,m,,,b,,,a,,,r,,,q,,,u,,,é,,, ,,,n,,,',,,a,,, ,,,p,,,a,,,s,,, ,,,é,,,t,,,é,,, ,,,p,,,u,,,b,,,l,,,i,,,é,,, ,,,p,,,a,,,r,,, ,,,G,,,i,,,t,,,H,,,u,,,b,,, ,,,P,,,a,,,g,,,e,,,s,,,.,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,=,,,[,,,
+,,, ,,, ,,, ,,, ,,,n,,,e,,,w,,, ,,,U,,,R,,,L,,,(,,,',,,.,,,/,,,p,,,y,,,t,,,h,,,o,,,n,,,/,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,_,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,.,,,j,,,s,,,o,,,n,,,',,,,,,,d,,,o,,,c,,,u,,,m,,,e,,,n,,,t,,,.,,,b,,,a,,,s,,,e,,,U,,,R,,,I,,,),,,.,,,h,,,r,,,e,,,f,,,,,,,
+,,, ,,, ,,,],,,;,,,
+,,, ,,, ,,,l,,,e,,,t,,, ,,,l,,,o,,,a,,,d,,,e,,,d,,,=,,,n,,,u,,,l,,,l,,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,r,,,l,,, ,,,o,,,f,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,t,,,r,,,y,,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,=,,,a,,,w,,,a,,,i,,,t,,, ,,,f,,,e,,,t,,,c,,,h,,,(,,,u,,,r,,,l,,,+,,,',,,?,,,v,,,=,,,3,,,.,,,4,,,.,,,4,,,-,,,c,,,a,,,c,,,h,,,e,,,-,,,s,,,y,,,n,,,c,,,',,,,,,,{,,,c,,,a,,,c,,,h,,,e,,,:,,,',,,f,,,o,,,r,,,c,,,e,,,-,,,c,,,a,,,c,,,h,,,e,,,',,,},,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,r,,,.,,,o,,,k,,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,j,,,s,,,o,,,n,,,=,,,a,,,w,,,a,,,i,,,t,,, ,,,r,,,.,,,j,,,s,,,o,,,n,,,(,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,j,,,s,,,o,,,n,,,&,,,&,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,j,,,s,,,o,,,n,,,=,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,,&,,,&,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,j,,,s,,,o,,,n,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,{,,,l,,,o,,,a,,,d,,,e,,,d,,,=,,,j,,,s,,,o,,,n,,,;,,,b,,,r,,,e,,,a,,,k,,,;,,,},,,
+,,, ,,, ,,, ,,, ,,,},,,c,,,a,,,t,,,c,,,h,,,(,,,e,,,),,,{,,,},,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,i,,,f,,,(,,,l,,,o,,,a,,,d,,,e,,,d,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,=,,,l,,,o,,,a,,,d,,,e,,,d,,,;,,,
+,,, ,,, ,,, ,,, ,,,l,,,o,,,g,,,(,,,`,,,P,,,r,,,o,,,f,,,i,,,l,,,s,,, ,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,U,,,I,,, ,,,c,,,h,,,a,,,r,,,g,,,é,,,s,,, ,,,d,,,e,,,p,,,u,,,i,,,s,,, ,,,l,,,a,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,, ,,,J,,,S,,,O,,,N,,, ,,,u,,,n,,,i,,,q,,,u,,,e,,, ,,,:,,, ,,,$,,,{,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,.,,,`,,,),,,;,,,
+,,, ,,, ,,,},,,e,,,l,,,s,,,e,,,{,,,
+,,, ,,, ,,, ,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,=,,,{,,,},,,;,,,
+,,, ,,, ,,, ,,, ,,,l,,,o,,,g,,,(,,,',,,P,,,r,,,o,,,f,,,i,,,l,,,s,,, ,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,U,,,I,,, ,,,n,,,o,,,n,,, ,,,c,,,h,,,a,,,r,,,g,,,é,,,s,,, ,,,:,,, ,,,l,,,e,,, ,,,W,,,o,,,r,,,k,,,e,,,r,,, ,,,t,,,e,,,n,,,t,,,e,,,r,,,a,,, ,,,d,,,e,,, ,,,l,,,i,,,r,,,e,,, ,,,p,,,y,,,t,,,h,,,o,,,n,,,/,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,_,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,.,,,j,,,s,,,o,,,n,,,.,,,',,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,/,,,/,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,e,,,s,,,t,,, ,,,u,,,n,,,e,,, ,,,r,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,f,,,a,,,c,,,u,,,l,,,t,,,a,,,t,,,i,,,v,,,e,,, ,,,:,,, ,,,S,,,W,,,G,,,O,,,H,,,.,,,G,,,G,,, ,,,s,,,e,,,r,,,a,,, ,,,i,,,n,,,t,,,e,,,r,,,r,,,o,,,g,,,é,,, ,,,a,,,u,,, ,,,b,,,e,,,s,,,o,,,i,,,n,,,,,,,
+,,, ,,, ,,,/,,,/,,, ,,,p,,,u,,,i,,,s,,, ,,,l,,,e,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,, ,,,l,,,o,,,c,,,a,,,l,,, ,,,d,,,u,,, ,,,W,,,o,,,r,,,k,,,e,,,r,,, ,,,s,,,e,,,r,,,t,,, ,,,d,,,e,,, ,,,s,,,e,,,c,,,o,,,u,,,r,,,s,,,.,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,y,,,b,,,e,,,r,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,=,,,[,,,
+,,, ,,, ,,, ,,, ,,,n,,,e,,,w,,, ,,,U,,,R,,,L,,,(,,,',,,.,,,/,,,p,,,y,,,t,,,h,,,o,,,n,,,/,,,k,,,y,,,b,,,e,,,r,,,_,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,.,,,j,,,s,,,o,,,n,,,',,,,,,,d,,,o,,,c,,,u,,,m,,,e,,,n,,,t,,,.,,,b,,,a,,,s,,,e,,,U,,,R,,,I,,,),,,.,,,h,,,r,,,e,,,f,,,,,,,
+,,, ,,, ,,,],,,;,,,
+,,, ,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,=,,,{,,,},,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,r,,,l,,, ,,,o,,,f,,, ,,,k,,,y,,,b,,,e,,,r,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,t,,,r,,,y,,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,=,,,a,,,w,,,a,,,i,,,t,,, ,,,f,,,e,,,t,,,c,,,h,,,(,,,u,,,r,,,l,,,+,,,',,,?,,,v,,,=,,,3,,,.,,,4,,,.,,,4,,,-,,,c,,,a,,,c,,,h,,,e,,,-,,,s,,,y,,,n,,,c,,,',,,,,,,{,,,c,,,a,,,c,,,h,,,e,,,:,,,',,,f,,,o,,,r,,,c,,,e,,,-,,,c,,,a,,,c,,,h,,,e,,,',,,},,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,r,,,.,,,o,,,k,,,),,,{,,,c,,,o,,,n,,,s,,,t,,, ,,,j,,,s,,,o,,,n,,,=,,,a,,,w,,,a,,,i,,,t,,, ,,,r,,,.,,,j,,,s,,,o,,,n,,,(,,,),,,;,,,i,,,f,,,(,,,j,,,s,,,o,,,n,,,&,,,&,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,j,,,s,,,o,,,n,,,=,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,,),,,{,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,=,,,j,,,s,,,o,,,n,,,;,,,b,,,r,,,e,,,a,,,k,,,;,,,},,,},,,
+,,, ,,, ,,, ,,, ,,,},,,c,,,a,,,t,,,c,,,h,,,(,,,e,,,),,,{,,,},,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,l,,,o,,,g,,,(,,,`,,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,,s,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,l,,,o,,,c,,,a,,,l,,,e,,,s,,, ,,,:,,, ,,,$,,,{,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,|,,,|,,,{,,,},,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,.,,,`,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,t,,,r,,,u,,,e,,,;,,,
+,,,},,,
+,,,
+,,,a,,,s,,,y,,,n,,,c,,, ,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,b,,,o,,,o,,,t,,,(,,,),,,{,,,
+,,, ,,, ,,,/,,,/,,, ,,,V,,,4,,,5,,,:,,, ,,,l,,,',,,a,,,c,,,t,,,i,,,v,,,a,,,t,,,i,,,o,,,n,,, ,,,d,,,e,,, ,,,l,,,',,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,n,,,e,,, ,,,d,,,é,,,p,,,e,,,n,,,d,,, ,,,p,,,l,,,u,,,s,,, ,,,d,,,e,,,s,,, ,,,t,,,é,,,l,,,é,,,c,,,h,,,a,,,r,,,g,,,e,,,m,,,e,,,n,,,t,,,s,,,
+,,, ,,, ,,,/,,,/,,, ,,,d,,,e,,, ,,,r,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,,s,,, ,,,U,,,I,,,.,,, ,,,V,,,4,,,4,,, ,,,p,,,o,,,u,,,v,,,a,,,i,,,t,,, ,,,l,,,a,,,i,,,s,,,s,,,e,,,r,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,R,,,e,,,a,,,d,,,y,,,=,,,f,,,a,,,l,,,s,,,e,,, ,,,p,,,e,,,n,,,d,,,a,,,n,,,t,,, ,,,c,,,e,,,s,,,
+,,, ,,, ,,,/,,,/,,, ,,,r,,,e,,,q,,,u,,,ê,,,t,,,e,,,s,,, ,,,e,,,t,,, ,,,a,,,f,,,f,,,i,,,c,,,h,,,e,,,r,,, ,,,",,,L,,,e,,, ,,,m,,,o,,,t,,,e,,,u,,,r,,, ,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,n,,,',,,e,,,s,,,t,,, ,,,p,,,a,,,s,,, ,,,p,,,r,,,ê,,,t,,,",,,.,,,
+,,, ,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,R,,,e,,,a,,,d,,,y,,,=,,,t,,,r,,,u,,,e,,,;,,,
+,,, ,,, ,,,$,,,(,,,',,,p,,,y,,,t,,,h,,,o,,,n,,,S,,,t,,,a,,,t,,,e,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,',,,W,,,O,,,R,,,K,,,E,,,R,,,',,,;,,,
+,,, ,,, ,,,s,,,e,,,t,,,R,,,u,,,n,,,t,,,i,,,m,,,e,,,(,,,',,,M,,,O,,,T,,,E,,,U,,,R,,, ,,,O,,,P,,,T,,,I,,,M,,,I,,,Z,,,E,,,R,,, ,,,P,,,R,,,Ê,,,T,,,',,,,,,,t,,,r,,,u,,,e,,,),,,;,,,
+,,, ,,, ,,,l,,,o,,,g,,,(,,,',,,M,,,o,,,t,,,e,,,u,,,r,,, ,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,a,,,u,,,t,,,o,,,r,,,i,,,s,,,é,,, ,,,i,,,m,,,m,,,é,,,d,,,i,,,a,,,t,,,e,,,m,,,e,,,n,,,t,,,.,,, ,,,I,,,n,,,i,,,t,,,i,,,a,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,d,,,u,,, ,,,W,,,o,,,r,,,k,,,e,,,r,,, ,,,e,,,n,,, ,,,a,,,r,,,r,,,i,,,è,,,r,,,e,,,-,,,p,,,l,,,a,,,n,,,…,,,',,,),,,;,,,
+,,,
+,,, ,,, ,,,t,,,r,,,y,,,{,,,
+,,, ,,, ,,, ,,, ,,,g,,,e,,,t,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,W,,,o,,,r,,,k,,,e,,,r,,,(,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,l,,,o,,,g,,,(,,,',,,W,,,o,,,r,,,k,,,e,,,r,,, ,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,i,,,n,,,i,,,t,,,i,,,a,,,l,,,i,,,s,,,é,,,.,,,',,,),,,;,,,
+,,, ,,, ,,,},,,c,,,a,,,t,,,c,,,h,,,(,,,e,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,l,,,o,,,g,,,(,,,',,,I,,,n,,,i,,,t,,,i,,,a,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,d,,,u,,, ,,,W,,,o,,,r,,,k,,,e,,,r,,, ,,,d,,,i,,,f,,,f,,,é,,,r,,,é,,,e,,, ,,,:,,, ,,,',,,+,,,(,,,e,,,?,,,.,,,m,,,e,,,s,,,s,,,a,,,g,,,e,,,|,,,|,,,e,,,),,,),,,;,,,
+,,, ,,, ,,,},,,
+,,,
+,,, ,,, ,,,/,,,/,,, ,,,L,,,e,,,s,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,,s,,, ,,,U,,,I,,,/,,,K,,,y,,,b,,,e,,,r,,, ,,,s,,,o,,,n,,,t,,, ,,,f,,,a,,,c,,,u,,,l,,,t,,,a,,,t,,,i,,,f,,,s,,, ,,,p,,,o,,,u,,,r,,, ,,,l,,,',,,a,,,c,,,t,,,i,,,v,,,a,,,t,,,i,,,o,,,n,,, ,,,d,,,u,,, ,,,m,,,o,,,t,,,e,,,u,,,r,,,.,,,
+,,, ,,, ,,,t,,,r,,,y,,,{,,,
+,,, ,,, ,,, ,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,R,,,e,,,a,,,d,,,y,,, ,,,=,,, ,,,l,,,o,,,a,,,d,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,D,,,a,,,t,,,a,,,(,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,a,,,w,,,a,,,i,,,t,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,R,,,e,,,a,,,d,,,y,,,;,,,
+,,, ,,, ,,, ,,, ,,,l,,,o,,,g,,,(,,,`,,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,,s,,, ,,,U,,,I,,, ,,,c,,,h,,,a,,,r,,,g,,,é,,,e,,,s,,,.,,, ,,,P,,,r,,,o,,,f,,,i,,,l,,,s,,, ,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,, ,,,l,,,o,,,c,,,a,,,u,,,x,,, ,,,:,,, ,,,$,,,{,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,s,,,|,,,|,,,{,,,},,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,.,,,`,,,),,,;,,,
+,,, ,,, ,,,},,,c,,,a,,,t,,,c,,,h,,,(,,,e,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,l,,,o,,,g,,,(,,,',,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,,s,,, ,,,U,,,I,,, ,,,n,,,o,,,n,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,s,,, ,,,:,,, ,,,l,,,e,,, ,,,W,,,o,,,r,,,k,,,e,,,r,,, ,,,r,,,e,,,s,,,t,,,e,,, ,,,a,,,u,,,t,,,o,,,n,,,o,,,m,,,e,,,.,,,',,,),,,;,,,
+,,, ,,, ,,,},,,
+,,,
+,,,},,,
+,,,
+,,,$,,,(,,,',,,f,,,i,,,l,,,e,,,I,,,n,,,p,,,u,,,t,,,',,,),,,.,,,a,,,d,,,d,,,E,,,v,,,e,,,n,,,t,,,L,,,i,,,s,,,t,,,e,,,n,,,e,,,r,,,(,,,',,,c,,,h,,,a,,,n,,,g,,,e,,,',,,,,,,a,,,s,,,y,,,n,,,c,,, ,,,e,,,=,,,>,,,{,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,i,,,l,,,e,,,=,,,e,,,.,,,t,,,a,,,r,,,g,,,e,,,t,,,.,,,f,,,i,,,l,,,e,,,s,,,[,,,0,,,],,,;,,,i,,,f,,,(,,,!,,,f,,,i,,,l,,,e,,,),,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,t,,,r,,,y,,,{,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,D,,,a,,,t,,,a,,,=,,,J,,,S,,,O,,,N,,,.,,,p,,,a,,,r,,,s,,,e,,,(,,,a,,,w,,,a,,,i,,,t,,, ,,,f,,,i,,,l,,,e,,,.,,,t,,,e,,,x,,,t,,,(,,,),,,),,,;,,,m,,,o,,,d,,,s,,,=,,,e,,,x,,,t,,,r,,,a,,,c,,,t,,,M,,,o,,,d,,,s,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,D,,,a,,,t,,,a,,,),,,;,,,c,,,o,,,n,,,s,,,t,,, ,,,i,,,m,,,p,,,o,,,r,,,t,,,e,,,d,,,U,,,n,,,i,,,t,,,s,,,=,,,e,,,x,,,t,,,r,,,a,,,c,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,D,,,a,,,t,,,a,,,),,,;,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,p,,,l,,,i,,,t,,,=,,,s,,,p,,,l,,,i,,,t,,,R,,,o,,,s,,,t,,,e,,,r,,,U,,,n,,,i,,,t,,,s,,,(,,,i,,,m,,,p,,,o,,,r,,,t,,,e,,,d,,,U,,,n,,,i,,,t,,,s,,,),,,;,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,=,,,s,,,p,,,l,,,i,,,t,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,;,,,r,,,o,,,s,,,t,,,e,,,r,,,S,,,h,,,i,,,p,,,s,,,=,,,s,,,p,,,l,,,i,,,t,,,.,,,s,,,h,,,i,,,p,,,s,,,;,,,b,,,u,,,i,,,l,,,d,,,F,,,a,,,c,,,t,,,i,,,o,,,n,,,M,,,a,,,p,,,(,,,),,,;,,,u,,,p,,,d,,,a,,,t,,,e,,,R,,,o,,,s,,,t,,,e,,,r,,,C,,,o,,,u,,,n,,,t,,,s,,,(,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,,,,,r,,,o,,,s,,,t,,,e,,,r,,,S,,,h,,,i,,,p,,,s,,,),,,;,,,f,,,i,,,l,,,l,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,(,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,),,,;,,,u,,,p,,,d,,,a,,,t,,,e,,,A,,,c,,,c,,,o,,,u,,,n,,,t,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,(,,,f,,,i,,,l,,,e,,,.,,,n,,,a,,,m,,,e,,,,,,,',,,I,,,M,,,P,,,O,,,R,,,T,,, ,,,J,,,S,,,O,,,N,,,',,,),,,;,,,r,,,e,,,n,,,d,,,e,,,r,,,V,,,1,,,8,,,S,,,p,,,e,,,e,,,d,,,R,,,e,,,c,,,a,,,p,,,(,,,',,,v,,,1,,,8,,,D,,,a,,,s,,,h,,,b,,,o,,,a,,,r,,,d,,,S,,,p,,,e,,,e,,,d,,,',,,),,,;,,,r,,,e,,,n,,,d,,,e,,,r,,,M,,,o,,,d,,,s,,,A,,,n,,,a,,,l,,,y,,,s,,,i,,,s,,,(,,,),,,;,,,r,,,e,,,n,,,d,,,e,,,r,,,D,,,a,,,t,,,a,,,T,,,a,,,b,,,l,,,e,,,(,,,),,,;,,,r,,,e,,,n,,,d,,,e,,,r,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,V,,,e,,,r,,,d,,,i,,,c,,,t,,,(,,,h,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,T,,,o,,,p,,,C,,,h,,,a,,,n,,,g,,,e,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,(,,,),,,.,,,s,,,l,,,i,,,c,,,e,,,(,,,0,,,,,,,1,,,0,,,),,,),,,;,,,r,,,e,,,n,,,d,,,e,,,r,,,S,,,i,,,t,,,h,,,a,,,r,,,i,,,N,,,e,,,x,,,u,,,s,,,(,,,),,,;,,,$,,,(,,,',,,d,,,a,,,t,,,a,,,I,,,n,,,f,,,o,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,`,,,F,,,i,,,c,,,h,,,i,,,e,,,r,,,:,,, ,,,$,,,{,,,f,,,i,,,l,,,e,,,.,,,n,,,a,,,m,,,e,,,},,,\,,,n,,,M,,,o,,,d,,,s,,, ,,,d,,,é,,,t,,,e,,,c,,,t,,,é,,,s,,,:,,, ,,,$,,,{,,,m,,,o,,,d,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,\,,,n,,,P,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,,s,,, ,,,d,,,é,,,t,,,e,,,c,,,t,,,é,,,s,,,:,,, ,,,$,,,{,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,\,,,n,,,V,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,d,,,é,,,t,,,e,,,c,,,t,,,é,,,s,,,:,,, ,,,$,,,{,,,r,,,o,,,s,,,t,,,e,,,r,,,S,,,h,,,i,,,p,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,`,,,;,,,$,,,(,,,',,,l,,,o,,,g,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,',,,',,,;,,,l,,,o,,,g,,,(,,,`,,,I,,,m,,,p,,,o,,,r,,,t,,,:,,, ,,,$,,,{,,,f,,,i,,,l,,,e,,,.,,,n,,,a,,,m,,,e,,,},,,`,,,),,,;,,,l,,,o,,,g,,,(,,,`,,,$,,,{,,,m,,,o,,,d,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,, ,,,m,,,o,,,d,,,s,,, ,,,d,,,é,,,t,,,e,,,c,,,t,,,é,,,s,,,.,,,`,,,),,,;,,,l,,,o,,,g,,,(,,,`,,,$,,,{,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,, ,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,,s,,, ,,,+,,, ,,,$,,,{,,,r,,,o,,,s,,,t,,,e,,,r,,,S,,,h,,,i,,,p,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,d,,,é,,,t,,,e,,,c,,,t,,,é,,,s,,,.,,,`,,,),,,;,,,s,,,h,,,o,,,w,,,P,,,a,,,g,,,e,,,(,,,',,,d,,,a,,,s,,,h,,,b,,,o,,,a,,,r,,,d,,,',,,),,,;,,,},,,c,,,a,,,t,,,c,,,h,,,(,,,e,,,),,,{,,,l,,,o,,,g,,,(,,,',,,J,,,S,,,O,,,N,,, ,,,i,,,n,,,v,,,a,,,l,,,i,,,d,,,e,,,:,,, ,,,',,,+,,,e,,,.,,,m,,,e,,,s,,,s,,,a,,,g,,,e,,,),,,;,,,},,,},,,),,,;,,,
+,,,
+,,,
+,,,c,,,o,,,n,,,s,,,t,,, ,,,K,,,N,,,O,,,W,,,N,,,_,,,G,,,A,,,L,,,A,,,C,,,T,,,I,,,C,,,_,,,L,,,E,,,G,,,E,,,N,,,D,,,_,,,I,,,D,,,S,,,=,,,n,,,e,,,w,,, ,,,S,,,e,,,t,,,(,,,[,,,',,,G,,,L,,,R,,,E,,,Y,,,',,,,,,,',,,S,,,U,,,P,,,R,,,E,,,M,,,E,,,L,,,E,,,A,,,D,,,E,,,R,,,K,,,Y,,,L,,,O,,,R,,,E,,,N,,,',,,,,,,',,,G,,,R,,,A,,,N,,,D,,,M,,,A,,,S,,,T,,,E,,,R,,,L,,,U,,,K,,,E,,,',,,,,,,',,,J,,,E,,,D,,,I,,,M,,,A,,,S,,,T,,,E,,,R,,,K,,,E,,,N,,,O,,,B,,,I,,,',,,,,,,',,,L,,,O,,,R,,,D,,,V,,,A,,,D,,,E,,,R,,,',,,,,,,',,,J,,,A,,,B,,,B,,,A,,,T,,,H,,,E,,,H,,,U,,,T,,,T,,,',,,,,,,',,,G,,,L,,,L,,,E,,,I,,,A,,,',,,,,,,',,,S,,,I,,,T,,,H,,,P,,,A,,,L,,,P,,,A,,,T,,,I,,,N,,,E,,,',,,,,,,',,,G,,,L,,,A,,,H,,,S,,,O,,,K,,,A,,,T,,,A,,,N,,,O,,,',,,],,,),,,;,,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,i,,,s,,,G,,,a,,,l,,,a,,,c,,,t,,,i,,,c,,,L,,,e,,,g,,,e,,,n,,,d,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,c,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,a,,,w,,,=,,,c,,,?,,,.,,,r,,,a,,,w,,,|,,,|,,,c,,,?,,,.,,,d,,,a,,,t,,,a,,,|,,,|,,,c,,,|,,,|,,,{,,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,a,,,s,,,e,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,c,,,?,,,.,,,b,,,a,,,s,,,e,,,I,,,d,,,|,,,|,,,c,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,i,,,d,,,|,,,|,,,c,,,?,,,.,,,i,,,d,,,|,,,|,,,',,,',,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,K,,,N,,,O,,,W,,,N,,,_,,,G,,,A,,,L,,,A,,,C,,,T,,,I,,,C,,,_,,,L,,,E,,,G,,,E,,,N,,,D,,,_,,,I,,,D,,,S,,,.,,,h,,,a,,,s,,,(,,,b,,,a,,,s,,,e,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,t,,,r,,,u,,,e,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,x,,,p,,,l,,,i,,,c,,,i,,,t,,,=,,,[,,,r,,,a,,,w,,,?,,,.,,,i,,,s,,,G,,,a,,,l,,,a,,,c,,,t,,,i,,,c,,,L,,,e,,,g,,,e,,,n,,,d,,,,,,,r,,,a,,,w,,,?,,,.,,,i,,,s,,,_,,,g,,,a,,,l,,,a,,,c,,,t,,,i,,,c,,,_,,,l,,,e,,,g,,,e,,,n,,,d,,,,,,,c,,,?,,,.,,,i,,,s,,,G,,,a,,,l,,,a,,,c,,,t,,,i,,,c,,,L,,,e,,,g,,,e,,,n,,,d,,,,,,,c,,,?,,,.,,,i,,,s,,,_,,,g,,,a,,,l,,,a,,,c,,,t,,,i,,,c,,,_,,,l,,,e,,,g,,,e,,,n,,,d,,,],,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,e,,,x,,,p,,,l,,,i,,,c,,,i,,,t,,,.,,,s,,,o,,,m,,,e,,,(,,,v,,,=,,,>,,,v,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,|,,,|,,,v,,,=,,,=,,,=,,,1,,,|,,,|,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,v,,,),,,.,,,t,,,o,,,L,,,o,,,w,,,e,,,r,,,C,,,a,,,s,,,e,,,(,,,),,,=,,,=,,,=,,,',,,t,,,r,,,u,,,e,,,',,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,t,,,r,,,u,,,e,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,v,,,a,,,l,,,u,,,e,,,s,,,=,,,[,,,],,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,=,,,(,,,v,,,),,,=,,,>,,,{,,,i,,,f,,,(,,,v,,,=,,,=,,,n,,,u,,,l,,,l,,,),,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,i,,,f,,,(,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,v,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,v,,,.,,,f,,,o,,,r,,,E,,,a,,,c,,,h,,,(,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,),,,;,,,i,,,f,,,(,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,v,,,=,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,,),,,{,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,, ,,,o,,,f,,, ,,,[,,,',,,n,,,a,,,m,,,e,,,',,,,,,,',,,d,,,i,,,s,,,p,,,l,,,a,,,y,,,N,,,a,,,m,,,e,,,',,,,,,,',,,n,,,a,,,m,,,e,,,K,,,e,,,y,,,',,,,,,,',,,i,,,d,,,',,,,,,,',,,c,,,a,,,t,,,e,,,g,,,o,,,r,,,y,,,I,,,d,,,',,,,,,,',,,c,,,a,,,t,,,e,,,g,,,o,,,r,,,y,,,',,,,,,,',,,f,,,a,,,c,,,t,,,i,,,o,,,n,,,',,,,,,,',,,t,,,a,,,g,,,s,,,',,,,,,,',,,c,,,a,,,t,,,e,,,g,,,o,,,r,,,i,,,e,,,s,,,',,,,,,,',,,r,,,o,,,l,,,e,,,',,,],,,),,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,(,,,v,,,[,,,k,,,],,,),,,;,,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,},,,v,,,a,,,l,,,u,,,e,,,s,,,.,,,p,,,u,,,s,,,h,,,(,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,v,,,),,,),,,;,,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,(,,,r,,,a,,,w,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,e,,,x,,,t,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,v,,,a,,,l,,,u,,,e,,,s,,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,',,,),,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,t,,,e,,,x,,,t,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,',,,G,,,A,,,L,,,A,,,C,,,T,,,I,,,C,,,L,,,E,,,G,,,E,,,N,,,D,,,',,,),,,;,,,
+,,,},,,
+,,,/,,,/,,, ,,,C,,,l,,,a,,,s,,,s,,,e,,,m,,,e,,,n,,,t,,, ,,,d,,,e,,,s,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,,s,,, ,,,:,,, ,,,l,,,',,,u,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,G,,,A,,,C,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,e,,,t,,, ,,,l,,,',,,u,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,d,,,e,,,s,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,,
+,,,/,,,/,,, ,,,s,,,o,,,n,,,t,,, ,,,i,,,n,,,d,,,é,,,p,,,e,,,n,,,d,,,a,,,n,,,t,,,e,,,s,,, ,,,d,,,e,,, ,,,l,,,a,,, ,,,q,,,u,,,a,,,l,,,i,,,t,,,é,,, ,,,d,,,e,,,s,,, ,,,m,,,o,,,d,,,s,,,.,,, ,,,U,,,n,,,e,,, ,,,d,,,o,,,n,,,n,,,é,,,e,,, ,,,a,,,b,,,s,,,e,,,n,,,t,,,e,,, ,,,r,,,e,,,s,,,t,,,e,,, ,,,i,,,n,,,c,,,o,,,n,,,n,,,u,,,e,,,,,,,
+,,,/,,,/,,, ,,,j,,,a,,,m,,,a,,,i,,,s,,, ,,,a,,,s,,,s,,,i,,,m,,,i,,,l,,,é,,,e,,, ,,,à,,, ,,,z,,,é,,,r,,,o,,, ,,,u,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,,.,,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,{,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,v,,,a,,,l,,,u,,,e,,,=,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,,&,,,&,,,v,,,a,,,l,,,u,,,e,,,
+,,, ,,, ,,, ,,, ,,,?,,, ,,,v,,,a,,,l,,,u,,,e,,,.,,,b,,,a,,,s,,,e,,,I,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,b,,,a,,,s,,,e,,,_,,,i,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,I,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,_,,,i,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,u,,,n,,,i,,,t,,,I,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,u,,,n,,,i,,,t,,,_,,,i,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,s,,,h,,,i,,,p,,,I,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,s,,,h,,,i,,,p,,,_,,,i,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,i,,,d,,,?,,,?,,,v,,,a,,,l,,,u,,,e,,,.,,,n,,,a,,,m,,,e,,,?,,,?,,,',,,',,,
+,,, ,,, ,,, ,,, ,,,:,,, ,,,v,,,a,,,l,,,u,,,e,,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,R,,,e,,,c,,,o,,,r,,,d,,,(,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,,,,,,a,,,l,,,i,,,a,,,s,,,e,,,s,,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,,|,,,|,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,,!,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,n,,,u,,,l,,,l,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,s,,,=,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,,),,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,l,,,i,,,a,,,s,,, ,,,o,,,f,,, ,,,a,,,l,,,i,,,a,,,s,,,e,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,(,,,a,,,l,,,i,,,a,,,s,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,k,,,e,,,y,,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,o,,,u,,,n,,,d,,,=,,,k,,,e,,,y,,,s,,,.,,,f,,,i,,,n,,,d,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,=,,,>,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,),,,=,,,=,,,=,,,k,,,e,,,y,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,f,,,o,,,u,,,n,,,d,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,,[,,,f,,,o,,,u,,,n,,,d,,,],,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,n,,,u,,,l,,,l,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,C,,,o,,,u,,,n,,,t,,,(,,,r,,,e,,,c,,,o,,,r,,,d,,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,r,,,e,,,c,,,o,,,r,,,d,,,=,,,=,,,n,,,u,,,l,,,l,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,n,,,u,,,l,,,l,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,a,,,w,,,=,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,r,,,e,,,c,,,o,,,r,,,d,,,=,,,=,,,=,,,',,,n,,,u,,,m,,,b,,,e,,,r,,,',,,?,,,r,,,e,,,c,,,o,,,r,,,d,,,:,,,r,,,e,,,c,,,o,,,r,,,d,,,.,,,u,,,s,,,e,,,s,,,?,,,?,,,r,,,e,,,c,,,o,,,r,,,d,,,.,,,u,,,s,,,a,,,g,,,e,,,?,,,?,,,r,,,e,,,c,,,o,,,r,,,d,,,.,,,c,,,o,,,u,,,n,,,t,,,?,,,?,,,r,,,e,,,c,,,o,,,r,,,d,,,.,,,s,,,e,,,e,,,n,,,?,,,?,,,r,,,e,,,c,,,o,,,r,,,d,,,.,,,b,,,a,,,t,,,t,,,l,,,e,,,s,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,v,,,a,,,l,,,u,,,e,,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,r,,,a,,,w,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,i,,,s,,,F,,,i,,,n,,,i,,,t,,,e,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,&,,,&,,,v,,,a,,,l,,,u,,,e,,,>,,,=,,,0,,,?,,,v,,,a,,,l,,,u,,,e,,,:,,,n,,,u,,,l,,,l,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,L,,,a,,,t,,,e,,,s,,,t,,,G,,,a,,,c,,,U,,,s,,,a,,,g,,,e,,,S,,,e,,,a,,,s,,,o,,,n,,,(,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,a,,,t,,,a,,,=,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,_,,,_,,,S,,,W,,,G,,,O,,,H,,,_,,,G,,,A,,,C,,,_,,,U,,,S,,,A,,,G,,,E,,,_,,,_,,,|,,,|,,,{,,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,=,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,d,,,a,,,t,,,a,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,),,,?,,,d,,,a,,,t,,,a,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,s,,,=,,,>,,,s,,,&,,,&,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,s,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,>,,,0,,,),,,:,,,[,,,],,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,n,,,u,,,l,,,l,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,h,,,a,,,s,,,F,,,o,,,r,,,m,,,a,,,t,,,B,,,r,,,e,,,a,,,k,,,d,,,o,,,w,,,n,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,.,,,s,,,o,,,m,,,e,,,(,,,s,,,=,,,>,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,v,,,a,,,l,,,u,,,e,,,s,,,(,,,s,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,|,,,|,,,{,,,},,,),,,.,,,s,,,o,,,m,,,e,,,(,,,r,,,e,,,c,,,o,,,r,,,d,,,=,,,>,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,c,,,o,,,r,,,d,,,&,,,&,,,r,,,e,,,c,,,o,,,r,,,d,,,.,,,b,,,y,,,F,,,o,,,r,,,m,,,a,,,t,,,&,,,&,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,r,,,e,,,c,,,o,,,r,,,d,,,.,,,b,,,y,,,F,,,o,,,r,,,m,,,a,,,t,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,
+,,, ,,, ,,,),,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,h,,,a,,,s,,,F,,,o,,,r,,,m,,,a,,,t,,,B,,,r,,,e,,,a,,,k,,,d,,,o,,,w,,,n,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,l,,,a,,,t,,,e,,,s,,,t,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,s,,,=,,,>,,,(,,,s,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,&,,,&,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,s,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,|,,,|,,,(,,,s,,,.,,,s,,,h,,,i,,,p,,,s,,,&,,,&,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,s,,,.,,,s,,,h,,,i,,,p,,,s,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,|,,,|,,,(,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,s,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,),,,&,,,&,,,s,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,),,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,.,,,s,,,o,,,r,,,t,,,(,,,(,,,a,,,,,,,b,,,),,,=,,,>,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,b,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,a,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,),,,[,,,0,,,],,,|,,,|,,,n,,,u,,,l,,,l,,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,l,,,a,,,t,,,e,,,s,,,t,,,?,,,{,,,.,,,.,,,.,,,l,,,a,,,t,,,e,,,s,,,t,,,,,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,:,,,d,,,a,,,t,,,a,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,|,,,|,,,',,,o,,,b,,,s,,,e,,,r,,,v,,,e,,,d,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,:,,,d,,,a,,,t,,,a,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,|,,,|,,,',,,S,,,W,,,G,,,O,,,H,,,.,,,G,,,G,,, ,,,G,,,A,,,C,,, ,,,u,,,s,,,a,,,g,,,e,,,',,,,,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,:,,,d,,,a,,,t,,,a,,,.,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,|,,,|,,,',,,u,,,n,,,i,,,t,,,-,,,u,,,s,,,a,,,g,,,e,,,',,,},,,:,,,n,,,u,,,l,,,l,,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,=,,,{,,,s,,,e,,,a,,,s,,,o,,,n,,,:,,,0,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,:,,,{,,,},,,,,,,s,,,h,,,i,,,p,,,s,,,:,,,{,,,},,,,,,,f,,,l,,,e,,,e,,,t,,,s,,,:,,,[,,,],,,,,,,c,,,o,,,v,,,e,,,r,,,a,,,g,,,e,,,:,,,[,,,],,,,,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,:,,,{,,,},,,,,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,:,,,d,,,a,,,t,,,a,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,|,,,|,,,',,,o,,,b,,,s,,,e,,,r,,,v,,,e,,,d,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,:,,,d,,,a,,,t,,,a,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,|,,,|,,,',,,S,,,W,,,G,,,O,,,H,,,.,,,G,,,G,,, ,,,G,,,A,,,C,,, ,,,u,,,s,,,a,,,g,,,e,,,',,,,,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,:,,,d,,,a,,,t,,,a,,,.,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,|,,,|,,,',,,u,,,n,,,i,,,t,,,-,,,u,,,s,,,a,,,g,,,e,,,',,,},,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,o,,,r,,,m,,,a,,,t,,, ,,,o,,,f,,, ,,,[,,,',,,5,,,v,,,5,,,',,,,,,,',,,3,,,v,,,3,,,',,,],,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,a,,,t,,,c,,,h,,,i,,,n,,,g,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,s,,,=,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,(,,,s,,,.,,,c,,,o,,,v,,,e,,,r,,,a,,,g,,,e,,,|,,,|,,,[,,,],,,),,,.,,,s,,,o,,,m,,,e,,,(,,,c,,,=,,,>,,,c,,,?,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,=,,,=,,,=,,,f,,,o,,,r,,,m,,,a,,,t,,,),,, ,,,|,,,|,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,v,,,a,,,l,,,u,,,e,,,s,,,(,,,s,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,|,,,|,,,{,,,},,,),,,.,,,s,,,o,,,m,,,e,,,(,,,r,,,=,,,>,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,r,,,?,,,.,,,b,,,y,,,F,,,o,,,r,,,m,,,a,,,t,,,?,,,.,,,[,,,f,,,o,,,r,,,m,,,a,,,t,,,],,,),,,>,,,0,,,),,,
+,,, ,,, ,,, ,,, ,,,),,,.,,,s,,,o,,,r,,,t,,,(,,,(,,,a,,,,,,,b,,,),,,=,,,>,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,b,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,a,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,e,,,i,,,l,,,i,,,n,,,g,,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,d,,,a,,,t,,,a,,,.,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,?,,,.,,,[,,,f,,,o,,,r,,,m,,,a,,,t,,,],,,),,,|,,,|,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,m,,,a,,,t,,,c,,,h,,,i,,,n,,,g,,,[,,,0,,,],,,?,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,|,,,|,,,0,,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,c,,,e,,,i,,,l,,,i,,,n,,,g,,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,l,,,i,,,g,,,i,,,b,,,l,,,e,,,=,,,m,,,a,,,t,,,c,,,h,,,i,,,n,,,g,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,s,,,=,,,>,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,s,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,<,,,=,,,c,,,e,,,i,,,l,,,i,,,n,,,g,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,e,,,l,,,i,,,g,,,i,,,b,,,l,,,e,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,[,,,f,,,o,,,r,,,m,,,a,,,t,,,],,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,e,,,l,,,i,,,g,,,i,,,b,,,l,,,e,,,[,,,0,,,],,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,n,,,a,,,m,,,e,,,s,,,=,,,n,,,e,,,w,,, ,,,S,,,e,,,t,,,(,,,e,,,l,,,i,,,g,,,i,,,b,,,l,,,e,,,.,,,f,,,l,,,a,,,t,,,M,,,a,,,p,,,(,,,s,,,=,,,>,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,s,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,|,,,|,,,{,,,},,,),,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,n,,,a,,,m,,,e,,, ,,,o,,,f,,, ,,,n,,,a,,,m,,,e,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,a,,,s,,,o,,,n,,, ,,,o,,,f,,, ,,,e,,,l,,,i,,,g,,,i,,,b,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,c,,,o,,,r,,,d,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,?,,,.,,,[,,,n,,,a,,,m,,,e,,,],,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,u,,,n,,,t,,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,r,,,e,,,c,,,o,,,r,,,d,,,?,,,.,,,b,,,y,,,F,,,o,,,r,,,m,,,a,,,t,,,?,,,.,,,[,,,f,,,o,,,r,,,m,,,a,,,t,,,],,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,i,,,s,,,F,,,i,,,n,,,i,,,t,,,e,,,(,,,c,,,o,,,u,,,n,,,t,,,),,,|,,,|,,,c,,,o,,,u,,,n,,,t,,,<,,,=,,,0,,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,=,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,[,,,n,,,a,,,m,,,e,,,],,,|,,,|,,,(,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,[,,,n,,,a,,,m,,,e,,,],,,=,,,{,,,u,,,s,,,e,,,s,,,:,,,0,,,,,,,b,,,y,,,F,,,o,,,r,,,m,,,a,,,t,,,:,,,{,,,},,,,,,,b,,,y,,,S,,,i,,,d,,,e,,,:,,,{,,,},,,,,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,B,,,y,,,F,,,o,,,r,,,m,,,a,,,t,,,:,,,{,,,},,,},,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,.,,,u,,,s,,,e,,,s,,,+,,,=,,,c,,,o,,,u,,,n,,,t,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,.,,,b,,,y,,,F,,,o,,,r,,,m,,,a,,,t,,,[,,,f,,,o,,,r,,,m,,,a,,,t,,,],,,=,,,c,,,o,,,u,,,n,,,t,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,B,,,y,,,F,,,o,,,r,,,m,,,a,,,t,,,[,,,f,,,o,,,r,,,m,,,a,,,t,,,],,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,s,,,e,,,a,,,s,,,o,,,n,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,[,,,s,,,i,,,d,,,e,,,,,,,v,,,a,,,l,,,u,,,e,,,],,, ,,,o,,,f,,, ,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,r,,,e,,,c,,,o,,,r,,,d,,,.,,,b,,,y,,,S,,,i,,,d,,,e,,,|,,,|,,,{,,,},,,),,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,.,,,b,,,y,,,S,,,i,,,d,,,e,,,[,,,s,,,i,,,d,,,e,,,],,,=,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,.,,,b,,,y,,,S,,,i,,,d,,,e,,,[,,,s,,,i,,,d,,,e,,,],,,|,,,|,,,0,,,),,,+,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,v,,,a,,,l,,,u,,,e,,,|,,,|,,,0,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,b,,,r,,,e,,,a,,,k,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,c,,,o,,,v,,,e,,,r,,,a,,,g,,,e,,,.,,,p,,,u,,,s,,,h,,,(,,,.,,,.,,,.,,,e,,,l,,,i,,,g,,,i,,,b,,,l,,,e,,,.,,,f,,,l,,,a,,,t,,,M,,,a,,,p,,,(,,,s,,,=,,,>,,,(,,,s,,,.,,,c,,,o,,,v,,,e,,,r,,,a,,,g,,,e,,,|,,,|,,,[,,,],,,),,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,c,,,=,,,>,,,c,,,?,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,=,,,=,,,=,,,f,,,o,,,r,,,m,,,a,,,t,,,),,,),,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,l,,,e,,,e,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,s,,,=,,,>,,,(,,,s,,,.,,,s,,,h,,,i,,,p,,,s,,,&,,,&,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,s,,,.,,,s,,,h,,,i,,,p,,,s,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,|,,,|,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,s,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,),,,&,,,&,,,s,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,
+,,, ,,, ,,, ,,, ,,,.,,,s,,,o,,,r,,,t,,,(,,,(,,,a,,,,,,,b,,,),,,=,,,>,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,b,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,a,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,e,,,n,,,S,,,h,,,i,,,p,,,s,,,=,,,n,,,e,,,w,,, ,,,S,,,e,,,t,,,(,,,),,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,a,,,s,,,o,,,n,,, ,,,o,,,f,,, ,,,f,,,l,,,e,,,e,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,[,,,n,,,a,,,m,,,e,,,,,,,r,,,e,,,c,,,o,,,r,,,d,,,],,, ,,,o,,,f,,, ,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,s,,,e,,,a,,,s,,,o,,,n,,,.,,,s,,,h,,,i,,,p,,,s,,,|,,,|,,,{,,,},,,),,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,s,,,e,,,e,,,n,,,S,,,h,,,i,,,p,,,s,,,.,,,h,,,a,,,s,,,(,,,n,,,a,,,m,,,e,,,),,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,s,,,h,,,i,,,p,,,s,,,[,,,n,,,a,,,m,,,e,,,],,,=,,,r,,,e,,,c,,,o,,,r,,,d,,,;,,,s,,,e,,,e,,,n,,,S,,,h,,,i,,,p,,,s,,,.,,,a,,,d,,,d,,,(,,,n,,,a,,,m,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,&,,,&,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,s,,,e,,,a,,,s,,,o,,,n,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,),,,),,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,c,,,o,,,v,,,e,,,r,,,a,,,g,,,e,,,.,,,p,,,u,,,s,,,h,,,(,,,.,,,.,,,.,,,(,,,s,,,e,,,a,,,s,,,o,,,n,,,.,,,c,,,o,,,v,,,e,,,r,,,a,,,g,,,e,,,|,,,|,,,[,,,],,,),,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,c,,,=,,,>,,,c,,,?,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,=,,,=,,,=,,,',,,f,,,l,,,e,,,e,,,t,,,',,,),,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,=,,,M,,,a,,,t,,,h,,,.,,,m,,,a,,,x,,,(,,,0,,,,,,,.,,,.,,,.,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,v,,,a,,,l,,,u,,,e,,,s,,,(,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,),,,,,,,.,,,.,,,.,,,f,,,l,,,e,,,e,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,.,,,m,,,a,,,p,,,(,,,s,,,=,,,>,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,s,,,.,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,|,,,|,,,0,,,),,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,|,,,|,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,s,,,h,,,i,,,p,,,s,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,|,,,|,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,?,,,c,,,o,,,m,,,b,,,i,,,n,,,e,,,d,,,:,,,n,,,u,,,l,,,l,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,G,,,a,,,c,,,U,,,s,,,a,,,g,,,e,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,s,,,e,,,a,,,s,,,o,,,n,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,L,,,a,,,t,,,e,,,s,,,t,,,G,,,a,,,c,,,U,,,s,,,a,,,g,,,e,,,S,,,e,,,a,,,s,,,o,,,n,,,(,,,),,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,n,,,u,,,l,,,l,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,l,,,i,,,a,,,s,,,e,,,s,,,=,,,[,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,b,,,a,,,s,,,e,,,I,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,i,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,I,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,_,,,i,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,i,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,n,,,a,,,m,,,e,,,],,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,C,,,o,,,u,,,n,,,t,,,(,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,R,,,e,,,c,,,o,,,r,,,d,,,(,,,s,,,e,,,a,,,s,,,o,,,n,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,,,,,a,,,l,,,i,,,a,,,s,,,e,,,s,,,),,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,S,,,h,,,i,,,p,,,C,,,r,,,e,,,w,,,A,,,l,,,i,,,a,,,s,,,e,,,s,,,(,,,s,,,h,,,i,,,p,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,a,,,w,,,=,,,s,,,h,,,i,,,p,,,?,,,.,,,r,,,a,,,w,,,?,,,.,,,d,,,a,,,t,,,a,,,|,,,|,,,s,,,h,,,i,,,p,,,?,,,.,,,d,,,a,,,t,,,a,,,|,,,|,,,s,,,h,,,i,,,p,,,?,,,.,,,r,,,a,,,w,,,|,,,|,,,s,,,h,,,i,,,p,,,|,,,|,,,{,,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,i,,,e,,,l,,,d,,,s,,,=,,,[,,,',,,c,,,r,,,e,,,w,,,',,,,,,,',,,c,,,r,,,e,,,w,,,M,,,e,,,m,,,b,,,e,,,r,,,s,,,',,,,,,,',,,c,,,r,,,e,,,w,,,_,,,m,,,e,,,m,,,b,,,e,,,r,,,s,,,',,,,,,,',,,c,,,r,,,e,,,w,,,I,,,d,,,s,,,',,,,,,,',,,c,,,r,,,e,,,w,,,_,,,i,,,d,,,s,,,',,,,,,,',,,c,,,r,,,e,,,w,,,U,,,n,,,i,,,t,,,',,,,,,,',,,c,,,r,,,e,,,w,,,_,,,u,,,n,,,i,,,t,,,',,,,,,,',,,c,,,r,,,e,,,w,,,U,,,n,,,i,,,t,,,s,,,',,,,,,,',,,c,,,r,,,e,,,w,,,_,,,u,,,n,,,i,,,t,,,s,,,',,,,,,,',,,p,,,i,,,l,,,o,,,t,,,s,,,',,,,,,,',,,c,,,r,,,e,,,w,,,M,,,e,,,m,,,b,,,e,,,r,,,',,,],,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,u,,,t,,,=,,,n,,,e,,,w,,, ,,,S,,,e,,,t,,,(,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,d,,,d,,,=,,,v,,,a,,,l,,,u,,,e,,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,v,,,a,,,l,,,u,,,e,,,=,,,=,,,n,,,u,,,l,,,l,,,),,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,),,,{,,,v,,,a,,,l,,,u,,,e,,,.,,,f,,,o,,,r,,,E,,,a,,,c,,,h,,,(,,,a,,,d,,,d,,,),,,;,,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,},,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,v,,,a,,,l,,,u,,,e,,,=,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,k,,,e,,,y,,,),,,o,,,u,,,t,,,.,,,a,,,d,,,d,,,(,,,k,,,e,,,y,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,k,,,e,,,y,,,),,,o,,,u,,,t,,,.,,,a,,,d,,,d,,,(,,,k,,,e,,,y,,,),,,;,,,
+,,, ,,, ,,,},,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,i,,,e,,,l,,,d,,, ,,,o,,,f,,, ,,,f,,,i,,,e,,,l,,,d,,,s,,,),,,a,,,d,,,d,,,(,,,r,,,a,,,w,,,[,,,f,,,i,,,e,,,l,,,d,,,],,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,[,,,.,,,.,,,.,,,o,,,u,,,t,,,],,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,S,,,h,,,i,,,p,,,U,,,s,,,a,,,g,,,e,,,M,,,a,,,p,,,(,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,s,,,h,,,i,,,p,,,s,,,|,,,|,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,s,,,h,,,i,,,p,,,U,,,s,,,a,,,g,,,e,,,|,,,|,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,s,,,h,,,i,,,p,,,_,,,u,,,s,,,a,,,g,,,e,,,|,,,|,,,{,,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,u,,,t,,,=,,,n,,,e,,,w,,, ,,,M,,,a,,,p,,,(,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,s,,,o,,,u,,,r,,,c,,,e,,,),,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,n,,,t,,,r,,,y,,, ,,,o,,,f,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,(,,,e,,,n,,,t,,,r,,,y,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,s,,,e,,,s,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,C,,,o,,,u,,,n,,,t,,,(,,,e,,,n,,,t,,,r,,,y,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,k,,,e,,,y,,,&,,,&,,,u,,,s,,,e,,,s,,,!,,,=,,,=,,,n,,,u,,,l,,,l,,,),,,o,,,u,,,t,,,.,,,s,,,e,,,t,,,(,,,k,,,e,,,y,,,,,,,u,,,s,,,e,,,s,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,,},,,e,,,l,,,s,,,e,,, ,,,i,,,f,,,(,,,s,,,o,,,u,,,r,,,c,,,e,,,&,,,&,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,=,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,[,,,i,,,d,,,,,,,r,,,e,,,c,,,o,,,r,,,d,,,],,, ,,,o,,,f,,, ,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,s,,,o,,,u,,,r,,,c,,,e,,,),,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,(,,,i,,,d,,,),,,,,,,u,,,s,,,e,,,s,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,C,,,o,,,u,,,n,,,t,,,(,,,r,,,e,,,c,,,o,,,r,,,d,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,k,,,e,,,y,,,&,,,&,,,u,,,s,,,e,,,s,,,!,,,=,,,=,,,n,,,u,,,l,,,l,,,),,,o,,,u,,,t,,,.,,,s,,,e,,,t,,,(,,,k,,,e,,,y,,,,,,,u,,,s,,,e,,,s,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,/,,,/,,, ,,,A,,,c,,,c,,,e,,,p,,,t,,,e,,, ,,,a,,,u,,,s,,,s,,,i,,, ,,,u,,,n,,,e,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,, ,,,p,,,a,,,r,,, ,,,c,,,o,,,m,,,p,,,o,,,s,,,i,,,t,,,i,,,o,,,n,,,s,,, ,,,d,,,e,,, ,,,f,,,l,,,o,,,t,,,t,,,e,,,s,,, ,,,:,,, ,,,c,,,h,,,a,,,q,,,u,,,e,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,
+,,, ,,, ,,,/,,,/,,, ,,,r,,,e,,,ç,,,o,,,i,,,t,,, ,,,l,,,e,,, ,,,n,,,o,,,m,,,b,,,r,,,e,,, ,,,d,,,',,,a,,,p,,,p,,,a,,,r,,,i,,,t,,,i,,,o,,,n,,,s,,, ,,,d,,,e,,,s,,, ,,,c,,,o,,,m,,,p,,,o,,,s,,,i,,,t,,,i,,,o,,,n,,,s,,, ,,,d,,,a,,,n,,,s,,, ,,,l,,,e,,,s,,,q,,,u,,,e,,,l,,,l,,,e,,,s,,, ,,,i,,,l,,, ,,,f,,,i,,,g,,,u,,,r,,,e,,,.,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,l,,,e,,,e,,,t,,,s,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,f,,,l,,,e,,,e,,,t,,,s,,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,f,,,l,,,e,,,e,,,t,,,s,,,),,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,l,,,e,,,e,,,t,,, ,,,o,,,f,,, ,,,f,,,l,,,e,,,e,,,t,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,s,,,e,,,s,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,C,,,o,,,u,,,n,,,t,,,(,,,f,,,l,,,e,,,e,,,t,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,h,,,i,,,p,,,s,,,=,,,f,,,l,,,e,,,e,,,t,,,?,,,.,,,s,,,h,,,i,,,p,,,s,,,|,,,|,,,f,,,l,,,e,,,e,,,t,,,?,,,.,,,u,,,n,,,i,,,t,,,s,,,|,,,|,,,[,,,],,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,u,,,s,,,e,,,s,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,|,,,|,,,!,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,s,,,h,,,i,,,p,,,s,,,),,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,h,,,i,,,p,,, ,,,o,,,f,,, ,,,s,,,h,,,i,,,p,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,(,,,s,,,h,,,i,,,p,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,k,,,e,,,y,,,),,,o,,,u,,,t,,,.,,,s,,,e,,,t,,,(,,,k,,,e,,,y,,,,,,,(,,,o,,,u,,,t,,,.,,,g,,,e,,,t,,,(,,,k,,,e,,,y,,,),,,|,,,|,,,0,,,),,,+,,,u,,,s,,,e,,,s,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,o,,,u,,,t,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,F,,,l,,,e,,,e,,,t,,,U,,,s,,,a,,,g,,,e,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,s,,,e,,,a,,,s,,,o,,,n,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,L,,,a,,,t,,,e,,,s,,,t,,,G,,,a,,,c,,,U,,,s,,,a,,,g,,,e,,,S,,,e,,,a,,,s,,,o,,,n,,,(,,,),,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,u,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,k,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,0,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,S,,,a,,,i,,,s,,,o,,,n,,, ,,,G,,,A,,,C,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,h,,,i,,,p,,,s,,,=,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,r,,,o,,,s,,,t,,,e,,,r,,,S,,,h,,,i,,,p,,,s,,,),,,?,,,r,,,o,,,s,,,t,,,e,,,r,,,S,,,h,,,i,,,p,,,s,,,:,,,[,,,],,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,s,,,h,,,i,,,p,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,u,,,s,,,e,,,s,,,:,,,0,,,,,,,k,,,n,,,o,,,w,,,n,,,:,,,t,,,r,,,u,,,e,,,,,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,0,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,A,,,u,,,c,,,u,,,n,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,, ,,,d,,,a,,,n,,,s,,, ,,,l,,,e,,, ,,,r,,,o,,,s,,,t,,,e,,,r,,,',,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,r,,,e,,,w,,,R,,,o,,,w,,,s,,,=,,,s,,,h,,,i,,,p,,,s,,,.,,,m,,,a,,,p,,,(,,,s,,,h,,,i,,,p,,,=,,,>,,,(,,,{,,,s,,,h,,,i,,,p,,,,,,,c,,,r,,,e,,,w,,,:,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,S,,,h,,,i,,,p,,,C,,,r,,,e,,,w,,,A,,,l,,,i,,,a,,,s,,,e,,,s,,,(,,,s,,,h,,,i,,,p,,,),,,},,,),,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,c,,,r,,,e,,,w,,,R,,,o,,,w,,,s,,,.,,,s,,,o,,,m,,,e,,,(,,,r,,,o,,,w,,,=,,,>,,,r,,,o,,,w,,,.,,,c,,,r,,,e,,,w,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,u,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,k,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,0,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,C,,,o,,,r,,,r,,,e,,,s,,,p,,,o,,,n,,,d,,,a,,,n,,,c,,,e,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,,s,,,/,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,l,,,i,,,a,,,s,,,e,,,s,,,=,,,n,,,e,,,w,,, ,,,S,,,e,,,t,,,(,,,[,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,b,,,a,,,s,,,e,,,I,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,i,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,I,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,_,,,i,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,i,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,n,,,a,,,m,,,e,,,],,,.,,,m,,,a,,,p,,,(,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,),,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,B,,,o,,,o,,,l,,,e,,,a,,,n,,,),,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,s,,,s,,,i,,,g,,,n,,,e,,,d,,,=,,,c,,,r,,,e,,,w,,,R,,,o,,,w,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,r,,,o,,,w,,,=,,,>,,,r,,,o,,,w,,,.,,,c,,,r,,,e,,,w,,,.,,,s,,,o,,,m,,,e,,,(,,,k,,,e,,,y,,,=,,,>,,,a,,,l,,,i,,,a,,,s,,,e,,,s,,,.,,,h,,,a,,,s,,,(,,,k,,,e,,,y,,,),,,),,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,a,,,s,,,s,,,i,,,g,,,n,,,e,,,d,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,u,,,s,,,e,,,s,,,:,,,0,,,,,,,k,,,n,,,o,,,w,,,n,,,:,,,t,,,r,,,u,,,e,,,,,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,0,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,A,,,u,,,c,,,u,,,n,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,, ,,,a,,,s,,,s,,,o,,,c,,,i,,,é,,,',,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,s,,,a,,,g,,,e,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,S,,,h,,,i,,,p,,,U,,,s,,,a,,,g,,,e,,,M,,,a,,,p,,,(,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,;,,,
+,,, ,,, ,,,l,,,e,,,t,,, ,,,t,,,o,,,t,,,a,,,l,,,=,,,0,,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,o,,,w,,, ,,,o,,,f,,, ,,,a,,,s,,,s,,,i,,,g,,,n,,,e,,,d,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,h,,,i,,,p,,,A,,,l,,,i,,,a,,,s,,,e,,,s,,,=,,,[,,,r,,,o,,,w,,,.,,,s,,,h,,,i,,,p,,,?,,,.,,,b,,,a,,,s,,,e,,,I,,,d,,,,,,,r,,,o,,,w,,,.,,,s,,,h,,,i,,,p,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,i,,,d,,,,,,,r,,,o,,,w,,,.,,,s,,,h,,,i,,,p,,,?,,,.,,,s,,,h,,,i,,,p,,,I,,,d,,,,,,,r,,,o,,,w,,,.,,,s,,,h,,,i,,,p,,,?,,,.,,,s,,,h,,,i,,,p,,,_,,,i,,,d,,,,,,,r,,,o,,,w,,,.,,,s,,,h,,,i,,,p,,,?,,,.,,,i,,,d,,,,,,,r,,,o,,,w,,,.,,,s,,,h,,,i,,,p,,,?,,,.,,,n,,,a,,,m,,,e,,,],,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,s,,,h,,,i,,,p,,,A,,,l,,,i,,,a,,,s,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,U,,,s,,,a,,,g,,,e,,,K,,,e,,,y,,,),,,.,,,f,,,i,,,n,,,d,,,(,,,v,,,a,,,l,,,u,,,e,,,=,,,>,,,v,,,a,,,l,,,u,,,e,,,&,,,&,,,u,,,s,,,a,,,g,,,e,,,.,,,h,,,a,,,s,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,k,,,e,,,y,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,u,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,k,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,a,,,s,,,s,,,i,,,g,,,n,,,e,,,d,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,U,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,G,,,A,,,C,,, ,,,d,,,u,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,},,,;,,,
+,,, ,,, ,,, ,,, ,,,t,,,o,,,t,,,a,,,l,,,+,,,=,,,u,,,s,,,a,,,g,,,e,,,.,,,g,,,e,,,t,,,(,,,k,,,e,,,y,,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,u,,,s,,,e,,,s,,,:,,,t,,,o,,,t,,,a,,,l,,,,,,,k,,,n,,,o,,,w,,,n,,,:,,,t,,,r,,,u,,,e,,,,,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,a,,,s,,,s,,,i,,,g,,,n,,,e,,,d,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,U,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,G,,,A,,,C,,, ,,,d,,,e,,,s,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,é,,,e,,,',,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,D,,,o,,,n,,,o,,,r,,,P,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,s,,,e,,,a,,,s,,,o,,,n,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,L,,,a,,,t,,,e,,,s,,,t,,,G,,,a,,,c,,,U,,,s,,,a,,,g,,,e,,,S,,,e,,,a,,,s,,,o,,,n,,,(,,,),,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,|,,,|,,,',,,u,,,n,,,a,,,v,,,a,,,i,,,l,,,a,,,b,,,l,,,e,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,=,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,|,,,|,,,{,,,},,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,[,,,',,,s,,,t,,,a,,,l,,,e,,,',,,,,,,',,,u,,,n,,,a,,,v,,,a,,,i,,,l,,,a,,,b,,,l,,,e,,,',,,,,,,',,,a,,,w,,,a,,,i,,,t,,,i,,,n,,,g,,,-,,,s,,,o,,,u,,,r,,,c,,,e,,,-,,,a,,,c,,,c,,,e,,,s,,,s,,,',,,],,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,),,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,k,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,u,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,f,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,0,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,=,,,=,,,=,,,',,,s,,,t,,,a,,,l,,,e,,,',,,?,,,',,,D,,,o,,,n,,,n,,,é,,,e,,,s,,, ,,,G,,,A,,,C,,, ,,,p,,,é,,,r,,,i,,,m,,,é,,,e,,,s,,, ,,,·,,, ,,,c,,,o,,,l,,,l,,,e,,,c,,,t,,,e,,, ,,,à,,, ,,,a,,,c,,,t,,,u,,,a,,,l,,,i,,,s,,,e,,,r,,,',,,:,,,',,,S,,,o,,,u,,,r,,,c,,,e,,, ,,,G,,,A,,,C,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,,,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,},,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,G,,,a,,,c,,,U,,,s,,,a,,,g,,,e,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,l,,,e,,,e,,,t,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,F,,,l,,,e,,,e,,,t,,,U,,,s,,,a,,,g,,,e,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,;,,,
+,,, ,,, ,,,/,,,/,,, ,,,L,,,e,,,s,,, ,,,d,,,o,,,n,,,n,,,é,,,e,,,s,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,,s,,, ,,,s,,,u,,,f,,,f,,,i,,,s,,,e,,,n,,,t,,, ,,,à,,, ,,,c,,,l,,,a,,,s,,,s,,,e,,,r,,, ,,,u,,,n,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,,.,,, ,,,L,,,',,,a,,,b,,,s,,,e,,,n,,,c,,,e,,, ,,,d,,,e,,,
+,,, ,,, ,,,/,,,/,,, ,,,m,,,é,,,t,,,a,,,d,,,o,,,n,,,n,,,é,,,e,,,s,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,,/,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,, ,,,n,,,e,,, ,,,d,,,o,,,i,,,t,,, ,,,p,,,a,,,s,,, ,,,n,,,e,,,u,,,t,,,r,,,a,,,l,,,i,,,s,,,e,,,r,,, ,,,t,,,o,,,u,,,t,,, ,,,l,,,e,,, ,,,v,,,i,,,v,,,i,,,e,,,r,,,.,,,
+,,, ,,, ,,,/,,,/,,, ,,,E,,,n,,, ,,,r,,,e,,,v,,,a,,,n,,,c,,,h,,,e,,,,,,, ,,,u,,,n,,,e,,, ,,,a,,,s,,,s,,,o,,,c,,,i,,,a,,,t,,,i,,,o,,,n,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,, ,,,c,,,o,,,n,,,n,,,u,,,e,,, ,,,s,,,a,,,n,,,s,,, ,,,s,,,t,,,a,,,t,,,i,,,s,,,t,,,i,,,q,,,u,,,e,,, ,,,d,,,e,,, ,,,f,,,l,,,o,,,t,,,t,,,e,,,
+,,, ,,, ,,,/,,,/,,, ,,,r,,,e,,,s,,,t,,,e,,, ,,,b,,,l,,,o,,,q,,,u,,,a,,,n,,,t,,,e,,, ,,,p,,,o,,,u,,,r,,, ,,,c,,,e,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,, ,,,:,,, ,,,o,,,n,,, ,,,n,,,e,,, ,,,s,,,u,,,p,,,p,,,o,,,s,,,e,,, ,,,j,,,a,,,m,,,a,,,i,,,s,,, ,,,u,,,n,,,e,,, ,,,u,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,n,,,u,,,l,,,l,,,e,,,.,,,
+,,, ,,, ,,,i,,,f,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,
+,,, ,,, ,,, ,,, ,,,k,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,u,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,,,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,f,,,l,,,e,,,e,,,t,,,.,,,u,,,s,,,e,,,s,,,,,,,f,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,:,,,f,,,l,,,e,,,e,,,t,,,.,,,k,,,n,,,o,,,w,,,n,,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,f,,,l,,,e,,,e,,,t,,,.,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,U,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,G,,,A,,,C,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,,,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,
+,,, ,,, ,,,},,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,f,,,l,,,e,,,e,,,t,,,.,,,k,,,n,,,o,,,w,,,n,,,&,,,&,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,f,,,l,,,e,,,e,,,t,,,.,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,),,,>,,,0,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,
+,,, ,,, ,,, ,,, ,,,k,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,u,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,,,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,f,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,f,,,l,,,e,,,e,,,t,,,.,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,,,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,P,,,i,,,l,,,o,,,t,,,e,,, ,,,i,,,d,,,e,,,n,,,t,,,i,,,f,,,i,,,é,,, ,,,·,,, ,,,u,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,G,,,A,,,C,,, ,,,d,,,u,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,,,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,
+,,, ,,, ,,,},,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,f,,,l,,,e,,,e,,,t,,,.,,,k,,,n,,,o,,,w,,,n,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,
+,,, ,,, ,,, ,,, ,,,k,,,n,,,o,,,w,,,n,,,:,,,t,,,r,,,u,,,e,,,,,,,u,,,s,,,e,,,s,,,:,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,,,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,f,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,f,,,l,,,e,,,e,,,t,,,.,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,,,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,C,,,l,,,a,,,s,,,s,,,e,,,m,,,e,,,n,,,t,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,u,,,n,,,i,,,q,,,u,,,e,,,m,,,e,,,n,,,t,,, ,,,·,,, ,,,a,,,s,,,s,,,o,,,c,,,i,,,a,,,t,,,i,,,o,,,n,,,s,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,,s,,,-,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,s,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,,,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,
+,,, ,,, ,,,},,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,
+,,, ,,, ,,, ,,, ,,,k,,,n,,,o,,,w,,,n,,,:,,,t,,,r,,,u,,,e,,,,,,,u,,,s,,,e,,,s,,,:,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,+,,,f,,,l,,,e,,,e,,,t,,,.,,,u,,,s,,,e,,,s,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,,,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,f,,,l,,,e,,,e,,,t,,,.,,,u,,,s,,,e,,,s,,,,,,,f,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,:,,,t,,,r,,,u,,,e,,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,f,,,l,,,e,,,e,,,t,,,.,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,C,,,l,,,a,,,s,,,s,,,e,,,m,,,e,,,n,,,t,,, ,,,G,,,A,,,C,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,+,,, ,,,f,,,l,,,o,,,t,,,t,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,,,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,
+,,, ,,, ,,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,A,,,l,,,l,,,o,,,w,,,e,,,d,,,(,,,s,,,t,,,a,,,t,,,u,,,s,,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,A,,,l,,,l,,,R,,,o,,,s,,,t,,,e,,,r,,,',,,),,,?,,,.,,,c,,,h,,,e,,,c,,,k,,,e,,,d,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,t,,,r,,,u,,,e,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,n,,,a,,,b,,,l,,,e,,,d,,,=,,,(,,,i,,,d,,,,,,,f,,,a,,,l,,,l,,,b,,,a,,,c,,,k,,,),,,=,,,>,,,$,,,(,,,i,,,d,,,),,,?,,,$,,,(,,,i,,,d,,,),,,.,,,c,,,h,,,e,,,c,,,k,,,e,,,d,,,:,,,f,,,a,,,l,,,l,,,b,,,a,,,c,,,k,,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,s,,,t,,,a,,,t,,,u,,,s,,,=,,,=,,,=,,,',,,I,,,N,,,C,,,O,,,M,,,P,,,L,,,E,,,T,,,S,,,',,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,e,,,n,,,a,,,b,,,l,,,e,,,d,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,I,,,n,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,',,,,,,,t,,,r,,,u,,,e,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,s,,,t,,,a,,,t,,,u,,,s,,,=,,,=,,,=,,,',,,T,,,R,,,È,,,S,,, ,,,F,,,A,,,I,,,B,,,L,,,E,,,S,,,',,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,e,,,n,,,a,,,b,,,l,,,e,,,d,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,V,,,e,,,r,,,y,,,L,,,o,,,w,,,',,,,,,,t,,,r,,,u,,,e,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,s,,,t,,,a,,,t,,,u,,,s,,,=,,,=,,,=,,,',,,F,,,A,,,I,,,B,,,L,,,E,,,S,,,',,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,e,,,n,,,a,,,b,,,l,,,e,,,d,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,L,,,o,,,w,,,',,,,,,,t,,,r,,,u,,,e,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,s,,,t,,,a,,,t,,,u,,,s,,,=,,,=,,,=,,,',,,M,,,O,,,Y,,,E,,,N,,,S,,,',,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,e,,,n,,,a,,,b,,,l,,,e,,,d,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,M,,,e,,,d,,,i,,,u,,,m,,,',,,,,,,f,,,a,,,l,,,s,,,e,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,a,,,l,,,s,,,e,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,c,,,o,,,p,,,e,,,d,,,M,,,o,,,d,,,s,,,(,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,l,,,l,,,=,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,A,,,l,,,l,,,R,,,o,,,s,,,t,,,e,,,r,,,',,,),,,?,,,.,,,c,,,h,,,e,,,c,,,k,,,e,,,d,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,l,,,l,,,o,,,w,,,e,,,d,,,=,,,[,,,],,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,, ,,,o,,,f,,, ,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,i,,,s,,,G,,,a,,,l,,,a,,,c,,,t,,,i,,,c,,,L,,,e,,,g,,,e,,,n,,,d,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,c,,,),,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,t,,,=,,,v,,,1,,,7,,,6,,,M,,,o,,,d,,,S,,,t,,,a,,,t,,,u,,,s,,,(,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,M,,,o,,,d,,,s,,,(,,,c,,,),,,),,,.,,,s,,,t,,,a,,,t,,,u,,,s,,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,f,,,o,,,r,,,g,,,e,,,S,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,A,,,l,,,l,,,o,,,w,,,e,,,d,,,(,,,s,,,t,,,),,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,, ,,,o,,,f,,, ,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,M,,,o,,,d,,,s,,,(,,,c,,,),,,),,, ,,,a,,,l,,,l,,,o,,,w,,,e,,,d,,,.,,,p,,,u,,,s,,,h,,,(,,,m,,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,a,,,l,,,l,,,o,,,w,,,e,,,d,,,;,,,
+,,,},,,
+,,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,D,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,a,,,w,,,=,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,?,,,.,,,s,,,e,,,t,,,s,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,=,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,r,,,a,,,w,,,),,,
+,,, ,,, ,,, ,,, ,,,?,,, ,,,r,,,a,,,w,,,.,,,m,,,a,,,p,,,(,,,i,,,t,,,e,,,m,,,=,,,>,,,[,,,i,,,t,,,e,,,m,,,?,,,.,,,n,,,a,,,m,,,e,,,,,,,i,,,t,,,e,,,m,,,?,,,.,,,w,,,e,,,i,,,g,,,h,,,t,,,],,,),,,
+,,, ,,, ,,, ,,, ,,,:,,, ,,,r,,,a,,,w,,,&,,,&,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,r,,,a,,,w,,,=,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,, ,,,?,,, ,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,r,,,a,,,w,,,),,, ,,,:,,, ,,,[,,,],,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,(,,,[,,,n,,,a,,,m,,,e,,,,,,,w,,,e,,,i,,,g,,,h,,,t,,,],,,),,,=,,,>,,,(,,,{,,,n,,,a,,,m,,,e,,,:,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,',,,),,,.,,,t,,,r,,,i,,,m,,,(,,,),,,,,,,k,,,e,,,y,,,:,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,n,,,a,,,m,,,e,,,),,,,,,,w,,,e,,,i,,,g,,,h,,,t,,,:,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,w,,,e,,,i,,,g,,,h,,,t,,,|,,,|,,,0,,,),,,},,,),,,),,,
+,,, ,,, ,,, ,,, ,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,i,,,t,,,e,,,m,,,=,,,>,,,i,,,t,,,e,,,m,,,.,,,n,,,a,,,m,,,e,,,&,,,&,,,i,,,t,,,e,,,m,,,.,,,k,,,e,,,y,,,&,,,&,,,i,,,t,,,e,,,m,,,.,,,w,,,e,,,i,,,g,,,h,,,t,,,>,,,0,,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,R,,,u,,,l,,,e,,,s,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,/,,,/,,, ,,,S,,,e,,,u,,,l,,,e,,,s,,, ,,,l,,,e,,,s,,, ,,,c,,,o,,,m,,,p,,,o,,,s,,,i,,,t,,,i,,,o,,,n,,,s,,, ,,,e,,,x,,,p,,,l,,,i,,,c,,,i,,,t,,,e,,,s,,, ,,,d,,,e,,, ,,,s,,,i,,,x,,, ,,,m,,,o,,,d,,,s,,, ,,,s,,,o,,,n,,,t,,, ,,,d,,,e,,,s,,, ,,,p,,,l,,,a,,,n,,,s,,, ,,,e,,,x,,,a,,,c,,,t,,,s,,,.,,,
+,,, ,,, ,,,/,,,/,,, ,,,`,,,s,,,e,,,t,,,s,,,`,,, ,,,c,,,o,,,n,,,t,,,i,,,e,,,n,,,t,,, ,,,u,,,n,,,e,,, ,,,d,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,, ,,,d,,,e,,, ,,,s,,,e,,,t,,,s,,, ,,,o,,,b,,,s,,,e,,,r,,,v,,,é,,,s,,,,,,, ,,,p,,,a,,,s,,, ,,,u,,,n,,,e,,, ,,,c,,,o,,,m,,,p,,,o,,,s,,,i,,,t,,,i,,,o,,,n,,,.,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,=,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,?,,,.,,,s,,,p,,,e,,,c,,,i,,,f,,,i,,,c,,,_,,,s,,,e,,,t,,,s,,,),,,?,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,.,,,s,,,p,,,e,,,c,,,i,,,f,,,i,,,c,,,_,,,s,,,e,,,t,,,s,,,:,,,[,,,],,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,u,,,l,,,e,,,s,,,=,,,[,,,],,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,n,,,t,,,r,,,y,,, ,,,o,,,f,,, ,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,a,,,w,,,=,,,e,,,n,,,t,,,r,,,y,,,?,,,.,,,c,,,o,,,u,,,n,,,t,,,s,,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,r,,,a,,,w,,,|,,,|,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,r,,,a,,,w,,,!,,,=,,,=,,,',,,o,,,b,,,j,,,e,,,c,,,t,,,',,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,u,,,n,,,t,,,s,,,=,,,{,,,},,,;,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,[,,,n,,,a,,,m,,,e,,,,,,,v,,,a,,,l,,,u,,,e,,,],,, ,,,o,,,f,,, ,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,r,,,a,,,w,,,),,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,u,,,n,,,t,,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,,,,,k,,,e,,,y,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,',,,),,,.,,,t,,,r,,,i,,,m,,,(,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,k,,,e,,,y,,,&,,,&,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,i,,,s,,,I,,,n,,,t,,,e,,,g,,,e,,,r,,,(,,,c,,,o,,,u,,,n,,,t,,,),,,&,,,&,,,c,,,o,,,u,,,n,,,t,,,>,,,0,,,),,,c,,,o,,,u,,,n,,,t,,,s,,,[,,,k,,,e,,,y,,,],,,=,,,c,,,o,,,u,,,n,,,t,,,;,,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,v,,,a,,,l,,,u,,,e,,,s,,,(,,,c,,,o,,,u,,,n,,,t,,,s,,,),,,.,,,r,,,e,,,d,,,u,,,c,,,e,,,(,,,(,,,s,,,u,,,m,,,,,,,n,,,),,,=,,,>,,,s,,,u,,,m,,,+,,,n,,,,,,,0,,,),,,!,,,=,,,=,,,6,,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,u,,,l,,,e,,,s,,,.,,,p,,,u,,,s,,,h,,,(,,,{,,,l,,,a,,,b,,,e,,,l,,,:,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,e,,,n,,,t,,,r,,,y,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,c,,,o,,,u,,,n,,,t,,,s,,,),,,.,,,m,,,a,,,p,,,(,,,(,,,[,,,n,,,a,,,m,,,e,,,,,,,n,,,],,,),,,=,,,>,,,`,,,$,,,{,,,n,,,a,,,m,,,e,,,},,, ,,,×,,,$,,,{,,,n,,,},,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,+,,, ,,,',,,),,,),,,,,,,c,,,o,,,u,,,n,,,t,,,s,,,,,,,w,,,e,,,i,,,g,,,h,,,t,,,:,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,e,,,n,,,t,,,r,,,y,,,.,,,w,,,e,,,i,,,g,,,h,,,t,,,|,,,|,,,0,,,),,,},,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,r,,,u,,,l,,,e,,,s,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,S,,,e,,,t,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,m,,,o,,,d,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,n,,,g,,,i,,,n,,,e,,,=,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,M,,,o,,,d,,,E,,,n,,,g,,,i,,,n,,,e,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,c,,,t,,,u,,,a,,,l,,,=,,,e,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,e,,,t,,,F,,,r,,,o,,,m,,,M,,,o,,,d,,,(,,,m,,,o,,,d,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,=,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,D,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,u,,,l,,,e,,,s,,,=,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,R,,,u,,,l,,,e,,,s,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,a,,,c,,,t,,,u,,,a,,,l,,,|,,,|,,,(,,,!,,,d,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,&,,,&,,,!,,,r,,,u,,,l,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,o,,,k,,,:,,,n,,,u,,,l,,,l,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,d,,,e,,, ,,,s,,,e,,,t,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,b,,,s,,,e,,,r,,,v,,,e,,,d,,,=,,,d,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,.,,,s,,,o,,,m,,,e,,,(,,,i,,,t,,,e,,,m,,,=,,,>,,,e,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,e,,,t,,,(,,,i,,,t,,,e,,,m,,,.,,,n,,,a,,,m,,,e,,,),,,=,,,=,,,=,,,a,,,c,,,t,,,u,,,a,,,l,,,),,, ,,,|,,,|,,,
+,,, ,,, ,,, ,,, ,,,r,,,u,,,l,,,e,,,s,,,.,,,s,,,o,,,m,,,e,,,(,,,r,,,u,,,l,,,e,,,=,,,>,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,k,,,e,,,y,,,s,,,(,,,r,,,u,,,l,,,e,,,.,,,c,,,o,,,u,,,n,,,t,,,s,,,),,,.,,,s,,,o,,,m,,,e,,,(,,,n,,,a,,,m,,,e,,,=,,,>,,,e,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,e,,,t,,,(,,,n,,,a,,,m,,,e,,,),,,=,,,=,,,=,,,a,,,c,,,t,,,u,,,a,,,l,,,),,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,w,,,e,,,i,,,g,,,h,,,t,,,=,,,d,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,.,,,f,,,i,,,n,,,d,,,(,,,i,,,t,,,e,,,m,,,=,,,>,,,e,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,e,,,t,,,(,,,i,,,t,,,e,,,m,,,.,,,n,,,a,,,m,,,e,,,),,,=,,,=,,,=,,,a,,,c,,,t,,,u,,,a,,,l,,,),,,?,,,.,,,w,,,e,,,i,,,g,,,h,,,t,,,|,,,|,,,0,,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,o,,,k,,,:,,,o,,,b,,,s,,,e,,,r,,,v,,,e,,,d,,,,,,,w,,,e,,,i,,,g,,,h,,,t,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,o,,,b,,,s,,,e,,,r,,,v,,,e,,,d,,,?,,,',,,S,,,e,,,t,,, ,,,o,,,b,,,s,,,e,,,r,,,v,,,é,,, ,,,d,,,a,,,n,,,s,,, ,,,l,,,e,,,s,,, ,,,d,,,o,,,n,,,n,,,é,,,e,,,s,,, ,,,K,,,y,,,b,,,e,,,r,,,',,,:,,,',,,S,,,e,,,t,,, ,,,a,,,b,,,s,,,e,,,n,,,t,,, ,,,d,,,e,,, ,,,l,,,a,,, ,,,r,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,,',,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,P,,,r,,,i,,,m,,,a,,,r,,,y,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,m,,,o,,,d,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,l,,,o,,,t,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,l,,,o,,,t,,,K,,,e,,,y,,,(,,,m,,,o,,,d,,,?,,,.,,,s,,,l,,,o,,,t,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,x,,,p,,,e,,,c,,,t,,,e,,,d,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,i,,,m,,,a,,,r,,,y,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,s,,,l,,,o,,,t,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,=,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,e,,,x,,,p,,,e,,,c,,,t,,,e,,,d,,,),,,.,,,s,,,o,,,r,,,t,,,(,,,(,,,a,,,,,,,b,,,),,,=,,,>,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,b,,,[,,,1,,,],,,|,,,|,,,0,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,a,,,[,,,1,,,],,,|,,,|,,,0,,,),,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,o,,,k,,,:,,,n,,,u,,,l,,,l,,,,,,,e,,,x,,,p,,,e,,,c,,,t,,,e,,,d,,,:,,,',,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,=,,,v,,,a,,,l,,,u,,,e,,,=,,,>,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,M,,,o,,,d,,,E,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,t,,,a,,,t,,,K,,,e,,,y,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,.,,,r,,,e,,,p,,,l,,,a,,,c,,,e,,,(,,,/,,,P,,,E,,,R,,,C,,,E,,,N,,,T,,,$,,,/,,,,,,,',,,',,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,c,,,t,,,u,,,a,,,l,,,=,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,(,,,m,,,o,,,d,,,?,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,s,,,t,,,a,,,t,,,|,,,|,,,',,,',,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,a,,,t,,,c,,,h,,,=,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,.,,,f,,,i,,,n,,,d,,,(,,,(,,,[,,,n,,,a,,,m,,,e,,,],,,),,,=,,,>,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,(,,,n,,,a,,,m,,,e,,,),,,=,,,=,,,=,,,a,,,c,,,t,,,u,,,a,,,l,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,o,,,k,,,:,,,!,,,!,,,m,,,a,,,t,,,c,,,h,,,,,,,e,,,x,,,p,,,e,,,c,,,t,,,e,,,d,,,:,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,[,,,0,,,],,,?,,,.,,,[,,,0,,,],,,|,,,|,,,',,,—,,,',,,,,,,e,,,x,,,p,,,e,,,c,,,t,,,e,,,d,,,P,,,c,,,t,,,:,,,m,,,a,,,t,,,c,,,h,,,?,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,m,,,a,,,t,,,c,,,h,,,[,,,1,,,],,,|,,,|,,,0,,,),,,:,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,[,,,0,,,],,,?,,,.,,,[,,,1,,,],,,|,,,|,,,0,,,),,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,A,,,u,,,d,,,i,,,t,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,=,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,M,,,o,,,d,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,u,,,l,,,e,,,s,,,=,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,R,,,u,,,l,,,e,,,s,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,B,,,y,,,S,,,l,,,o,,,t,,,=,,,{,,,},,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,l,,,o,,,t,,, ,,,o,,,f,,, ,,,[,,,',,,S,,,q,,,u,,,a,,,r,,,e,,,',,,,,,,',,,A,,,r,,,r,,,o,,,w,,,',,,,,,,',,,D,,,i,,,a,,,m,,,o,,,n,,,d,,,',,,,,,,',,,T,,,r,,,i,,,a,,,n,,,g,,,l,,,e,,,',,,,,,,',,,C,,,i,,,r,,,c,,,l,,,e,,,',,,,,,,',,,C,,,r,,,o,,,s,,,s,,,',,,],,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,=,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,i,,,m,,,a,,,r,,,y,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,s,,,l,,,o,,,t,,,),,,),,,.,,,s,,,o,,,r,,,t,,,(,,,(,,,a,,,,,,,b,,,),,,=,,,>,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,b,,,[,,,1,,,],,,|,,,|,,,0,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,a,,,[,,,1,,,],,,|,,,|,,,0,,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,B,,,y,,,S,,,l,,,o,,,t,,,[,,,s,,,l,,,o,,,t,,,],,,=,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,i,,,s,,,s,,,u,,,e,,,s,,,=,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,.,,,m,,,a,,,p,,,(,,,(,,,m,,,,,,,i,,,n,,,d,,,e,,,x,,,),,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,=,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,S,,,e,,,t,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,,,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,=,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,P,,,r,,,i,,,m,,,a,,,r,,,y,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,.,,,.,,,.,,,m,,,,,,,_,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,I,,,n,,,d,,,e,,,x,,,:,,,i,,,n,,,d,,,e,,,x,,,,,,,_,,,s,,,e,,,t,,,:,,,s,,,e,,,t,,,,,,,_,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,:,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,,,,,_,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,:,,,s,,,e,,,t,,,.,,,o,,,k,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,|,,,|,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,o,,,k,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,,,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,:,,,s,,,e,,,t,,,.,,,o,,,k,,,=,,,=,,,=,,,f,,,a,,,l,,,s,,,e,,,|,,,|,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,o,,,k,,,=,,,=,,,=,,,f,,,a,,,l,,,s,,,e,,,},,,;,,,
+,,, ,,, ,,,},,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,,,,,i,,,s,,,s,,,u,,,e,,,s,,,,,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,B,,,y,,,S,,,l,,,o,,,t,,,,,,,s,,,e,,,t,,,R,,,u,,,l,,,e,,,s,,,:,,,r,,,u,,,l,,,e,,,s,,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,A,,,l,,,l,,,S,,,o,,,u,,,r,,,c,,,e,,,M,,,o,,,d,,,s,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,=,,,n,,,u,,,l,,,l,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,u,,,t,,,=,,,[,,,],,,,,,,o,,,w,,,n,,,e,,,r,,,R,,,e,,,s,,,o,,,l,,,v,,,e,,,r,,,=,,,b,,,u,,,i,,,l,,,d,,,R,,,o,,,s,,,t,,,e,,,r,,,O,,,w,,,n,,,e,,,r,,,R,,,e,,,s,,,o,,,l,,,v,,,e,,,r,,,(,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,a,,,s,,,o,,,n,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,L,,,a,,,t,,,e,,,s,,,t,,,G,,,a,,,c,,,U,,,s,,,a,,,g,,,e,,,S,,,e,,,a,,,s,,,o,,,n,,,(,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,K,,,e,,,y,,,=,,,t,,,a,,,r,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,K,,,e,,,y,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,:,,,',,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,i,,,e,,,s,,,=,,,n,,,e,,,w,,, ,,,M,,,a,,,p,,,(,,,(,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,|,,,|,,,[,,,],,,),,,.,,,m,,,a,,,p,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,=,,,>,,,[,,,
+,,, ,,, ,,, ,,, ,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,K,,,e,,,y,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,,,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,D,,,o,,,n,,,o,,,r,,,P,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,
+,,, ,,, ,,,],,,),,,),,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,a,,,w,,, ,,,o,,,f,,, ,,,m,,,o,,,d,,,s,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,=,,,n,,,o,,,r,,,m,,,a,,,l,,,i,,,z,,,e,,,M,,,o,,,d,,,F,,,o,,,r,,,D,,,i,,,s,,,p,,,l,,,a,,,y,,,(,,,r,,,a,,,w,,,),,,,,,,o,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,=,,,r,,,e,,,s,,,o,,,l,,,v,,,e,,,M,,,o,,,d,,,O,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,(,,,m,,,,,,,o,,,w,,,n,,,e,,,r,,,R,,,e,,,s,,,o,,,l,,,v,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,w,,,n,,,e,,,r,,,=,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,.,,,f,,,i,,,n,,,d,,,(,,,c,,,=,,,>,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,K,,,e,,,y,,,(,,,c,,,),,,=,,,=,,,=,,,o,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,o,,,w,,,n,,,e,,,r,,,&,,,&,,,i,,,s,,,G,,,a,,,l,,,a,,,c,,,t,,,i,,,c,,,L,,,e,,,g,,,e,,,n,,,d,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,o,,,w,,,n,,,e,,,r,,,),,,&,,,&,,,o,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,!,,,=,,,=,,,t,,,a,,,r,,,g,,,e,,,t,,,K,,,e,,,y,,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,t,,,=,,,o,,,w,,,n,,,e,,,r,,,?,,,v,,,1,,,7,,,6,,,M,,,o,,,d,,,S,,,t,,,a,,,t,,,u,,,s,,,(,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,M,,,o,,,d,,,s,,,(,,,o,,,w,,,n,,,e,,,r,,,),,,),,,.,,,s,,,t,,,a,,,t,,,u,,,s,,,:,,,',,,I,,,N,,,V,,,E,,,N,,,T,,,A,,,I,,,R,,,E,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,=,,,!,,,!,,,o,,,w,,,n,,,e,,,r,,,&,,,&,,,o,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,=,,,=,,,=,,,t,,,a,,,r,,,g,,,e,,,t,,,K,,,e,,,y,,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,o,,,w,,,n,,,e,,,r,,,&,,,&,,,!,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,&,,,&,,,!,,,f,,,o,,,r,,,g,,,e,,,S,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,A,,,l,,,l,,,o,,,w,,,e,,,d,,,(,,,s,,,t,,,),,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,w,,,n,,,e,,,r,,,L,,,a,,,b,,,e,,,l,,,=,,,o,,,w,,,n,,,e,,,r,,,?,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,m,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,|,,,|,,,',,,L,,,i,,,b,,,r,,,e,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,i,,,s,,,F,,,r,,,e,,,e,,,=,,,!,,,o,,,w,,,n,,,e,,,r,,,&,,,&,,,!,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,|,,,|,,,',,,',,,),,,.,,,t,,,r,,,i,,,m,,,(,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,=,,,o,,,w,,,n,,,e,,,r,,,?,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,i,,,e,,,s,,,.,,,g,,,e,,,t,,,(,,,o,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,),,,:,,,i,,,s,,,F,,,r,,,e,,,e,,,?,,,{,,,k,,,n,,,o,,,w,,,n,,,:,,,t,,,r,,,u,,,e,,,,,,,u,,,s,,,e,,,s,,,:,,,0,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,:,,,0,,,,,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,0,,,,,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,0,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,M,,,o,,,d,,, ,,,l,,,i,,,b,,,r,,,e,,,',,,},,,:,,,{,,,k,,,n,,,o,,,w,,,n,,,:,,,f,,,a,,,l,,,s,,,e,,,,,,,u,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,n,,,u,,,l,,,l,,,,,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,0,,,,,,,r,,,e,,,a,,,s,,,o,,,n,,,:,,,',,,P,,,r,,,o,,,p,,,r,,,i,,,é,,,t,,,a,,,i,,,r,,,e,,, ,,,n,,,o,,,n,,, ,,,r,,,é,,,s,,,o,,,l,,,u,,,',,,},,,;,,,
+,,, ,,, ,,, ,,, ,,,o,,,u,,,t,,,.,,,p,,,u,,,s,,,h,,,(,,,{,,,.,,,.,,,.,,,m,,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,:,,,s,,,t,,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,:,,,o,,,w,,,n,,,e,,,r,,,L,,,a,,,b,,,e,,,l,,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,:,,,o,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,P,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,K,,,n,,,o,,,w,,,n,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,|,,,|,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,k,,,n,,,o,,,w,,,n,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,U,,,s,,,a,,,g,,,e,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,?,,,0,,,:,,,(,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,u,,,s,,,e,,,s,,,?,,,?,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,P,,,O,,,S,,,I,,,T,,,I,,,V,,,E,,,_,,,I,,,N,,,F,,,I,,,N,,,I,,,T,,,Y,,,),,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,?,,,0,,,:,,,(,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,?,,,?,,,n,,,u,,,l,,,l,,,),,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,F,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,?,,,0,,,:,,,(,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,?,,,?,,,n,,,u,,,l,,,l,,,),,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,F,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,|,,,|,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,f,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,F,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,:,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,|,,,|,,,{,,,},,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,E,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,:,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,|,,,|,,,',,,u,,,n,,,i,,,t,,,-,,,u,,,s,,,a,,,g,,,e,,,',,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,D,,,a,,,t,,,a,,,S,,,t,,,a,,,t,,,u,,,s,,,:,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,|,,,|,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,|,,,|,,,',,,u,,,n,,,a,,,v,,,a,,,i,,,l,,,a,,,b,,,l,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,:,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,s,,,h,,,i,,,p,,,C,,,o,,,u,,,n,,,t,,,?,,,?,,,0,,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,P,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,R,,,e,,,a,,,s,,,o,,,n,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,?,,,',,,M,,,o,,,d,,, ,,,d,,,é,,,j,,,à,,, ,,,é,,,q,,,u,,,i,,,p,,,é,,, ,,,s,,,u,,,r,,, ,,,l,,,a,,, ,,,c,,,i,,,b,,,l,,,e,,,',,,:,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,r,,,e,,,a,,,s,,,o,,,n,,,|,,,|,,,',,,U,,,s,,,a,,,g,,,e,,, ,,,G,,,A,,,C,,, ,,,i,,,n,,,c,,,o,,,n,,,n,,,u,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,_,,,u,,,s,,,a,,,g,,,e,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,?,,,0,,,:,,,(,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,u,,,s,,,e,,,s,,,?,,,?,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,P,,,O,,,S,,,I,,,T,,,I,,,V,,,E,,,_,,,I,,,N,,,F,,,I,,,N,,,I,,,T,,,Y,,,),,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,_,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,_,,,u,,,s,,,e,,,s,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,?,,,0,,,:,,,(,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,?,,,?,,,n,,,u,,,l,,,l,,,),,,,,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,_,,,f,,,l,,,e,,,e,,,t,,,_,,,u,,,s,,,e,,,s,,,:,,,i,,,s,,,T,,,a,,,r,,,g,,,e,,,t,,,?,,,0,,,:,,,(,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,?,,,.,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,?,,,?,,,n,,,u,,,l,,,l,,,),,,},,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,o,,,u,,,t,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,o,,,u,,,r,,,c,,,e,,,A,,,l,,,l,,,o,,,w,,,e,,,d,,,F,,,o,,,r,,,S,,,e,,,a,,,r,,,c,,,h,,,(,,,m,,,,,,,t,,,a,,,r,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,=,,,n,,,u,,,l,,,l,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,K,,,e,,,y,,,=,,,t,,,a,,,r,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,K,,,e,,,y,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,:,,,',,,',,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,K,,,e,,,y,,,&,,,&,,,m,,,?,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,=,,,=,,,=,,,t,,,a,,,r,,,g,,,e,,,t,,,K,,,e,,,y,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,t,,,r,,,u,,,e,,,;,,,
+,,, ,,, ,,,/,,,/,,, ,,,U,,,n,,, ,,,m,,,o,,,d,,, ,,,l,,,i,,,b,,,r,,,e,,, ,,,e,,,s,,,t,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,.,,, ,,,U,,,n,,, ,,,m,,,o,,,d,,, ,,,é,,,q,,,u,,,i,,,p,,,é,,, ,,,n,,,',,,e,,,s,,,t,,, ,,,r,,,é,,,c,,,u,,,p,,,é,,,r,,,a,,,b,,,l,,,e,,, ,,,q,,,u,,,e,,, ,,,s,,,i,,, ,,,l,,,e,,,s,,,
+,,, ,,, ,,,/,,,/,,, ,,,u,,,s,,,a,,,g,,,e,,,s,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,E,,,T,,, ,,,f,,,l,,,o,,,t,,,t,,,e,,, ,,,d,,,u,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,, ,,,s,,,o,,,n,,,t,,, ,,,c,,,o,,,n,,,n,,,u,,,s,,, ,,,:,,, ,,,a,,,u,,,c,,,u,,,n,,,e,,, ,,,p,,,r,,,o,,,t,,,e,,,c,,,t,,,i,,,o,,,n,,,
+,,, ,,, ,,,/,,,/,,, ,,,i,,,m,,,p,,,l,,,i,,,c,,,i,,,t,,,e,,, ,,,n,,,e,,, ,,,p,,,e,,,u,,,t,,, ,,,ê,,,t,,,r,,,e,,, ,,,l,,,e,,,v,,,é,,,e,,, ,,,s,,,u,,,r,,, ,,,u,,,n,,,e,,, ,,,d,,,o,,,n,,,n,,,é,,,e,,, ,,,m,,,a,,,n,,,q,,,u,,,a,,,n,,,t,,,e,,,.,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,i,,,s,,,F,,,r,,,e,,,e,,,=,,,!,,,m,,,?,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,&,,,&,,,(,,,!,,,m,,,?,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,|,,,|,,,m,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,=,,,=,,,=,,,',,,L,,,i,,,b,,,r,,,e,,,',,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,i,,,s,,,F,,,r,,,e,,,e,,,|,,,|,,,m,,,?,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,P,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,K,,,n,,,o,,,w,,,n,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,c,,,o,,,p,,,e,,,d,,,M,,,o,,,d,,,s,,,F,,,o,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,{,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,A,,,l,,,l,,,S,,,o,,,u,,,r,,,c,,,e,,,M,,,o,,,d,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,m,,,o,,,d,,,=,,,>,,,f,,,o,,,r,,,g,,,e,,,S,,,o,,,u,,,r,,,c,,,e,,,A,,,l,,,l,,,o,,,w,,,e,,,d,,,F,,,o,,,r,,,S,,,e,,,a,,,r,,,c,,,h,,,(,,,m,,,o,,,d,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,D,,,o,,,n,,,o,,,r,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,c,,,o,,,p,,,e,,,d,,,=,,,f,,,o,,,r,,,g,,,e,,,S,,,c,,,o,,,p,,,e,,,d,,,M,,,o,,,d,,,s,,,F,,,o,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,,,,,g,,,r,,,o,,,u,,,p,,,s,,,=,,,n,,,e,,,w,,, ,,,M,,,a,,,p,,,(,,,),,,,,,,t,,,a,,,r,,,g,,,e,,,t,,,K,,,e,,,y,,,=,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,K,,,e,,,y,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,o,,,d,,, ,,,o,,,f,,, ,,,s,,,c,,,o,,,p,,,e,,,d,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,|,,,|,,,(,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,=,,,=,,,=,,,',,,L,,,i,,,b,,,r,,,e,,,',,,?,,,',,,I,,,N,,,V,,,E,,,N,,,T,,,O,,,R,,,Y,,,',,,:,,,',,,U,,,N,,,R,,,E,,,S,,,O,,,L,,,V,,,E,,,D,,,:,,,',,,+,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,g,,,r,,,o,,,u,,,p,,,s,,,.,,,h,,,a,,,s,,,(,,,k,,,e,,,y,,,),,,),,,g,,,r,,,o,,,u,,,p,,,s,,,.,,,s,,,e,,,t,,,(,,,k,,,e,,,y,,,,,,,{,,,k,,,e,,,y,,,,,,,n,,,a,,,m,,,e,,,:,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,|,,,|,,,',,,I,,,n,,,v,,,e,,,n,,,t,,,a,,,i,,,r,,,e,,, ,,,l,,,i,,,b,,,r,,,e,,,',,,,,,,m,,,o,,,d,,,s,,,:,,,0,,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,u,,,s,,,e,,,s,,,:,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,U,,,s,,,a,,,g,,,e,,,?,,,?,,,0,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,:,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,?,,,?,,,0,,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,:,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,F,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,?,,,?,,,n,,,u,,,l,,,l,,,,,,,f,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,:,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,F,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,:,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,F,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,|,,,|,,,{,,,},,,,,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,:,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,D,,,a,,,t,,,a,,,S,,,t,,,a,,,t,,,u,,,s,,,|,,,|,,,',,,u,,,n,,,a,,,v,,,a,,,i,,,l,,,a,,,b,,,l,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,:,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,E,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,|,,,|,,,',,,u,,,n,,,i,,,t,,,-,,,u,,,s,,,a,,,g,,,e,,,',,,,,,,f,,,r,,,e,,,e,,,:,,,k,,,e,,,y,,,=,,,=,,,=,,,',,,I,,,N,,,V,,,E,,,N,,,T,,,O,,,R,,,Y,,,',,,},,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,g,,,r,,,o,,,u,,,p,,,s,,,.,,,g,,,e,,,t,,,(,,,k,,,e,,,y,,,),,,.,,,m,,,o,,,d,,,s,,,+,,,+,,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,o,,,n,,,o,,,r,,,s,,,=,,,[,,,.,,,.,,,.,,,g,,,r,,,o,,,u,,,p,,,s,,,.,,,v,,,a,,,l,,,u,,,e,,,s,,,(,,,),,,],,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,x,,,.,,,f,,,r,,,e,,,e,,,|,,,|,,,x,,,.,,,k,,,e,,,y,,,!,,,=,,,=,,,t,,,a,,,r,,,g,,,e,,,t,,,K,,,e,,,y,,,),,,.,,,s,,,o,,,r,,,t,,,(,,,(,,,a,,,,,,,b,,,),,,=,,,>,,,a,,,.,,,u,,,s,,,e,,,s,,,-,,,b,,,.,,,u,,,s,,,e,,,s,,,|,,,|,,,b,,,.,,,m,,,o,,,d,,,s,,,-,,,a,,,.,,,m,,,o,,,d,,,s,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,s,,,a,,,g,,,e,,,=,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,_,,,_,,,S,,,W,,,G,,,O,,,H,,,_,,,G,,,A,,,C,,,_,,,U,,,S,,,A,,,G,,,E,,,_,,,_,,,|,,,|,,,{,,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,a,,,s,,,o,,,n,,,=,,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,L,,,a,,,t,,,e,,,s,,,t,,,G,,,a,,,c,,,U,,,s,,,a,,,g,,,e,,,S,,,e,,,a,,,s,,,o,,,n,,,(,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,m,,,o,,,d,,,s,,,:,,,s,,,c,,,o,,,p,,,e,,,d,,,,,,,d,,,o,,,n,,,o,,,r,,,s,,,,,,,f,,,r,,,e,,,e,,,M,,,o,,,d,,,s,,,:,,,d,,,o,,,n,,,o,,,r,,,s,,,.,,,f,,,i,,,n,,,d,,,(,,,x,,,=,,,>,,,x,,,.,,,f,,,r,,,e,,,e,,,),,,?,,,.,,,m,,,o,,,d,,,s,,,|,,,|,,,0,,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,:,,,u,,,s,,,a,,,g,,,e,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,|,,,|,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,|,,,|,,,',,,D,,,o,,,n,,,n,,,é,,,e,,,s,,, ,,,G,,,A,,,C,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,:,,,u,,,s,,,a,,,g,,,e,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,|,,,|,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,|,,,|,,,',,,u,,,n,,,a,,,v,,,a,,,i,,,l,,,a,,,b,,,l,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,:,,,u,,,s,,,a,,,g,,,e,,,.,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,|,,,|,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,|,,,|,,,',,,u,,,n,,,i,,,t,,,-,,,u,,,s,,,a,,,g,,,e,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,:,,,s,,,e,,,a,,,s,,,o,,,n,,,?,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,|,,,|,,,{,,,},,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,r,,,e,,,n,,,d,,,e,,,r,,,S,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,T,,,a,,,r,,,g,,,e,,,t,,,A,,,u,,,d,,,i,,,t,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,u,,,d,,,i,,,t,,,=,,,f,,,o,,,r,,,g,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,A,,,u,,,d,,,i,,,t,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,e,,,s,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,i,,,s,,,s,,,u,,,e,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,x,,,.,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,i,,,s,,,s,,,u,,,e,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,x,,,.,,,_,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,a,,,r,,,d,,,s,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,i,,,s,,,s,,,u,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,m,,,=,,,>,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,-,,,m,,,o,,,d,,, ,,,$,,,{,,,m,,,.,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,?,,,',,,i,,,s,,,-,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,',,,:,,,m,,,.,,,_,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,?,,,',,,i,,,s,,,-,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,',,,:,,,',,,i,,,s,,,-,,,m,,,a,,,t,,,c,,,h,,,',,,},,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,m,,,o,,,d,,,I,,,c,,,o,,,n,,,H,,,t,,,m,,,l,,,(,,,m,,,,,,,',,,4,,,8,,,',,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,|,,,|,,,',,,—,,,',,,),,,},,,<,,,/,,,b,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,m,,,.,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,?,,,',,,É,,,C,,,A,,,R,,,T,,,',,,:,,,m,,,.,,,_,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,?,,,',,,À,,, ,,,V,,,É,,,R,,,I,,,F,,,I,,,E,,,R,,,',,,:,,,',,,C,,,O,,,N,,,F,,,O,,,R,,,M,,,E,,,',,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,e,,,m,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,—,,,',,,),,,},,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,;,,,
+,,, ,,, ,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,A,,,u,,,d,,,i,,,t,,,',,,),,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,-,,,p,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,",,,>,,,$,,,{,,,e,,,s,,,s,,,e,,,n,,,t,,,i,,,a,,,l,,,P,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,H,,,t,,,m,,,l,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,P,,,E,,,R,,,S,,,O,,,N,,,N,,,A,,,G,,,E,,, ,,,C,,,I,,,B,,,L,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,P,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,,',,,),,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,O,,,p,,,t,,,i,,,m,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,s,,,i,,,m,,,u,,,l,,,t,,,a,,,n,,,é,,,e,,, ,,,d,,,e,,,s,,, ,,,s,,,i,,,x,,, ,,,e,,,m,,,p,,,l,,,a,,,c,,,e,,,m,,,e,,,n,,,t,,,s,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,",,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,M,,,O,,,D,,,S,,, ,,,É,,,Q,,,U,,,I,,,P,,,É,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,/,,,6,,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,É,,,C,,,A,,,R,,,T,,,S,,, ,,,K,,,Y,,,B,,,E,,,R,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,e,,,s,,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,À,,, ,,,V,,,É,,,R,,,I,,,F,,,I,,,E,,,R,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,R,,,É,,,F,,,É,,,R,,,E,,,N,,,C,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,D,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,?,,,',,,C,,,H,,,A,,,R,,,G,,,É,,,E,,,',,,:,,,',,,P,,,A,,,R,,,T,,,I,,,E,,,L,,,L,,,E,,,',,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,-,,,m,,,o,,,d,,,s,,,",,,>,,,$,,,{,,,c,,,a,,,r,,,d,,,s,,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,-,,,l,,,i,,,s,,,t,,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,e,,,m,,,p,,,t,,,y,,,",,,>,,,L,,,e,,, ,,,m,,,o,,,t,,,e,,,u,,,r,,, ,,,v,,,a,,, ,,,r,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,e,,,r,,, ,,,u,,,n,,,e,,, ,,,c,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,, ,,,c,,,o,,,m,,,p,,,l,,,è,,,t,,,e,,, ,,,d,,,e,,, ,,,s,,,i,,,x,,, ,,,m,,,o,,,d,,,s,,,.,,, ,,,L,,,e,,,s,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,s,,, ,,,s,,,o,,,n,,,t,,, ,,,c,,,l,,,a,,,s,,,s,,,é,,,e,,,s,,, ,,,s,,,e,,,l,,,o,,,n,,, ,,,l,,,',,,u,,,t,,,i,,,l,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,G,,,A,,,C,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,e,,,t,,, ,,,c,,,e,,,l,,,l,,,e,,, ,,,d,,,e,,,s,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,a,,,s,,,s,,,o,,,c,,,i,,,é,,,s,,, ,,,a,,,u,,,x,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,,s,,,.,,, ,,,L,,,a,,, ,,,q,,,u,,,a,,,l,,,i,,,t,,,é,,, ,,,a,,,c,,,t,,,u,,,e,,,l,,,l,,,e,,, ,,,d,,,e,,,s,,, ,,,m,,,o,,,d,,,s,,, ,,,n,,,e,,, ,,,d,,,é,,,t,,,e,,,r,,,m,,,i,,,n,,,e,,, ,,,p,,,a,,,s,,, ,,,l,,,a,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,i,,,l,,,i,,,t,,,é,,, ,,,d,,,u,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,r,,,e,,,n,,,d,,,e,,,r,,,S,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,D,,,o,,,n,,,o,,,r,,,P,,,a,,,n,,,e,,,l,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,=,,,f,,,o,,,r,,,g,,,e,,,D,,,o,,,n,,,o,,,r,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,o,,,n,,,o,,,r,,,s,,,=,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,.,,,d,,,o,,,n,,,o,,,r,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,!,,,x,,,.,,,f,,,r,,,e,,,e,,,),,,.,,,s,,,l,,,i,,,c,,,e,,,(,,,0,,,,,,,1,,,2,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,o,,,n,,,o,,,r,,,R,,,o,,,w,,,s,,,=,,,d,,,o,,,n,,,o,,,r,,,s,,,.,,,m,,,a,,,p,,,(,,,(,,,d,,,,,,,i,,,),,,=,,,>,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,-,,,r,,,o,,,w,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,i,,,+,,,1,,,),,,.,,,p,,,a,,,d,,,S,,,t,,,a,,,r,,,t,,,(,,,2,,,,,,,',,,0,,,',,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,d,,,.,,,n,,,a,,,m,,,e,,,),,,},,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,$,,,{,,,n,,,u,,,m,,,(,,,d,,,.,,,m,,,o,,,d,,,s,,,),,,},,, ,,,m,,,o,,,d,,,s,,, ,,,·,,, ,,,G,,,A,,,C,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,d,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,),,,},,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,·,,, ,,,$,,,{,,,d,,,.,,,f,,,l,,,e,,,e,,,t,,,K,,,n,,,o,,,w,,,n,,,?,,,n,,,u,,,m,,,(,,,d,,,.,,,f,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,),,,+,,,',,, ,,,f,,,l,,,o,,,t,,,t,,,e,,,',,,:,,,',,,f,,,l,,,o,,,t,,,t,,,e,,, ,,,n,,,o,,,n,,, ,,,m,,,e,,,s,,,u,,,r,,,é,,,e,,,',,,},,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,n,,,o,,,w,,,n,,,=,,,d,,,o,,,n,,,o,,,r,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,L,,,a,,,b,,,e,,,l,,,=,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,.,,,f,,,o,,,r,,,m,,,a,,,t,,,S,,,e,,,a,,,s,,,o,,,n,,,s,,,|,,,|,,,{,,,},,,),,,.,,,m,,,a,,,p,,,(,,,(,,,[,,,f,,,o,,,r,,,m,,,a,,,t,,,,,,,s,,,e,,,a,,,s,,,o,,,n,,,],,,),,,=,,,>,,,f,,,o,,,r,,,m,,,a,,,t,,,+,,,',,, ,,,S,,,',,,+,,,s,,,e,,,a,,,s,,,o,,,n,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,·,,, ,,,',,,),,,|,,,|,,,',,,s,,,a,,,i,,,s,,,o,,,n,,, ,,,n,,,o,,,n,,, ,,,i,,,d,,,e,,,n,,,t,,,i,,,f,,,i,,,é,,,e,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,L,,,a,,,b,,,e,,,l,,,=,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,.,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,T,,,y,,,p,,,e,,,=,,,=,,,=,,,',,,d,,,e,,,f,,,e,,,n,,,s,,,e,,,-,,,c,,,o,,,m,,,p,,,o,,,s,,,i,,,t,,,i,,,o,,,n,,,',,,?,,,',,,D,,,é,,,f,,,e,,,n,,,s,,,e,,, ,,,u,,,n,,,i,,,q,,,u,,,e,,,m,,,e,,,n,,,t,,,',,,:,,,',,,U,,,n,,,i,,,t,,,é,,,s,,, ,,,G,,,A,,,C,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,n,,,e,,,s,,,s,,,L,,,a,,,b,,,e,,,l,,,=,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,S,,,t,,,a,,,t,,,u,,,s,,,=,,,=,,,=,,,',,,p,,,a,,,r,,,t,,,i,,,a,,,l,,,',,,?,,,',,, ,,,·,,, ,,,c,,,a,,,t,,,a,,,l,,,o,,,g,,,u,,,e,,, ,,,p,,,a,,,r,,,t,,,i,,,e,,,l,,,',,,:,,,',,,',,,;,,,
+,,, ,,, ,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,P,,,a,,,n,,,e,,,l,,,',,,),,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,-,,,p,,,a,,,n,,,e,,,l,,, ,,,i,,,s,,,-,,,l,,,i,,,v,,,e,,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,-,,,h,,,e,,,a,,,d,,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,-,,,i,,,d,,,e,,,n,,,t,,,i,,,t,,,y,,,",,,>,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,k,,,i,,,c,,,k,,,e,,,r,,,",,,>,,,A,,,R,,,S,,,E,,,N,,,A,,,L,,, ,,,G,,,L,,,O,,,B,,,A,,,L,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,.,,,m,,,o,,,d,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,, ,,,m,,,o,,,d,,,s,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,s,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,k,,,n,,,o,,,w,,,n,,,},,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,,s,,, ,,,c,,,l,,,a,,,s,,,s,,,é,,,s,,, ,,,p,,,a,,,r,,, ,,,u,,,s,,,a,,,g,,,e,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,·,,, ,,,$,,,{,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,.,,,f,,,r,,,e,,,e,,,M,,,o,,,d,,,s,,,},,, ,,,m,,,o,,,d,,,s,,, ,,,l,,,i,,,b,,,r,,,e,,,s,,, ,,,·,,, ,,,$,,,{,,,e,,,v,,,i,,,d,,,e,,,n,,,c,,,e,,,L,,,a,,,b,,,e,,,l,,,},,,$,,,{,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,n,,,e,,,s,,,s,,,L,,,a,,,b,,,e,,,l,,,},,, ,,,·,,, ,,,$,,,{,,,s,,,e,,,a,,,s,,,o,,,n,,,s,,,L,,,a,,,b,,,e,,,l,,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,-,,,s,,,t,,,a,,,t,,,u,,,s,,,",,,>,,,<,,,i,,,>,,,<,,,/,,,i,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,C,,,L,,,A,,,S,,,S,,,E,,,M,,,E,,,N,,,T,,, ,,,G,,,A,,,C,,, ,,,A,,,C,,,T,,,I,,,F,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,-,,,c,,,o,,,l,,,u,,,m,,,n,,,s,,,",,,>,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,-,,,c,,,o,,,l,,,u,,,m,,,n,,,",,,>,,,<,,,h,,,e,,,a,,,d,,,e,,,r,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,D,,,O,,,N,,,N,,,E,,,U,,,R,,,S,,, ,,,P,,,R,,,I,,,O,,,R,,,I,,,T,,,A,,,I,,,R,,,E,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,m,,,o,,,i,,,n,,,s,,, ,,,u,,,t,,,i,,,l,,,i,,,s,,,é,,,s,,, ,,,d,,,',,,a,,,b,,,o,,,r,,,d,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,h,,,e,,,a,,,d,,,e,,,r,,,>,,,$,,,{,,,d,,,o,,,n,,,o,,,r,,,R,,,o,,,w,,,s,,,|,,,|,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,-,,,e,,,m,,,p,,,t,,,y,,,",,,>,,,A,,,u,,,c,,,u,,,n,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,, ,,,c,,,l,,,a,,,s,,,s,,,a,,,b,,,l,,,e,,, ,,,:,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,e,,, ,,,l,,,e,,,s,,, ,,,o,,,b,,,s,,,e,,,r,,,v,,,a,,,t,,,i,,,o,,,n,,,s,,, ,,,G,,,A,,,C,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,,s,,, ,,,e,,,t,,, ,,,l,,,e,,,s,,, ,,,f,,,i,,,l,,,t,,,r,,,e,,,s,,, ,,,d,,,e,,, ,,,s,,,t,,,a,,,t,,,u,,,t,,, ,,,d,,,e,,,s,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,s,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,},,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,-,,,c,,,o,,,l,,,u,,,m,,,n,,,",,,>,,,<,,,h,,,e,,,a,,,d,,,e,,,r,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,R,,,È,,,G,,,L,,,E,,,S,,, ,,,D,,,E,,, ,,,P,,,R,,,O,,,T,,,E,,,C,,,T,,,I,,,O,,,N,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,a,,,p,,,p,,,l,,,i,,,q,,,u,,,é,,,e,,,s,,, ,,,a,,,u,,, ,,,v,,,i,,,v,,,i,,,e,,,r,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,h,,,e,,,a,,,d,,,e,,,r,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,-,,,r,,,o,,,w,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,0,,,1,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,U,,,s,,,a,,,g,,,e,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,,s,,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,-,,,r,,,o,,,w,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,0,,,2,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,U,,,s,,,a,,,g,,,e,,, ,,,f,,,l,,,o,,,t,,,t,,,e,,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,p,,,i,,,l,,,o,,,t,,,e,,,s,,, ,,,p,,,r,,,o,,,t,,,é,,,g,,,é,,,s,,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,-,,,r,,,o,,,w,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,0,,,3,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,G,,,L,,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,e,,,x,,,c,,,l,,,u,,,e,,,s,,, ,,,c,,,o,,,m,,,m,,,e,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,,s,,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,f,,,-,,,r,,,o,,,w,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,0,,,4,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,D,,,o,,,n,,,n,,,é,,,e,,,s,,, ,,,a,,,b,,,s,,,e,,,n,,,t,,,e,,,s,,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,, ,,,n,,,o,,,n,,, ,,,r,,,e,,,t,,,e,,,n,,,u,,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,S,,,o,,,u,,,r,,,c,,,e,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,(,,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,A,,,l,,,l,,,R,,,o,,,s,,,t,,,e,,,r,,,',,,),,,?,,,.,,,c,,,h,,,e,,,c,,,k,,,e,,,d,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,',,,T,,,O,,,U,,,T,,, ,,,L,,,E,,, ,,,R,,,O,,,S,,,T,,,E,,,R,,, ,,,·,,, ,,,G,,,L,,, ,,,E,,,X,,,C,,,L,,,U,,,E,,,S,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,=,,,[,,,],,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,I,,,n,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,',,,),,,?,,,.,,,c,,,h,,,e,,,c,,,k,,,e,,,d,,,!,,,=,,,=,,,f,,,a,,,l,,,s,,,e,,,),,,a,,,.,,,p,,,u,,,s,,,h,,,(,,,',,,I,,,N,,,C,,,O,,,M,,,P,,,L,,,E,,,T,,,S,,,',,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,V,,,e,,,r,,,y,,,L,,,o,,,w,,,',,,),,,?,,,.,,,c,,,h,,,e,,,c,,,k,,,e,,,d,,,!,,,=,,,=,,,f,,,a,,,l,,,s,,,e,,,),,,a,,,.,,,p,,,u,,,s,,,h,,,(,,,',,,T,,,R,,,È,,,S,,, ,,,F,,,A,,,I,,,B,,,L,,,E,,,S,,,',,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,L,,,o,,,w,,,',,,),,,?,,,.,,,c,,,h,,,e,,,c,,,k,,,e,,,d,,,!,,,=,,,=,,,f,,,a,,,l,,,s,,,e,,,),,,a,,,.,,,p,,,u,,,s,,,h,,,(,,,',,,F,,,A,,,I,,,B,,,L,,,E,,,S,,,',,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,M,,,e,,,d,,,i,,,u,,,m,,,',,,),,,?,,,.,,,c,,,h,,,e,,,c,,,k,,,e,,,d,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,),,,a,,,.,,,p,,,u,,,s,,,h,,,(,,,',,,M,,,O,,,Y,,,E,,,N,,,S,,,',,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,a,,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,+,,, ,,,',,,),,,|,,,|,,,',,,A,,,U,,,C,,,U,,,N,,,E,,, ,,,S,,,O,,,U,,,R,,,C,,,E,,,',,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,S,,,t,,,a,,,t,,,s,,,(,,,m,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,n,,,o,,,r,,,m,,,a,,,l,,,i,,,z,,,e,,,d,,,=,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,M,,,o,,,d,,,E,,,n,,,g,,,i,,,n,,,e,,,.,,,n,,,o,,,r,,,m,,,a,,,l,,,i,,,z,,,e,,,M,,,o,,,d,,,(,,,m,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,(,,,n,,,o,,,r,,,m,,,a,,,l,,,i,,,z,,,e,,,d,,,?,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,|,,,|,,,[,,,],,,),,,
+,,, ,,, ,,, ,,, ,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,s,,,t,,,a,,,t,,,=,,,>,,,s,,,t,,,a,,,t,,,.,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,&,,,&,,,s,,,t,,,a,,,t,,,.,,,k,,,e,,,y,,,&,,,&,,,s,,,t,,,a,,,t,,,.,,,k,,,e,,,y,,,!,,,=,,,=,,,',,,s,,,p,,,e,,,e,,,d,,,',,,),,,
+,,, ,,, ,,, ,,, ,,,.,,,m,,,a,,,p,,,(,,,s,,,t,,,a,,,t,,,=,,,>,,,(,,,{,,,s,,,t,,,a,,,t,,,:,,,s,,,t,,,a,,,t,,,.,,,n,,,a,,,m,,,e,,,+,,,(,,,s,,,t,,,a,,,t,,,.,,,u,,,n,,,i,,,t,,,=,,,=,,,=,,,',,,p,,,e,,,r,,,c,,,e,,,n,,,t,,,a,,,g,,,e,,,P,,,o,,,i,,,n,,,t,,,s,,,',,,?,,,',,, ,,,%,,,',,,:,,,',,,',,,),,,,,,,v,,,a,,,l,,,u,,,e,,,:,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,s,,,t,,,a,,,t,,,.,,,v,,,a,,,l,,,u,,,e,,,),,,,,,,k,,,e,,,y,,,:,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,M,,,o,,,d,,,E,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,t,,,a,,,t,,,K,,,e,,,y,,,(,,,{,,,n,,,a,,,m,,,e,,,:,,,s,,,t,,,a,,,t,,,.,,,n,,,a,,,m,,,e,,,,,,,u,,,n,,,i,,,t,,,:,,,s,,,t,,,a,,,t,,,.,,,u,,,n,,,i,,,t,,,},,,),,,},,,),,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,H,,,a,,,s,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,(,,,m,,,,,,,w,,,a,,,n,,,t,,,e,,,d,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,=,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,M,,,o,,,d,,,E,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,t,,,a,,,t,,,K,,,e,,,y,,,(,,,w,,,a,,,n,,,t,,,e,,,d,,,),,,;,,, ,,,i,,,f,,,(,,,!,,,t,,,a,,,r,,,g,,,e,,,t,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,a,,,l,,,s,,,e,,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,S,,,t,,,a,,,t,,,s,,,(,,,m,,,),,,.,,,s,,,o,,,m,,,e,,,(,,,x,,,=,,,>,,,x,,,.,,,k,,,e,,,y,,,=,,,=,,,=,,,t,,,a,,,r,,,g,,,e,,,t,,, ,,,|,,,|,,, ,,,x,,,.,,,k,,,e,,,y,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,),,, ,,,|,,,|,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,x,,,.,,,k,,,e,,,y,,,),,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,l,,,o,,,t,,,C,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,,(,,,m,,,,,,,s,,,l,,,o,,,t,,,),,,{,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,l,,,o,,,t,,,K,,,e,,,y,,,(,,,m,,,?,,,.,,,s,,,l,,,o,,,t,,,),,,=,,,=,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,l,,,o,,,t,,,K,,,e,,,y,,,(,,,s,,,l,,,o,,,t,,,),,,;,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,t,,,C,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,S,,,e,,,t,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,.,,,o,,,k,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,P,,,r,,,i,,,m,,,a,,,r,,,y,,,C,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,P,,,r,,,i,,,m,,,a,,,r,,,y,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,.,,,o,,,k,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,;,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,S,,,c,,,o,,,r,,,e,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,s,,,e,,,c,,,A,,,,,,,s,,,e,,,c,,,B,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,=,,,f,,,o,,,r,,,g,,,e,,,H,,,a,,,s,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,(,,,m,,,,,,,s,,,e,,,c,,,A,,,),,,,,,, ,,,b,,,=,,,f,,,o,,,r,,,g,,,e,,,H,,,a,,,s,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,(,,,m,,,,,,,s,,,e,,,c,,,B,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,p,,,e,,,e,,,d,,,=,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,m,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,=,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,t,,,C,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,,,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,=,,,f,,,o,,,r,,,g,,,e,,,P,,,r,,,i,,,m,,,a,,,r,,,y,,,C,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,l,,,e,,,t,,, ,,,c,,,o,,,n,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,=,,,0,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,w,,,a,,,n,,,t,,,e,,,d,,,A,,,=,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,M,,,o,,,d,,,E,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,t,,,a,,,t,,,K,,,e,,,y,,,(,,,s,,,e,,,c,,,A,,,),,,,,,,w,,,a,,,n,,,t,,,e,,,d,,,B,,,=,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,M,,,o,,,d,,,E,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,n,,,o,,,n,,,i,,,c,,,a,,,l,,,S,,,t,,,a,,,t,,,K,,,e,,,y,,,(,,,s,,,e,,,c,,,B,,,),,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,x,,, ,,,o,,,f,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,S,,,t,,,a,,,t,,,s,,,(,,,m,,,),,,),,, ,,,i,,,f,,,(,,,x,,,.,,,k,,,e,,,y,,,=,,,=,,,=,,,w,,,a,,,n,,,t,,,e,,,d,,,A,,,|,,,|,,,x,,,.,,,k,,,e,,,y,,,=,,,=,,,=,,,w,,,a,,,n,,,t,,,e,,,d,,,B,,,),,, ,,,c,,,o,,,n,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,+,,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,v,,,a,,,l,,,u,,,e,,,|,,,|,,,0,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,b,,,o,,,t,,,h,,,:,,,a,,,&,,,&,,,b,,,,,,,o,,,n,,,e,,,:,,,(,,,a,,,|,,,|,,,b,,,),,,,,,,a,,,,,,,b,,,,,,,s,,,p,,,e,,,e,,,d,,,,,,,s,,,e,,,t,,,,,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,,,,,c,,,o,,,n,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,e,,,d,,,M,,,o,,,d,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,m,,,o,,,d,,,L,,,i,,,s,,,t,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,l,,,i,,,s,,,t,,,=,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,m,,,o,,,d,,,L,,,i,,,s,,,t,,,),,,?,,,m,,,o,,,d,,,L,,,i,,,s,,,t,,,:,,,[,,,],,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,x,,,p,,,l,,,i,,,c,,,i,,,t,,,B,,,a,,,s,,,e,,,=,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,s,,,t,,,a,,,t,,,s,,,|,,,|,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,b,,,a,,,s,,,e,,,S,,,t,,,a,,,t,,,s,,,|,,,|,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,r,,,a,,,w,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,s,,,t,,,a,,,t,,,s,,,|,,,|,,,
+,,, ,,, ,,, ,,, ,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,r,,,a,,,w,,,?,,,.,,,b,,,a,,,s,,,e,,,S,,,t,,,a,,,t,,,s,,,|,,,|,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,d,,,a,,,t,,,a,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,s,,,t,,,a,,,t,,,s,,,|,,,|,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,F,,,o,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,s,,,t,,,a,,,t,,,s,,,|,,,|,,,{,,,},,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,a,,,s,,,e,,,S,,,p,,,e,,,e,,,d,,,=,,,n,,,u,,,m,,,e,,,r,,,i,,,c,,,V,,,a,,,l,,,u,,,e,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,s,,,t,,,a,,,t,,,s,,,?,,,.,,,S,,,p,,,e,,,e,,,d,,,?,,,?,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,?,,,.,,,b,,,a,,,s,,,e,,,_,,,s,,,t,,,a,,,t,,,s,,,?,,,.,,,s,,,p,,,e,,,e,,,d,,,?,,,?,,,e,,,x,,,p,,,l,,,i,,,c,,,i,,,t,,,B,,,a,,,s,,,e,,,.,,,S,,,p,,,e,,,e,,,d,,,?,,,?,,,e,,,x,,,p,,,l,,,i,,,c,,,i,,,t,,,B,,,a,,,s,,,e,,,.,,,s,,,p,,,e,,,e,,,d,,,,,,,n,,,u,,,l,,,l,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,=,,,w,,,i,,,n,,,d,,,o,,,w,,,.,,,H,,,o,,,l,,,o,,,c,,,r,,,o,,,n,,,M,,,o,,,d,,,E,,,n,,,g,,,i,,,n,,,e,,,.,,,c,,,a,,,l,,,c,,,u,,,l,,,a,,,t,,,e,,,S,,,p,,,e,,,e,,,d,,,(,,,b,,,a,,,s,,,e,,,S,,,p,,,e,,,e,,,d,,,,,,,l,,,i,,,s,,,t,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,:,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,&,,,&,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,t,,,o,,,t,,,a,,,l,,,!,,,=,,,n,,,u,,,l,,,l,,,,,,,
+,,, ,,, ,,, ,,, ,,,t,,,o,,,t,,,a,,,l,,,:,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,&,,,&,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,t,,,o,,,t,,,a,,,l,,,!,,,=,,,n,,,u,,,l,,,l,,,?,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,t,,,o,,,t,,,a,,,l,,,:,,,n,,,u,,,l,,,l,,,,,,,
+,,, ,,, ,,, ,,, ,,,m,,,o,,,d,,,S,,,p,,,e,,,e,,,d,,,:,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,m,,,o,,,d,,,S,,,p,,,e,,,e,,,d,,,,,,,
+,,, ,,, ,,, ,,, ,,,s,,,e,,,t,,,B,,,o,,,n,,,u,,,s,,,:,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,s,,,e,,,t,,,B,,,o,,,n,,,u,,,s,,,,,,,
+,,, ,,, ,,, ,,, ,,,h,,,a,,,s,,,F,,,o,,,u,,,r,,,P,,,i,,,e,,,c,,,e,,,S,,,p,,,e,,,e,,,d,,,S,,,e,,,t,,,:,,,p,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,h,,,a,,,s,,,F,,,o,,,u,,,r,,,P,,,i,,,e,,,c,,,e,,,S,,,p,,,e,,,e,,,d,,,S,,,e,,,t,,,,,,,
+,,, ,,, ,,, ,,, ,,,b,,,a,,,s,,,e,,,S,,,p,,,e,,,e,,,d,,,
+,,, ,,, ,,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,P,,,r,,,e,,,s,,,e,,,r,,,v,,,e,,,s,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,,,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,t,,,r,,,u,,,e,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,I,,,d,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,.,,,g,,,a,,,m,,,e,,,_,,,i,,,d,,,|,,,|,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,.,,,i,,,d,,,|,,,|,,,',,,',,,),,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,l,,,o,,,t,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,l,,,o,,,t,,,K,,,e,,,y,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,.,,,s,,,l,,,o,,,t,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,f,,,t,,,e,,,r,,,=,,,(,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,),,,?,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,:,,,[,,,],,,),,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,m,,,=,,,>,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,I,,,d,,,?,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,g,,,a,,,m,,,e,,,_,,,i,,,d,,,|,,,|,,,m,,,.,,,i,,,d,,,|,,,|,,,',,,',,,),,,!,,,=,,,=,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,I,,,d,,,:,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,l,,,o,,,t,,,K,,,e,,,y,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,),,,!,,,=,,,=,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,l,,,o,,,t,,,),,,;,,,
+,,, ,,, ,,,a,,,f,,,t,,,e,,,r,,,.,,,p,,,u,,,s,,,h,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,e,,,f,,,o,,,r,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,=,,,f,,,o,,,r,,,g,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,e,,,d,,,M,,,o,,,d,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,),,,,,,,a,,,f,,,t,,,e,,,r,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,=,,,f,,,o,,,r,,,g,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,e,,,d,,,M,,,o,,,d,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,a,,,f,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,b,,,e,,,f,,,o,,,r,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,|,,,|,,,!,,,a,,,f,,,t,,,e,,,r,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,e,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,a,,,l,,,s,,,e,,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,b,,,e,,,f,,,o,,,r,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,b,,,a,,,s,,,e,,,S,,,p,,,e,,,e,,,d,,,<,,,=,,,0,,,&,,,&,,,b,,,e,,,f,,,o,,,r,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,h,,,a,,,s,,,F,,,o,,,u,,,r,,,P,,,i,,,e,,,c,,,e,,,S,,,p,,,e,,,e,,,d,,,S,,,e,,,t,,,&,,,&,,,!,,,a,,,f,,,t,,,e,,,r,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,h,,,a,,,s,,,F,,,o,,,u,,,r,,,P,,,i,,,e,,,c,,,e,,,S,,,p,,,e,,,e,,,d,,,S,,,e,,,t,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,a,,,l,,,s,,,e,,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,a,,,f,,,t,,,e,,,r,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,t,,,o,,,t,,,a,,,l,,,+,,,1,,,e,,,-,,,9,,,>,,,=,,,b,,,e,,,f,,,o,,,r,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,i,,,o,,,n,,,.,,,t,,,o,,,t,,,a,,,l,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,s,,,l,,,o,,,t,,,,,,,s,,,e,,,c,,,A,,,,,,,s,,,e,,,c,,,B,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,=,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,M,,,o,,,d,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,=,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,.,,,f,,,i,,,n,,,d,,,(,,,m,,,=,,,>,,,f,,,o,,,r,,,g,,,e,,,S,,,l,,,o,,,t,,,C,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,,(,,,m,,,,,,,s,,,l,,,o,,,t,,,),,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,,=,,,f,,,o,,,r,,,g,,,e,,,A,,,l,,,l,,,S,,,o,,,u,,,r,,,c,,,e,,,M,,,o,,,d,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,m,,,=,,,>,,,f,,,o,,,r,,,g,,,e,,,S,,,o,,,u,,,r,,,c,,,e,,,A,,,l,,,l,,,o,,,w,,,e,,,d,,,F,,,o,,,r,,,S,,,e,,,a,,,r,,,c,,,h,,,(,,,m,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,&,,,&,,,f,,,o,,,r,,,g,,,e,,,S,,,l,,,o,,,t,,,C,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,,(,,,m,,,,,,,s,,,l,,,o,,,t,,,),,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,=,,,s,,,o,,,u,,,r,,,c,,,e,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,m,,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,g,,,a,,,m,,,e,,,_,,,i,,,d,,,|,,,|,,,m,,,.,,,i,,,d,,,|,,,|,,,',,,',,,),,,=,,,=,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,?,,,.,,,g,,,a,,,m,,,e,,,_,,,i,,,d,,,|,,,|,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,?,,,.,,,i,,,d,,,|,,,|,,,',,,',,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,a,,,l,,,s,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,P,,,r,,,e,,,s,,,e,,,r,,,v,,,e,,,s,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,,,,,m,,,),,,;,,,
+,,, ,,, ,,,},,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,a,,,n,,,k,,,e,,,d,,,=,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,m,,,=,,,>,,,(,,,{,,,.,,,.,,,.,,,m,,,,,,,_,,,r,,,a,,,n,,,k,,,:,,,f,,,o,,,r,,,g,,,e,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,S,,,c,,,o,,,r,,,e,,,(,,,m,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,s,,,e,,,c,,,A,,,,,,,s,,,e,,,c,,,B,,,),,,},,,),,,),,,.,,,s,,,o,,,r,,,t,,,(,,,(,,,x,,,,,,,y,,,),,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,b,,,o,,,t,,,h,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,b,,,o,,,t,,,h,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,b,,,o,,,t,,,h,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,b,,,o,,,t,,,h,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,o,,,n,,,e,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,o,,,n,,,e,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,o,,,n,,,e,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,o,,,n,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,s,,,e,,,t,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,s,,,e,,,t,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,s,,,e,,,t,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,s,,,e,,,t,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,U,,,s,,,a,,,g,,,e,,,?,,,?,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,P,,,O,,,S,,,I,,,T,,,I,,,V,,,E,,,_,,,I,,,N,,,F,,,I,,,N,,,I,,,T,,,Y,,,),,,!,,,=,,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,U,,,s,,,a,,,g,,,e,,,?,,,?,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,P,,,O,,,S,,,I,,,T,,,I,,,V,,,E,,,_,,,I,,,N,,,F,,,I,,,N,,,I,,,T,,,Y,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,U,,,s,,,a,,,g,,,e,,,?,,,?,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,P,,,O,,,S,,,I,,,T,,,I,,,V,,,E,,,_,,,I,,,N,,,F,,,I,,,N,,,I,,,T,,,Y,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,U,,,s,,,a,,,g,,,e,,,?,,,?,,,N,,,u,,,m,,,b,,,e,,,r,,,.,,,P,,,O,,,S,,,I,,,T,,,I,,,V,,,E,,,_,,,I,,,N,,,F,,,I,,,N,,,I,,,T,,,Y,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,c,,,o,,,n,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,c,,,o,,,n,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,),,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,c,,,o,,,n,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,c,,,o,,,n,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,y,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,s,,,p,,,e,,,e,,,d,,,),,,-,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,s,,,p,,,e,,,e,,,d,,,),,,;,,,
+,,, ,,, ,,,},,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,o,,,t,,,h,,,=,,,r,,,a,,,n,,,k,,,e,,,d,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,b,,,o,,,t,,,h,,,),,,.,,,s,,,l,,,i,,,c,,,e,,,(,,,0,,,,,,,5,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,s,,,u,,,l,,,t,,,=,,,b,,,o,,,t,,,h,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,?,,,b,,,o,,,t,,,h,,,:,,,r,,,a,,,n,,,k,,,e,,,d,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,x,,,.,,,_,,,r,,,a,,,n,,,k,,,.,,,o,,,n,,,e,,,),,,.,,,s,,,l,,,i,,,c,,,e,,,(,,,0,,,,,,,5,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,,,,,s,,,o,,,u,,,r,,,c,,,e,,,C,,,o,,,u,,,n,,,t,,,:,,,s,,,o,,,u,,,r,,,c,,,e,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,,,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,:,,,r,,,e,,,s,,,u,,,l,,,t,,,,,,,u,,,s,,,e,,,d,,,B,,,o,,,t,,,h,,,:,,,b,,,o,,,t,,,h,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,>,,,0,,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,O,,,p,,,t,,,i,,,o,,,n,,,s,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,c,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,R,,,e,,,c,,,o,,,m,,,m,,,e,,,n,,,d,,,a,,,t,,,i,,,o,,,n,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,n,,,a,,,m,,,e,,,s,,,=,,,[,,,],,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,c,,,o,,,n,,,s,,,t,,, ,,,x,,, ,,,o,,,f,,, ,,,r,,,e,,,c,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,|,,,|,,,[,,,],,,),,,{,,,c,,,o,,,n,,,s,,,t,,, ,,,n,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,x,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,',,,),,,.,,,t,,,r,,,i,,,m,,,(,,,),,,;,,,i,,,f,,,(,,,n,,,&,,,&,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,n,,,),,,!,,,=,,,=,,,',,,S,,,P,,,E,,,E,,,D,,,',,,&,,,&,,,!,,,n,,,a,,,m,,,e,,,s,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,n,,,),,,),,,n,,,a,,,m,,,e,,,s,,,.,,,p,,,u,,,s,,,h,,,(,,,n,,,),,,;,,,},,,
+,,, ,,, ,,,[,,,',,,O,,,f,,,f,,,e,,,n,,,s,,,e,,, ,,,%,,,',,,,,,,',,,H,,,e,,,a,,,l,,,t,,,h,,, ,,,%,,,',,,,,,,',,,P,,,r,,,o,,,t,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,%,,,',,,,,,,',,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,C,,,h,,,a,,,n,,,c,,,e,,, ,,,%,,,',,,,,,,',,,D,,,e,,,f,,,e,,,n,,,s,,,e,,, ,,,%,,,',,,,,,,',,,P,,,o,,,t,,,e,,,n,,,c,,,y,,,',,,,,,,',,,T,,,e,,,n,,,a,,,c,,,i,,,t,,,y,,,',,,,,,,',,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,D,,,a,,,m,,,a,,,g,,,e,,,',,,],,,.,,,f,,,o,,,r,,,E,,,a,,,c,,,h,,,(,,,n,,,=,,,>,,,{,,,i,,,f,,,(,,,!,,,n,,,a,,,m,,,e,,,s,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,n,,,),,,),,,n,,,a,,,m,,,e,,,s,,,.,,,p,,,u,,,s,,,h,,,(,,,n,,,),,,;,,,},,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,n,,,a,,,m,,,e,,,s,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,r,,,e,,,n,,,d,,,e,,,r,,,F,,,o,,,r,,,g,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,P,,,a,,,n,,,e,,,l,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,u,,,d,,,i,,,t,,,=,,,f,,,o,,,r,,,g,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,A,,,u,,,d,,,i,,,t,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,e,,,s,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,i,,,s,,,s,,,u,,,e,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,x,,,.,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,=,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,O,,,p,,,t,,,i,,,o,,,n,,,s,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,i,,,r,,,s,,,t,,,=,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,[,,,0,,,],,,|,,,|,,,',,,O,,,f,,,f,,,e,,,n,,,s,,,e,,, ,,,%,,,',,,,,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,=,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,.,,,f,,,i,,,n,,,d,,,(,,,x,,,=,,,>,,,x,,,!,,,=,,,=,,,f,,,i,,,r,,,s,,,t,,,),,,|,,,|,,,',,,H,,,e,,,a,,,l,,,t,,,h,,, ,,,%,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,P,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,=,,,e,,,s,,,s,,,e,,,n,,,t,,,i,,,a,,,l,,,P,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,H,,,t,,,m,,,l,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,l,,,o,,,t,,,s,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,i,,,s,,,s,,,u,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,m,,,=,,,>,,,`,,,<,,,b,,,u,,,t,,,t,,,o,,,n,,, ,,,t,,,y,,,p,,,e,,,=,,,",,,b,,,u,,,t,,,t,,,o,,,n,,,",,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,-,,,m,,,o,,,d,,, ,,,$,,,{,,,m,,,.,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,?,,,',,,i,,,s,,,-,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,',,,:,,,m,,,.,,,_,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,?,,,',,,i,,,s,,,-,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,',,,:,,,',,,i,,,s,,,-,,,m,,,a,,,t,,,c,,,h,,,',,,},,,",,, ,,,d,,,a,,,t,,,a,,,-,,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,l,,,o,,,t,,,=,,,",,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,),,,},,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,m,,,o,,,d,,,I,,,c,,,o,,,n,,,H,,,t,,,m,,,l,,,(,,,m,,,,,,,',,,4,,,8,,,',,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,|,,,|,,,',,,—,,,',,,),,,},,,<,,,/,,,b,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,m,,,.,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,?,,,',,,É,,,C,,,A,,,R,,,T,,,',,,:,,,m,,,.,,,_,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,?,,,',,,À,,, ,,,V,,,É,,,R,,,I,,,F,,,I,,,E,,,R,,,',,,:,,,',,,C,,,O,,,N,,,F,,,O,,,R,,,M,,,E,,,',,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,e,,,m,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,—,,,',,,),,,},,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,b,,,u,,,t,,,t,,,o,,,n,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,C,,,o,,,u,,,n,,,t,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,i,,,s,,,s,,,u,,,e,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,x,,,.,,,_,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,H,,,t,,,m,,,l,,,=,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,
+,,, ,,, ,,, ,,, ,,,?,,, ,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,e,,,m,,,p,,,t,,,y,,,",,,>,,,$,,,{,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,, ,,,e,,,m,,,p,,,l,,,a,,,c,,,e,,,m,,,e,,,n,,,t,,,(,,,s,,,),,, ,,,p,,,r,,,é,,,s,,,e,,,n,,,t,,,e,,,n,,,t,,, ,,,u,,,n,,, ,,,é,,,c,,,a,,,r,,,t,,,.,,,$,,,{,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,C,,,o,,,u,,,n,,,t,,,?,,,`,,, ,,,$,,,{,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,C,,,o,,,u,,,n,,,t,,,},,, ,,,e,,,m,,,p,,,l,,,a,,,c,,,e,,,m,,,e,,,n,,,t,,,(,,,s,,,),,, ,,,r,,,e,,,s,,,t,,,e,,,n,,,t,,, ,,,a,,,u,,,s,,,s,,,i,,, ,,,à,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,e,,,r,,, ,,,f,,,a,,,u,,,t,,,e,,, ,,,d,,,e,,, ,,,r,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,c,,,o,,,m,,,p,,,l,,,è,,,t,,,e,,,.,,,`,,,:,,,',,,',,,},,, ,,,S,,,é,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,,n,,,e,,, ,,,l,,,’,,,u,,,n,,, ,,,d,,,e,,,s,,, ,,,6,,, ,,,m,,,o,,,d,,,s,,, ,,,c,,,i,,,-,,,d,,,e,,,s,,,s,,,u,,,s,,, ,,,p,,,o,,,u,,,r,,, ,,,c,,,i,,,b,,,l,,,e,,,r,,, ,,,s,,,o,,,n,,, ,,,s,,,l,,,o,,,t,,,,,,, ,,,p,,,u,,,i,,,s,,, ,,,l,,,a,,,n,,,c,,,e,,, ,,,e,,,x,,,p,,,l,,,i,,,c,,,i,,,t,,,e,,,m,,,e,,,n,,,t,,, ,,,l,,,a,,, ,,,r,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,e,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,
+,,, ,,, ,,, ,,, ,,,:,,, ,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,C,,,o,,,u,,,n,,,t,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,?,,, ,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,e,,,m,,,p,,,t,,,y,,,",,,>,,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,i,,,n,,,c,,,o,,,m,,,p,,,l,,,è,,,t,,,e,,, ,,,:,,, ,,,$,,,{,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,C,,,o,,,u,,,n,,,t,,,},,, ,,,e,,,m,,,p,,,l,,,a,,,c,,,e,,,m,,,e,,,n,,,t,,,(,,,s,,,),,, ,,,n,,,e,,, ,,,p,,,e,,,u,,,v,,,e,,,n,,,t,,, ,,,p,,,a,,,s,,, ,,,ê,,,t,,,r,,,e,,, ,,,d,,,é,,,c,,,l,,,a,,,r,,,é,,,s,,, ,,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,e,,,s,,,.,,, ,,,L,,,e,,,u,,,r,,, ,,,s,,,t,,,a,,,t,,,u,,,t,,, ,,,r,,,e,,,s,,,t,,,e,,, ,,,«,,, ,,,à,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,e,,,r,,, ,,,»,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,:,,, ,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,e,,,m,,,p,,,t,,,y,,,",,,>,,,L,,,e,,,s,,, ,,,m,,,o,,,d,,,s,,, ,,,é,,,q,,,u,,,i,,,p,,,é,,,s,,, ,,,s,,,o,,,n,,,t,,, ,,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,e,,,s,,, ,,,a,,,u,,,x,,, ,,,c,,,r,,,i,,,t,,,è,,,r,,,e,,,s,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,s,,,.,,, ,,,A,,,u,,,c,,,u,,,n,,, ,,,r,,,e,,,m,,,p,,,l,,,a,,,c,,,e,,,m,,,e,,,n,,,t,,, ,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,a,,,i,,,r,,,e,,, ,,,d,,,é,,,t,,,e,,,c,,,t,,,é,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,
+,,, ,,, ,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,A,,,u,,,d,,,i,,,t,,,',,,),,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,-,,,p,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,",,,>,,,$,,,{,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,P,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,P,,,E,,,R,,,S,,,O,,,N,,,N,,,A,,,G,,,E,,, ,,,A,,,N,,,A,,,L,,,Y,,,S,,,É,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,P,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,,',,,),,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,é,,,e,,, ,,,s,,,e,,,l,,,o,,,n,,, ,,,l,,,e,,,s,,, ,,,d,,,o,,,n,,,n,,,é,,,e,,,s,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,s,,,.,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,",,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,M,,,O,,,D,,,S,,, ,,,D,,,U,,, ,,,P,,,E,,,R,,,S,,,O,,,N,,,N,,,A,,,G,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,/,,,6,,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,É,,,C,,,A,,,R,,,T,,,S,,, ,,,D,,,É,,,T,,,E,,,C,,,T,,,É,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,À,,, ,,,V,,,É,,,R,,,I,,,F,,,I,,,E,,,R,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,C,,,o,,,u,,,n,,,t,,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,S,,,E,,,T,,,S,,, ,,,K,,,Y,,,B,,,E,,,R,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,D,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,?,,,',,,D,,,I,,,S,,,T,,,R,,,I,,,B,,,U,,,T,,,I,,,O,,,N,,,',,,:,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,t,,,R,,,u,,,l,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,?,,,',,,C,,,O,,,M,,,P,,,O,,,S,,,I,,,T,,,I,,,O,,,N,,,S,,,',,,:,,,',,,I,,,N,,,D,,,I,,,S,,,P,,,O,,,N,,,I,,,B,,,L,,,E,,,',,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,-,,,m,,,o,,,d,,,s,,,",,,>,,,$,,,{,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,l,,,o,,,t,,,s,,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,-,,,l,,,i,,,s,,,t,,,",,,>,,,$,,,{,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,H,,,t,,,m,,,l,,,},,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,l,,,e,,,c,,,t,,,s,,,=,,,(,,,i,,,d,,,,,,,v,,,a,,,l,,,),,,=,,,>,,,`,,,<,,,s,,,e,,,l,,,e,,,c,,,t,,, ,,,i,,,d,,,=,,,",,,$,,,{,,,i,,,d,,,},,,",,,>,,,$,,,{,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,n,,,=,,,>,,,`,,,<,,,o,,,p,,,t,,,i,,,o,,,n,,, ,,,v,,,a,,,l,,,u,,,e,,,=,,,",,,$,,,{,,,e,,,s,,,c,,,(,,,n,,,),,,},,,",,, ,,,$,,,{,,,n,,,=,,,=,,,=,,,v,,,a,,,l,,,?,,,',,,s,,,e,,,l,,,e,,,c,,,t,,,e,,,d,,,',,,:,,,',,,',,,},,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,n,,,),,,},,,<,,,/,,,o,,,p,,,t,,,i,,,o,,,n,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,},,,<,,,/,,,s,,,e,,,l,,,e,,,c,,,t,,,>,,,`,,,;,,,
+,,, ,,, ,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,P,,,a,,,n,,,e,,,l,,,',,,),,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,e,,,a,,,r,,,c,,,h,,,-,,,g,,,r,,,i,,,d,,,",,,>,,,<,,,l,,,a,,,b,,,e,,,l,,,>,,,M,,,O,,,D,,, ,,,À,,, ,,,R,,,E,,,M,,,P,,,L,,,A,,,C,,,E,,,R,,,<,,,s,,,e,,,l,,,e,,,c,,,t,,, ,,,i,,,d,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,T,,,a,,,r,,,g,,,e,,,t,,,S,,,l,,,o,,,t,,,",,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,i,,,s,,,s,,,u,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,m,,,=,,,>,,,`,,,<,,,o,,,p,,,t,,,i,,,o,,,n,,, ,,,v,,,a,,,l,,,u,,,e,,,=,,,",,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,),,,},,,",,, ,,,$,,,{,,,m,,,.,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,?,,,',,,s,,,e,,,l,,,e,,,c,,,t,,,e,,,d,,,',,,:,,,',,,',,,},,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,),,,},,, ,,,·,,, ,,,$,,,{,,,m,,,.,,,_,,,m,,,i,,,s,,,m,,,a,,,t,,,c,,,h,,,?,,,',,,É,,,C,,,A,,,R,,,T,,,',,,:,,,m,,,.,,,_,,,u,,,n,,,k,,,n,,,o,,,w,,,n,,,?,,,',,,À,,, ,,,V,,,É,,,R,,,I,,,F,,,I,,,E,,,R,,,',,,:,,,',,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,e,,,',,,},,,<,,,/,,,o,,,p,,,t,,,i,,,o,,,n,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,},,,<,,,/,,,s,,,e,,,l,,,e,,,c,,,t,,,>,,,<,,,/,,,l,,,a,,,b,,,e,,,l,,,>,,,<,,,l,,,a,,,b,,,e,,,l,,,>,,,S,,,E,,,C,,,O,,,N,,,D,,,A,,,I,,,R,,,E,,, ,,,1,,, ,,,$,,,{,,,s,,,e,,,l,,,e,,,c,,,t,,,s,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,A,,,',,,,,,,f,,,i,,,r,,,s,,,t,,,),,,},,,<,,,/,,,l,,,a,,,b,,,e,,,l,,,>,,,<,,,l,,,a,,,b,,,e,,,l,,,>,,,S,,,E,,,C,,,O,,,N,,,D,,,A,,,I,,,R,,,E,,, ,,,2,,, ,,,$,,,{,,,s,,,e,,,l,,,e,,,c,,,t,,,s,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,B,,,',,,,,,,s,,,e,,,c,,,o,,,n,,,d,,,),,,},,,<,,,/,,,l,,,a,,,b,,,e,,,l,,,>,,,<,,,b,,,u,,,t,,,t,,,o,,,n,,, ,,,t,,,y,,,p,,,e,,,=,,,",,,b,,,u,,,t,,,t,,,o,,,n,,,",,, ,,,i,,,d,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,B,,,t,,,n,,,",,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,",,,>,,,R,,,E,,,C,,,H,,,E,,,R,,,C,,,H,,,E,,,R,,, ,,,5,,, ,,,O,,,P,,,T,,,I,,,O,,,N,,,S,,,<,,,/,,,b,,,u,,,t,,,t,,,o,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,e,,,a,,,r,,,c,,,h,,,-,,,n,,,o,,,t,,,e,,,",,,>,,,L,,,a,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,n,,,',,,e,,,s,,,t,,, ,,,p,,,a,,,s,,, ,,,u,,,n,,,e,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,, ,,,r,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,é,,,e,,,.,,, ,,,E,,,l,,,l,,,e,,, ,,,s,,,e,,,r,,,t,,, ,,,u,,,n,,,i,,,q,,,u,,,e,,,m,,,e,,,n,,,t,,, ,,,à,,, ,,,d,,,é,,,p,,,a,,,r,,,t,,,a,,,g,,,e,,,r,,, ,,,l,,,e,,,s,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,s,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,i,,,d,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,R,,,e,,,s,,,u,,,l,,,t,,,s,,,",,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,
+,,, ,,, ,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,B,,,t,,,n,,,',,,),,,?,,,.,,,a,,,d,,,d,,,E,,,v,,,e,,,n,,,t,,,L,,,i,,,s,,,t,,,e,,,n,,,e,,,r,,,(,,,',,,c,,,l,,,i,,,c,,,k,,,',,,,,,,(,,,),,,=,,,>,,,r,,,e,,,n,,,d,,,e,,,r,,,F,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,R,,,e,,,s,,,u,,,l,,,t,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,),,,;,,,
+,,, ,,, ,,,d,,,o,,,c,,,u,,,m,,,e,,,n,,,t,,,.,,,q,,,u,,,e,,,r,,,y,,,S,,,e,,,l,,,e,,,c,,,t,,,o,,,r,,,A,,,l,,,l,,,(,,,',,,[,,,d,,,a,,,t,,,a,,,-,,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,l,,,o,,,t,,,],,,',,,),,,.,,,f,,,o,,,r,,,E,,,a,,,c,,,h,,,(,,,b,,,t,,,n,,,=,,,>,,,b,,,t,,,n,,,.,,,a,,,d,,,d,,,E,,,v,,,e,,,n,,,t,,,L,,,i,,,s,,,t,,,e,,,n,,,e,,,r,,,(,,,',,,c,,,l,,,i,,,c,,,k,,,',,,,,,,(,,,),,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,l,,,o,,,t,,,=,,,b,,,t,,,n,,,.,,,d,,,a,,,t,,,a,,,s,,,e,,,t,,,.,,,f,,,o,,,r,,,g,,,e,,,S,,,l,,,o,,,t,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,=,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,T,,,a,,,r,,,g,,,e,,,t,,,S,,,l,,,o,,,t,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,),,,t,,,a,,,r,,,g,,,e,,,t,,,.,,,v,,,a,,,l,,,u,,,e,,,=,,,s,,,l,,,o,,,t,,,;,,,
+,,, ,,, ,,, ,,, ,,,d,,,o,,,c,,,u,,,m,,,e,,,n,,,t,,,.,,,q,,,u,,,e,,,r,,,y,,,S,,,e,,,l,,,e,,,c,,,t,,,o,,,r,,,A,,,l,,,l,,,(,,,',,,.,,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,-,,,m,,,o,,,d,,,',,,),,,.,,,f,,,o,,,r,,,E,,,a,,,c,,,h,,,(,,,c,,,a,,,r,,,d,,,=,,,>,,,c,,,a,,,r,,,d,,,.,,,c,,,l,,,a,,,s,,,s,,,L,,,i,,,s,,,t,,,.,,,t,,,o,,,g,,,g,,,l,,,e,,,(,,,',,,i,,,s,,,-,,,s,,,e,,,l,,,e,,,c,,,t,,,e,,,d,,,',,,,,,,c,,,a,,,r,,,d,,,=,,,=,,,=,,,b,,,t,,,n,,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,a,,,r,,,c,,,h,,,B,,,u,,,t,,,t,,,o,,,n,,,=,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,B,,,t,,,n,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,s,,,e,,,a,,,r,,,c,,,h,,,B,,,u,,,t,,,t,,,o,,,n,,,),,,s,,,e,,,a,,,r,,,c,,,h,,,B,,,u,,,t,,,t,,,o,,,n,,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,',,,R,,,E,,,C,,,H,,,E,,,R,,,C,,,H,,,E,,,R,,, ,,,C,,,E,,, ,,,S,,,L,,,O,,,T,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,=,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,R,,,e,,,s,,,u,,,l,,,t,,,s,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,),,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,e,,,m,,,p,,,t,,,y,,,",,,>,,,S,,,l,,,o,,,t,,, ,,,',,,+,,,e,,,s,,,c,,,(,,,s,,,l,,,o,,,t,,,),,,+,,,',,, ,,,s,,,é,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,,n,,,é,,,.,,, ,,,L,,,a,,, ,,,r,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,e,,, ,,,n,,,e,,, ,,,d,,,é,,,m,,,a,,,r,,,r,,,e,,, ,,,q,,,u,,,’,,,a,,,p,,,r,,,è,,,s,,, ,,,v,,,a,,,l,,,i,,,d,,,a,,,t,,,i,,,o,,,n,,, ,,,d,,,u,,, ,,,b,,,o,,,u,,,t,,,o,,,n,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,;,,,
+,,, ,,, ,,,},,,),,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,D,,,e,,,l,,,t,,,a,,,M,,,a,,,r,,,k,,,u,,,p,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,,,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,,,,,t,,,a,,,r,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,N,,,a,,,m,,,e,,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,|,,,|,,,!,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,e,,,m,,,p,,,t,,,y,,,",,,>,,,C,,,o,,,m,,,p,,,a,,,r,,,a,,,i,,,s,,,o,,,n,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,p,,,e,,,e,,,d,,,F,,,r,,,o,,,m,,,=,,,n,,,u,,,m,,,(,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,),,,,,,,0,,,),,,,,,, ,,,s,,,p,,,e,,,e,,,d,,,T,,,o,,,=,,,n,,,u,,,m,,,(,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,),,,,,,,0,,,),,,,,,, ,,,s,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,=,,,s,,,p,,,e,,,e,,,d,,,T,,,o,,,-,,,s,,,p,,,e,,,e,,,d,,,F,,,r,,,o,,,m,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,i,,,g,,,n,,,e,,,d,,,=,,,(,,,v,,,),,,=,,,>,,,`,,,$,,,{,,,v,,,>,,,0,,,?,,,',,,+,,,',,,:,,,',,,',,,},,,$,,,{,,,n,,,u,,,m,,,(,,,v,,,,,,,1,,,),,,},,,`,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,V,,,a,,,l,,,u,,,e,,,=,,,(,,,m,,,),,,=,,,>,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,v,,,a,,,l,,,u,,,e,,,=,,,=,,,n,,,u,,,l,,,l,,,?,,,',,,',,,:,,,`,,, ,,,·,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,v,,,a,,,l,,,u,,,e,,,,,,,1,,,),,,},,,`,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,C,,,h,,,a,,,n,,,g,,,e,,,d,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,s,,,t,,,a,,,t,,,),,,!,,,=,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,s,,,t,,,a,,,t,,,),,,|,,,|,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,v,,,a,,,l,,,u,,,e,,,|,,,|,,,0,,,),,,!,,,=,,,=,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,v,,,a,,,l,,,u,,,e,,,|,,,|,,,0,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,C,,,h,,,a,,,n,,,g,,,e,,,d,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,),,,!,,,=,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,t,,,a,,,t,,,s,,,=,,,n,,,e,,,w,,, ,,,M,,,a,,,p,,,(,,,),,,,,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,S,,,t,,,a,,,t,,,s,,,=,,,n,,,e,,,w,,, ,,,M,,,a,,,p,,,(,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,a,,,d,,,S,,,t,,,a,,,t,,,s,,,=,,,(,,,m,,,,,,,m,,,a,,,p,,,),,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,l,,,e,,,t,,, ,,,i,,,=,,,1,,,;,,,i,,,<,,,=,,,4,,,;,,,i,,,+,,,+,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,n,,,a,,,m,,,e,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,?,,,.,,,[,,,`,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,_,,,$,,,{,,,i,,,},,,_,,,s,,,t,,,a,,,t,,,`,,,],,,|,,,|,,,',,,',,,),,,.,,,t,,,r,,,i,,,m,,,(,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,n,,,a,,,m,,,e,,,),,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,n,,,a,,,m,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,m,,,a,,,p,,,.,,,s,,,e,,,t,,,(,,,k,,,e,,,y,,,,,,,{,,,n,,,a,,,m,,,e,,,,,,,v,,,a,,,l,,,u,,,e,,,:,,,N,,,u,,,m,,,b,,,e,,,r,,,(,,,m,,,?,,,.,,,[,,,`,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,_,,,$,,,{,,,i,,,},,,_,,,v,,,a,,,l,,,u,,,e,,,`,,,],,,|,,,|,,,0,,,),,,},,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,,},,,;,,,
+,,, ,,, ,,,r,,,e,,,a,,,d,,,S,,,t,,,a,,,t,,,s,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,t,,,a,,,t,,,s,,,),,,;,,, ,,,r,,,e,,,a,,,d,,,S,,,t,,,a,,,t,,,s,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,,,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,S,,,t,,,a,,,t,,,s,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,k,,,e,,,y,,,s,,,=,,,n,,,e,,,w,,, ,,,S,,,e,,,t,,,(,,,[,,,.,,,.,,,.,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,t,,,a,,,t,,,s,,,.,,,k,,,e,,,y,,,s,,,(,,,),,,,,,,.,,,.,,,.,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,S,,,t,,,a,,,t,,,s,,,.,,,k,,,e,,,y,,,s,,,(,,,),,,],,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,o,,,w,,,s,,,=,,,[,,,.,,,.,,,.,,,k,,,e,,,y,,,s,,,],,,.,,,m,,,a,,,p,,,(,,,k,,,e,,,y,,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,r,,,o,,,m,,,=,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,t,,,a,,,t,,,s,,,.,,,g,,,e,,,t,,,(,,,k,,,e,,,y,,,),,,,,,,t,,,o,,,=,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,S,,,t,,,a,,,t,,,s,,,.,,,g,,,e,,,t,,,(,,,k,,,e,,,y,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,n,,,a,,,m,,,e,,,:,,,(,,,t,,,o,,,|,,,|,,,f,,,r,,,o,,,m,,,),,,.,,,n,,,a,,,m,,,e,,,,,,,f,,,r,,,o,,,m,,,:,,,f,,,r,,,o,,,m,,,?,,,.,,,v,,,a,,,l,,,u,,,e,,,?,,,?,,,n,,,u,,,l,,,l,,,,,,,t,,,o,,,:,,,t,,,o,,,?,,,.,,,v,,,a,,,l,,,u,,,e,,,?,,,?,,,n,,,u,,,l,,,l,,,,,,,d,,,e,,,l,,,t,,,a,,,:,,,(,,,t,,,o,,,?,,,.,,,v,,,a,,,l,,,u,,,e,,,?,,,?,,,0,,,),,,-,,,(,,,f,,,r,,,o,,,m,,,?,,,.,,,v,,,a,,,l,,,u,,,e,,,?,,,?,,,0,,,),,,},,,;,,,
+,,, ,,, ,,,},,,),,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,x,,,.,,,f,,,r,,,o,,,m,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,|,,,|,,,x,,,.,,,t,,,o,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,|,,,|,,,M,,,a,,,t,,,h,,,.,,,a,,,b,,,s,,,(,,,x,,,.,,,d,,,e,,,l,,,t,,,a,,,),,,>,,,0,,,.,,,0,,,0,,,0,,,0,,,1,,,),,,
+,,, ,,, ,,, ,,,.,,,s,,,o,,,r,,,t,,,(,,,(,,,a,,,,,,,b,,,),,,=,,,>,,,M,,,a,,,t,,,h,,,.,,,a,,,b,,,s,,,(,,,b,,,.,,,d,,,e,,,l,,,t,,,a,,,),,,-,,,M,,,a,,,t,,,h,,,.,,,a,,,b,,,s,,,(,,,a,,,.,,,d,,,e,,,l,,,t,,,a,,,),,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,R,,,o,,,w,,,s,,,=,,,r,,,o,,,w,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,?,,,r,,,o,,,w,,,s,,,.,,,m,,,a,,,p,,,(,,,x,,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,r,,,o,,,m,,,=,,,x,,,.,,,f,,,r,,,o,,,m,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,?,,,',,,—,,,',,,:,,,n,,,u,,,m,,,(,,,x,,,.,,,f,,,r,,,o,,,m,,,,,,,1,,,),,,,,,,t,,,o,,,=,,,x,,,.,,,t,,,o,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,?,,,',,,—,,,',,,:,,,n,,,u,,,m,,,(,,,x,,,.,,,t,,,o,,,,,,,1,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,o,,,n,,,e,,,=,,,x,,,.,,,d,,,e,,,l,,,t,,,a,,,>,,,0,,,?,,,',,,g,,,a,,,i,,,n,,,',,,:,,,x,,,.,,,d,,,e,,,l,,,t,,,a,,,<,,,0,,,?,,,',,,l,,,o,,,s,,,s,,,',,,:,,,',,,n,,,e,,,u,,,t,,,r,,,a,,,l,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,e,,,l,,,t,,,a,,,=,,,x,,,.,,,f,,,r,,,o,,,m,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,?,,,',,,N,,,O,,,U,,,V,,,E,,,A,,,U,,,',,,:,,,x,,,.,,,t,,,o,,,=,,,=,,,=,,,n,,,u,,,l,,,l,,,?,,,',,,R,,,E,,,T,,,I,,,R,,,É,,,',,,:,,,s,,,i,,,g,,,n,,,e,,,d,,,(,,,x,,,.,,,d,,,e,,,l,,,t,,,a,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,s,,,t,,,a,,,t,,, ,,,$,,,{,,,t,,,o,,,n,,,e,,,},,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,x,,,.,,,n,,,a,,,m,,,e,,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,f,,,r,,,o,,,m,,,},,, ,,,→,,, ,,,$,,,{,,,t,,,o,,,},,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,$,,,{,,,d,,,e,,,l,,,t,,,a,,,},,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,
+,,, ,,, ,,,},,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,:,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,s,,,t,,,a,,,t,,, ,,,n,,,e,,,u,,,t,,,r,,,a,,,l,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,I,,,d,,,e,,,n,,,t,,,i,,,q,,,u,,,e,,,s,,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,0,,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,a,,,r,,,g,,,e,,,t,,,N,,,a,,,m,,,e,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,N,,,a,,,m,,,e,,,|,,,|,,,',,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,, ,,,c,,,i,,,b,,,l,,,é,,,',,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,o,,,n,,,o,,,r,,,N,,,a,,,m,,,e,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,|,,,|,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,|,,,|,,,',,,I,,,n,,,v,,,e,,,n,,,t,,,a,,,i,,,r,,,e,,, ,,,l,,,i,,,b,,,r,,,e,,,',,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,o,,,n,,,o,,,r,,,S,,,p,,,e,,,e,,,d,,,=,,,n,,,u,,,m,,,(,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,),,,,,,,0,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,`,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,h,,,e,,,a,,,d,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,I,,,M,,,P,,,A,,,C,,,T,,, ,,,D,,,U,,, ,,,T,,,R,,,A,,,N,,,S,,,F,,,E,,,R,,,T,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,M,,,O,,,D,,, ,,,A,,,C,,,T,,,U,,,E,,,L,,, ,,,→,,, ,,,M,,,O,,,D,,, ,,,P,,,R,,,O,,,P,,,O,,,S,,,É,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,p,,,a,,,r,,,t,,,y,,, ,,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,t,,,a,,,r,,,g,,,e,,,t,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,P,,,E,,,R,,,S,,,O,,,N,,,N,,,A,,,G,,,E,,, ,,,C,,,I,,,B,,,L,,,É,,, ,,,·,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,t,,,a,,,r,,,g,,,e,,,t,,,N,,,a,,,m,,,e,,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,S,,,o,,,n,,, ,,,m,,,o,,,d,,, ,,,a,,,c,,,t,,,u,,,e,,,l,,, ,,,:,,, ,,,$,,,{,,,s,,,p,,,e,,,e,,,d,,,F,,,r,,,o,,,m,,,},,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,→,,, ,,,m,,,o,,,d,,, ,,,r,,,e,,,ç,,,u,,, ,,,:,,, ,,,$,,,{,,,s,,,p,,,e,,,e,,,d,,,T,,,o,,,},,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,,<,,,/,,,b,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,$,,,{,,,s,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,>,,,0,,,?,,,',,,g,,,a,,,i,,,n,,,',,,:,,,s,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,<,,,0,,,?,,,',,,l,,,o,,,s,,,s,,,',,,:,,,',,,n,,,e,,,u,,,t,,,r,,,a,,,l,,,',,,},,,",,,>,,,$,,,{,,,s,,,i,,,g,,,n,,,e,,,d,,,(,,,s,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,),,,},,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,p,,,o,,,r,,,t,,,é,,,e,,, ,,,p,,,a,,,r,,, ,,,l,,,e,,, ,,,m,,,o,,,d,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,p,,,a,,,r,,,t,,,y,,, ,,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,d,,,o,,,n,,,o,,,r,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,P,,,E,,,R,,,S,,,O,,,N,,,N,,,A,,,G,,,E,,, ,,,D,,,O,,,N,,,N,,,E,,,U,,,R,,, ,,,·,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,d,,,o,,,n,,,o,,,r,,,N,,,a,,,m,,,e,,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,I,,,l,,, ,,,c,,,è,,,d,,,e,,, ,,,l,,,e,,, ,,,m,,,o,,,d,,, ,,,p,,,r,,,o,,,p,,,o,,,s,,,é,,,<,,,/,,,b,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,l,,,o,,,s,,,s,,,",,,>,,,$,,,{,,,d,,,o,,,n,,,o,,,r,,,S,,,p,,,e,,,e,,,d,,,},,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,p,,,o,,,r,,,t,,,é,,,e,,, ,,,p,,,a,,,r,,, ,,,l,,,e,,, ,,,m,,,o,,,d,,, ,,,c,,,é,,,d,,,é,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,e,,,x,,,p,,,l,,,a,,,i,,,n,,,e,,,r,,,",,,>,,,L,,,e,,,s,,, ,,,é,,,c,,,a,,,r,,,t,,,s,,, ,,,d,,,e,,, ,,,p,,,r,,,i,,,m,,,a,,,i,,,r,,,e,,,s,,, ,,,e,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,, ,,,c,,,i,,,-,,,d,,,e,,,s,,,s,,,o,,,u,,,s,,, ,,,d,,,é,,,c,,,r,,,i,,,v,,,e,,,n,,,t,,, ,,,l,,,e,,, ,,,m,,,o,,,d,,, ,,,r,,,e,,,ç,,,u,,, ,,,p,,,a,,,r,,, ,,,l,,,e,,, ,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,, ,,,c,,,i,,,b,,,l,,,é,,,.,,, ,,,L,,,e,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,, ,,,p,,,e,,,r,,,d,,, ,,,l,,,e,,, ,,,m,,,o,,,d,,, ,,,p,,,r,,,o,,,p,,,o,,,s,,,é,,, ,,,;,,, ,,,s,,,o,,,n,,, ,,,b,,,i,,,l,,,a,,,n,,, ,,,t,,,o,,,t,,,a,,,l,,, ,,,d,,,é,,,p,,,e,,,n,,,d,,, ,,,a,,,u,,,s,,,s,,,i,,, ,,,d,,,e,,,s,,, ,,,b,,,o,,,n,,,u,,,s,,, ,,,d,,,e,,, ,,,s,,,e,,,t,,, ,,,e,,,t,,, ,,,d,,,’,,,u,,,n,,, ,,,é,,,v,,,e,,,n,,,t,,,u,,,e,,,l,,, ,,,m,,,o,,,d,,, ,,,d,,,e,,, ,,,r,,,e,,,m,,,p,,,l,,,a,,,c,,,e,,,m,,,e,,,n,,,t,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,s,,,p,,,e,,,e,,,d,,,",,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,V,,,I,,,T,,,E,,,S,,,S,,,E,,, ,,,D,,,U,,, ,,,M,,,O,,,D,,, ,,,D,,,U,,, ,,,P,,,E,,,R,,,S,,,O,,,N,,,N,,,A,,,G,,,E,,, ,,,C,,,I,,,B,,,L,,,É,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,s,,,p,,,e,,,e,,,d,,,F,,,r,,,o,,,m,,,},,, ,,,→,,, ,,,$,,,{,,,s,,,p,,,e,,,e,,,d,,,T,,,o,,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,$,,,{,,,s,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,>,,,0,,,?,,,',,,g,,,a,,,i,,,n,,,',,,:,,,s,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,<,,,0,,,?,,,',,,l,,,o,,,s,,,s,,,',,,:,,,',,,n,,,e,,,u,,,t,,,r,,,a,,,l,,,',,,},,,",,,>,,,$,,,{,,,s,,,i,,,g,,,n,,,e,,,d,,,(,,,s,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,),,,},,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,c,,,h,,,a,,,n,,,g,,,e,,,s,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,c,,,h,,,a,,,n,,,g,,,e,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,S,,,E,,,T,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,—,,,',,,),,,},,, ,,,→,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,—,,,',,,),,,},,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,$,,,{,,,s,,,e,,,t,,,C,,,h,,,a,,,n,,,g,,,e,,,d,,,?,,,',,,m,,,o,,,d,,,i,,,f,,,i,,,é,,,',,,:,,,',,,i,,,n,,,c,,,h,,,a,,,n,,,g,,,é,,,',,,},,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,c,,,h,,,a,,,n,,,g,,,e,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,P,,,R,,,I,,,M,,,A,,,I,,,R,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,s,,,t,,,a,,,t,,,|,,,|,,,',,,—,,,',,,),,,},,,$,,,{,,,e,,,s,,,c,,,(,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,V,,,a,,,l,,,u,,,e,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,),,,),,,},,, ,,,→,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,s,,,t,,,a,,,t,,,|,,,|,,,',,,—,,,',,,),,,},,,$,,,{,,,e,,,s,,,c,,,(,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,V,,,a,,,l,,,u,,,e,,,(,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,),,,),,,},,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,$,,,{,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,C,,,h,,,a,,,n,,,g,,,e,,,d,,,?,,,',,,m,,,o,,,d,,,i,,,f,,,i,,,é,,,e,,,',,,:,,,',,,i,,,n,,,c,,,h,,,a,,,n,,,g,,,é,,,e,,,',,,},,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,s,,,u,,,b,,,t,,,i,,,t,,,l,,,e,,,",,,>,,,S,,,E,,,C,,,O,,,N,,,D,,,A,,,I,,,R,,,E,,,S,,, ,,,·,,, ,,,V,,,A,,,L,,,E,,,U,,,R,,, ,,,A,,,C,,,T,,,U,,,E,,,L,,,L,,,E,,, ,,,→,,, ,,,P,,,R,,,O,,,P,,,O,,,S,,,É,,,E,,, ,,,·,,, ,,,É,,,C,,,A,,,R,,,T,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,s,,,t,,,a,,,t,,,s,,,",,,>,,,$,,,{,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,R,,,o,,,w,,,s,,,},,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,s,,,m,,,a,,,l,,,l,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,d,,,e,,,l,,,t,,,a,,,-,,,n,,,o,,,t,,,e,,,",,,>,,,C,,,o,,,m,,,p,,,a,,,r,,,a,,,i,,,s,,,o,,,n,,, ,,,d,,,u,,, ,,,m,,,o,,,d,,, ,,,s,,,e,,,u,,,l,,,.,,, ,,,L,,,e,,,s,,, ,,,b,,,o,,,n,,,u,,,s,,, ,,,d,,,’,,,e,,,n,,,s,,,e,,,m,,,b,,,l,,,e,,, ,,,e,,,t,,, ,,,l,,,e,,,s,,, ,,,a,,,u,,,t,,,r,,,e,,,s,,, ,,,m,,,o,,,d,,,s,,, ,,,d,,,u,,, ,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,, ,,,n,,,e,,, ,,,s,,,o,,,n,,,t,,, ,,,p,,,a,,,s,,, ,,,a,,,d,,,d,,,i,,,t,,,i,,,o,,,n,,,n,,,é,,,s,,, ,,,i,,,c,,,i,,,.,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,
+,,, ,,, ,,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,`,,,;,,,
+,,,},,,
+,,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,f,,,o,,,r,,,g,,,e,,,S,,,o,,,u,,,r,,,c,,,e,,,P,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,(,,,o,,,w,,,n,,,e,,,r,,,N,,,a,,,m,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,w,,,n,,,e,,,r,,,=,,,r,,,o,,,s,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,s,,,.,,,f,,,i,,,n,,,d,,,(,,,c,,,=,,,>,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,c,,,?,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,c,,,?,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,|,,,|,,,c,,,?,,,.,,,b,,,a,,,s,,,e,,,I,,,d,,,),,,=,,,=,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,o,,,w,,,n,,,e,,,r,,,N,,,a,,,m,,,e,,,|,,,|,,,',,,',,,),,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,o,,,w,,,n,,,e,,,r,,,?,,,e,,,s,,,s,,,e,,,n,,,t,,,i,,,a,,,l,,,P,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,H,,,t,,,m,,,l,,,(,,,o,,,w,,,n,,,e,,,r,,,),,,:,,,e,,,s,,,s,,,e,,,n,,,t,,,i,,,a,,,l,,,P,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,H,,,t,,,m,,,l,,,(,,,{,,,n,,,a,,,m,,,e,,,:,,,o,,,w,,,n,,,e,,,r,,,N,,,a,,,m,,,e,,,|,,,|,,,',,,?,,,',,, ,,,},,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,r,,,e,,,n,,,d,,,e,,,r,,,F,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,R,,,e,,,s,,,u,,,l,,,t,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,l,,,o,,,t,,,=,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,T,,,a,,,r,,,g,,,e,,,t,,,S,,,l,,,o,,,t,,,',,,),,,?,,,.,,,v,,,a,,,l,,,u,,,e,,,|,,,|,,,',,,',,,;,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,=,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,A,,,',,,),,,?,,,.,,,v,,,a,,,l,,,u,,,e,,,|,,,|,,,',,,',,,;,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,=,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,B,,,',,,),,,?,,,.,,,v,,,a,,,l,,,u,,,e,,,|,,,|,,,',,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,o,,,x,,,=,,,$,,,(,,,',,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,R,,,e,,,s,,,u,,,l,,,t,,,s,,,',,,),,,;,,, ,,,i,,,f,,,(,,,!,,,b,,,o,,,x,,,),,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,a,,,|,,,|,,,!,,,b,,,|,,,|,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,a,,,),,,=,,,=,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,b,,,),,,),,,{,,,b,,,o,,,x,,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,u,,,d,,,i,,,t,,,-,,,e,,,m,,,p,,,t,,,y,,,",,,>,,,C,,,h,,,o,,,i,,,s,,,i,,,s,,, ,,,d,,,e,,,u,,,x,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,, ,,,d,,,i,,,f,,,f,,,é,,,r,,,e,,,n,,,t,,,e,,,s,,,.,,, ,,,L,,,a,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,e,,,s,,,t,,, ,,,e,,,x,,,c,,,l,,,u,,,e,,, ,,,d,,,e,,, ,,,c,,,e,,,t,,,t,,,e,,, ,,,r,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,e,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,;,,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,},,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,s,,,u,,,l,,,t,,,=,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,a,,,r,,,c,,,h,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,s,,,l,,,o,,,t,,,,,,,a,,,,,,,b,,,),,,;,,,
+,,, ,,, ,,,/,,,/,,, ,,,S,,,e,,,c,,,o,,,n,,,d,,,e,,, ,,,b,,,a,,,r,,,r,,,i,,,è,,,r,,,e,,, ,,,a,,,u,,, ,,,r,,,e,,,n,,,d,,,u,,, ,,,:,,, ,,,u,,,n,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,, ,,,p,,,l,,,u,,,s,,, ,,,l,,,e,,,n,,,t,,, ,,,q,,,u,,,e,,, ,,,l,,,e,,, ,,,m,,,o,,,d,,, ,,,a,,,c,,,t,,,u,,,e,,,l,,,
+,,, ,,, ,,,/,,,/,,, ,,,n,,,e,,, ,,,d,,,o,,,i,,,t,,, ,,,j,,,a,,,m,,,a,,,i,,,s,,, ,,,p,,,a,,,r,,,v,,,e,,,n,,,i,,,r,,, ,,,j,,,u,,,s,,,q,,,u,,,',,,à,,, ,,,u,,,n,,,e,,, ,,,c,,,a,,,r,,,t,,,e,,, ,,,d,,,e,,, ,,,p,,,r,,,o,,,p,,,o,,,s,,,i,,,t,,,i,,,o,,,n,,,.,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,=,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,M,,,o,,,d,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,o,,,w,,,s,,,=,,,r,,,e,,,s,,,u,,,l,,,t,,,.,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,m,,,=,,,>,,,f,,,o,,,r,,,g,,,e,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,P,,,r,,,e,,,s,,,e,,,r,,,v,,,e,,,s,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,,,,,r,,,e,,,s,,,u,,,l,,,t,,,.,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,,,,,m,,,),,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,r,,,o,,,w,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,n,,,o,,,U,,,s,,,a,,,g,,,e,,,=,,,r,,,e,,,s,,,u,,,l,,,t,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,C,,,o,,,u,,,n,,,t,,,=,,,=,,,=,,,0,,,;,,,
+,,, ,,, ,,, ,,, ,,,b,,,o,,,x,,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,n,,,o,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,",,,>,,,<,,,b,,,>,,,$,,,{,,,n,,,o,,,U,,,s,,,a,,,g,,,e,,,?,,,',,,D,,,O,,,N,,,N,,,É,,,E,,,S,,, ,,,G,,,A,,,C,,, ,,,I,,,N,,,S,,,U,,,F,,,F,,,I,,,S,,,A,,,N,,,T,,,E,,,S,,, ,,,P,,,O,,,U,,,R,,, ,,,S,,,É,,,C,,,U,,,R,,,I,,,S,,,E,,,R,,, ,,,L,,,E,,,S,,, ,,,D,,,O,,,N,,,N,,,E,,,U,,,R,,,S,,,',,,:,,,',,,A,,,U,,,C,,,U,,,N,,, ,,,C,,,A,,,N,,,D,,,I,,,D,,,A,,,T,,, ,,,S,,,A,,,N,,,S,,, ,,,P,,,E,,,R,,,T,,,E,,, ,,,D,,,E,,, ,,,V,,,I,,,T,,,E,,,S,,,S,,,E,,,',,,},,,<,,,/,,,b,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,n,,,o,,,U,,,s,,,a,,,g,,,e,,,?,,,',,,L,,,e,,,s,,, ,,,u,,,s,,,a,,,g,,,e,,,s,,, ,,,G,,,A,,,C,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,,s,,, ,,,e,,,t,,, ,,,l,,,e,,,s,,, ,,,u,,,s,,,a,,,g,,,e,,,s,,, ,,,d,,,e,,,s,,, ,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,n,,,e,,, ,,,s,,,o,,,n,,,t,,, ,,,p,,,a,,,s,,, ,,,t,,,o,,,u,,,s,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,s,,, ,,,o,,,u,,, ,,,r,,,e,,,l,,,i,,,é,,,s,,, ,,,a,,,u,,,x,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,,s,,,.,,, ,,,A,,,u,,,c,,,u,,,n,,, ,,,m,,,o,,,d,,, ,,,é,,,q,,,u,,,i,,,p,,,é,,, ,,,n,,,e,,, ,,,s,,,e,,,r,,,a,,, ,,,c,,,o,,,n,,,s,,,i,,,d,,,é,,,r,,,é,,, ,,,r,,,é,,,c,,,u,,,p,,,é,,,r,,,a,,,b,,,l,,,e,,, ,,,t,,,a,,,n,,,t,,, ,,,q,,,u,,,e,,, ,,,c,,,e,,,s,,, ,,,p,,,r,,,o,,,t,,,e,,,c,,,t,,,i,,,o,,,n,,,s,,, ,,,n,,,e,,, ,,,p,,,e,,,u,,,v,,,e,,,n,,,t,,, ,,,p,,,a,,,s,,, ,,,ê,,,t,,,r,,,e,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,é,,,e,,,s,,,.,,,',,,:,,,',,,A,,,u,,,c,,,u,,,n,,, ,,,m,,,o,,,d,,, ,,,d,,,u,,, ,,,r,,,o,,,s,,,t,,,e,,,r,,, ,,,d,,,o,,,n,,,t,,, ,,,l,,,e,,,s,,, ,,,u,,,s,,,a,,,g,,,e,,,s,,, ,,,G,,,A,,,C,,, ,,,s,,,o,,,n,,,t,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,é,,,s,,, ,,,n,,,e,,, ,,,r,,,e,,,s,,,p,,,e,,,c,,,t,,,e,,, ,,,l,,,e,,,s,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,, ,,,r,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,é,,,e,,,s,,, ,,,t,,,o,,,u,,,t,,, ,,,e,,,n,,, ,,,c,,,o,,,n,,,s,,,e,,,r,,,v,,,a,,,n,,,t,,, ,,,l,,,a,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,d,,,u,,, ,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,, ,,,e,,,t,,, ,,,s,,,e,,,s,,, ,,,b,,,o,,,n,,,u,,,s,,, ,,,d,,,e,,, ,,,s,,,e,,,t,,, ,,,S,,,p,,,e,,,e,,,d,,,.,,,',,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,b,,,o,,,x,,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,e,,,a,,,r,,,c,,,h,,,-,,,h,,,e,,,a,,,d,,,e,,,r,,,",,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,A,,,R,,,S,,,E,,,N,,,A,,,L,,, ,,,D,,,I,,,S,,,P,,,O,,,N,,,I,,,B,,,L,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,r,,,e,,,s,,,u,,,l,,,t,,,.,,,s,,,o,,,u,,,r,,,c,,,e,,,C,,,o,,,u,,,n,,,t,,,},,, ,,,m,,,o,,,d,,,s,,, ,,,·,,, ,,,$,,,{,,,r,,,o,,,w,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,, ,,,c,,,h,,,o,,,i,,,x,,, ,,,a,,,f,,,f,,,i,,,c,,,h,,,é,,,s,,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,r,,,e,,,s,,,u,,,l,,,t,,,.,,,u,,,s,,,e,,,d,,,B,,,o,,,t,,,h,,,?,,,',,,✓,,, ,,,D,,,E,,,U,,,X,,, ,,,S,,,E,,,C,,,O,,,N,,,D,,,A,,,I,,,R,,,E,,,S,,,',,,:,,,',,,→,,, ,,,U,,,N,,,E,,, ,,,S,,,E,,,C,,,O,,,N,,,D,,,A,,,I,,,R,,,E,,, ,,,·,,, ,,,M,,,E,,,I,,,L,,,L,,,E,,,U,,,R,,, ,,,A,,,P,,,P,,,O,,,R,,,T,,,',,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,-,,,g,,,r,,,i,,,d,,,",,,>,,,$,,,{,,,r,,,o,,,w,,,s,,,.,,,m,,,a,,,p,,,(,,,(,,,m,,,,,,,i,,,),,,=,,,>,,,{,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,=,,,m,,,.,,,_,,,r,,,a,,,n,,,k,,,;,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,c,,,s,,,=,,,f,,,o,,,r,,,g,,,e,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,S,,,t,,,a,,,t,,,s,,,(,,,m,,,),,,;,,,c,,,o,,,n,,,s,,,t,,, ,,,h,,,i,,,t,,,=,,,s,,,e,,,c,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,x,,,=,,,>,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,x,,,.,,,s,,,t,,,a,,,t,,,),,,=,,,=,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,a,,,),,,|,,,|,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,x,,,.,,,s,,,t,,,a,,,t,,,),,,=,,,=,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,b,,,),,,),,,;,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,`,,,<,,,a,,,r,,,t,,,i,,,c,,,l,,,e,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,, ,,,$,,,{,,,r,,,.,,,b,,,o,,,t,,,h,,,?,,,',,,b,,,o,,,t,,,h,,,',,,:,,,',,,',,,},,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,-,,,r,,,a,,,n,,,k,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,i,,,+,,,1,,,),,,.,,,p,,,a,,,d,,,S,,,t,,,a,,,r,,,t,,,(,,,2,,,,,,,',,,0,,,',,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,r,,,.,,,b,,,o,,,t,,,h,,,?,,,',,,✓,,,✓,,,',,,:,,,',,,✓,,,',,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,-,,,i,,,c,,,o,,,n,,,",,,>,,,$,,,{,,,m,,,o,,,d,,,I,,,c,,,o,,,n,,,H,,,t,,,m,,,l,,,(,,,m,,,,,,,',,,5,,,8,,,',,,),,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,-,,,m,,,a,,,i,,,n,,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,-,,,o,,,w,,,n,,,e,,,r,,,",,,>,,,$,,,{,,,f,,,o,,,r,,,g,,,e,,,S,,,o,,,u,,,r,,,c,,,e,,,P,,,o,,,r,,,t,,,r,,,a,,,i,,,t,,,(,,,m,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,),,,},,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,|,,,|,,,',,,L,,,i,,,b,,,r,,,e,,,',,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,),,,},,, ,,,·,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,—,,,',,,),,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,m,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,=,,,=,,,=,,,',,,L,,,i,,,b,,,r,,,e,,,',,,?,,,',,,I,,,N,,,V,,,E,,,N,,,T,,,A,,,I,,,R,,,E,,, ,,,L,,,I,,,B,,,R,,,E,,,',,,:,,,m,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,P,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,K,,,n,,,o,,,w,,,n,,,?,,,`,,,G,,,A,,,C,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,m,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,U,,,s,,,e,,,s,,,,,,,0,,,),,,},,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,, ,,,·,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,m,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,F,,,l,,,e,,,e,,,t,,,U,,,s,,,e,,,s,,,,,,,0,,,),,,},,, ,,,f,,,l,,,o,,,t,,,t,,,e,,,`,,,:,,,',,,U,,,S,,,A,,,G,,,E,,, ,,,G,,,A,,,C,,, ,,,N,,,O,,,N,,, ,,,V,,,É,,,R,,,I,,,F,,,I,,,É,,,',,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,-,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,P,,,R,,,I,,,M,,,A,,,I,,,R,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,s,,,t,,,a,,,t,,,|,,,|,,,',,,—,,,',,,),,,},,,<,,,/,,,b,,,>,,,$,,,{,,,r,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,?,,,',,,✓,,, ,,,K,,,Y,,,B,,,E,,,R,,,',,,:,,,',,,',,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,-,,,s,,,e,,,c,,,o,,,n,,,d,,,s,,,",,,>,,,$,,,{,,,s,,,e,,,c,,,s,,,.,,,m,,,a,,,p,,,(,,,x,,,=,,,>,,,`,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,$,,,{,,,h,,,i,,,t,,,.,,,s,,,o,,,m,,,e,,,(,,,h,,,=,,,>,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,h,,,.,,,s,,,t,,,a,,,t,,,),,,=,,,=,,,=,,,c,,,o,,,m,,,p,,,a,,,c,,,t,,,K,,,e,,,y,,,(,,,x,,,.,,,s,,,t,,,a,,,t,,,),,,),,,?,,,',,,h,,,i,,,t,,,',,,:,,,',,,',,,},,,",,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,x,,,.,,,s,,,t,,,a,,,t,,,),,,},,, ,,,<,,,b,,,>,,,$,,,{,,,n,,,u,,,m,,,(,,,x,,,.,,,v,,,a,,,l,,,u,,,e,,,,,,,1,,,),,,},,,<,,,/,,,b,,,>,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,$,,,{,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,D,,,e,,,l,,,t,,,a,,,M,,,a,,,r,,,k,,,u,,,p,,,(,,,r,,,e,,,s,,,u,,,l,,,t,,,.,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,,,,,m,,,,,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,n,,,a,,,m,,,e,,,),,,},,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,,e,,,-,,,s,,,p,,,e,,,e,,,d,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,V,,,I,,,T,,,E,,,S,,,S,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,n,,,u,,,m,,,(,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,m,,,),,,,,,,0,,,),,,},,,<,,,/,,,b,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,r,,,.,,,s,,,e,,,t,,,?,,,',,,S,,,E,,,T,,, ,,,K,,,Y,,,B,,,E,,,R,,,',,,:,,,',,,S,,,E,,,T,,, ,,,d,,,i,,,f,,,f,,,é,,,r,,,e,,,n,,,t,,,',,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,a,,,r,,,t,,,i,,,c,,,l,,,e,,,>,,,`,,,;,,,},,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,},,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,
+,,,},,,
+,,,
+,,,$,,,(,,,',,,r,,,u,,,n,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,',,,),,,.,,,a,,,d,,,d,,,E,,,v,,,e,,,n,,,t,,,L,,,i,,,s,,,t,,,e,,,n,,,e,,,r,,,(,,,',,,c,,,l,,,i,,,c,,,k,,,',,,,,,,a,,,s,,,y,,,n,,,c,,,(,,,),,,=,,,>,,,{,,,
+,,, ,,, ,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,E,,,r,,,r,,,o,,,r,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,',,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,=,,,s,,,e,,,l,,,e,,,c,,,t,,,e,,,d,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,{,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,E,,,r,,,r,,,o,,,r,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,',,,S,,,é,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,,n,,,e,,,z,,, ,,,u,,,n,,, ,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,,.,,,',,,;,,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,},,,
+,,, ,,, ,,,$,,,(,,,',,,r,,,u,,,n,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,',,,),,,.,,,d,,,i,,,s,,,a,,,b,,,l,,,e,,,d,,,=,,,t,,,r,,,u,,,e,,,;,,,$,,,(,,,',,,r,,,u,,,n,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,',,,C,,,H,,,A,,,R,,,G,,,E,,,M,,,E,,,N,,,T,,, ,,,P,,,U,,,I,,,S,,, ,,,O,,,P,,,T,,,I,,,M,,,I,,,S,,,A,,,T,,,I,,,O,,,N,,,…,,,',,,;,,,
+,,, ,,, ,,,$,,,(,,,',,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,',,,),,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,c,,,a,,,l,,,c,,,u,,,l,,,a,,,t,,,i,,,n,,,g,,,",,,>,,,P,,,r,,,é,,,p,,,a,,,r,,,a,,,t,,,i,,,o,,,n,,, ,,,d,,,u,,, ,,,m,,,o,,,t,,,e,,,u,,,r,,, ,,,e,,,t,,, ,,,d,,,u,,, ,,,v,,,i,,,v,,,i,,,e,,,r,,, ,,,G,,,A,,,C,,,…,,, ,,,L,,,’,,,o,,,p,,,t,,,i,,,m,,,i,,,s,,,a,,,t,,,i,,,o,,,n,,, ,,,d,,,é,,,m,,,a,,,r,,,r,,,e,,, ,,,a,,,u,,,t,,,o,,,m,,,a,,,t,,,i,,,q,,,u,,,e,,,m,,,e,,,n,,,t,,,,,,, ,,,s,,,a,,,n,,,s,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,, ,,,c,,,l,,,i,,,c,,,.,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,;,,,
+,,, ,,, ,,,t,,,r,,,y,,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,=,,,a,,,w,,,a,,,i,,,t,,, ,,,e,,,n,,,s,,,u,,,r,,,e,,,S,,,e,,,l,,,e,,,c,,,t,,,e,,,d,,,K,,,y,,,b,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,(,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,, ,,,|,,,|,,, ,,,!,,,k,,,y,,,b,,,e,,,r,,,P,,,r,,,o,,,f,,,i,,,l,,,e,,,V,,,a,,,l,,,i,,,d,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,),,,t,,,h,,,r,,,o,,,w,,, ,,,n,,,e,,,w,,, ,,,E,,,r,,,r,,,o,,,r,,,(,,,`,,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,, ,,,p,,,o,,,u,,,r,,, ,,,«,,, ,,,$,,,{,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,.,,,b,,,a,,,s,,,e,,,I,,,d,,,},,, ,,,»,,,.,,,`,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,n,,,d,,,e,,,r,,,S,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,T,,,a,,,r,,,g,,,e,,,t,,,A,,,u,,,d,,,i,,,t,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,=,,,f,,,o,,,r,,,g,,,e,,,D,,,o,,,n,,,o,,,r,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,c,,,o,,,p,,,e,,,d,,,M,,,o,,,d,,,s,,,=,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,.,,,m,,,o,,,d,,,s,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,o,,,n,,,o,,,r,,,M,,,o,,,d,,,C,,,o,,,u,,,n,,,t,,,=,,,s,,,c,,,o,,,p,,,e,,,d,,,M,,,o,,,d,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,m,,,o,,,d,,,=,,,>,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,&,,,&,,,m,,,o,,,d,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,K,,,e,,,y,,,!,,,=,,,=,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,K,,,e,,,y,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,d,,,o,,,n,,,o,,,r,,,M,,,o,,,d,,,C,,,o,,,u,,,n,,,t,,,=,,,=,,,=,,,0,,,&,,,&,,,s,,,u,,,m,,,m,,,a,,,r,,,y,,,.,,,f,,,r,,,e,,,e,,,M,,,o,,,d,,,s,,,=,,,=,,,=,,,0,,,),,,t,,,h,,,r,,,o,,,w,,, ,,,n,,,e,,,w,,, ,,,E,,,r,,,r,,,o,,,r,,,(,,,',,,A,,,u,,,c,,,u,,,n,,, ,,,m,,,o,,,d,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,a,,,b,,,l,,,e,,, ,,,:,,, ,,,l,,,a,,, ,,,b,,,a,,,s,,,e,,, ,,,G,,,A,,,C,,, ,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,,s,,,/,,,f,,,l,,,o,,,t,,,t,,,e,,,s,,, ,,,e,,,s,,,t,,, ,,,v,,,i,,,d,,,e,,, ,,,o,,,u,,, ,,,l,,,e,,,s,,, ,,,a,,,s,,,s,,,o,,,c,,,i,,,a,,,t,,,i,,,o,,,n,,,s,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,,s,,,-,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,n,,,e,,, ,,,s,,,o,,,n,,,t,,, ,,,p,,,a,,,s,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,s,,,.,,, ,,,L,,,e,,, ,,,m,,,o,,,t,,,e,,,u,,,r,,, ,,,n,,,e,,, ,,,d,,,é,,,p,,,o,,,u,,,i,,,l,,,l,,,e,,,r,,,a,,, ,,,p,,,a,,,s,,, ,,,u,,,n,,, ,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,, ,,,s,,,u,,,r,,, ,,,u,,,n,,,e,,, ,,,s,,,u,,,p,,,p,,,o,,,s,,,i,,,t,,,i,,,o,,,n,,,.,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,l,,,o,,,t,,,C,,,o,,,u,,,n,,,t,,,s,,,=,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,f,,,r,,,o,,,m,,,E,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,[,,,',,,S,,,q,,,u,,,a,,,r,,,e,,,',,,,,,,',,,A,,,r,,,r,,,o,,,w,,,',,,,,,,',,,D,,,i,,,a,,,m,,,o,,,n,,,d,,,',,,,,,,',,,T,,,r,,,i,,,a,,,n,,,g,,,l,,,e,,,',,,,,,,',,,C,,,i,,,r,,,c,,,l,,,e,,,',,,,,,,',,,C,,,r,,,o,,,s,,,s,,,',,,],,,.,,,m,,,a,,,p,,,(,,,s,,,l,,,o,,,t,,,=,,,>,,,[,,,s,,,l,,,o,,,t,,,,,,,s,,,c,,,o,,,p,,,e,,,d,,,M,,,o,,,d,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,m,,,=,,,>,,,f,,,o,,,r,,,g,,,e,,,S,,,l,,,o,,,t,,,C,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,,(,,,m,,,,,,,s,,,l,,,o,,,t,,,),,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,],,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,i,,,s,,,s,,,i,,,n,,,g,,,=,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,s,,,l,,,o,,,t,,,C,,,o,,,u,,,n,,,t,,,s,,,),,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,(,,,[,,,,,,,c,,,o,,,u,,,n,,,t,,,],,,),,,=,,,>,,,c,,,o,,,u,,,n,,,t,,,=,,,=,,,=,,,0,,,),,,.,,,m,,,a,,,p,,,(,,,(,,,[,,,s,,,l,,,o,,,t,,,],,,),,,=,,,>,,,s,,,l,,,o,,,t,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,m,,,i,,,s,,,s,,,i,,,n,,,g,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,t,,,h,,,r,,,o,,,w,,, ,,,n,,,e,,,w,,, ,,,E,,,r,,,r,,,o,,,r,,,(,,,`,,,R,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,e,,, ,,,i,,,m,,,p,,,o,,,s,,,s,,,i,,,b,,,l,,,e,,, ,,,:,,, ,,,a,,,u,,,c,,,u,,,n,,, ,,,m,,,o,,,d,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,, ,,,p,,,o,,,u,,,r,,, ,,,$,,,{,,,m,,,i,,,s,,,s,,,i,,,n,,,g,,,.,,,j,,,o,,,i,,,n,,,(,,,',,,,,,, ,,,',,,),,,},,,.,,, ,,,L,,,e,,,s,,, ,,,u,,,s,,,a,,,g,,,e,,,s,,, ,,,G,,,A,,,C,,, ,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,e,,,s,,,/,,,f,,,l,,,o,,,t,,,t,,,e,,,s,,, ,,,o,,,u,,, ,,,l,,,e,,,s,,, ,,,a,,,s,,,s,,,o,,,c,,,i,,,a,,,t,,,i,,,o,,,n,,,s,,, ,,,p,,,i,,,l,,,o,,,t,,,e,,,s,,,-,,,v,,,a,,,i,,,s,,,s,,,e,,,a,,,u,,,x,,, ,,,s,,,o,,,n,,,t,,, ,,,i,,,n,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,s,,,.,,, ,,,A,,,u,,,c,,,u,,,n,,, ,,,d,,,o,,,n,,,n,,,e,,,u,,,r,,, ,,,n,,,o,,,n,,, ,,,v,,,é,,,r,,,i,,,f,,,i,,,é,,, ,,,n,,,e,,, ,,,s,,,e,,,r,,,a,,, ,,,u,,,t,,,i,,,l,,,i,,,s,,,é,,,.,,,`,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,n,,,d,,,e,,,r,,,S,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,D,,,o,,,n,,,o,,,r,,,P,,,a,,,n,,,e,,,l,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,$,,,(,,,',,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,',,,),,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,c,,,a,,,l,,,c,,,u,,,l,,,a,,,t,,,i,,,n,,,g,,,",,,>,,,R,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,e,,, ,,,d,,,e,,,s,,, ,,,m,,,e,,,i,,,l,,,l,,,e,,,u,,,r,,,e,,,s,,, ,,,c,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,,s,,, ,,,c,,,o,,,m,,,p,,,l,,,è,,,t,,,e,,,s,,,,,,, ,,,a,,,v,,,e,,,c,,, ,,,c,,,o,,,n,,,s,,,e,,,r,,,v,,,a,,,t,,,i,,,o,,,n,,, ,,,o,,,b,,,l,,,i,,,g,,,a,,,t,,,o,,,i,,,r,,,e,,, ,,,d,,,e,,, ,,,l,,,a,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,a,,,c,,,t,,,u,,,e,,,l,,,l,,,e,,,…,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,T,,,a,,,r,,,g,,,e,,,t,,,M,,,o,,,d,,,s,,,=,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,M,,,o,,,d,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,p,,,e,,,e,,,d,,,=,,,f,,,o,,,r,,,g,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,e,,,d,,,M,,,o,,,d,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,T,,,a,,,r,,,g,,,e,,,t,,,M,,,o,,,d,,,s,,,),,,.,,,t,,,o,,,t,,,a,,,l,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,u,,,i,,,l,,,d,,,s,,,=,,,a,,,w,,,a,,,i,,,t,,, ,,,r,,,u,,,n,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,a,,,t,,,i,,,o,,,n,,,I,,,n,,,W,,,o,,,r,,,k,,,e,,,r,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,5,,,,,,,1,,,8,,,0,,,,,,,{,,,m,,,o,,,d,,,e,,,:,,,',,,s,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,,-,,,s,,,i,,,x,,,-,,,m,,,o,,,d,,,s,,,',,,,,,,d,,,o,,,n,,,o,,,r,,,_,,,p,,,r,,,i,,,o,,,r,,,i,,,t,,,y,,,:,,,',,,g,,,a,,,c,,,-,,,t,,,e,,,r,,,r,,,e,,,s,,,t,,,r,,,i,,,a,,,l,,,-,,,p,,,l,,,u,,,s,,,-,,,f,,,l,,,e,,,e,,,t,,,',,,},,,,,,,s,,,c,,,o,,,p,,,e,,,d,,,M,,,o,,,d,,,s,,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,T,,,a,,,r,,,g,,,e,,,t,,,M,,,o,,,d,,,s,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,b,,,u,,,i,,,l,,,d,,,s,,,),,,|,,,|,,,!,,,b,,,u,,,i,,,l,,,d,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,t,,,h,,,r,,,o,,,w,,, ,,,n,,,e,,,w,,, ,,,E,,,r,,,r,,,o,,,r,,,(,,,',,,L,,,e,,, ,,,m,,,o,,,t,,,e,,,u,,,r,,, ,,,n,,,’,,,a,,, ,,,r,,,e,,,t,,,o,,,u,,,r,,,n,,,é,,, ,,,a,,,u,,,c,,,u,,,n,,,e,,, ,,,c,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,, ,,,c,,,o,,,m,,,p,,,l,,,è,,,t,,,e,,, ,,,r,,,e,,,s,,,p,,,e,,,c,,,t,,,a,,,n,,,t,,, ,,,l,,,a,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,a,,,c,,,t,,,u,,,e,,,l,,,l,,,e,,,.,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,a,,,f,,,e,,,B,,,u,,,i,,,l,,,d,,,s,,,=,,,b,,,u,,,i,,,l,,,d,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,r,,,o,,,w,,,=,,,>,,,f,,,o,,,r,,,g,,,e,,,B,,,u,,,i,,,l,,,d,,,P,,,r,,,e,,,s,,,e,,,r,,,v,,,e,,,s,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,T,,,a,,,r,,,g,,,e,,,t,,,M,,,o,,,d,,,s,,,,,,,r,,,o,,,w,,,?,,,.,,,b,,,u,,,i,,,l,,,d,,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,s,,,a,,,f,,,e,,,B,,,u,,,i,,,l,,,d,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,t,,,h,,,r,,,o,,,w,,, ,,,n,,,e,,,w,,, ,,,E,,,r,,,r,,,o,,,r,,,(,,,',,,C,,,o,,,n,,,t,,,r,,,ô,,,l,,,e,,, ,,,f,,,i,,,n,,,a,,,l,,, ,,,:,,, ,,,l,,,e,,,s,,, ,,,c,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,,s,,, ,,,r,,,e,,,ç,,,u,,,e,,,s,,, ,,,n,,,e,,, ,,,r,,,e,,,s,,,p,,,e,,,c,,,t,,,e,,,n,,,t,,, ,,,p,,,a,,,s,,, ,,,l,,,a,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,a,,,c,,,t,,,u,,,e,,,l,,,l,,,e,,,.,,, ,,,A,,,u,,,c,,,u,,,n,,,e,,, ,,,p,,,r,,,o,,,p,,,o,,,s,,,i,,,t,,,i,,,o,,,n,,, ,,,n,,,’,,,e,,,s,,,t,,, ,,,a,,,f,,,f,,,i,,,c,,,h,,,é,,,e,,,.,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,n,,,d,,,e,,,r,,,R,,,e,,,s,,,u,,,l,,,t,,,s,,,(,,,s,,,a,,,f,,,e,,,B,,,u,,,i,,,l,,,d,,,s,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,l,,,o,,,g,,,(,,,`,,,S,,,e,,,i,,,g,,,n,,,e,,,u,,,r,,, ,,,S,,,i,,,t,,,h,,, ,,,:,,, ,,,$,,,{,,,s,,,a,,,f,,,e,,,B,,,u,,,i,,,l,,,d,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,, ,,,c,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,,s,,, ,,,s,,,û,,,r,,,e,,,s,,, ,,,·,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,c,,,i,,,b,,,l,,,e,,, ,,,m,,,a,,,i,,,n,,,t,,,e,,,n,,,u,,,e,,, ,,,à,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,S,,,p,,,e,,,e,,,d,,,,,,,1,,,),,,},,, ,,,m,,,i,,,n,,,i,,,m,,,u,,,m,,,.,,,`,,,),,,;,,,
+,,, ,,, ,,,},,,c,,,a,,,t,,,c,,,h,,,(,,,e,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,e,,,s,,,s,,,a,,,g,,,e,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,e,,,?,,,.,,,m,,,e,,,s,,,s,,,a,,,g,,,e,,,|,,,|,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,$,,,(,,,',,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,E,,,r,,,r,,,o,,,r,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,m,,,e,,,s,,,s,,,a,,,g,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,$,,,(,,,',,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,',,,),,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,`,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,n,,,o,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,",,,>,,,<,,,b,,,>,,,A,,,N,,,A,,,L,,,Y,,,S,,,E,,, ,,,S,,,A,,,N,,,S,,, ,,,P,,,R,,,O,,,P,,,O,,,S,,,I,,,T,,,I,,,O,,,N,,,<,,,/,,,b,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,e,,,s,,,s,,,a,,,g,,,e,,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,L,,,a,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,, ,,,a,,,c,,,t,,,u,,,e,,,l,,,l,,,e,,, ,,,d,,,u,,, ,,,p,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,, ,,,r,,,e,,,s,,,t,,,e,,, ,,,l,,,a,,, ,,,l,,,i,,,m,,,i,,,t,,,e,,, ,,,a,,,b,,,s,,,o,,,l,,,u,,,e,,,.,,, ,,,A,,,u,,,c,,,u,,,n,,, ,,,m,,,o,,,d,,, ,,,n,,,’,,,a,,, ,,,é,,,t,,,é,,, ,,,t,,,r,,,a,,,n,,,s,,,f,,,é,,,r,,,é,,, ,,,n,,,i,,, ,,,p,,,r,,,o,,,p,,,o,,,s,,,é,,, ,,,e,,,n,,, ,,,p,,,e,,,r,,,t,,,e,,, ,,,d,,,e,,, ,,,v,,,i,,,t,,,e,,,s,,,s,,,e,,,.,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,`,,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,f,,,i,,,n,,,a,,,l,,,l,,,y,,,{,,,$,,,(,,,',,,r,,,u,,,n,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,',,,),,,.,,,d,,,i,,,s,,,a,,,b,,,l,,,e,,,d,,,=,,,f,,,a,,,l,,,s,,,e,,,;,,,$,,,(,,,',,,r,,,u,,,n,,,O,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,',,,O,,,P,,,T,,,I,,,M,,,I,,,S,,,E,,,R,,, ,,,L,,,E,,,S,,, ,,,6,,, ,,,M,,,O,,,D,,,S,,,',,,;,,,},,,
+,,,},,,),,,;,,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,t,,,a,,,t,,,L,,,a,,,b,,,e,,,l,,,(,,,k,,,e,,,y,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,l,,,a,,,b,,,e,,,l,,,s,,,=,,,{,,,
+,,, ,,, ,,, ,,, ,,,S,,,p,,,e,,,e,,,d,,,:,,,',,,V,,,I,,,T,,,E,,,S,,,S,,,E,,,',,,,,,,H,,,e,,,a,,,l,,,t,,,h,,,:,,,',,,S,,,A,,,N,,,T,,,É,,,',,,,,,,P,,,r,,,o,,,t,,,e,,,c,,,t,,,i,,,o,,,n,,,:,,,',,,P,,,R,,,O,,,T,,,E,,,C,,,T,,,I,,,O,,,N,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,',,,P,,,h,,,y,,,s,,,i,,,c,,,a,,,l,,, ,,,D,,,a,,,m,,,a,,,g,,,e,,,',,,:,,,',,,D,,,É,,,G,,,Â,,,T,,,S,,, ,,,P,,,H,,,Y,,,S,,,.,,,',,,,,,, ,,,',,,S,,,p,,,e,,,c,,,i,,,a,,,l,,, ,,,D,,,a,,,m,,,a,,,g,,,e,,,',,,:,,,',,,D,,,É,,,G,,,Â,,,T,,,S,,, ,,,S,,,P,,,É,,,C,,,.,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,P,,,o,,,t,,,e,,,n,,,c,,,y,,,:,,,',,,P,,,U,,,I,,,S,,,S,,,A,,,N,,,C,,,E,,,',,,,,,,T,,,e,,,n,,,a,,,c,,,i,,,t,,,y,,,:,,,',,,T,,,É,,,N,,,A,,,C,,,I,,,T,,,É,,,',,,,,,,A,,,r,,,m,,,o,,,r,,,:,,,',,,A,,,R,,,M,,,U,,,R,,,E,,,',,,,,,,R,,,e,,,s,,,i,,,s,,,t,,,a,,,n,,,c,,,e,,,:,,,',,,R,,,É,,,S,,,I,,,S,,,T,,,A,,,N,,,C,,,E,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,',,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,D,,,a,,,m,,,a,,,g,,,e,,,',,,:,,,',,,D,,,É,,,G,,,Â,,,T,,,S,,, ,,,C,,,R,,,I,,,T,,,.,,,',,,,,,, ,,,',,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,C,,,h,,,a,,,n,,,c,,,e,,,',,,:,,,',,,C,,,H,,,A,,,N,,,C,,,E,,, ,,,C,,,R,,,I,,,T,,,.,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,',,,S,,,p,,,e,,,c,,,i,,,a,,,l,,, ,,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,C,,,h,,,a,,,n,,,c,,,e,,,',,,:,,,',,,C,,,R,,,I,,,T,,,.,,, ,,,S,,,P,,,É,,,C,,,.,,,',,,,,,, ,,,',,,P,,,h,,,y,,,s,,,i,,,c,,,a,,,l,,, ,,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,C,,,h,,,a,,,n,,,c,,,e,,,',,,:,,,',,,C,,,R,,,I,,,T,,,.,,, ,,,P,,,H,,,Y,,,S,,,.,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,',,,A,,,r,,,m,,,o,,,r,,, ,,,P,,,e,,,n,,,e,,,t,,,r,,,a,,,t,,,i,,,o,,,n,,,',,,:,,,',,,P,,,É,,,N,,,.,,, ,,,A,,,R,,,M,,,U,,,R,,,E,,,',,,,,,,',,,R,,,e,,,s,,,i,,,s,,,t,,,a,,,n,,,c,,,e,,, ,,,P,,,e,,,n,,,e,,,t,,,r,,,a,,,t,,,i,,,o,,,n,,,',,,:,,,',,,P,,,É,,,N,,,.,,, ,,,R,,,É,,,S,,,I,,,S,,,T,,,.,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,A,,,c,,,c,,,u,,,r,,,a,,,c,,,y,,,:,,,',,,P,,,R,,,É,,,C,,,I,,,S,,,I,,,O,,,N,,,',,,,,,,',,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,A,,,v,,,o,,,i,,,d,,,a,,,n,,,c,,,e,,,',,,:,,,',,,É,,,V,,,I,,,T,,,E,,,M,,,E,,,N,,,T,,, ,,,C,,,R,,,I,,,T,,,.,,,',,,,,,,
+,,, ,,, ,,, ,,, ,,,',,,D,,,o,,,d,,,g,,,e,,, ,,,C,,,h,,,a,,,n,,,c,,,e,,,',,,:,,,',,,E,,,S,,,Q,,,U,,,I,,,V,,,E,,,',,,,,,,',,,D,,,e,,,f,,,l,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,C,,,h,,,a,,,n,,,c,,,e,,,',,,:,,,',,,D,,,É,,,V,,,I,,,A,,,T,,,I,,,O,,,N,,,',,,,,,,',,,M,,,a,,,s,,,t,,,e,,,r,,,y,,,',,,:,,,',,,M,,,A,,,Î,,,T,,,R,,,I,,,S,,,E,,,',,,
+,,, ,,, ,,,},,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,l,,,a,,,b,,,e,,,l,,,s,,,[,,,k,,,e,,,y,,,],,,|,,,|,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,k,,,e,,,y,,,|,,,|,,,',,,',,,),,,.,,,r,,,e,,,p,,,l,,,a,,,c,,,e,,,(,,,/,,,_,,,/,,,g,,,,,,,',,, ,,,',,,),,,.,,,t,,,o,,,U,,,p,,,p,,,e,,,r,,,C,,,a,,,s,,,e,,,(,,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,t,,,a,,,t,,,V,,,a,,,l,,,u,,,e,,,(,,,k,,,e,,,y,,,,,,,v,,,a,,,l,,,u,,,e,,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,v,,,a,,,l,,,u,,,e,,,!,,,=,,,=,,,',,,n,,,u,,,m,,,b,,,e,,,r,,,',,,),,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,e,,,s,,,c,,,(,,,v,,,a,,,l,,,u,,,e,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,[,,,',,,P,,,o,,,t,,,e,,,n,,,c,,,y,,,',,,,,,,',,,T,,,e,,,n,,,a,,,c,,,i,,,t,,,y,,,',,,,,,,',,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,C,,,h,,,a,,,n,,,c,,,e,,,',,,,,,,',,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,A,,,v,,,o,,,i,,,d,,,a,,,n,,,c,,,e,,,',,,,,,,',,,C,,,r,,,i,,,t,,,i,,,c,,,a,,,l,,, ,,,D,,,a,,,m,,,a,,,g,,,e,,,',,,,,,,',,,M,,,a,,,s,,,t,,,e,,,r,,,y,,,',,,],,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,k,,,e,,,y,,,),,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,n,,,u,,,m,,,(,,,v,,,a,,,l,,,u,,,e,,,,,,,3,,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,n,,,u,,,m,,,(,,,v,,,a,,,l,,,u,,,e,,,,,,,1,,,),,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,M,,,o,,,d,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,(,,,m,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,u,,,t,,,=,,,[,,,],,,;,,,
+,,, ,,, ,,,f,,,o,,,r,,,(,,,l,,,e,,,t,,, ,,,j,,,=,,,1,,,;,,,j,,,<,,,=,,,4,,,;,,,j,,,+,,,+,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,t,,,a,,,t,,,=,,,m,,,?,,,.,,,[,,,`,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,_,,,$,,,{,,,j,,,},,,_,,,s,,,t,,,a,,,t,,,`,,,],,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,s,,,t,,,a,,,t,,,),,, ,,,c,,,o,,,n,,,t,,,i,,,n,,,u,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,v,,,a,,,l,,,u,,,e,,,=,,,m,,,?,,,.,,,[,,,`,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,_,,,$,,,{,,,j,,,},,,_,,,v,,,a,,,l,,,u,,,e,,,`,,,],,,;,,,
+,,, ,,, ,,, ,,, ,,,o,,,u,,,t,,,.,,,p,,,u,,,s,,,h,,,(,,,d,,,i,,,s,,,p,,,l,,,a,,,y,,,M,,,o,,,d,,,S,,,t,,,a,,,t,,,(,,,s,,,t,,,a,,,t,,,,,,,v,,,a,,,l,,,u,,,e,,,),,,),,,;,,,
+,,, ,,, ,,,},,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,o,,,u,,,t,,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,B,,,u,,,i,,,l,,,d,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,A,,,u,,,d,,,i,,,t,,,(,,,b,,,u,,,i,,,l,,,d,,,,,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,c,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,R,,,e,,,c,,,o,,,m,,,m,,,e,,,n,,,d,,,a,,,t,,,i,,,o,,,n,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,o,,,p,,,S,,,e,,,t,,,=,,,r,,,e,,,c,,,.,,,s,,,e,,,t,,,s,,,[,,,0,,,],,,?,,,.,,,l,,,a,,,b,,,e,,,l,,,|,,,|,,,',,,',,,;,,,
+,,, ,,, ,,,/,,,/,,, ,,,U,,,n,,,e,,, ,,,d,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,, ,,,(,,,H,,,e,,,a,,,l,,,t,,,h,,, ,,,9,,,0,,, ,,,%,,,,,,, ,,,O,,,f,,,f,,,e,,,n,,,s,,,e,,, ,,,4,,, ,,,%,,,),,, ,,,n,,,',,,e,,,s,,,t,,, ,,,p,,,a,,,s,,, ,,,u,,,n,,, ,,,p,,,l,,,a,,,n,,, ,,,d,,,e,,, ,,,s,,,i,,,x,,, ,,,m,,,o,,,d,,,s,,,.,,,
+,,, ,,, ,,,/,,,/,,, ,,,O,,,n,,, ,,,m,,,e,,,s,,,u,,,r,,,e,,, ,,,s,,,e,,,u,,,l,,,e,,,m,,,e,,,n,,,t,,, ,,,l,,,a,,, ,,,p,,,r,,,é,,,s,,,e,,,n,,,c,,,e,,, ,,,d,,,e,,, ,,,s,,,e,,,t,,,s,,, ,,,o,,,b,,,s,,,e,,,r,,,v,,,é,,,s,,,,,,, ,,,s,,,a,,,n,,,s,,, ,,,i,,,n,,,v,,,e,,,n,,,t,,,e,,,r,,, ,,,6,,,/,,,6,,,.,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,h,,,a,,,s,,,S,,,e,,,t,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,=,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,D,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,>,,,0,,,|,,,|,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,R,,,u,,,l,,,e,,,s,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,>,,,0,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,H,,,i,,,t,,,s,,,=,,,h,,,a,,,s,,,S,,,e,,,t,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,?,,,b,,,u,,,i,,,l,,,d,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,m,,,o,,,d,,,=,,,>,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,S,,,e,,,t,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,m,,,o,,,d,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,.,,,o,,,k,,,=,,,=,,,=,,,t,,,r,,,u,,,e,,,),,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,:,,,0,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,P,,,r,,,i,,,m,,,a,,,r,,,y,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,b,,,u,,,i,,,l,,,d,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,o,,,c,,,u,,,s,,,=,,,r,,,e,,,c,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,x,,,=,,,>,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,x,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,',,,),,,.,,,t,,,o,,,L,,,o,,,w,,,e,,,r,,,C,,,a,,,s,,,e,,,(,,,),,,.,,,r,,,e,,,p,,,l,,,a,,,c,,,e,,,(,,,/,,,[,,,^,,,a,,,-,,,z,,,0,,,-,,,9,,,%,,,],,,/,,,g,,,,,,,',,,',,,),,,),,,;,,,
+,,, ,,, ,,,l,,,e,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,=,,,0,,,;,,,
+,,, ,,, ,,,b,,,u,,,i,,,l,,,d,,,.,,,f,,,o,,,r,,,E,,,a,,,c,,,h,,,(,,,m,,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,f,,,o,,,r,,,(,,,l,,,e,,,t,,, ,,,i,,,=,,,1,,,;,,,i,,,<,,,=,,,4,,,;,,,i,,,+,,,+,,,),,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,t,,,a,,,t,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,[,,,`,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,_,,,$,,,{,,,i,,,},,,_,,,s,,,t,,,a,,,t,,,`,,,],,,|,,,|,,,',,,',,,),,,.,,,t,,,o,,,L,,,o,,,w,,,e,,,r,,,C,,,a,,,s,,,e,,,(,,,),,,.,,,r,,,e,,,p,,,l,,,a,,,c,,,e,,,(,,,/,,,[,,,^,,,a,,,-,,,z,,,0,,,-,,,9,,,%,,,],,,/,,,g,,,,,,,',,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,s,,,t,,,a,,,t,,, ,,,&,,,&,,, ,,,f,,,o,,,c,,,u,,,s,,,.,,,s,,,o,,,m,,,e,,,(,,,f,,,=,,,>,,,s,,,t,,,a,,,t,,,=,,,=,,,=,,,f,,, ,,,|,,,|,,, ,,,s,,,t,,,a,,,t,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,f,,,),,, ,,,|,,,|,,, ,,,f,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,s,,,t,,,a,,,t,,,),,,),,,),,,{,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,+,,,+,,,;,,,b,,,r,,,e,,,a,,,k,,,;,,,},,,
+,,, ,,, ,,, ,,, ,,,},,,
+,,, ,,, ,,,},,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,T,,,o,,,t,,,a,,,l,,,=,,,b,,,u,,,i,,,l,,,d,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,D,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,=,,,f,,,o,,,r,,,g,,,e,,,K,,,y,,,b,,,e,,,r,,,S,,,e,,,t,,,D,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,a,,,x,,,S,,,e,,,t,,,W,,,e,,,i,,,g,,,h,,,t,,,=,,,M,,,a,,,t,,,h,,,.,,,m,,,a,,,x,,,(,,,0,,,,,,,.,,,.,,,.,,,s,,,e,,,t,,,D,,,i,,,s,,,t,,,r,,,i,,,b,,,u,,,t,,,i,,,o,,,n,,,.,,,m,,,a,,,p,,,(,,,i,,,t,,,e,,,m,,,=,,,>,,,i,,,t,,,e,,,m,,,.,,,w,,,e,,,i,,,g,,,h,,,t,,,),,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,F,,,i,,,t,,,V,,,a,,,l,,,u,,,e,,,s,,,=,,,b,,,u,,,i,,,l,,,d,,,.,,,m,,,a,,,p,,,(,,,m,,,o,,,d,,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,=,,,f,,,o,,,r,,,g,,,e,,,M,,,o,,,d,,,S,,,e,,,t,,,C,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,(,,,m,,,o,,,d,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,.,,,o,,,k,,,!,,,=,,,=,,,t,,,r,,,u,,,e,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,0,,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,m,,,a,,,x,,,S,,,e,,,t,,,W,,,e,,,i,,,g,,,h,,,t,,,>,,,0,,,?,,,M,,,a,,,t,,,h,,,.,,,m,,,i,,,n,,,(,,,1,,,,,,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,i,,,t,,,y,,,.,,,w,,,e,,,i,,,g,,,h,,,t,,,/,,,m,,,a,,,x,,,S,,,e,,,t,,,W,,,e,,,i,,,g,,,h,,,t,,,),,,*,,,1,,,0,,,0,,,:,,,1,,,0,,,0,,,;,,,
+,,, ,,, ,,,},,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,P,,,c,,,t,,,=,,,h,,,a,,,s,,,S,,,e,,,t,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,&,,,&,,,s,,,e,,,t,,,F,,,i,,,t,,,V,,,a,,,l,,,u,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,?,,,M,,,a,,,t,,,h,,,.,,,r,,,o,,,u,,,n,,,d,,,(,,,s,,,e,,,t,,,F,,,i,,,t,,,V,,,a,,,l,,,u,,,e,,,s,,,.,,,r,,,e,,,d,,,u,,,c,,,e,,,(,,,(,,,s,,,u,,,m,,,,,,,v,,,a,,,l,,,u,,,e,,,),,,=,,,>,,,s,,,u,,,m,,,+,,,v,,,a,,,l,,,u,,,e,,,,,,,0,,,),,,/,,,s,,,e,,,t,,,F,,,i,,,t,,,V,,,a,,,l,,,u,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,:,,,0,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,P,,,c,,,t,,,=,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,k,,,n,,,o,,,w,,,n,,,?,,,M,,,a,,,t,,,h,,,.,,,r,,,o,,,u,,,n,,,d,,,(,,,(,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,h,,,i,,,t,,,s,,,/,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,k,,,n,,,o,,,w,,,n,,,),,,*,,,1,,,0,,,0,,,),,,:,,,0,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,P,,,c,,,t,,,=,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,T,,,o,,,t,,,a,,,l,,,?,,,M,,,a,,,t,,,h,,,.,,,r,,,o,,,u,,,n,,,d,,,(,,,(,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,/,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,T,,,o,,,t,,,a,,,l,,,),,,*,,,1,,,0,,,0,,,),,,:,,,0,,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,=,,,M,,,a,,,t,,,h,,,.,,,r,,,o,,,u,,,n,,,d,,,(,,,s,,,e,,,t,,,P,,,c,,,t,,,*,,,.,,,4,,,+,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,P,,,c,,,t,,,*,,,.,,,4,,,+,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,P,,,c,,,t,,,*,,,.,,,2,,,),,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,t,,,o,,,p,,,S,,,e,,,t,,,,,,,s,,,e,,,t,,,H,,,i,,,t,,,s,,,,,,,s,,,e,,,t,,,P,,,c,,,t,,,,,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,:,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,h,,,i,,,t,,,s,,,,,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,:,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,k,,,n,,,o,,,w,,,n,,,,,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,P,,,c,,,t,,,,,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,D,,,e,,,t,,,a,,,i,,,l,,,s,,,:,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,d,,,e,,,t,,,a,,,i,,,l,,,s,,,,,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,,,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,T,,,o,,,t,,,a,,,l,,,,,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,P,,,c,,,t,,,,,,,f,,,o,,,c,,,u,,,s,,,C,,,o,,,u,,,n,,,t,,,:,,,f,,,o,,,c,,,u,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,,,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,},,,;,,,
+,,,},,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,V,,,e,,,r,,,d,,,i,,,c,,,t,,,F,,,o,,,r,,,B,,,u,,,i,,,l,,,d,,,(,,,a,,,u,,,d,,,i,,,t,,,,,,, ,,,s,,,c,,,o,,,p,,,e,,,,,,, ,,,i,,,n,,,d,,,e,,,x,,,),,,{,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,g,,,a,,,p,,,s,,,=,,,[,,,],,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,t,,,P,,,c,,,t,,,<,,,1,,,0,,,0,,,),,,g,,,a,,,p,,,s,,,.,,,p,,,u,,,s,,,h,,,(,,,`,,,F,,,r,,,é,,,q,,,u,,,e,,,n,,,c,,,e,,, ,,,d,,,e,,,s,,, ,,,s,,,e,,,t,,,s,,, ,,,:,,, ,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,t,,,P,,,c,,,t,,,},,,%,,, ,,,d,,,u,,, ,,,p,,,o,,,i,,,d,,,s,,, ,,,d,,,u,,, ,,,s,,,e,,,t,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,l,,,e,,, ,,,p,,,l,,,u,,,s,,, ,,,u,,,t,,,i,,,l,,,i,,,s,,,é,,, ,,,e,,,n,,, ,,,m,,,o,,,y,,,e,,,n,,,n,,,e,,,`,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,, ,,,&,,,&,,, ,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,P,,,c,,,t,,,<,,,1,,,0,,,0,,,),,,g,,,a,,,p,,,s,,,.,,,p,,,u,,,s,,,h,,,(,,,`,,,P,,,r,,,i,,,m,,,a,,,i,,,r,,,e,,,s,,, ,,,:,,, ,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,},,,/,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,},,, ,,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,e,,,s,,, ,,,à,,, ,,,K,,,y,,,b,,,e,,,r,,,`,,,),,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,T,,,o,,,t,,,a,,,l,,, ,,,&,,,&,,, ,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,P,,,c,,,t,,,<,,,7,,,0,,,),,,g,,,a,,,p,,,s,,,.,,,p,,,u,,,s,,,h,,,(,,,`,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,, ,,,:,,, ,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,},,,/,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,T,,,o,,,t,,,a,,,l,,,},,, ,,,m,,,o,,,d,,,s,,, ,,,p,,,o,,,r,,,t,,,e,,,n,,,t,,, ,,,u,,,n,,, ,,,f,,,o,,,c,,,u,,,s,,, ,,,K,,,y,,,b,,,e,,,r,,,`,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,a,,,n,,,B,,,r,,,o,,,a,,,d,,,e,,,n,,,=,,,f,,,a,,,l,,,s,,,e,,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,c,,,a,,,n,,,B,,,r,,,o,,,a,,,d,,,e,,,n,,, ,,,&,,,&,,, ,,,a,,,u,,,d,,,i,,,t,,,.,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,<,,,7,,,5,,,),,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,k,,,i,,,n,,,d,,,:,,,',,,a,,,c,,,t,,,i,,,o,,,n,,,',,,,,,,t,,,i,,,t,,,l,,,e,,,:,,,',,,É,,,l,,,a,,,r,,,g,,,i,,,r,,, ,,,l,,,e,,, ,,,p,,,é,,,r,,,i,,,m,,,è,,,t,,,r,,,e,,,',,,,,,,t,,,e,,,x,,,t,,,:,,,',,,L,,,e,,, ,,,m,,,e,,,i,,,l,,,l,,,e,,,u,,,r,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,, ,,,r,,,e,,,s,,,t,,,e,,, ,,,é,,,l,,,o,,,i,,,g,,,n,,,é,,, ,,,d,,,e,,, ,,,l,,,a,,, ,,,d,,,o,,,c,,,t,,,r,,,i,,,n,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,d,,,a,,,n,,,s,,, ,,,l,,,e,,, ,,,p,,,é,,,r,,,i,,,m,,,è,,,t,,,r,,,e,,, ,,,a,,,c,,,t,,,u,,,e,,,l,,,.,,, ,,,A,,,c,,,t,,,i,,,v,,,e,,, ,,,M,,,O,,,Y,,,E,,,N,,,S,,, ,,,p,,,o,,,u,,,r,,, ,,,d,,,o,,,n,,,n,,,e,,,r,,, ,,,à,,, ,,,l,,,a,,, ,,,F,,,o,,,r,,,g,,,e,,, ,,,d,,,a,,,v,,,a,,,n,,,t,,,a,,,g,,,e,,, ,,,d,,,e,,, ,,,c,,,h,,,o,,,i,,,x,,,.,,,',,,},,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,a,,,u,,,d,,,i,,,t,,,.,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,>,,,=,,,9,,,0,,,),,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,k,,,i,,,n,,,d,,,:,,,',,,s,,,t,,,r,,,o,,,n,,,g,,,',,,,,,,t,,,i,,,t,,,l,,,e,,,:,,,',,,C,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,, ,,,p,,,r,,,o,,,c,,,h,,,e,,, ,,,d,,,e,,, ,,,l,,,a,,, ,,,d,,,o,,,c,,,t,,,r,,,i,,,n,,,e,,,',,,,,,,t,,,e,,,x,,,t,,,:,,,',,,L,,,e,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,, ,,,r,,,e,,,s,,,p,,,e,,,c,,,t,,,e,,, ,,,f,,,o,,,r,,,t,,,e,,,m,,,e,,,n,,,t,,, ,,,l,,,a,,, ,,,r,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,t,,,o,,,u,,,t,,, ,,,e,,,n,,, ,,,r,,,e,,,s,,,t,,,a,,,n,,,t,,, ,,,d,,,a,,,n,,,s,,, ,,,l,,,’,,,a,,,r,,,s,,,e,,,n,,,a,,,l,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,.,,,',,,},,,;,,,
+,,, ,,, ,,,i,,,f,,,(,,,g,,,a,,,p,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,k,,,i,,,n,,,d,,,:,,,',,,w,,,a,,,r,,,n,,,',,,,,,,t,,,i,,,t,,,l,,,e,,,:,,,',,,C,,,o,,,m,,,p,,,r,,,o,,,m,,,i,,,s,,, ,,,i,,,d,,,e,,,n,,,t,,,i,,,f,,,i,,,é,,,',,,,,,,t,,,e,,,x,,,t,,,:,,,`,,,L,,,a,,, ,,,F,,,o,,,r,,,g,,,e,,, ,,,r,,,e,,,t,,,i,,,e,,,n,,,t,,, ,,,c,,,e,,, ,,,c,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,, ,,,a,,,v,,,e,,,c,,, ,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,},,,%,,, ,,,d,,,’,,,a,,,d,,,é,,,q,,,u,,,a,,,t,,,i,,,o,,,n,,,.,,, ,,,$,,,{,,,g,,,a,,,p,,,s,,,.,,,s,,,l,,,i,,,c,,,e,,,(,,,0,,,,,,,2,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,·,,, ,,,',,,),,,},,,.,,,`,,,},,,;,,,
+,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,{,,,k,,,i,,,n,,,d,,,:,,,',,,n,,,e,,,u,,,t,,,r,,,a,,,l,,,',,,,,,,t,,,i,,,t,,,l,,,e,,,:,,,`,,,C,,,a,,,n,,,d,,,i,,,d,,,a,,,t,,, ,,,$,,,{,,,i,,,n,,,d,,,e,,,x,,,+,,,1,,,},,, ,,,a,,,n,,,a,,,l,,,y,,,s,,,é,,,`,,,,,,,t,,,e,,,x,,,t,,,:,,,',,,L,,,a,,, ,,,c,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,, ,,,e,,,s,,,t,,, ,,,é,,,v,,,a,,,l,,,u,,,é,,,e,,, ,,,p,,,a,,,r,,, ,,,r,,,a,,,p,,,p,,,o,,,r,,,t,,, ,,,a,,,u,,,x,,, ,,,s,,,e,,,t,,,s,,,,,,, ,,,p,,,r,,,i,,,m,,,a,,,i,,,r,,,e,,,s,,, ,,,e,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,, ,,,d,,,e,,, ,,,r,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,,.,,,',,,},,,;,,,
+,,,},,,
+,,,
+,,,f,,,u,,,n,,,c,,,t,,,i,,,o,,,n,,, ,,,r,,,e,,,n,,,d,,,e,,,r,,,R,,,e,,,s,,,u,,,l,,,t,,,s,,,(,,,d,,,a,,,t,,,a,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,O,,,v,,,e,,,r,,,r,,,i,,,d,,,e,,,=,,,n,,,u,,,l,,,l,,,),,,{,,,
+,,, ,,, ,,,i,,,f,,,(,,,!,,,d,,,a,,,t,,,a,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,),,,{,,,$,,,(,,,',,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,',,,),,,.,,,t,,,e,,,x,,,t,,,C,,,o,,,n,,,t,,,e,,,n,,,t,,,=,,,',,,A,,,u,,,c,,,u,,,n,,, ,,,b,,,u,,,i,,,l,,,d,,,.,,,',,,;,,,r,,,e,,,t,,,u,,,r,,,n,,,;,,,},,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,=,,,s,,,e,,,l,,,e,,,c,,,t,,,e,,,d,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,=,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,O,,,v,,,e,,,r,,,r,,,i,,,d,,,e,,,|,,,|,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,F,,,o,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,c,,,o,,,p,,,e,,,=,,,',,,D,,,O,,,N,,,N,,,E,,,U,,,R,,,S,,, ,,,F,,,A,,,I,,,B,,,L,,,E,,,S,,, ,,,/,,, ,,,T,,,R,,,È,,,S,,, ,,,F,,,A,,,I,,,B,,,L,,,E,,,S,,, ,,,/,,, ,,,I,,,N,,,C,,,O,,,M,,,P,,,L,,,E,,,T,,,S,,, ,,,·,,, ,,,P,,,R,,,I,,,O,,,R,,,I,,,T,,,É,,, ,,,G,,,A,,,C,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,c,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,R,,,e,,,c,,,o,,,m,,,m,,,e,,,n,,,d,,,a,,,t,,,i,,,o,,,n,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,(,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,f,,,S,,,e,,,t,,,s,,,=,,,r,,,e,,,c,,,.,,,s,,,e,,,t,,,s,,,.,,,s,,,l,,,i,,,c,,,e,,,(,,,0,,,,,,,3,,,),,,.,,,m,,,a,,,p,,,(,,,x,,,=,,,>,,,`,,,$,,,{,,,x,,,.,,,l,,,a,,,b,,,e,,,l,,,},,,$,,,{,,,x,,,.,,,w,,,e,,,i,,,g,,,h,,,t,,,!,,,=,,,n,,,u,,,l,,,l,,,?,,,',,, ,,,·,,, ,,,',,,+,,,(,,,x,,,.,,,w,,,e,,,i,,,g,,,h,,,t,,,*,,,1,,,0,,,0,,,),,,.,,,t,,,o,,,F,,,i,,,x,,,e,,,d,,,(,,,1,,,),,,+,,,',,, ,,,%,,,',,,:,,,',,,',,,},,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,·,,, ,,,',,,),,,|,,,|,,,',,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,n,,,o,,,n,,, ,,,d,,,é,,,t,,,a,,,i,,,l,,,l,,,é,,,e,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,r,,,e,,,f,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,=,,,r,,,e,,,c,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,.,,,s,,,l,,,i,,,c,,,e,,,(,,,0,,,,,,,4,,,),,,.,,,m,,,a,,,p,,,(,,,x,,,=,,,>,,,x,,,.,,,n,,,a,,,m,,,e,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,·,,, ,,,',,,),,,|,,,|,,,',,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,n,,,o,,,n,,, ,,,d,,,é,,,t,,,a,,,i,,,l,,,l,,,é,,,e,,,s,,,',,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,C,,,o,,,d,,,e,,,s,,,=,,,[,,,.,,,.,,,.,,,n,,,e,,,w,,, ,,,S,,,e,,,t,,,(,,,d,,,a,,,t,,,a,,,.,,,f,,,l,,,a,,,t,,,M,,,a,,,p,,,(,,,r,,,o,,,w,,,=,,,>,,,A,,,r,,,r,,,a,,,y,,,.,,,i,,,s,,,A,,,r,,,r,,,a,,,y,,,(,,,r,,,o,,,w,,,.,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,s,,,),,,?,,,r,,,o,,,w,,,.,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,s,,,:,,,[,,,],,,),,,),,,],,,;,,,
+,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,M,,,a,,,r,,,k,,,u,,,p,,,=,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,C,,,o,,,d,,,e,,,s,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,',,,g,,,e,,,a,,,r,,,_,,,p,,,e,,,r,,,c,,,e,,,n,,,t,,,_,,,u,,,n,,,a,,,v,,,a,,,i,,,l,,,a,,,b,,,l,,,e,,,',,,),,,
+,,, ,,, ,,, ,,, ,,,?,,, ,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,-,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,",,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,B,,,O,,,N,,,U,,,S,,, ,,,M,,,U,,,L,,,T,,,I,,,P,,,L,,,I,,,C,,,A,,,T,,,E,,,U,,,R,,,S,,, ,,,E,,,N,,, ,,,%,,, ,,,N,,,O,,,N,,, ,,,É,,,V,,,A,,,L,,,U,,,É,,,S,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,C,,,e,,,r,,,t,,,a,,,i,,,n,,,s,,, ,,,b,,,o,,,n,,,u,,,s,,, ,,,%,,, ,,,(,,,O,,,f,,,f,,,e,,,n,,,s,,,e,,,,,,, ,,,D,,,é,,,f,,,e,,,n,,,s,,,e,,,,,,, ,,,S,,,a,,,n,,,t,,,é,,,,,,, ,,,P,,,r,,,o,,,t,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,o,,,u,,, ,,,V,,,i,,,t,,,e,,,s,,,s,,,e,,,),,, ,,,o,,,n,,,t,,, ,,,é,,,t,,,é,,, ,,,é,,,c,,,a,,,r,,,t,,,é,,,s,,, ,,,:,,, ,,,l,,,e,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,, ,,,n,,,e,,, ,,,s,,,é,,,p,,,a,,,r,,,e,,, ,,,p,,,a,,,s,,, ,,,l,,,e,,,s,,, ,,,s,,,t,,,a,,,t,,,i,,,s,,,t,,,i,,,q,,,u,,,e,,,s,,, ,,,d,,,e,,, ,,,b,,,a,,,s,,,e,,, ,,,d,,,e,,,s,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,, ,,,d,,,e,,,s,,, ,,,p,,,i,,,è,,,c,,,e,,,s,,, ,,,d,,,’,,,é,,,q,,,u,,,i,,,p,,,e,,,m,,,e,,,n,,,t,,,.,,, ,,,U,,,n,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,, ,,,G,,,1,,,3,,, ,,,c,,,o,,,m,,,p,,,a,,,t,,,i,,,b,,,l,,,e,,, ,,,e,,,s,,,t,,, ,,,n,,,é,,,c,,,e,,,s,,,s,,,a,,,i,,,r,,,e,,, ,,,p,,,o,,,u,,,r,,, ,,,c,,,a,,,l,,,c,,,u,,,l,,,e,,,r,,, ,,,c,,,e,,,s,,, ,,,b,,,o,,,n,,,u,,,s,,, ,,,s,,,a,,,n,,,s,,, ,,,a,,,p,,,p,,,r,,,o,,,x,,,i,,,m,,,a,,,t,,,i,,,o,,,n,,,.,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,
+,,, ,,, ,,, ,,, ,,,:,,, ,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,C,,,o,,,d,,,e,,,s,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,',,,d,,,e,,,f,,,e,,,n,,,s,,,e,,,_,,,p,,,e,,,r,,,c,,,e,,,n,,,t,,,_,,,u,,,n,,,a,,,v,,,a,,,i,,,l,,,a,,,b,,,l,,,e,,,',,,),,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,?,,, ,,,',,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,-,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,",,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,D,,,É,,,F,,,E,,,N,,,S,,,E,,, ,,,%,,, ,,,N,,,O,,,N,,, ,,,É,,,V,,,A,,,L,,,U,,,É,,,E,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,L,,,e,,,s,,, ,,,m,,,o,,,d,,,s,,, ,,,D,,,é,,,f,,,e,,,n,,,s,,,e,,, ,,,%,,, ,,,o,,,n,,,t,,, ,,,é,,,t,,,é,,, ,,,é,,,c,,,a,,,r,,,t,,,é,,,s,,, ,,,d,,,u,,, ,,,c,,,a,,,l,,,c,,,u,,,l,,, ,,,:,,, ,,,l,,,e,,, ,,,p,,,r,,,o,,,f,,,i,,,l,,, ,,,n,,,e,,, ,,,f,,,o,,,u,,,r,,,n,,,i,,,t,,, ,,,p,,,a,,,s,,, ,,,l,,,a,,, ,,,c,,,o,,,m,,,p,,,o,,,s,,,a,,,n,,,t,,,e,,, ,,,A,,,r,,,m,,,o,,,r,,,/,,,R,,,e,,,s,,,i,,,s,,,t,,,a,,,n,,,c,,,e,,, ,,,d,,,e,,, ,,,b,,,a,,,s,,,e,,, ,,,s,,,é,,,p,,,a,,,r,,,é,,,e,,, ,,,d,,,e,,, ,,,l,,,’,,,é,,,q,,,u,,,i,,,p,,,e,,,m,,,e,,,n,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,.,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,',,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,:,,, ,,,',,,',,,;,,,
+,,, ,,, ,,,$,,,(,,,',,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,',,,),,,.,,,i,,,n,,,n,,,e,,,r,,,H,,,T,,,M,,,L,,,=,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,-,,,i,,,n,,,t,,,r,,,o,,, ,,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,-,,,c,,,o,,,m,,,m,,,a,,,n,,,d,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,s,,,-,,,h,,,e,,,a,,,d,,,i,,,n,,,g,,,",,,>,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,k,,,i,,,c,,,k,,,e,,,r,,,",,,>,,,R,,,É,,,S,,,U,,,L,,,T,,,A,,,T,,,S,,, ,,,/,,,/,,, ,,,S,,,E,,,I,,,G,,,N,,,E,,,U,,,R,,, ,,,S,,,I,,,T,,,H,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,C,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,,s,,, ,,,o,,,p,,,t,,,i,,,m,,,i,,,s,,,é,,,e,,,s,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,?,,,.,,,n,,,a,,,m,,,e,,,|,,,|,,,',,,P,,,e,,,r,,,s,,,o,,,n,,,n,,,a,,,g,,,e,,,',,,),,,},,, ,,,·,,, ,,,r,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,e,,, ,,,g,,,u,,,i,,,d,,,é,,,e,,, ,,,p,,,a,,,r,,, ,,,l,,,a,,, ,,,r,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,e,,,t,,, ,,,l,,,i,,,m,,,i,,,t,,,é,,,e,,, ,,,à,,, ,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,s,,,c,,,o,,,p,,,e,,,),,,},,,<,,,/,,,b,,,>,,,.,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,-,,,c,,,o,,,u,,,n,,,t,,,",,,>,,,<,,,b,,,>,,,$,,,{,,,d,,,a,,,t,,,a,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,},,,<,,,/,,,b,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,B,,,U,,,I,,,L,,,D,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,-,,,r,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,-,,,s,,,t,,,r,,,i,,,p,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,R,,,É,,,F,,,É,,,R,,,E,,,N,,,C,,,E,,, ,,,K,,,Y,,,B,,,E,,,R,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,r,,,e,,,f,,,S,,,e,,,t,,,s,,,),,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,S,,,E,,,C,,,O,,,N,,,D,,,A,,,I,,,R,,,E,,,S,,, ,,,P,,,R,,,I,,,O,,,R,,,I,,,T,,,A,,,I,,,R,,,E,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,r,,,e,,,f,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,),,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,S,,,O,,,U,,,R,,,C,,,E,,, ,,,M,,,O,,,D,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,s,,,c,,,o,,,p,,,e,,,),,,},,, ,,,·,,, ,,,G,,,L,,, ,,,E,,,X,,,C,,,L,,,U,,,E,,,S,,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,+,,,w,,,a,,,r,,,n,,,i,,,n,,,g,,,M,,,a,,,r,,,k,,,u,,,p,,,+,,,d,,,a,,,t,,,a,,,.,,,m,,,a,,,p,,,(,,,(,,,r,,,,,,,i,,,),,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,u,,,i,,,l,,,d,,,=,,,r,,,.,,,b,,,u,,,i,,,l,,,d,,,|,,,|,,,[,,,],,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,C,,,o,,,u,,,n,,,t,,,s,,,=,,,{,,,},,,;,,,
+,,, ,,, ,,, ,,, ,,,b,,,u,,,i,,,l,,,d,,,.,,,f,,,o,,,r,,,E,,,a,,,c,,,h,,,(,,,m,,,=,,,>,,,{,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,|,,,|,,,m,,,.,,,s,,,e,,,t,,,|,,,|,,,',,,',,,),,,.,,,t,,,r,,,i,,,m,,,(,,,),,,;,,,i,,,f,,,(,,,s,,,e,,,t,,,),,,s,,,e,,,t,,,C,,,o,,,u,,,n,,,t,,,s,,,[,,,s,,,e,,,t,,,],,,=,,,(,,,s,,,e,,,t,,,C,,,o,,,u,,,n,,,t,,,s,,,[,,,s,,,e,,,t,,,],,,|,,,|,,,0,,,),,,+,,,1,,,;,,,},,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,t,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,=,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,s,,,e,,,t,,,C,,,o,,,u,,,n,,,t,,,s,,,),,,.,,,m,,,a,,,p,,,(,,,(,,,[,,,s,,,e,,,t,,,,,,,n,,,],,,),,,=,,,>,,,`,,,$,,,{,,,s,,,e,,,t,,,},,, ,,,×,,,$,,,{,,,n,,,},,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,·,,, ,,,',,,),,,|,,,|,,,',,,S,,,e,,,t,,,s,,, ,,,n,,,o,,,n,,, ,,,r,,,e,,,n,,,s,,,e,,,i,,,g,,,n,,,é,,,s,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,u,,,d,,,i,,,t,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,B,,,u,,,i,,,l,,,d,,,R,,,e,,,f,,,e,,,r,,,e,,,n,,,c,,,e,,,A,,,u,,,d,,,i,,,t,,,(,,,b,,,u,,,i,,,l,,,d,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,M,,,o,,,d,,,s,,,=,,,g,,,e,,,t,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,M,,,o,,,d,,,s,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,e,,,f,,,o,,,r,,,e,,,S,,,p,,,e,,,e,,,d,,,=,,,f,,,o,,,r,,,g,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,e,,,d,,,M,,,o,,,d,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,M,,,o,,,d,,,s,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,f,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,=,,,f,,,o,,,r,,,g,,,e,,,P,,,r,,,o,,,j,,,e,,,c,,,t,,,e,,,d,,,M,,,o,,,d,,,S,,,p,,,e,,,e,,,d,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,b,,,u,,,i,,,l,,,d,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,b,,,e,,,f,,,o,,,r,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,=,,,b,,,e,,,f,,,o,,,r,,,e,,,S,,,p,,,e,,,e,,,d,,,.,,,b,,,a,,,s,,,e,,,S,,,p,,,e,,,e,,,d,,,+,,,b,,,e,,,f,,,o,,,r,,,e,,,S,,,p,,,e,,,e,,,d,,,.,,,t,,,o,,,t,,,a,,,l,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,a,,,f,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,=,,,a,,,f,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,.,,,b,,,a,,,s,,,e,,,S,,,p,,,e,,,e,,,d,,,+,,,a,,,f,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,.,,,t,,,o,,,t,,,a,,,l,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,t,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,=,,,a,,,f,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,-,,,b,,,e,,,f,,,o,,,r,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,i,,,g,,,n,,,e,,,d,,,S,,,p,,,e,,,e,,,d,,,=,,,v,,,a,,,l,,,u,,,e,,,=,,,>,,,`,,,$,,,{,,,v,,,a,,,l,,,u,,,e,,,>,,,0,,,?,,,',,,+,,,',,,:,,,',,,',,,},,,$,,,{,,,n,,,u,,,m,,,(,,,v,,,a,,,l,,,u,,,e,,,,,,,1,,,),,,},,,`,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,m,,,o,,,d,,,C,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,L,,,i,,,n,,,e,,,=,,,m,,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,i,,,f,,,(,,,!,,,m,,,),,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,',,,A,,,u,,,c,,,u,,,n,,, ,,,m,,,o,,,d,,, ,,,é,,,q,,,u,,,i,,,p,,,é,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,s,,,t,,,a,,,t,,,|,,,|,,,',,,P,,,r,,,i,,,m,,,a,,,i,,,r,,,e,,, ,,,i,,,n,,,c,,,o,,,n,,,n,,,u,,,e,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,V,,,a,,,l,,,u,,,e,,,=,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,v,,,a,,,l,,,u,,,e,,,=,,,=,,,n,,,u,,,l,,,l,,,?,,,',,,',,,:,,,`,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,v,,,a,,,l,,,u,,,e,,,,,,,1,,,),,,},,,$,,,{,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,.,,,e,,,n,,,d,,,s,,,W,,,i,,,t,,,h,,,(,,,',,,%,,,',,,),,,?,,,',,,%,,,',,,:,,,',,,',,,},,,`,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,M,,,o,,,d,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,(,,,m,,,),,,.,,,s,,,l,,,i,,,c,,,e,,,(,,,0,,,,,,,2,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,, ,,,·,,, ,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,`,,,$,,,{,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,|,,,|,,,m,,,.,,,s,,,e,,,t,,,|,,,|,,,',,,S,,,e,,,t,,, ,,,i,,,n,,,c,,,o,,,n,,,n,,,u,,,',,,),,,},,, ,,,·,,, ,,,$,,,{,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,},,,$,,,{,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,V,,,a,,,l,,,u,,,e,,,},,, ,,,·,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,m,,,),,,,,,,0,,,),,,},,, ,,,V,,,i,,,t,,,e,,,s,,,s,,,e,,,$,,,{,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,?,,,',,, ,,,·,,, ,,,',,,+,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,:,,,',,,',,,},,,`,,,;,,,
+,,, ,,, ,,, ,,, ,,,},,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,B,,,y,,,S,,,l,,,o,,,t,,,=,,,n,,,e,,,w,,, ,,,M,,,a,,,p,,,(,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,M,,,o,,,d,,,s,,,.,,,m,,,a,,,p,,,(,,,m,,,=,,,>,,,[,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,l,,,o,,,t,,,K,,,e,,,y,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,),,,,,,,m,,,],,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,l,,,o,,,t,,,C,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,M,,,a,,,r,,,k,,,u,,,p,,,=,,,b,,,u,,,i,,,l,,,d,,,.,,,m,,,a,,,p,,,(,,,m,,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,l,,,o,,,t,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,l,,,o,,,t,,,K,,,e,,,y,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,),,,|,,,|,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,|,,,|,,,',,,S,,,l,,,o,,,t,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,e,,,v,,,i,,,o,,,u,,,s,,,=,,,c,,,u,,,r,,,r,,,e,,,n,,,t,,,B,,,y,,,S,,,l,,,o,,,t,,,.,,,g,,,e,,,t,,,(,,,s,,,l,,,o,,,t,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,e,,,l,,,t,,,a,,,=,,,p,,,r,,,e,,,v,,,i,,,o,,,u,,,s,,,?,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,m,,,),,,-,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,p,,,r,,,e,,,v,,,i,,,o,,,u,,,s,,,),,,:,,,m,,,o,,,d,,,T,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,(,,,m,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,e,,,l,,,t,,,a,,,C,,,l,,,a,,,s,,,s,,,=,,,d,,,e,,,l,,,t,,,a,,,>,,,0,,,?,,,',,,g,,,a,,,i,,,n,,,',,,:,,,d,,,e,,,l,,,t,,,a,,,<,,,0,,,?,,,',,,n,,,e,,,u,,,t,,,r,,,a,,,l,,,',,,:,,,',,,s,,,a,,,m,,,e,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,d,,,o,,,n,,,o,,,r,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,_,,,s,,,o,,,u,,,r,,,c,,,e,,,O,,,w,,,n,,,e,,,r,,,|,,,|,,,m,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,|,,,|,,,',,,I,,,n,,,v,,,e,,,n,,,t,,,a,,,i,,,r,,,e,,, ,,,l,,,i,,,b,,,r,,,e,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,l,,,o,,,t,,,-,,,c,,,o,,,m,,,p,,,a,,,r,,,e,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,b,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,l,,,o,,,t,,,-,,,c,,,o,,,m,,,p,,,a,,,r,,,e,,,-,,,n,,,a,,,m,,,e,,,",,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,s,,,l,,,o,,,t,,,),,,},,,<,,,/,,,b,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,A,,,C,,,T,,,U,,,E,,,L,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,o,,,d,,,C,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,L,,,i,,,n,,,e,,,(,,,p,,,r,,,e,,,v,,,i,,,o,,,u,,,s,,,),,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,P,,,R,,,O,,,P,,,O,,,S,,,É,,, ,,,·,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,d,,,o,,,n,,,o,,,r,,,),,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,o,,,d,,,C,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,L,,,i,,,n,,,e,,,(,,,m,,,),,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,$,,,{,,,d,,,e,,,l,,,t,,,a,,,C,,,l,,,a,,,s,,,s,,,},,,",,,>,,,$,,,{,,,p,,,r,,,e,,,v,,,i,,,o,,,u,,,s,,,?,,,s,,,i,,,g,,,n,,,e,,,d,,,S,,,p,,,e,,,e,,,d,,,(,,,d,,,e,,,l,,,t,,,a,,,),,,:,,,',,,N,,,O,,,U,,,V,,,E,,,A,,,U,,,',,,},,, ,,,V,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,;,,,
+,,, ,,, ,,, ,,, ,,,},,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,p,,,e,,,e,,,d,,,C,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,M,,,a,,,r,,,k,,,u,,,p,,,=,,,`,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,p,,,e,,,e,,,d,,,-,,,c,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,V,,,I,,,T,,,E,,,S,,,S,,,E,,, ,,,T,,,O,,,T,,,A,,,L,,,E,,, ,,,E,,,S,,,T,,,I,,,M,,,É,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,b,,,e,,,f,,,o,,,r,,,e,,,S,,,p,,,e,,,e,,,d,,,.,,,b,,,a,,,s,,,e,,,S,,,p,,,e,,,e,,,d,,,>,,,0,,,?,,,`,,,$,,,{,,,n,,,u,,,m,,,(,,,b,,,e,,,f,,,o,,,r,,,e,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,,,,,1,,,),,,},,, ,,,→,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,a,,,f,,,t,,,e,,,r,,,C,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,S,,,p,,,e,,,e,,,d,,,,,,,1,,,),,,},,,`,,,:,,,',,,B,,,a,,,s,,,e,,, ,,,S,,,p,,,e,,,e,,,d,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,b,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,$,,,{,,,t,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,>,,,=,,,0,,,?,,,',,,g,,,a,,,i,,,n,,,',,,:,,,',,,l,,,o,,,s,,,s,,,',,,},,,",,,>,,,$,,,{,,,s,,,i,,,g,,,n,,,e,,,d,,,S,,,p,,,e,,,e,,,d,,,(,,,t,,,o,,,t,,,a,,,l,,,S,,,p,,,e,,,e,,,d,,,D,,,e,,,l,,,t,,,a,,,),,,},,, ,,,V,,,<,,,/,,,b,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,B,,,o,,,n,,,u,,,s,,, ,,,d,,,u,,, ,,,s,,,e,,,t,,, ,,,S,,,p,,,e,,,e,,,d,,, ,,,i,,,n,,,c,,,l,,,u,,,s,,, ,,,·,,, ,,,a,,,u,,,c,,,u,,,n,,,e,,, ,,,b,,,a,,,i,,,s,,,s,,,e,,, ,,,a,,,u,,,t,,,o,,,r,,,i,,,s,,,é,,,e,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,l,,,o,,,t,,,-,,,c,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,-,,,t,,,i,,,t,,,l,,,e,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,C,,,O,,,M,,,P,,,A,,,R,,,A,,,I,,,S,,,O,,,N,,, ,,,D,,,E,,,S,,, ,,,S,,,I,,,X,,, ,,,S,,,L,,,O,,,T,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,M,,,o,,,d,,, ,,,é,,,q,,,u,,,i,,,p,,,é,,, ,,,→,,, ,,,m,,,o,,,d,,, ,,,p,,,r,,,o,,,p,,,o,,,s,,,é,,, ,,,·,,, ,,,s,,,o,,,u,,,r,,,c,,,e,,, ,,,d,,,u,,, ,,,t,,,r,,,a,,,n,,,s,,,f,,,e,,,r,,,t,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,l,,,o,,,t,,,-,,,c,,,o,,,m,,,p,,,a,,,r,,,e,,,-,,,g,,,r,,,i,,,d,,,",,,>,,,$,,,{,,,s,,,l,,,o,,,t,,,C,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,M,,,a,,,r,,,k,,,u,,,p,,,},,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,`,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,t,,,a,,,t,,,s,,,E,,,n,,,t,,,r,,,i,,,e,,,s,,,=,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,e,,,n,,,t,,,r,,,i,,,e,,,s,,,(,,,r,,,.,,,s,,,t,,,a,,,t,,,s,,,|,,,|,,,{,,,},,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,e,,,a,,,t,,,u,,,r,,,e,,,d,,,=,,,[,,,',,,S,,,p,,,e,,,e,,,d,,,',,,,,,,',,,H,,,e,,,a,,,l,,,t,,,h,,,',,,,,,,',,,P,,,r,,,o,,,t,,,e,,,c,,,t,,,i,,,o,,,n,,,',,,,,,,',,,P,,,h,,,y,,,s,,,i,,,c,,,a,,,l,,, ,,,D,,,a,,,m,,,a,,,g,,,e,,,',,,,,,,',,,S,,,p,,,e,,,c,,,i,,,a,,,l,,, ,,,D,,,a,,,m,,,a,,,g,,,e,,,',,,,,,,',,,P,,,o,,,t,,,e,,,n,,,c,,,y,,,',,,],,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,k,,,=,,,>,,,O,,,b,,,j,,,e,,,c,,,t,,,.,,,p,,,r,,,o,,,t,,,o,,,t,,,y,,,p,,,e,,,.,,,h,,,a,,,s,,,O,,,w,,,n,,,P,,,r,,,o,,,p,,,e,,,r,,,t,,,y,,,.,,,c,,,a,,,l,,,l,,,(,,,r,,,.,,,s,,,t,,,a,,,t,,,s,,,|,,,|,,,{,,,},,,,,,,k,,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,f,,,e,,,a,,,t,,,u,,,r,,,e,,,d,,,S,,,t,,,a,,,t,,,s,,,=,,,f,,,e,,,a,,,t,,,u,,,r,,,e,,,d,,,.,,,m,,,a,,,p,,,(,,,k,,,=,,,>,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,t,,,a,,,t,,, ,,,f,,,e,,,a,,,t,,,u,,,r,,,e,,,d,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,t,,,a,,,t,,,L,,,a,,,b,,,e,,,l,,,(,,,k,,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,t,,,a,,,t,,,V,,,a,,,l,,,u,,,e,,,(,,,k,,,,,,,r,,,.,,,s,,,t,,,a,,,t,,,s,,,[,,,k,,,],,,),,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,t,,,h,,,e,,,r,,,S,,,t,,,a,,,t,,,s,,,=,,,s,,,t,,,a,,,t,,,s,,,E,,,n,,,t,,,r,,,i,,,e,,,s,,,.,,,f,,,i,,,l,,,t,,,e,,,r,,,(,,,(,,,[,,,k,,,],,,),,,=,,,>,,,!,,,f,,,e,,,a,,,t,,,u,,,r,,,e,,,d,,,.,,,i,,,n,,,c,,,l,,,u,,,d,,,e,,,s,,,(,,,k,,,),,,),,,.,,,m,,,a,,,p,,,(,,,(,,,[,,,k,,,,,,,v,,,],,,),,,=,,,>,,,`,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,t,,,a,,,t,,,-,,,p,,,i,,,l,,,l,,,",,,>,,,<,,,b,,,>,,,$,,,{,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,t,,,a,,,t,,,L,,,a,,,b,,,e,,,l,,,(,,,k,,,),,,},,,<,,,/,,,b,,,>,,,<,,,e,,,m,,,>,,,$,,,{,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,S,,,t,,,a,,,t,,,V,,,a,,,l,,,u,,,e,,,(,,,k,,,,,,,v,,,),,,},,,<,,,/,,,e,,,m,,,>,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,c,,,o,,,r,,,e,,,=,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,r,,,.,,,s,,,c,,,o,,,r,,,e,,,=,,,=,,,=,,,',,,n,,,u,,,m,,,b,,,e,,,r,,,',,,?,,,r,,,.,,,s,,,c,,,o,,,r,,,e,,,.,,,t,,,o,,,F,,,i,,,x,,,e,,,d,,,(,,,0,,,),,,:,,,',,,—,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,u,,,t,,,i,,,l,,,i,,,t,,,y,,,=,,,t,,,y,,,p,,,e,,,o,,,f,,, ,,,r,,,.,,,u,,,t,,,i,,,l,,,i,,,t,,,y,,,=,,,=,,,=,,,',,,n,,,u,,,m,,,b,,,e,,,r,,,',,,?,,,r,,,.,,,u,,,t,,,i,,,l,,,i,,,t,,,y,,,.,,,t,,,o,,,F,,,i,,,x,,,e,,,d,,,(,,,3,,,),,,:,,,',,,—,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,a,,,r,,,e,,,t,,,o,,,=,,,r,,,.,,,p,,,a,,,r,,,e,,,t,,,o,,,_,,,r,,,a,,,n,,,k,,,=,,,=,,,=,,,',,,P,,,A,,,R,,,E,,,T,,,O,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,L,,,a,,,b,,,e,,,l,,,=,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,>,,,=,,,9,,,0,,,?,,,',,,F,,,O,,,R,,,T,,,E,,,',,,:,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,>,,,=,,,7,,,5,,,?,,,',,,S,,,O,,,L,,,I,,,D,,,E,,,',,,:,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,>,,,=,,,5,,,5,,,?,,,',,,P,,,A,,,R,,,T,,,I,,,E,,,L,,,L,,,E,,,',,,:,,,',,,À,,, ,,,A,,,F,,,F,,,I,,,N,,,E,,,R,,,',,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,V,,,e,,,r,,,d,,,i,,,c,,,t,,,F,,,o,,,r,,,B,,,u,,,i,,,l,,,d,,,(,,,a,,,u,,,d,,,i,,,t,,,,,,,s,,,c,,,o,,,p,,,e,,,,,,,i,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,i,,,m,,,p,,,a,,,c,,,t,,,M,,,a,,,r,,,k,,,u,,,p,,,=,,,f,,,o,,,r,,,g,,,e,,,B,,,u,,,i,,,l,,,d,,,G,,,l,,,o,,,b,,,a,,,l,,,I,,,m,,,p,,,a,,,c,,,t,,,M,,,a,,,r,,,k,,,u,,,p,,,(,,,f,,,o,,,r,,,g,,,e,,,B,,,u,,,i,,,l,,,d,,,G,,,l,,,o,,,b,,,a,,,l,,,I,,,m,,,p,,,a,,,c,,,t,,,(,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,,,,,p,,,r,,,o,,,f,,,i,,,l,,,e,,,,,,,b,,,u,,,i,,,l,,,d,,,),,,),,,;,,,
+,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,`,,,<,,,a,,,r,,,t,,,i,,,c,,,l,,,e,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,r,,,e,,,s,,,u,,,l,,,t,,, ,,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,h,,,e,,,a,,,d,,,e,,,r,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,-,,,h,,,e,,,a,,,d,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,a,,,n,,,k,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,C,,,O,,,N,,,F,,,I,,,G,,,U,,,R,,,A,,,T,,,I,,,O,,,N,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,i,,,+,,,1,,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,s,,,u,,,l,,,t,,,-,,,t,,,i,,,t,,,l,,,e,,,",,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,i,,,=,,,=,,,=,,,0,,,?,,,',,,C,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,, ,,,p,,,r,,,i,,,n,,,c,,,i,,,p,,,a,,,l,,,e,,,',,,:,,,',,,C,,,o,,,n,,,f,,,i,,,g,,,u,,,r,,,a,,,t,,,i,,,o,,,n,,, ,,,',,,+,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,i,,,+,,,1,,,),,,.,,,p,,,a,,,d,,,S,,,t,,,a,,,r,,,t,,,(,,,2,,,,,,,',,,0,,,',,,),,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,s,,,e,,,t,,,S,,,u,,,m,,,m,,,a,,,r,,,y,,,),,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,c,,,o,,,r,,,e,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,A,,,D,,,É,,,Q,,,U,,,A,,,T,,,I,,,O,,,N,,, ,,,À,,, ,,,L,,,A,,, ,,,R,,,É,,,F,,,É,,,R,,,E,,,N,,,C,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,},,,%,,,<,,,/,,,b,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,c,,,o,,,m,,,p,,,l,,,i,,,a,,,n,,,c,,,e,,,L,,,a,,,b,,,e,,,l,,,),,,},,, ,,,·,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,s,,,c,,,o,,,r,,,e,,,),,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,/,,,h,,,e,,,a,,,d,,,e,,,r,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,b,,,u,,,i,,,l,,,d,,,-,,,m,,,e,,,t,,,a,,, ,,,f,,,o,,,r,,,g,,,e,,,-,,,b,,,u,,,i,,,l,,,d,,,-,,,d,,,o,,,c,,,t,,,r,,,i,,,n,,,e,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,D,,,O,,,C,,,T,,,R,,,I,,,N,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,t,,,o,,,p,,,S,,,e,,,t,,,?,,,`,,,S,,,e,,,t,,, ,,,l,,,e,,, ,,,p,,,l,,,u,,,s,,, ,,,f,,,r,,,é,,,q,,,u,,,e,,,n,,,t,,, ,,,:,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,a,,,u,,,d,,,i,,,t,,,.,,,t,,,o,,,p,,,S,,,e,,,t,,,),,,},,,`,,,:,,,',,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,d,,,e,,, ,,,s,,,e,,,t,,, ,,,n,,,o,,,n,,, ,,,d,,,é,,,t,,,a,,,i,,,l,,,l,,,é,,,e,,,',,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,P,,,R,,,I,,,M,,,A,,,I,,,R,,,E,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,?,,,`,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,},,,/,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,},,, ,,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,e,,,s,,,`,,,:,,,',,,R,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,, ,,,i,,,n,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,',,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,S,,,E,,,C,,,O,,,N,,,D,,,A,,,I,,,R,,,E,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,},,, ,,,s,,,l,,,o,,,t,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,>,,,1,,,?,,,',,,s,,,',,,:,,,',,,',,,},,, ,,,a,,,v,,,e,,,c,,, ,,,f,,,o,,,c,,,u,,,s,,, ,,,K,,,y,,,b,,,e,,,r,,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,$,,,{,,,s,,,p,,,e,,,e,,,d,,,C,,,o,,,m,,,p,,,a,,,r,,,i,,,s,,,o,,,n,,,M,,,a,,,r,,,k,,,u,,,p,,,},,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,r,,,e,,,a,,,s,,,o,,,n,,,i,,,n,,,g,,,-,,,b,,,l,,,o,,,c,,,k,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,-,,,t,,,i,,,t,,,l,,,e,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,V,,,E,,,R,,,D,,,I,,,C,,,T,,, ,,,D,,,E,,, ,,,L,,,’,,,H,,,O,,,L,,,O,,,C,,,R,,,O,,,N,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,$,,,{,,,p,,,a,,,r,,,e,,,t,,,o,,,?,,,',,,F,,,R,,,O,,,N,,,T,,, ,,,D,,,E,,, ,,,P,,,A,,,R,,,E,,,T,,,O,,,',,,:,,,',,,C,,,A,,,N,,,D,,,I,,,D,,,A,,,T,,, ,,,R,,,E,,,T,,,E,,,N,,,U,,,',,,},,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,-,,,m,,,a,,,i,,,n,,, ,,,$,,,{,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,.,,,k,,,i,,,n,,,d,,,},,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,-,,,m,,,a,,,r,,,k,,,",,,>,,,$,,,{,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,.,,,k,,,i,,,n,,,d,,,=,,,=,,,=,,,',,,s,,,t,,,r,,,o,,,n,,,g,,,',,,?,,,',,,✓,,,',,,:,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,.,,,k,,,i,,,n,,,d,,,=,,,=,,,=,,,',,,a,,,c,,,t,,,i,,,o,,,n,,,',,,?,,,',,,→,,,',,,:,,,',,,!,,,',,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,.,,,t,,,i,,,t,,,l,,,e,,,),,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,p,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,.,,,t,,,e,,,x,,,t,,,),,,},,,<,,,/,,,p,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,v,,,e,,,r,,,d,,,i,,,c,,,t,,,-,,,l,,,i,,,s,,,t,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,t,,,P,,,c,,,t,,,=,,,=,,,=,,,1,,,0,,,0,,,?,,,',,,o,,,k,,,',,,:,,,',,,w,,,a,,,r,,,n,,,',,,},,,",,,>,,,<,,,b,,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,t,,,P,,,c,,,t,,,=,,,=,,,=,,,1,,,0,,,0,,,?,,,',,,✓,,,',,,:,,,',,,!,,,',,,},,,<,,,/,,,b,,,>,,, ,,,S,,,e,,,t,,,s,,, ,,,o,,,b,,,s,,,e,,,r,,,v,,,é,,,s,,, ,,,:,,, ,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,t,,,H,,,i,,,t,,,s,,,},,,/,,,6,,, ,,,·,,, ,,,f,,,r,,,é,,,q,,,u,,,e,,,n,,,c,,,e,,, ,,,m,,,o,,,y,,,e,,,n,,,n,,,e,,, ,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,t,,,P,,,c,,,t,,,},,,%,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,&,,,&,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,=,,,=,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,?,,,',,,o,,,k,,,',,,:,,,',,,w,,,a,,,r,,,n,,,',,,},,,",,,>,,,<,,,b,,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,&,,,&,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,=,,,=,,,=,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,?,,,',,,✓,,,',,,:,,,',,,!,,,',,,},,,<,,,/,,,b,,,>,,, ,,,P,,,r,,,i,,,m,,,a,,,i,,,r,,,e,,,s,,, ,,,:,,, ,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,?,,,`,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,},,,/,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,K,,,n,,,o,,,w,,,n,,,},,, ,,,c,,,o,,,n,,,f,,,o,,,r,,,m,,,e,,,s,,, ,,,à,,, ,,,l,,,a,,, ,,,r,,,é,,,f,,,é,,,r,,,e,,,n,,,c,,,e,,,`,,,:,,,',,,d,,,o,,,n,,,n,,,é,,,e,,,s,,, ,,,K,,,y,,,b,,,e,,,r,,, ,,,n,,,o,,,n,,, ,,,d,,,i,,,s,,,p,,,o,,,n,,,i,,,b,,,l,,,e,,,s,,,',,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,?,,,',,,o,,,k,,,',,,:,,,',,,w,,,a,,,r,,,n,,,',,,},,,",,,>,,,<,,,b,,,>,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,?,,,',,,✓,,,',,,:,,,',,,!,,,',,,},,,<,,,/,,,b,,,>,,, ,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,,s,,, ,,,:,,, ,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,H,,,i,,,t,,,s,,,},,,/,,,$,,,{,,,a,,,u,,,d,,,i,,,t,,,.,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,y,,,T,,,o,,,t,,,a,,,l,,,},,, ,,,m,,,o,,,d,,,s,,, ,,,a,,,v,,,e,,,c,,, ,,,f,,,o,,,c,,,u,,,s,,, ,,,K,,,y,,,b,,,e,,,r,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,o,,,k,,,",,,>,,,<,,,b,,,>,,,✓,,,<,,,/,,,b,,,>,,, ,,,M,,,o,,,d,,,s,,, ,,,r,,,e,,,c,,,h,,,e,,,r,,,c,,,h,,,é,,,s,,, ,,,s,,,u,,,r,,, ,,,:,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,s,,,c,,,o,,,p,,,e,,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,$,,,{,,,i,,,m,,,p,,,a,,,c,,,t,,,M,,,a,,,r,,,k,,,u,,,p,,,},,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,t,,,a,,,t,,,s,,,-,,,b,,,l,,,o,,,c,,,k,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,-,,,t,,,i,,,t,,,l,,,e,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,É,,,T,,,A,,,T,,, ,,,A,,,P,,,R,,,È,,,S,,, ,,,A,,,P,,,P,,,L,,,I,,,C,,,A,,,T,,,I,,,O,,,N,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,6,,, ,,,m,,,o,,,d,,,s,,, ,,,·,,, ,,,c,,,o,,,m,,,p,,,a,,,r,,,a,,,i,,,s,,,o,,,n,,, ,,,i,,,m,,,m,,,é,,,d,,,i,,,a,,,t,,,e,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,f,,,e,,,a,,,t,,,u,,,r,,,e,,,d,,,-,,,s,,,t,,,a,,,t,,,s,,,",,,>,,,$,,,{,,,f,,,e,,,a,,,t,,,u,,,r,,,e,,,d,,,S,,,t,,,a,,,t,,,s,,,},,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,$,,,{,,,o,,,t,,,h,,,e,,,r,,,S,,,t,,,a,,,t,,,s,,,?,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,a,,,l,,,l,,,-,,,s,,,t,,,a,,,t,,,s,,,",,,>,,,$,,,{,,,o,,,t,,,h,,,e,,,r,,,S,,,t,,,a,,,t,,,s,,,},,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,:,,,',,,',,,},,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,o,,,d,,,s,,,-,,,b,,,l,,,o,,,c,,,k,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,-,,,t,,,i,,,t,,,l,,,e,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,A,,,R,,,S,,,E,,,N,,,A,,,L,,, ,,,D,,,E,,, ,,,L,,,A,,, ,,,C,,,O,,,N,,,F,,,I,,,G,,,U,,,R,,,A,,,T,,,I,,,O,,,N,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,m,,,a,,,l,,,l,,,>,,,6,,, ,,,s,,,l,,,o,,,t,,,s,,, ,,,·,,, ,,,d,,,é,,,t,,,a,,,i,,,l,,,s,,, ,,,c,,,o,,,m,,,p,,,l,,,e,,,t,,,s,,,<,,,/,,,s,,,m,,,a,,,l,,,l,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,o,,,d,,,-,,,g,,,r,,,i,,,d,,,",,,>,,,$,,,{,,,b,,,u,,,i,,,l,,,d,,,.,,,m,,,a,,,p,,,(,,,(,,,m,,,,,,,m,,,i,,,),,,=,,,>,,,{,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,s,,,t,,,a,,,t,,,|,,,|,,,',,,?,,,',,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,V,,,a,,,l,,,u,,,e,,,=,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,v,,,a,,,l,,,u,,,e,,,!,,,=,,,n,,,u,,,l,,,l,,,?,,,`,,, ,,,$,,,{,,,n,,,u,,,m,,,(,,,m,,,.,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,_,,,v,,,a,,,l,,,u,,,e,,,,,,,1,,,),,,},,,$,,,{,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,),,,.,,,e,,,n,,,d,,,s,,,W,,,i,,,t,,,h,,,(,,,',,,%,,,',,,),,,?,,,',,,',,,:,,,',,, ,,,',,,},,,`,,,:,,,',,,',,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,=,,,o,,,p,,,t,,,i,,,m,,,i,,,z,,,e,,,r,,,M,,,o,,,d,,,S,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,(,,,m,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,c,,,o,,,n,,,s,,,t,,, ,,,o,,,w,,,n,,,e,,,r,,,=,,,S,,,t,,,r,,,i,,,n,,,g,,,(,,,m,,,.,,,c,,,h,,,a,,,r,,,a,,,c,,,t,,,e,,,r,,,|,,,|,,,m,,,.,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,T,,,o,,,|,,,|,,,m,,,.,,,e,,,q,,,u,,,i,,,p,,,p,,,e,,,d,,,_,,,t,,,o,,,|,,,|,,,',,,',,,),,,.,,,t,,,r,,,i,,,m,,,(,,,),,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,r,,,e,,,t,,,u,,,r,,,n,,, ,,,`,,,<,,,a,,,r,,,t,,,i,,,c,,,l,,,e,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,o,,,d,,,-,,,c,,,a,,,r,,,d,,,",,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,o,,,d,,,-,,,t,,,o,,,p,,,",,,>,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,o,,,d,,,-,,,i,,,c,,,o,,,n,,,",,,>,,,$,,,{,,,m,,,o,,,d,,,I,,,c,,,o,,,n,,,H,,,t,,,m,,,l,,,(,,,m,,,,,,,',,,5,,,2,,,',,,),,,},,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,d,,,i,,,v,,,>,,,<,,,s,,,p,,,a,,,n,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,s,,,l,,,o,,,t,,,-,,,i,,,n,,,d,,,e,,,x,,,",,,>,,,$,,,{,,,m,,,i,,,+,,,1,,,},,,/,,,6,,, ,,,·,,, ,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,l,,,o,,,t,,,|,,,|,,,',,,?,,,',,,),,,},,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,m,,,.,,,s,,,e,,,t,,,_,,,n,,,a,,,m,,,e,,,|,,,|,,,m,,,.,,,s,,,e,,,t,,,|,,,|,,,',,,S,,,E,,,T,,, ,,,I,,,N,,,C,,,O,,,N,,,N,,,U,,,',,,),,,},,,<,,,/,,,s,,,t,,,r,,,o,,,n,,,g,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,o,,,d,,,-,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,P,,,R,,,I,,,M,,,A,,,I,,,R,,,E,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,),,,},,,$,,,{,,,e,,,s,,,c,,,(,,,p,,,r,,,i,,,m,,,a,,,r,,,y,,,V,,,a,,,l,,,u,,,e,,,),,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,o,,,d,,,-,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,S,,,E,,,C,,,O,,,N,,,D,,,A,,,I,,,R,,,E,,,S,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,$,,,{,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,.,,,l,,,e,,,n,,,g,,,t,,,h,,,?,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,r,,,i,,,e,,,s,,,.,,,m,,,a,,,p,,,(,,,x,,,=,,,>,,,`,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,x,,,),,,},,,<,,,/,,,b,,,>,,,`,,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,:,,,',,,<,,,e,,,m,,,>,,,A,,,u,,,c,,,u,,,n,,,e,,, ,,,s,,,e,,,c,,,o,,,n,,,d,,,a,,,i,,,r,,,e,,, ,,,r,,,e,,,n,,,s,,,e,,,i,,,g,,,n,,,é,,,e,,,<,,,/,,,e,,,m,,,>,,,',,,},,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,$,,,{,,,o,,,w,,,n,,,e,,,r,,,?,,,`,,,<,,,d,,,i,,,v,,, ,,,c,,,l,,,a,,,s,,,s,,,=,,,",,,f,,,o,,,r,,,g,,,e,,,-,,,m,,,o,,,d,,,-,,,o,,,w,,,n,,,e,,,r,,,",,,>,,,<,,,s,,,p,,,a,,,n,,,>,,,A,,,C,,,T,,,U,,,E,,,L,,,L,,,E,,,M,,,E,,,N,,,T,,,<,,,/,,,s,,,p,,,a,,,n,,,>,,,<,,,b,,,>,,,$,,,{,,,e,,,s,,,c,,,(,,,o,,,w,,,n,,,e,,,r,,,),,,},,,<,,,/,,,b,,,>,,,<,,,/,,,d,,,i,,,v,,,>,,,`,,,:,,,',,,',,,},,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,/,,,a,,,r,,,t,,,i,,,c,,,l,,,e,,,>,,,`,,,;,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,, ,,,},,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,},,,<,,,/,,,d,,,i,,,v,,,>,,,
+,,, ,,, ,,, ,,, ,,, ,,, ,,,<,,,/,,,s,,,e,,,c,,,t,,,i,,,o,,,n,,,>,,,
+,,, ,,, ,,, ,,, ,,,<,,,/,,,a,,,r,,,t,,,i,,,c,,,l,,,e,,,>,,,`,,,;,,,
+,,, ,,, ,,,},,,),,,.,,,j,,,o,,,i,,,n,,,(,,,',,,',,,),,,;,,,
+,,,},,,
+,,,
