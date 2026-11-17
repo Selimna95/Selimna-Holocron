@@ -302,8 +302,8 @@ const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 }));
-assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).setBonus, 15);
-assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).total, 168);
+assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).setBonus, 15.3);
+assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).total, 168.3);
 const g12CompleteSpeedSet = engine.calculateSpeed(153, completeSpeedSet, 12);
 assert.equal(g12CompleteSpeedSet.complete, false);
 assert.ok(g12CompleteSpeedSet.missing.includes('speed:gear_component_required'));
