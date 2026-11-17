@@ -243,17 +243,17 @@ assert.equal(g13DirectCandidateProjection.complete, false);
 assert.ok(g13DirectCandidateProjection.missing.includes('defense:gear_component_required'));
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
-try:
-    result = optimizer.optimize_kyber(
-        mods, base_stats=profile['base_stats'], base_profile=profile,
-        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-    )
-    warning_error = ''
-except RuntimeError as error:
-    warning_error = str(error)
-json.dumps({'error': warning_error})
+result = optimizer.optimize_kyber(
+    mods, base_stats=profile['base_stats'], base_profile=profile,
+    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+)
+json.dumps({
+    'count': len(result),
+    'missing': result[0].get('missing_stats', []) if result else []
+})
 `));
-assert.match(g13DefenseWarningResult.error, /defense:gear_component_required/);
+assert.equal(g13DefenseWarningResult.count, 1, 'G13 builds must not be rejected for unavailable Defense when score stats are complete');
+assert.ok(g13DefenseWarningResult.missing.includes('defense:gear_component_required'));
 
 const secondaryDefenseSearch = JSON.parse(pyodide.runPython(`import json
 secondary_defense_mods = []
