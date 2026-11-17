@@ -127,6 +127,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if minimum_speed is not None and not safe_beam:", optimizer)
         self.assertIn("Aucun transfert entraînant une perte de vitesse", optimizer)
         self.assertIn("defense_percent_unavailable", optimizer)
+        self.assertIn("gear_percent_unavailable", optimizer)
+        self.assertIn("BONUS MULTIPLICATEURS EN % NON ÉVALUÉS", seigneur)
         self.assertIn("forge-result-warning", seigneur)
         self.assertIn("forge-result-warning", (ROOT / "app.css").read_text(encoding="utf-8"))
         self.assertIn("VITESSE TOTALE ESTIMÉE", seigneur)
