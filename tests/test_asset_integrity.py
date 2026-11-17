@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.108-defense-percent-g13", self.sw)
+        self.assertIn("holocron-static-v4.4.109-single-worker-pyodide", self.sw)
         self.assertIn("modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.html)
         self.assertIn("./modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
