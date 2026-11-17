@@ -206,11 +206,11 @@ def _mod_metadata(mod):
     primary = normalized.get("primary") or {}
     primary_label = primary.get("name") or primary.get("key") or ""
     if primary.get("unit") == "percentagePoints" and primary.get("key") in {
-        "offense", "defense", "health", "protection", "speed"
+        "offense", "defense", "health", "protection", "speed", "physicalDamage", "specialDamage"
     }:
         primary_label += " %"
     stats = {}
-    percent_suffix = {"offense", "defense", "health", "protection", "speed"}
+    percent_suffix = {"offense", "defense", "health", "protection", "speed", "physicalDamage", "specialDamage"}
     for stat in [primary] + list(normalized.get("secondaries") or []):
         if not isinstance(stat, dict) or not stat.get("key") or stat.get("unit") not in {"flat", "percentagePoints"}:
             continue
