@@ -36,7 +36,7 @@ assert.ok(js.includes('b.score.score-a.score.score'),'Scenarios must rank by str
 assert.ok(js.includes('isGalacticLegendCharacter(owner)'),'GL donors must be excluded');
 assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bonuses must be preserved');
 assert.ok(js.includes('diverse.length>=24'), 'Candidate selection must preserve set and primary diversity');
-assert.ok(js.includes('Échantillonnage équilibré de tous les slots avec filtre vitesse préalable'), 'Search must sample across all slots and prefilter speed-invalid combinations');
+assert.ok(js.includes('Échantillonnage équilibré de tous les slots avec filtre vitesse préalable et plafond de 24 options par slot'), 'Search must sample across all slots, prefilter speed-invalid combinations and disclose its candidate cap');
 assert.ok(js.includes('attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000)'), 'Search must continue sampling beyond the old 15,000-combination cap');
 assert.ok(js.includes('speedPruned++'), 'Search must count combinations rejected by the speed prefilter');
 assert.ok(js.includes('searchSpace'), 'Search diagnostics must expose the complete candidate space');
@@ -66,6 +66,10 @@ assert.ok(js.includes('speedLoss:beforeSpeed-afterSpeed'), 'Rejected speed excha
 assert.ok(js.includes('afterSpeed+1e-9<beforeSpeed'),'Target speed must never decrease');
 assert.ok(js.includes('RECOMMANDÉ'),'Scenario verdict must be explicit');
 assert.ok(js.includes('const diagnostics={limit:15000'),'Search diagnostics must expose the safety limit and candidate counts');
+assert.ok(js.includes('eligibleBySlot')&&js.includes('truncatedBySlot'),'Search diagnostics must disclose eligible and capped-out mods per slot');
+assert.ok(js.includes('fullCandidateSearchSpace')&&js.includes('fullSearchCoverage')&&js.includes('candidatePoolCoverage'),'Search coverage must distinguish the reduced pool from all eligible candidates');
+assert.ok(js.includes('Vivier tronqué'),'A capped candidate pool must be explained in the result UI');
+
 assert.ok(js.includes('perte_stat_cible'),'Search must count target-stat rejections');
 assert.ok(js.includes('bonus_sets_donneur'),'Search must count donor set-bonus rejections');
 assert.ok(js.includes('renderExchangeDiagnostics'),'Search diagnostics must be visible in the UI');
@@ -228,6 +232,24 @@ const broadSearch=await runSearch(normalTarget,[],manyChoices,kyber);
 assert.equal(broadSearch.tested,broadSearch.diagnostics.searchSpace,'The complete small candidate space must be evaluated');
 assert.ok(broadSearch.diagnostics.accepted>30,'The fixture must produce more than 30 valid scenarios');
 assert.equal(broadSearch.diagnostics.retainedProposals,30,'Only the top 30 scenarios are retained after full evaluation');
+
+const cappedChoices=[
+  ...Array.from({length:30},(_,i)=>makeMod('cap-square-'+i,'Square','Speed',10,'Speed',10)),
+  ...Array.from({length:30},(_,i)=>makeMod('cap-circle-'+i,'Circle','Speed',10,'Speed',10))
+];
+const cappedSearch=await runSearch(normalTarget,[],cappedChoices,kyber);
+assert.equal(cappedSearch.diagnostics.eligibleBySlot.Square,30);
+assert.equal(cappedSearch.diagnostics.eligibleBySlot.Circle,30);
+assert.equal(cappedSearch.diagnostics.optionsBySlot.Square,24);
+assert.equal(cappedSearch.diagnostics.optionsBySlot.Circle,24);
+assert.equal(cappedSearch.diagnostics.truncatedBySlot.Square,6);
+assert.equal(cappedSearch.diagnostics.truncatedBySlot.Circle,6);
+assert.equal(cappedSearch.diagnostics.fullCandidateSearchSpace,900);
+assert.equal(cappedSearch.diagnostics.searchSpace,576);
+assert.equal(cappedSearch.diagnostics.candidatePoolCoverage,0.64);
+assert.equal(cappedSearch.diagnostics.fullSearchCoverage,0.64,
+  'A fully explored reduced pool must not be reported as exhaustive over all eligible mods');
+assert.equal(cappedSearch.diagnostics.candidatePoolTruncated,true);
 
 const noSources=await runSearch(glTarget,[],[],kyber);
 assert.equal(noSources.proposals.length,0);
