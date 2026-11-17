@@ -195,7 +195,7 @@ json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if r
 `));
 assert.equal(defenseWarningResult.count, 0);
 assert.match(defenseWarningResult.error, /Bonus multiplicateurs en % non calculables/);
-assert.match(defenseWarningResult.error, /G13 compatible/);
+assert.match(defenseWarningResult.error, /séparation base\/équipement vérifiée/);
 assert.match(defenseWarningResult.error, /defense:gear_component_required/);
 
 const g13CandidateMods = JSON.parse(pyodide.runPython('json.dumps(mods)'));
