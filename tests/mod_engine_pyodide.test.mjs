@@ -28,7 +28,10 @@ pyodide.runPython = (...args) => {
 pyodide.FS.writeFile('/home/pyodide/optimizer.py', read('../python/optimizer.py'));
 const engineBridge = (baseJson, modsJson, level) => {
   scalarBridgeCalls++;
-  return JSON.stringify(engine.calculateFinalStats(JSON.parse(baseJson), JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null));
+  const baseProfile = JSON.parse(baseJson);
+  const result = engine.calculateFinalStats(baseProfile, JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null);
+  if (Object.prototype.hasOwnProperty.call(baseProfile, 'gear_level')) console.log('SCALAR_PROFILE_GEAR', baseProfile.gear_level, result.missing);
+  return JSON.stringify(result);
 };
 const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse(modJson)));
 let batchBridgeCalls = 0;
