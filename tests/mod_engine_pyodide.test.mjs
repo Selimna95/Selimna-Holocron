@@ -167,14 +167,14 @@ for slot in ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']:
            'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
            'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
            'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
-           'secondary_4_stat': 'Offense %', 'secondary_4_value': 1}
+           'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 1}
     mods.append(mod)
 mods.append({'game_id': 'unsupported-defense', 'slot': 'Square', 'level': 15,
              'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10,
              'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
              'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
              'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
-             'secondary_4_stat': 'Offense %', 'secondary_4_value': 1})
+             'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 1})
 result = optimizer.optimize_kyber(
     mods, base_stats=json.loads(base_json),
     base_profile={'base_stats': json.loads(base_json), 'level': 85},
