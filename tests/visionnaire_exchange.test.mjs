@@ -71,11 +71,12 @@ const sandbox={
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   baseStatsForCharacter:character=>character.base_stats||{},
   optimizerProfileForCharacter:()=>({}),
+  optimizerValidatedProfileForCharacter:character=>({base_stats:character.base_stats||{},gear_level:13}),
   modTotalSpeed:mod=>Number(mod.speed||0)
 };
 vm.createContext(sandbox);
 vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;this.focus=exchangeSecondaryFocusScore;this.focusImpact=exchangeTargetFocusImpact;',sandbox);
-const fixture={baseId:'GLREY',base_stats:{Health:1000,Speed:100,Potency:0.1}};
+const fixture={baseId:'GLREY',gear_level:13,base_stats:{Health:1000,Speed:100,Potency:0.1}};
 const healthMods=[
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0},
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}
@@ -103,6 +104,8 @@ const buildSandbox={
   modTotalSpeed:mod=>sharedEngine.speedMetrics(mod).total,
   characterKey:c=>String(c.baseId),
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
+  optimizerValidatedProfileForCharacter:c=>({base_stats:c.base_stats||{},gear_level:c.gear_level}),
+  optimizerRosterMetadata:c=>({gear_level:c.gear_level}),
   baseStatsForCharacter:c=>c.base_stats||{},
   isGalacticLegendCharacter:c=>String(c.baseId).startsWith('GL'),
   forgeSourceAllowedForSearch:()=>true,
@@ -114,9 +117,9 @@ vm.createContext(buildSandbox);
 vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,primary_stat:primary,primary_value:value,secondary_1_stat:'Speed',secondary_1_value:speed,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0});
 async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[],selectedSlots=['Square','Circle']){
-  const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
+  const donor={baseId:'DONOR',name:'Donneur',gear_level:13,base_stats:{Speed:100,Health:1000,Offense:500}};
   donor.mods=donorMods;
-  const glDonor={baseId:'GLDONOR',name:'Donneur GL',base_stats:{Speed:100},mods:glDonorMods};
+  const glDonor={baseId:'GLDONOR',name:'Donneur GL',gear_level:13,base_stats:{Speed:100},mods:glDonorMods};
   const roster=[target,...(donorMods.length?[donor]:[]),...(glDonorMods.length?[glDonor]:[])];
   const byOwner=new Map(roster.map(c=>[c.baseId,c.mods||[]]));
   const sources=[
@@ -137,7 +140,7 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
   });
   return buildSandbox.search({character:target,profile},selectedSlots);
 }
-const glTarget={baseId:'GLREY',name:'Rey',base_stats:{Speed:100,Health:1000,Offense:500}};
+const glTarget={baseId:'GLREY',name:'Rey',gear_level:13,base_stats:{Speed:100,Health:1000,Offense:500}};
 glTarget.mods=[
  makeMod('t1','Square','Health',1,'Health %',5),makeMod('t2','Arrow','Speed',1),
  makeMod('t3','Diamond','Health',1,'Health %',5),makeMod('t4','Triangle','Speed',1),
