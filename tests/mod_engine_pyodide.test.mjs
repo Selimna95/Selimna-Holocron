@@ -40,6 +40,7 @@ const batchBridge = (baseJson, indexedBuildsJson, level) => {
   batchProjectedBuilds += payload.builds.length;
   const baseProfile = JSON.parse(baseJson);
   console.log('BATCH_PROFILE_GEAR', baseProfile.gear_level, Object.keys(baseProfile).slice(0, 4));
+  if (baseProfile.gear_level === 13) console.log('BATCH_G13_MODS', JSON.stringify(payload.mods));
   return JSON.stringify(payload.builds.map(indexes => engine.calculateFinalStats(
     baseProfile, indexes.map(index => payload.mods[index]),
     Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
