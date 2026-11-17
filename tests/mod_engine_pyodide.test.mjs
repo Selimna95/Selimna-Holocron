@@ -184,6 +184,10 @@ mods.append({'game_id': 'unsupported-defense', 'slot': 'Square', 'level': 15,
              'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
              'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
              'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 1})
+valid_build_projection = optimizer.final_stats(
+    mods[:6], json.loads(base_json),
+    {'base_stats': json.loads(base_json), 'level': 85}
+)
 result = optimizer.optimize_kyber(
     mods, base_stats=json.loads(base_json),
     base_profile={'base_stats': json.loads(base_json), 'level': 85},
