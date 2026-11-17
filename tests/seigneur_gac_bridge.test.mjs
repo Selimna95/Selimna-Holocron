@@ -96,7 +96,7 @@ const incompleteRosterSandbox=vm.createContext({
   ]
 });
 vm.runInContext(seigneurSource.slice(crewStart,crewEnd)+
-  '\\nthis.fleetUsage=seigneurCharacterFleetUsage;',incompleteRosterSandbox);
+  '\nthis.fleetUsage=seigneurCharacterFleetUsage;',incompleteRosterSandbox);
 const incompleteCrewUsage=incompleteRosterSandbox.fleetUsage(
   {baseId:'BOSSK',name:'Bossk'},
   {ships:{"Hound's Tooth":{uses:77}},fleets:[]}
