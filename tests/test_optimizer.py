@@ -240,7 +240,7 @@ class OptimizerProfileResolutionTests(unittest.TestCase):
                        "base_stats": {"Speed": 120}}
         }
         self.assertEqual(
-            resolve_character_base_stats(profiles, "unknown_id", "Chirrut-Imwe"),
+            resolve_character_base_stats(profiles, "", "Chirrut-Imwe"),
             {"Speed": 120},
         )
 
