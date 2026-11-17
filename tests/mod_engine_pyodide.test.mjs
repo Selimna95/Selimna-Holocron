@@ -175,7 +175,7 @@ const defenseWarningResult = JSON.parse(pyodide.runPython(`import json
 mods = []
 for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):
     mod = {'game_id': 'valid-' + slot, 'slot': slot, 'level': 15,
-           'set_name': ['Health', 'Offense', 'Speed', 'Defense', 'Critical Damage', 'Potency'][index],
+           'set_name': ['Offense', 'Speed', 'Defense', 'Critical Damage', 'Potency', 'Tenacity'][index],
            'primary_stat': 'Defense %' if slot == 'Cross' else 'Health',
            'primary_value': 10 if slot == 'Cross' else 100,
            'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
@@ -198,6 +198,7 @@ json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if r
 assert.equal(defenseWarningResult.count, 0);
 assert.match(defenseWarningResult.error, /Bonus multiplicateurs en % non calculables/);
 assert.match(defenseWarningResult.error, /G13 compatible/);
+assert.match(defenseWarningResult.error, /defense:gear_component_required/);
 
 const g13CandidateMods = JSON.parse(pyodide.runPython('json.dumps(mods)'));
 const g13DirectCandidateProjection = engine.calculateFinalStats(moffGideonProfile, g13CandidateMods, moffGideonProfile.level);
