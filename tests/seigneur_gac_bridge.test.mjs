@@ -68,7 +68,7 @@ const crewSandbox=vm.createContext({
   rosterShips:[{baseId:'HOUNDSTOOTH',name:"Hound's Tooth",raw:{}}],
 });
 vm.runInContext(seigneurSource.slice(crewStart,crewEnd)+
-  '\nthis.fleetUsage=seigneurCharacterFleetUsage;this.shipCrew=seigneurShipCrewAliases;',crewSandbox);
+  '\nthis.fleetUsage=seigneurCharacterFleetUsage;this.shipCrew=seigneurShipCrewAliases;this.shipUsageMap=seigneurShipUsageMap;',crewSandbox);
 const mappedFleet=crewSandbox.fleetUsage(
   {baseId:'BOSSK',name:'Bossk'},
   {ships:{"Hound's Tooth":{uses:77}},fleets:[]}
@@ -87,3 +87,16 @@ assert.equal(crewSandbox.shipCrew({baseId:'YWINGREBEL',name:'Rebel Y-wing',raw:{
   'Crewless ships must not be assigned an invented pilot');
 assert.equal(crewSandbox.shipCrew({baseId:'BWINGREBEL',name:'Rebel B-wing',raw:{}})[0],'CAPTAINDROGAN',
   'The canonical mapping must include ships beyond the sample pilot');
+
+const aggregatedShipUsage=crewSandbox.shipUsageMap({
+  ships:{"Hound's Tooth":{uses:77}},
+  fleets:[{uses:77,ships:["Hound's Tooth"]}]
+});
+assert.equal(aggregatedShipUsage.get('HOUNDSTOOTH'),77,
+  'Fleet compositions must not be added again when the aggregate ship total already exists');
+const fallbackShipUsage=crewSandbox.shipUsageMap({
+  ships:{},
+  fleets:[{uses:20,ships:["Hound's Tooth"]},{uses:30,ships:["Hound's Tooth"]}]
+});
+assert.equal(fallbackShipUsage.get('HOUNDSTOOTH'),50,
+  'Fleet compositions must still aggregate when the explicit ship totals are absent');
