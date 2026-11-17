@@ -95,9 +95,8 @@ const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
 ];
 pyodide.globals.set('mods_json', JSON.stringify(offenseMods));
-const offense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats(json.loads(mods_json), json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
-assert.equal(offense['Physical Damage'], 665);
-assert.equal(offense['Special Damage'], 915);
+pyodide.runPython("import json\ntry:\n optimizer.final_stats(json.loads(mods_json), json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\n offense_projection_error = ''\nexcept RuntimeError as error:\n offense_projection_error = str(error)\n");
+assert.match(pyodide.runPython('offense_projection_error'), /offense:gear_component_required/);
 
 const defense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85})\njson.dumps(result)\n"));
 assert.ok(Math.abs(defense.Armor - 51.5209) < 0.001);
@@ -127,7 +126,8 @@ const r5d4OffenseProjection = engine.calculateFinalStats(r5d4Profile, offenseMod
 assert.equal(r5d4OffenseProjection.complete, false);
 assert.ok(r5d4OffenseProjection.missing.includes('offense:gear_component_required'));
 const moffGideonOffenseProjection = engine.calculateFinalStats(moffGideonProfile, offenseMods, moffGideonProfile.level);
-assert.equal(moffGideonOffenseProjection.complete, true, JSON.stringify(moffGideonOffenseProjection.missing));
+assert.equal(moffGideonOffenseProjection.complete, false);
+assert.ok(moffGideonOffenseProjection.missing.includes('offense:gear_component_required'));
 const defenseProfileMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 },
   { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
@@ -307,7 +307,7 @@ const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
     primary_value: slot === 'Arrow' ? 30 : 100,
     secondary_1_stat: 'Speed',
     secondary_1_value: speed,
-    secondary_2_stat: 'Offense %',
+    secondary_2_stat: 'Offense',
     secondary_2_value: 1 + (index % 5),
     secondary_3_stat: 'Potency %',
     secondary_3_value: 1,
