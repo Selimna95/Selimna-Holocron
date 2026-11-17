@@ -253,7 +253,7 @@ const projectionBase = {
 // Comlink values are normalized by 1e8; Crinolo returns decimal ratios, while Holocron stores percentage points (x100), so 24 normalized rating units = 1 point.
 const critRatingProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 14, unscaledDecimalValue: 2400000000 } },
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
+  { level: 1, set_name: 'Defense', primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
 ]);
 assert.equal(critRatingProjection.complete, true);
 assert.equal(critRatingProjection.stats['Physical Critical Chance'], 41);
@@ -312,8 +312,8 @@ assert.equal(engine.calculateSpeed(153, halfSpeedSet, 13).total, 160.65);
 
 const accuracyProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 34, unscaledDecimalValue: 6000000 }, secondary_1_stat: { unitStatId: 38, unscaledDecimalValue: 2400000000 } },
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 52, unscaledDecimalValue: 12000000 } }
+  { level: 1, set_name: 'Defense', primary_stat: { unitStatId: 34, unscaledDecimalValue: 6000000 }, secondary_1_stat: { unitStatId: 38, unscaledDecimalValue: 2400000000 } },
+  { level: 1, set_name: 'Speed', primary_stat: { unitStatId: 52, unscaledDecimalValue: 12000000 } }
 ]);
 assert.equal(accuracyProjection.complete, true, JSON.stringify(accuracyProjection.missing));
 assert.equal(accuracyProjection.stats['Physical Accuracy'], 13);
@@ -392,7 +392,7 @@ const g13DefenseProjection = engine.calculateFinalStats({ gear_level: 13, base_s
 assert.equal(g13DefenseProjection.complete, false);
 assert.ok(g13DefenseProjection.missing.includes('defense:gear_component_required'));
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
-  { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
+  { level: 1, set_name: 'Defense', primary_stat: 'Defense', primary_value: 40 }
 ], 85);
 const missingLevelDefenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
