@@ -194,14 +194,14 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("if(!ownedApi.length || !profileApi ||", load_player)
         self.assertIn("account.character_galactic_power", load_player)
         self.assertIn("account.ship_galactic_power", load_player)
-        self.assertIn("modules/core.js?v=4.2.37-kyber-expired-fallback", self.html)
-        self.assertIn("modules/mod-engine.js?v=0.3.23", self.html)
+        self.assertIn("modules/core.js?v=4.2.38-defense-percent-g13", self.html)
+        self.assertIn("modules/mod-engine.js?v=0.3.24", self.html)
         self.assertIn("modules/disciple.js?v=3.5.9-complete-secondary-options", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.sw)
         self.assertIn("modules/disciple.js?v=3.5.9-complete-secondary-options", self.sw)
-        self.assertIn("modules/mod-engine.js?v=0.3.23", self.sw)
-        self.assertIn("modules/core.js?v=4.2.37-kyber-expired-fallback", self.sw)
+        self.assertIn("modules/mod-engine.js?v=0.3.24", self.sw)
+        self.assertIn("modules/core.js?v=4.2.38-defense-percent-g13", self.sw)
         self.assertIn("holocron-static-v4.4.98-batched-mod-engine", self.sw)
 
 
