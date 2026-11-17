@@ -164,7 +164,7 @@ assert.equal(freeSearch.proposals[0].freeMods,2);
 assert.equal(freeSearch.proposals[0].donors.length,0);
 
 // The hard speed floor rejects a primary-only exchange that would lower total speed.
-const speedTarget={baseId:'GLLEIA',name:'Leia',base_stats:{Speed:100,Health:1000}};
+const speedTarget={baseId:'GLLEIA',name:'Leia',gear_level:13,base_stats:{Speed:100,Health:1000}};
 speedTarget.mods=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('sp'+i,slot,'Speed',10,'Speed',5));
 const slowFree=[makeMod('slow-s','Square','Health',0,'Speed',5),makeMod('slow-c','Circle','Health',0,'Speed',5)];
 const primaryProfile={slots:{Square:{primaries:{Speed:1}},Circle:{primaries:{Speed:1}}}};
