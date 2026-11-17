@@ -766,9 +766,11 @@ def optimize_kyber(
     if not beam:
         detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
         if "gear_percent_unavailable" in projection_warnings:
+            first_projection_failure = projection_failures[0] if projection_failures else "composante d'équipement inconnue"
             detail = ("Bonus multiplicateurs en % non calculables : le profil ne sépare pas "
                       "les statistiques de base des secondaires des pièces d'équipement. "
-                      "Un profil G13 compatible est nécessaire pour ces projections.")
+                      "Un profil G13 compatible est nécessaire pour ces projections. "
+                      "Détail du premier rejet : " + first_projection_failure)
         raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
 
     def speed_safe(projected_stats):
