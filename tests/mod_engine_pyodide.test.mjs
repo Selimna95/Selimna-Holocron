@@ -17,6 +17,14 @@ try {
   throw error;
 }
 console.log('Pyodide runtime loaded.');
+const originalRunPython = pyodide.runPython.bind(pyodide);
+pyodide.runPython = (...args) => {
+  try { return originalRunPython(...args); }
+  catch (error) {
+    console.error('PYODIDE_RUNPYTHON_ERROR:', error?.name, error?.message);
+    throw new Error(`Pyodide runPython failed: ${error?.message || String(error)}`);
+  }
+};
 pyodide.FS.writeFile('/home/pyodide/optimizer.py', read('../python/optimizer.py'));
 const engineBridge = (baseJson, modsJson, level) => {
   scalarBridgeCalls++;
