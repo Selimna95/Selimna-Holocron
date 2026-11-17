@@ -20,8 +20,6 @@
     25: { key: 'armorPenetration', name: 'Armor Penetration', unit: 'percentagePoints' },
     26: { key: 'resistancePenetration', name: 'Resistance Penetration', unit: 'percentagePoints' },
     28: { key: 'protection', name: 'Protection', unit: 'flat' },
-    31: { key: 'physicalDamage', name: 'Physical Damage', unit: 'percentagePoints' },
-    32: { key: 'specialDamage', name: 'Special Damage', unit: 'percentagePoints' },
     33: { key: 'physicalAccuracy', name: 'Physical Accuracy', unit: 'percentagePoints' },
     34: { key: 'specialAccuracy', name: 'Special Accuracy', unit: 'percentagePoints' },
     35: { key: 'physicalCriticalAvoidance', name: 'Physical Critical Avoidance', unit: 'percentagePoints' },
