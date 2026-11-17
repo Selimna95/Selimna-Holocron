@@ -38,8 +38,10 @@ const batchBridge = (baseJson, indexedBuildsJson, level) => {
   batchBridgeCalls++;
   const payload = JSON.parse(indexedBuildsJson);
   batchProjectedBuilds += payload.builds.length;
+  const baseProfile = JSON.parse(baseJson);
+  console.log('BATCH_PROFILE_GEAR', baseProfile.gear_level, Object.keys(baseProfile).slice(0, 4));
   return JSON.stringify(payload.builds.map(indexes => engine.calculateFinalStats(
-    JSON.parse(baseJson), indexes.map(index => payload.mods[index]),
+    baseProfile, indexes.map(index => payload.mods[index]),
     Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
   )));
 };
