@@ -109,6 +109,25 @@ const optimizerProfiles = JSON.parse(read('../python/optimizer_profiles.json'));
 const moffGideonProfile = optimizerProfiles.MOFFGIDEONS3;
 assert.ok(moffGideonProfile && moffGideonProfile.base_stats && moffGideonProfile.gear_level === 13);
 assert.equal(moffGideonProfile.gear, undefined, 'profile must not be mistaken for a Crinolo gear-component breakdown');
+const defenseProfileMods = [
+  { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+];
+let g13ProfileCount = 0;
+let lowerGearProfileCount = 0;
+for (const profile of Object.values(optimizerProfiles)) {
+  const projection = engine.calculateFinalStats(profile, defenseProfileMods, profile.level);
+  if (Number(profile.gear_level) === 13) {
+    g13ProfileCount++;
+    assert.equal(projection.complete, true, `G13 profile ${profile.base_id} rejected: ${projection.missing.join(', ')}`);
+  } else {
+    lowerGearProfileCount++;
+    assert.equal(projection.complete, false, `Lower-gear profile ${profile.base_id} must not guess the gear component`);
+    assert.ok(projection.missing.includes('defense:gear_component_required'));
+  }
+}
+assert.equal(g13ProfileCount, 328);
+assert.equal(lowerGearProfileCount, 6);
 pyodide.globals.set('moff_gideon_profile_json', JSON.stringify(moffGideonProfile));
 const moffGideonDefense = JSON.parse(pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
