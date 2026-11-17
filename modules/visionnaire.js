@@ -476,7 +476,7 @@
             after[donorIndex]=returned;
           }
           if(before.length!==6||after.length!==6||new Set(after.map(slotOf)).size!==6||!exchangeSetBonusesPreserved(before,after)){reject('bonus_sets_donneur','Le donneur perdrait un bonus de set ou son build est incomplet',owner.name||owner.baseId);return;}
-          const donorProfile=optimizerProfileForCharacter(owner)||{};
+          const donorProfile=optimizerValidatedProfileForCharacter(owner)||{};
           const beforeStats=exchangeFinalStats(owner,before),afterStats=exchangeFinalStats(owner,after);
           if(!beforeStats||!afterStats){reject('stats_donneur_incompletes','Calcul des statistiques du donneur incomplet : données de base ou formule non disponible',owner.name||owner.baseId);return;}
           const donorBeforeSpeed=forgeProjectedModSpeed(owner,donorProfile,before);
