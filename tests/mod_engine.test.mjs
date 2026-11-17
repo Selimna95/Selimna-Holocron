@@ -272,6 +272,33 @@ assert.equal(offenseProjection.complete, true);
 assert.equal(offenseProjection.stats['Physical Damage'], 665);
 assert.equal(offenseProjection.stats['Special Damage'], 915);
 
+const gear12Profile = { gear_level: 12, base_stats: projectionBase };
+const gear12OffenseProjection = engine.calculateFinalStats(gear12Profile, offenseMods, 85);
+assert.equal(gear12OffenseProjection.complete, false);
+assert.ok(gear12OffenseProjection.missing.includes('offense:gear_component_required'));
+const gear13OffenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
+assert.equal(gear13OffenseProjection.complete, true, JSON.stringify(gear13OffenseProjection.missing));
+
+const gearDependentPercentCases = [
+  ['health', [
+    { level: 1, set_name: 'Health', primary_stat: 'Health %', primary_value: 10 },
+    { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+  ]],
+  ['protection', [
+    { level: 1, set_name: 'Health', primary_stat: 'Protection %', primary_value: 10 },
+    { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+  ]],
+  ['speed', [
+    { level: 1, set_name: 'Health', primary_stat: 'Speed %', primary_value: 10 },
+    { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+  ]]
+];
+for (const [key, mods] of gearDependentPercentCases) {
+  const projection = engine.calculateFinalStats(gear12Profile, mods, 85);
+  assert.equal(projection.complete, false, `${key} % must not use aggregated gear stats`);
+  assert.ok(projection.missing.includes(key + ':gear_component_required'));
+}
+
 const defenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 },
   { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 }
