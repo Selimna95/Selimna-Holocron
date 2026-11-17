@@ -31,7 +31,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertEqual(missing, [], f"Local assets absent or version-mismatched in sw.js: {missing}")
 
     def test_catalogue_is_versioned_and_network_first_in_pwa(self):
-        self.assertIn("holocron-static-v4.4.113-indexed-owner-mods", self.sw)
+        self.assertIn("holocron-static-v4.4.114-shared-gl-protection", self.sw)
         self.assertIn("modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.html)
         self.assertIn("./modules/acolyte.js?v=3.4.9-weak-donor-recipient", self.sw)
         self.assertIn("blue-gac/gac-catalog.json?v=4.1.2", self.sw)
@@ -94,8 +94,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("_sourceFleetKnown", seigneur)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.html)
         self.assertIn("modules/seigneur-gac.js?v=1.1.0-history-fallback", self.sw)
-        self.assertIn("modules/seigneur.js?v=3.9.14-validated-speed-floor", self.html)
-        self.assertIn("modules/seigneur.js?v=3.9.14-validated-speed-floor", self.sw)
+        self.assertIn("modules/seigneur.js?v=3.9.15-shared-gl-protection", self.html)
+        self.assertIn("modules/seigneur.js?v=3.9.15-shared-gl-protection", self.sw)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.html)
         self.assertIn("modules/seigneur-impact.js?v=1.0.2-partial-impact-status", self.sw)
         self.assertIn("app.css?v=4.1.4-defense-percent-diagnostics", self.html)
