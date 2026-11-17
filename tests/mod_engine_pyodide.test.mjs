@@ -221,7 +221,7 @@ pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Healt
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
 
-const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 33, 'unscaledDecimalValue': 12000000}, 'secondary_1_stat': {'unitStatId': 37, 'unscaledDecimalValue': 1200000000}},\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 34, 'unscaledDecimalValue': 6000000}, 'secondary_1_stat': {'unitStatId': 38, 'unscaledDecimalValue': 2400000000}},\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}\n]\nresult = optimizer.final_stats(mods, json.loads(base_json))\njson.dumps(result)\n"));
+const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 33, 'unscaledDecimalValue': 12000000}, 'secondary_1_stat': {'unitStatId': 37, 'unscaledDecimalValue': 1200000000}},\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 34, 'unscaledDecimalValue': 6000000}, 'secondary_1_stat': {'unitStatId': 38, 'unscaledDecimalValue': 2400000000}},\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}\n]\nresult = optimizer.final_stats(mods, json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
 assert.equal(accuracy['Physical Accuracy'], 13);
 assert.equal(accuracy['Special Accuracy'], 8);
 assert.equal(accuracy['Accuracy'], 0.12);
