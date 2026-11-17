@@ -195,6 +195,9 @@ assert.equal(defenseWarningResult.count, 0);
 assert.match(defenseWarningResult.error, /Bonus multiplicateurs en % non calculables/);
 assert.match(defenseWarningResult.error, /G13 compatible/);
 
+const g13CandidateMods = JSON.parse(pyodide.runPython('json.dumps(mods)'));
+const g13DirectCandidateProjection = engine.calculateFinalStats(moffGideonProfile, g13CandidateMods, moffGideonProfile.level);
+assert.equal(g13DirectCandidateProjection.complete, true, JSON.stringify(g13DirectCandidateProjection.missing));
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
 result = optimizer.optimize_kyber(
