@@ -1338,7 +1338,10 @@ function getCharacterModsIndex(){
       const key=compactKey(typeof value==='object'?(value.baseId??value.base_id??value.characterId??value.character_id??value.id??value.name??''):value);
       const owner=uniqueOwners.get(key);if(owner)rawOwners.add(owner);
     }
-    if(rawOwners.size){for(const owner of rawOwners)add(owner,mod,3);continue;}
+    // Multiple raw ownership fields resolving to different roster units are
+    // contradictory evidence. Keep the mod unassigned rather than duplicating it.
+    if(rawOwners.size>1)continue;
+    if(rawOwners.size===1){add(rawOwners.values().next().value,mod,3);continue;}
     const normalizedOwner=uniqueOwners.get(modOwnerKey(mod));
     if(normalizedOwner){add(normalizedOwner,mod,2);continue;}
     const base=compactKey(mod.ownerBaseId||mod.equippedToId||mod.equipped_to_id||'');
