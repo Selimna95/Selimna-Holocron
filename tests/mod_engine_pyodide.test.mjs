@@ -321,7 +321,7 @@ json.dumps({
 })
 `));
 assert.equal(secondaryDefenseSearch.count, 1, 'Uncalculable Defense must not reject a build when the score stats are complete');
-assert.ok(secondaryDefenseSearch.missing.includes('defense:gear_component_required'), 'The accepted build must disclose the unavailable Defense projection');
+assert.ok(!secondaryDefenseSearch.missing.includes('defense:gear_component_required'), 'G13 Defense % must be calculated with zero gear contribution');
 
 
 const realComlinkDefenseSearch = JSON.parse(pyodide.runPython(`import json
@@ -349,8 +349,8 @@ json.dumps({
     'missing': result[0].get('missing_stats', []) if result else []
 })
 `));
-assert.equal(realComlinkDefenseSearch.count, 1, 'Comlink mods must remain optimizable when only Defense projection is unavailable');
-assert.ok(realComlinkDefenseSearch.missing.includes('defense:gear_component_required'));
+assert.equal(realComlinkDefenseSearch.count, 1, 'Comlink mods with Defense % must remain optimizable at G13');
+assert.ok(!realComlinkDefenseSearch.missing.includes('defense:gear_component_required'));
 
 
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
