@@ -58,7 +58,9 @@ Une unité inconnue ou une formule non implémentée rend le calcul incomplet. A
 | Visionnaire | Projection finale déléguée ; identité stat/set/slot déléguée ; scoring de scénario conservé |
 | Optimizer Python | `final_stats`, `mod_stats`, primaire et set délégués au pont JavaScript ; recherche conservée en Python |
 | Worker Pyodide | Runtime Python chargé une seule fois dans le Worker ; aucun runtime Pyodide principal inutilisé ; pont de normalisation et de projection initialisé |
-| Cache/version | Références index, service worker et Worker réalignées pour cette branche |\n| Propriétaires de mods | Index global construit une fois par snapshot roster/inventaire ; résolution exacte des alias et slots ambigus conservée |\n| Légendes galactiques | Une liste canonique partagée entre Core, Seigneur Sith et Visionnaire ; Hondo GL et Mando/Grogu GL protégés |
+| Cache/version | Références index, service worker et Worker réalignées pour cette branche |
+| Propriétaires de mods | Index global construit une fois par snapshot roster/inventaire ; résolution exacte des alias et slots ambigus conservée |
+| Légendes galactiques | Une liste canonique partagée entre Core, Seigneur Sith et Visionnaire ; Hondo GL et Mando/Grogu GL protégés |
 
 Les anciennes fonctions qui ne font que transmettre les données au moteur peuvent rester temporairement comme adaptateurs d'interface. Toute fonction qui recalcule une formule commune doit être supprimée.
 
