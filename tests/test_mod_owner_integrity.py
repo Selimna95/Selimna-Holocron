@@ -21,6 +21,8 @@ class ModOwnerIntegrityTests(unittest.TestCase):
         self.assertIn("baseIdOwners", body)
         self.assertIn("uniqueOwners", body)
         self.assertIn("rawOwners", body)
+        self.assertIn("rawOwners.size>1", body)
+        self.assertIn("rawOwners.size===1", body)
         self.assertIn("characterModsIndexCache", body)
         lookup_start = self.core.index("function getCharacterMods(c){")
         lookup_end = self.core.index("\nfunction modSpeedMetrics(m)", lookup_start)
