@@ -217,9 +217,12 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
 assert.equal(mismatchedPrimarySearch.proposals.length,0,'An Offense % primary must not satisfy a Kyber reference for flat Offense');
 const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Offense:500,'Physical Damage':1000,'Special Damage':1000}};
 const shorthandPercentProfile={specific_sets:kyber.specific_sets,slots:{Cross:{primaries:{Offense:1}}}};
+const originalVisionnaireEngine=buildSandbox.window.HolocronModEngine;
+buildSandbox.window.HolocronModEngine={...sharedEngine,calculateFinalStats:source=>({complete:true,stats:source.base_stats||source})};
 const shorthandPercentSearch=await runSearch(variablePrimaryTarget,[],[
   makeMod('correct-percent-primary','Cross','Speed',20,'Offense %',5)
 ],shorthandPercentProfile,'primaries',[],['Cross']);
+buildSandbox.window.HolocronModEngine=originalVisionnaireEngine;
 assert.ok(shorthandPercentSearch.proposals.length>0,'A Kyber shorthand Offense primary on a variable slot must match the actual Offense % primary');
 
 // The engine must finish the whole small search space even after it has
