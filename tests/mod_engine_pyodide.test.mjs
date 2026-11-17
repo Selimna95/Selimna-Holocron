@@ -30,7 +30,6 @@ const engineBridge = (baseJson, modsJson, level) => {
   scalarBridgeCalls++;
   const baseProfile = JSON.parse(baseJson);
   const result = engine.calculateFinalStats(baseProfile, JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null);
-  if (Object.prototype.hasOwnProperty.call(baseProfile, 'gear_level')) console.log('SCALAR_PROFILE_GEAR', baseProfile.gear_level, result.missing);
   return JSON.stringify(result);
 };
 const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse(modJson)));
@@ -46,7 +45,6 @@ const batchBridge = (baseJson, indexedBuildsJson, level) => {
     baseProfile, indexes.map(index => payload.mods[index]),
     Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
   ));
-  console.log('BATCH_GEAR_AND_MISSING', baseProfile.gear_level, JSON.stringify(results.map(x => x.missing)));
   return JSON.stringify(results);
 };
 pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
