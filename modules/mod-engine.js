@@ -210,7 +210,10 @@
       }
     }
     level = numeric(level);
-    const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level]);
+    const gearLevel = numeric(profile?.gear_level ?? profile?.gearLevel);
+    // Gear level is part of the projection contract: G13 has no currently equipped
+    // gear pieces, so its compoundable defense component is the full base rating.
+    const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level, gearLevel]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
     if (cachedProjection) return { stats: { ...cachedProjection.stats }, complete: cachedProjection.complete, missing: [...cachedProjection.missing] };
     const base = {};
@@ -309,16 +312,20 @@
       if (!Number.isFinite(characterLevel) || characterLevel <= 0) missing.push('level');
       else {
         const levelEffect = characterLevel * 7.5;
-        // Defense % needs the current gear-tier compoundable component, which is not
-        // present in the SWGOH.GG base profile. Do not infer it from displayed percentages.
-        if (defenseRatio) missing.push('defense:gear_component_required');
+        // Crinolo applies Defense % to stats.base before the current equipped-gear
+        // secondary component. At G13 there are no current-tier gear pieces, so that
+        // non-compoundable component is exactly zero and the whole base rating qualifies.
+        // Below G13, the profile does not expose the gear/base split: refuse rather than guess.
+        const canProjectDefensePercent = !defenseRatio || gearLevel === 13;
+        if (defenseRatio && !canProjectDefensePercent) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
           const displayPercent = get(key) > 1 ? get(key) : get(key) * 100;
           const ratio = displayPercent / 100;
           if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
           const baseRating = ratio * levelEffect / (1 - ratio);
-          const finalRating = baseRating + defenseFlat;
+          const defensePercentBonus = defenseRatio && canProjectDefensePercent ? baseRating * defenseRatio : 0;
+          const finalRating = baseRating + defenseFlat + defensePercentBonus;
           const finalPercent = finalRating / (levelEffect + finalRating) * 100;
           setResult(key, finalPercent);
         }
@@ -581,7 +588,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.23',
+    version: '0.3.24',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
