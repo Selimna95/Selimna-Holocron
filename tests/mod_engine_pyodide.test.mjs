@@ -190,7 +190,7 @@ valid_build_projection = optimizer.final_stats(
 )
 result = optimizer.optimize_kyber(
     mods, base_stats=json.loads(base_json),
-    base_profile={'base_stats': json.loads(base_json), 'level': 85},
+    base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13},
     kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
 )
 json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else []})
@@ -228,7 +228,7 @@ batchProjectedBuilds = 0;
 batchBridgeCalls = 0;
 scalarBridgeCalls = 0;
 
-const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
+const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
 assert.equal(batchSearch.count, 1);
 assert.equal(batchSearch.mods, 6);
 assert.equal(batchProjectedBuilds, 60);
