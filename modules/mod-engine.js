@@ -125,9 +125,18 @@
     let value = numeric(sourceValue);
     const isUnscaled = !hasExplicitValue && (nested.unscaledDecimalValue != null || nested.unscaled_decimal_value != null ||
       raw.unscaledDecimalValue != null || raw.unscaled_decimal_value != null);
+    const hasComlinkRollValues = Array.isArray(nested.unscaled_roll_values) ||
+      Array.isArray(nested.unscaledRollValues) || Array.isArray(raw.unscaled_roll_values) ||
+      Array.isArray(raw.unscaledRollValues);
     if (value != null && isUnscaled) {
       value /= 100000000;
       if (unit === 'percentagePoints') value *= 100;
+    } else if (value != null && hasComlinkRollValues) {
+      // SWGOH.GG's Comlink-shaped secondary_stats.value is stored at a
+      // different scale from the displayed stat: x100 for percentages,
+      // x10000 for flat ratings. Convert once before any scoring/projection.
+      if (unit === 'percentagePoints') value /= 100;
+      else if (unit === 'flat') value /= 10000;
     } else if (value != null && display != null && /%/.test(String(display))) {
       unit = 'percentagePoints';
     }
