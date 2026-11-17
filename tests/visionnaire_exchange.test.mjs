@@ -238,12 +238,12 @@ const cappedChoices=[
   ...Array.from({length:30},(_,i)=>makeMod('cap-circle-'+i,'Circle','Speed',10,'Speed',10))
 ];
 const cappedSearch=await runSearch(normalTarget,[],cappedChoices,kyber);
-assert.equal(cappedSearch.diagnostics.eligibleBySlot.Square,30);
-assert.equal(cappedSearch.diagnostics.eligibleBySlot.Circle,30);
-assert.equal(cappedSearch.diagnostics.optionsBySlot.Square,24);
-assert.equal(cappedSearch.diagnostics.optionsBySlot.Circle,24);
-assert.equal(cappedSearch.diagnostics.truncatedBySlot.Square,6);
-assert.equal(cappedSearch.diagnostics.truncatedBySlot.Circle,6);
+assert.equal(cappedSearch.diagnostics.eligibleBySlot['Carré'],30);
+assert.equal(cappedSearch.diagnostics.eligibleBySlot['Cercle'],30);
+assert.equal(cappedSearch.diagnostics.optionsBySlot['Carré'],24);
+assert.equal(cappedSearch.diagnostics.optionsBySlot['Cercle'],24);
+assert.equal(cappedSearch.diagnostics.truncatedBySlot['Carré'],6);
+assert.equal(cappedSearch.diagnostics.truncatedBySlot['Cercle'],6);
 assert.equal(cappedSearch.diagnostics.fullCandidateSearchSpace,900);
 assert.equal(cappedSearch.diagnostics.searchSpace,576);
 assert.equal(cappedSearch.diagnostics.candidatePoolCoverage,0.64);
