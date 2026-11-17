@@ -45,6 +45,25 @@ const comlinkPipsFallback = engine.normalizeMod({
 });
 assert.equal(comlinkPipsFallback.pips, 5, 'A zero Comlink pips sentinel must not mask the actual rarity');
 assert.equal(engine.normalizeMod({ pips: 6, rarity: 5 }).pips, 6, 'A valid explicit pips value keeps precedence');
+const realComlinkDefenseMod = engine.normalizeMod({
+  slot: 7, set: '1', level: 15, pips: 0, rarity: 5,
+  primary_stat: 'Health %', primary_value: 5.88,
+  secondary_stats: [
+    { name: 'Defense', stat_id: 49, value: 237.1, display_value: '2.37%', unscaled_roll_values: [2336, 2616] },
+    { name: 'Speed', stat_id: 5, value: 40000, display_value: '4', unscaled_roll_values: [40000] },
+    { name: 'Health', stat_id: 1, value: 8350000, display_value: '835', unscaled_roll_values: [41085900, 42449400] },
+    { name: 'Tenacity', stat_id: 18, value: 281.8, display_value: '2.82%', unscaled_roll_values: [1778, 1159, 1761] }
+  ]
+});
+assert.equal(realComlinkDefenseMod.pips, 5);
+assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 49).value, 2.371,
+  'Comlink stat_id 49 value 237.1 must normalize to 2.371 percentage points, not 237.1');
+assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 5).value, 4,
+  'Comlink flat Speed value 40000 must normalize to 4');
+assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 1).value, 835,
+  'Comlink flat Health value 8350000 must normalize to 835');
+assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 18).value, 2.818,
+  'Comlink percentage Tenacity value 281.8 must normalize to 2.818 percentage points');
 assert.deepEqual({ ...engine.calculateSetBonuses([
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
