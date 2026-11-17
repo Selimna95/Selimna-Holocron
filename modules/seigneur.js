@@ -501,7 +501,8 @@ function forgeProjectedModSpeed(character,profile,modList){
     character?.raw?.baseStats||character?.data?.base_stats||localProfile.base_stats||{};
   const baseSpeed=numericValue(localProfile.base_stats?.Speed??localProfile.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
   const gearLevel=localProfile.gear_level??metadata.gear_level??character?.gear_level??character?.gear;
-  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list,gearLevel,localProfile.stat_components);
+  const statComponents=localProfile.stat_components??character?.stat_components??character?.raw?.stat_components??character?.data?.stat_components??null;
+  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list,gearLevel,statComponents);
   return {
     complete:projection.complete===true&&projection.total!=null,
     total:projection.complete===true&&projection.total!=null?projection.total:null,

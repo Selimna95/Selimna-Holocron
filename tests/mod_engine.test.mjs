@@ -393,12 +393,8 @@ for (const [key, mods] of gearDependentPercentCases) {
   assert.equal(projection.complete, false, `${key} % must not use aggregated gear stats`);
   assert.ok(projection.missing.includes(key + ':gear_component_required'));
   const g13Projection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, mods, 85);
-  if (key === 'speed') {
-    assert.equal(g13Projection.complete, true, 'Speed % uses the dedicated speed projection');
-  } else {
-    assert.equal(g13Projection.complete, false, key + ' % must not assume a zero gear component from G13');
-    assert.ok(g13Projection.missing.includes(key + ':gear_component_required'));
-  }
+  assert.equal(g13Projection.complete, false, key + ' % must not assume a zero gear component from G13');
+  assert.ok(g13Projection.missing.includes(key + ':gear_component_required'));
 }
 
 const defenseProjection = engine.calculateFinalStats(projectionBase, [
