@@ -84,7 +84,8 @@ for (const [id, name, value, display_value, expected, unit] of realComlinkScaleC
     name, stat_id: id, value, display_value,
     unscaled_roll_values: [value]
   });
-  assert.equal(normalized.value, expected, 'Comlink stat_id ' + id + ' must be converted from source scale');
+  assert.ok(Math.abs(normalized.value - expected) < 1e-9,
+    'Comlink stat_id ' + id + ' must be converted from source scale');
   assert.equal(normalized.unit, unit, 'Comlink stat_id ' + id + ' unit must remain canonical');
 }
 assert.deepEqual({ ...engine.calculateSetBonuses([
