@@ -92,7 +92,7 @@ const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
 ];
 pyodide.globals.set('mods_json', JSON.stringify(offenseMods));
-const offense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats(json.loads(mods_json), json.loads(base_json))\njson.dumps(result)\n"));
+const offense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats(json.loads(mods_json), json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
 assert.equal(offense['Physical Damage'], 665);
 assert.equal(offense['Special Damage'], 915);
 
@@ -105,7 +105,7 @@ const missingLevel = pyodide.runPython('missing_level_error');
 assert.match(missingLevel, /level/);
 
 
-const critRating = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 14, 'unscaledDecimalValue': 2400000000}}, {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 15, 'unscaledDecimalValue': 4800000000}}], json.loads(base_json))\njson.dumps(result)\n"));
+const critRating = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 14, 'unscaledDecimalValue': 2400000000}}, {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 15, 'unscaledDecimalValue': 4800000000}}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
 assert.equal(critRating['Physical Critical Chance'], 41);
 assert.equal(critRating['Special Critical Chance'], 32);
 
