@@ -25,14 +25,16 @@ SLOTS = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
 _MOD_ENGINE_BRIDGE = None
 _MOD_NORMALIZE_BRIDGE = None
 _MOD_ENGINE_BATCH_BRIDGE = None
+_MOD_ENGINE_SPEED_BRIDGE = None
 
 
-def set_mod_engine_bridge(bridge, normalize_bridge=None, batch_bridge=None):
-    """Inject the single JavaScript calculation, batch calculation and normalization engine."""
-    global _MOD_ENGINE_BRIDGE, _MOD_NORMALIZE_BRIDGE, _MOD_ENGINE_BATCH_BRIDGE
+def set_mod_engine_bridge(bridge, normalize_bridge=None, batch_bridge=None, speed_bridge=None):
+    """Inject the shared JS projection, batch, normalization and speed-only bridges."""
+    global _MOD_ENGINE_BRIDGE, _MOD_NORMALIZE_BRIDGE, _MOD_ENGINE_BATCH_BRIDGE, _MOD_ENGINE_SPEED_BRIDGE
     _MOD_ENGINE_BRIDGE = bridge
     _MOD_NORMALIZE_BRIDGE = normalize_bridge
     _MOD_ENGINE_BATCH_BRIDGE = batch_bridge
+    _MOD_ENGINE_SPEED_BRIDGE = speed_bridge
     _normalized_mod_cached.cache_clear()
 
 
@@ -256,6 +258,24 @@ def _format_missing_stats(missing):
         else:
             details.append(str(code))
     return ", ".join(details)
+
+
+def calculate_speed(mods, base_stats=None, base_profile=None):
+    """Calculate only Speed through the shared JS engine (Seigneur hard floor)."""
+    if _MOD_ENGINE_SPEED_BRIDGE is None:
+        raise RuntimeError("Calcul de vitesse partagé non initialisé dans l'Optimizer.")
+    source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
+    payload = _MOD_ENGINE_SPEED_BRIDGE(
+        json.dumps(source, ensure_ascii=False, separators=(",", ":")),
+        json.dumps(list(mods or []), ensure_ascii=False, separators=(",", ":")),
+    )
+    try:
+        result = json.loads(str(payload))
+    except Exception as exc:
+        raise RuntimeError("Réponse invalide du moteur de vitesse partagé.") from exc
+    if not isinstance(result, dict):
+        raise RuntimeError("Réponse invalide du moteur de vitesse partagé.")
+    return result
 
 
 def final_stats(build, base_stats=None, base_profile=None):

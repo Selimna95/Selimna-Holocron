@@ -321,20 +321,20 @@ const verifiedGideonSpeedComponents = {
   base: { Speed: 153 }, gear: { Speed: 0 }
 };
 const verifiedGideonSpeedSet = engine.calculateSpeed(153, completeSpeedSet, 13, verifiedGideonSpeedComponents);
-assert.equal(verifiedGideonSpeedSet.setBonus, 15.3);
-assert.equal(verifiedGideonSpeedSet.total, 168.3);
+assert.equal(verifiedGideonSpeedSet.setBonus, 15, 'Crinolo floors the percentage-derived Speed set bonus');
+assert.equal(verifiedGideonSpeedSet.total, 168);
 const gearSpeedComponents = {
   source: 'Crinolo.stats.base+stats.gear',
   base: { Speed: 153 }, gear: { Speed: 2 }
 };
 const gearSpeedSet = engine.calculateSpeed(155, completeSpeedSet, 12, gearSpeedComponents);
 assert.equal(gearSpeedSet.complete, true, 'A verified component split is sufficient at any gear level');
-assert.equal(gearSpeedSet.setBonus, 15.3, 'Speed % applies to Crinolo base, not base plus gear');
-assert.equal(gearSpeedSet.total, 170.3, 'Gear Speed is added after the percentage bonus');
+assert.equal(gearSpeedSet.setBonus, 15, 'Speed % applies to Crinolo base, then floors the bonus');
+assert.equal(gearSpeedSet.total, 170, 'Gear Speed is added after the floored percentage bonus');
 const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: index === 3 ? 14 : 15 }));
 const verifiedHalfSpeedSet = engine.calculateSpeed(153, halfSpeedSet, 13, verifiedGideonSpeedComponents);
-assert.equal(verifiedHalfSpeedSet.setBonus, 7.65);
-assert.equal(verifiedHalfSpeedSet.total, 160.65);
+assert.equal(verifiedHalfSpeedSet.setBonus, 7, 'Half Speed set bonus is floored to an integer');
+assert.equal(verifiedHalfSpeedSet.total, 160);
 
 const accuracyProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },

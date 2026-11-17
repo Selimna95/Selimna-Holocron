@@ -197,7 +197,8 @@
       return { complete: false, total: null, modSpeed, setBonus: null, hasFourPieceSpeedSet, missing: missingUnique };
     }
     const modBaseSpeed = components?.base ?? base;
-    const setBonus = setBonusPercent ? modBaseSpeed * setBonusPercent / 100 : 0;
+    // Crinolo floors percentage-derived speed bonuses at the game's integer stat scale.
+    const setBonus = setBonusPercent ? Math.floor(modBaseSpeed * setBonusPercent / 100) : 0;
     const modPercent = speedPercent;
     return {
       complete: true,
@@ -637,7 +638,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.28',
+    version: '0.3.29',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
