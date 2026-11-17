@@ -107,7 +107,7 @@ const offenseMods = [
 ];
 pyodide.globals.set('mods_json', JSON.stringify(offenseMods));
 pyodide.runPython("import json\ntry:\n optimizer.final_stats(json.loads(mods_json), json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\n offense_projection_error = ''\nexcept RuntimeError as error:\n offense_projection_error = str(error)\n");
-assert.match(pyodide.runPython('offense_projection_error'), /offense:gear_component_required/);
+assert.equal(pyodide.runPython('offense_projection_error'), '', 'G13 offense percentage projection is calculable with zero gear contribution');
 
 const defense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85})\njson.dumps(result)\n"));
 assert.ok(Math.abs(defense.Armor - 51.5209) < 0.001);
@@ -137,8 +137,8 @@ const g13SpeedSetMods = Array.from({ length: 4 }, (_, index) => ({
   ...zeroSecondaries
 }));
 const unverifiedG13Speed = engine.calculateFinalStats(moffGideonProfile, g13SpeedSetMods, moffGideonProfile.level);
-assert.equal(unverifiedG13Speed.complete, false);
-assert.ok(unverifiedG13Speed.missing.includes('speed:gear_component_required'));
+assert.equal(unverifiedG13Speed.complete, true, 'G13 Speed set needs no synthetic gear split');
+assert.equal(unverifiedG13Speed.stats.Speed, 168);
 const verifiedG13SpeedProfile = {
   ...moffGideonProfile,
   stat_components: {
@@ -167,8 +167,7 @@ const r5d4OffenseProjection = engine.calculateFinalStats(r5d4Profile, offenseMod
 assert.equal(r5d4OffenseProjection.complete, false);
 assert.ok(r5d4OffenseProjection.missing.includes('offense:gear_component_required'));
 const moffGideonOffenseProjection = engine.calculateFinalStats(moffGideonProfile, offenseMods, moffGideonProfile.level);
-assert.equal(moffGideonOffenseProjection.complete, false);
-assert.ok(moffGideonOffenseProjection.missing.includes('offense:gear_component_required'));
+assert.equal(moffGideonOffenseProjection.complete, true, 'G13 Offense % must use the zero-gear base');
 const defenseProfileMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 },
   { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
@@ -179,11 +178,31 @@ for (const profile of Object.values(optimizerProfiles)) {
   const projection = engine.calculateFinalStats(profile, defenseProfileMods, profile.level);
   if (Number(profile.gear_level) === 13) g13ProfileCount++;
   else lowerGearProfileCount++;
-  assert.equal(projection.complete, false, `Profile ${profile.base_id} must not guess the Defense % gear component`);
-  assert.ok(projection.missing.includes('defense:gear_component_required'));
+  if (Number(profile.gear_level) === 13) {
+    assert.equal(projection.complete, true, `G13 profile ${profile.base_id} has a known zero gear component`);
+    assert.ok(!projection.missing.includes('defense:gear_component_required'));
+  } else {
+    assert.equal(projection.complete, false, `Profile ${profile.base_id} below G13 must not guess the Defense % gear component`);
+    assert.ok(projection.missing.includes('defense:gear_component_required'));
+  }
 }
 assert.equal(g13ProfileCount, 328);
 assert.equal(lowerGearProfileCount, 6);
+
+// G13 has a verified zero equipment contribution for every multiplicative stat.
+const g13PercentProfile = { ...moffGideonProfile, stat_components: undefined };
+const g13PercentMods = [
+  { level: 1, set_name: 'Health', primary_stat: 'Health %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Protection %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Offense %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 }
+];
+const g13PercentProjection = engine.calculateFinalStats(g13PercentProfile, g13PercentMods, g13PercentProfile.level);
+assert.equal(g13PercentProjection.complete, true, 'All supported percentage families must calculate at G13');
+assert.ok(Number.isFinite(g13PercentProjection.stats.Health));
+assert.ok(Number.isFinite(g13PercentProjection.stats.Protection));
+assert.ok(Number.isFinite(g13PercentProjection.stats['Physical Damage']));
+assert.ok(Number.isFinite(g13PercentProjection.stats.Armor));
 pyodide.globals.set('moff_gideon_profile_json', JSON.stringify(moffGideonProfile));
 pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
