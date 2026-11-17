@@ -36,14 +36,24 @@ assert.ok(js.includes('b.score.score-a.score.score'),'Scenarios must rank by str
 assert.ok(js.includes('isGalacticLegendCharacter(owner)'),'GL donors must be excluded');
 assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bonuses must be preserved');
 assert.ok(js.includes('diverse.length>=24'), 'Candidate selection must preserve set and primary diversity');
-assert.ok(js.includes('Échantillonnage équilibré de tous les slots avec filtre vitesse préalable'), 'Search must sample across all slots and prefilter speed-invalid combinations');
+assert.ok(js.includes('Échantillonnage équilibré de tous les slots avec filtre vitesse préalable et plafond de 24 options par slot'), 'Search must sample across all slots, prefilter speed-invalid combinations and disclose its candidate cap');
 assert.ok(js.includes('attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000)'), 'Search must continue sampling beyond the old 15,000-combination cap');
 assert.ok(js.includes('speedPruned++'), 'Search must count combinations rejected by the speed prefilter');
 assert.ok(js.includes('searchSpace'), 'Search diagnostics must expose the complete candidate space');
 assert.ok(js.includes('acceptedCount++'), 'The engine must count every valid scenario in the explored sample');
 assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not terminate the search before the sample is exhausted');
 assert.ok(js.includes('return !reference.length||reference.some'), 'Missing primary reference data must not reject every candidate');
-assert.ok(js.includes('modTotalSpeed(b)-modTotalSpeed(a)'), 'Candidate search must prioritize speed-preserving mods before donor-usage tie breaks');
+assert.ok(js.includes('.sort(visionnaireCandidatePriority)'), 'Candidate search must rank free mods and lowest-GAC-use donors before speed');
+const priorityStart=js.indexOf('  function visionnaireCandidatePriority(');
+const priorityEnd=js.indexOf('  const exchangeModSummary',priorityStart);
+assert.ok(priorityStart>=0&&priorityEnd>priorityStart,'Visionnaire donor-priority comparator must exist');
+const prioritySandbox={modTotalSpeed:mod=>Number(mod?.speed||0)};
+vm.createContext(prioritySandbox);
+vm.runInContext(js.slice(priorityStart,priorityEnd)+'\nthis.priority=visionnaireCandidatePriority;',prioritySandbox);
+const priority=prioritySandbox.priority;
+assert.ok(priority({_sourceOwnerKey:null,speed:0},{_sourceOwnerKey:'DONOR',_sourceUsage:0,speed:100})<0,'Free inventory must precede donor-owned mods');
+assert.ok(priority({_sourceOwnerKey:'RARE',_sourceUsage:3,speed:0},{_sourceOwnerKey:'COMMON',_sourceUsage:40,speed:100})<0,'Lower GAC usage must beat a much faster but frequently used donor');
+assert.ok(priority({_sourceOwnerKey:'DONOR',_sourceUsage:8,speed:25},{_sourceOwnerKey:'DONOR2',_sourceUsage:8,speed:10})<0,'Speed is a tie-breaker when GAC usage is equal');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
 assert.ok(js.includes('baseSpeed+retainedSpeed+combo.reduce'), 'Theoretical speed ceiling must include the character base speed');
 assert.ok(js.includes('if(!beforeProjection.complete||!afterProjection.complete)'), 'Target speed projections must fail closed when incomplete');
@@ -56,6 +66,10 @@ assert.ok(js.includes('speedLoss:beforeSpeed-afterSpeed'), 'Rejected speed excha
 assert.ok(js.includes('afterSpeed+1e-9<beforeSpeed'),'Target speed must never decrease');
 assert.ok(js.includes('RECOMMANDÉ'),'Scenario verdict must be explicit');
 assert.ok(js.includes('const diagnostics={limit:15000'),'Search diagnostics must expose the safety limit and candidate counts');
+assert.ok(js.includes('eligibleBySlot')&&js.includes('truncatedBySlot'),'Search diagnostics must disclose eligible and capped-out mods per slot');
+assert.ok(js.includes('fullCandidateSearchSpace')&&js.includes('fullSearchCoverage')&&js.includes('candidatePoolCoverage'),'Search coverage must distinguish the reduced pool from all eligible candidates');
+assert.ok(js.includes('Vivier tronqué'),'A capped candidate pool must be explained in the result UI');
+
 assert.ok(js.includes('perte_stat_cible'),'Search must count target-stat rejections');
 assert.ok(js.includes('bonus_sets_donneur'),'Search must count donor set-bonus rejections');
 assert.ok(js.includes('renderExchangeDiagnostics'),'Search diagnostics must be visible in the UI');
@@ -71,16 +85,17 @@ const sandbox={
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   baseStatsForCharacter:character=>character.base_stats||{},
   optimizerProfileForCharacter:()=>({}),
+  optimizerValidatedProfileForCharacter:character=>({base_stats:character.base_stats||{},gear_level:13,stat_components:character.stat_components||null}),
   modTotalSpeed:mod=>Number(mod.speed||0)
 };
 vm.createContext(sandbox);
 vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;this.focus=exchangeSecondaryFocusScore;this.focusImpact=exchangeTargetFocusImpact;',sandbox);
-const fixture={baseId:'GLREY',base_stats:{Health:1000,Speed:100,Potency:0.1}};
+const fixture={baseId:'GLREY',gear_level:13,base_stats:{Health:1000,Speed:100,Potency:0.1},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
 const healthMods=[
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0},
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}
 ];
-assert.equal(sandbox.project(fixture,healthMods).Health,1150);
+assert.equal(sandbox.project(fixture,healthMods),null,'Visionnaire must refuse Health % when the profile has no verified gear component');
 const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',level:14,primary_stat:'Speed',primary_value:5,secondary_1_stat:'Health',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}));
 assert.equal(sandbox.project(fixture,speedMods).Speed,125);
 const better=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:0,primaryShare:.9,targetBalance:.02,donors:[{uses:5,statBalance:.01,statusWorsened:false}]});
@@ -103,6 +118,8 @@ const buildSandbox={
   modTotalSpeed:mod=>sharedEngine.speedMetrics(mod).total,
   characterKey:c=>String(c.baseId),
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
+  optimizerValidatedProfileForCharacter:c=>({base_stats:c.base_stats||{},gear_level:c.gear_level,stat_components:c.stat_components||null}),
+  optimizerRosterMetadata:c=>({gear_level:c.gear_level}),
   baseStatsForCharacter:c=>c.base_stats||{},
   isGalacticLegendCharacter:c=>String(c.baseId).startsWith('GL'),
   forgeSourceAllowedForSearch:()=>true,
@@ -114,9 +131,9 @@ vm.createContext(buildSandbox);
 vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,primary_stat:primary,primary_value:value,secondary_1_stat:'Speed',secondary_1_value:speed,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0});
 async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[],selectedSlots=['Square','Circle']){
-  const donor={baseId:'DONOR',name:'Donneur',base_stats:{Speed:100,Health:1000,Offense:500}};
+  const donor={baseId:'DONOR',name:'Donneur',gear_level:13,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
   donor.mods=donorMods;
-  const glDonor={baseId:'GLDONOR',name:'Donneur GL',base_stats:{Speed:100},mods:glDonorMods};
+  const glDonor={baseId:'GLDONOR',name:'Donneur GL',gear_level:13,base_stats:{Speed:100},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}},mods:glDonorMods};
   const roster=[target,...(donorMods.length?[donor]:[]),...(glDonorMods.length?[glDonor]:[])];
   const byOwner=new Map(roster.map(c=>[c.baseId,c.mods||[]]));
   const sources=[
@@ -131,23 +148,23 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
     forgeProjectedModSpeed:(c,_p,list)=>{
       const rawBase=c.base_stats?.Speed;
       const base=rawBase==null?null:Number(rawBase);
-      const projection=sharedEngine.calculateSpeed(Number.isFinite(base)?base:null,list);
+      const projection=sharedEngine.calculateSpeed(Number.isFinite(base)?base:null,list,c?.gear_level,c?.stat_components);
       return {...projection,baseSpeed:Number.isFinite(base)?base:null};
     }
   });
   return buildSandbox.search({character:target,profile},selectedSlots);
 }
-const glTarget={baseId:'GLREY',name:'Rey',base_stats:{Speed:100,Health:1000,Offense:500}};
+const glTarget={baseId:'GLREY',name:'Rey',gear_level:13,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
 glTarget.mods=[
- makeMod('t1','Square','Health',1,'Health %',5),makeMod('t2','Arrow','Speed',1),
- makeMod('t3','Diamond','Health',1,'Health %',5),makeMod('t4','Triangle','Speed',1),
- makeMod('t5','Circle','Health',1,'Health %',5),makeMod('t6','Cross','Health',1,'Health %',5)
+ makeMod('t1','Square','Tenacity',1,'Health',100),makeMod('t2','Arrow','Speed',1),
+ makeMod('t3','Diamond','Potency',1,'Health',100),makeMod('t4','Triangle','Speed',1),
+ makeMod('t5','Circle','Critical Damage',1,'Health',100),makeMod('t6','Cross','Potency',1,'Health',100)
 ];
-const kyber={specific_sets:[{name:'4 Speed + 2 Offense',counts:{Speed:4,Offense:2},weight:1}]};
+const kyber={specific_sets:[{name:'4 Speed + 2 Potency',counts:{Speed:4,Potency:2},weight:1}]};
 const weakDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('d'+i,slot,'Speed',10,'Speed',10));
 const dangerousGlDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('g'+i,slot,'Speed',25,'Speed',25));
 const glSearch=await runSearch(glTarget,weakDonor,[],kyber,'sets',dangerousGlDonor);
-assert.ok(glSearch.proposals.length>0,'A Galactic Legend is a valid recipient');
+assert.ok(glSearch.proposals.length>0,'A Galactic Legend is a valid recipient: '+JSON.stringify(glSearch));
 assert.equal(glSearch.proposals[0].donors[0].owner.baseId,'DONOR','The non-GL donor is selected');
 assert.ok(glSearch.proposals[0].targetStatsAfter,'Recipient global stats are calculated');
 assert.ok(glSearch.proposals[0].donors[0].afterStats,'Donor global stats are calculated');
@@ -161,7 +178,7 @@ assert.equal(freeSearch.proposals[0].freeMods,2);
 assert.equal(freeSearch.proposals[0].donors.length,0);
 
 // The hard speed floor rejects a primary-only exchange that would lower total speed.
-const speedTarget={baseId:'GLLEIA',name:'Leia',base_stats:{Speed:100,Health:1000}};
+const speedTarget={baseId:'GLLEIA',name:'Leia',gear_level:13,base_stats:{Speed:100,Health:1000},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
 speedTarget.mods=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('sp'+i,slot,'Speed',10,'Speed',5));
 const slowFree=[makeMod('slow-s','Square','Health',0,'Speed',5),makeMod('slow-c','Circle','Health',0,'Speed',5)];
 const primaryProfile={slots:{Square:{primaries:{Speed:1}},Circle:{primaries:{Speed:1}}}};
@@ -198,11 +215,17 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
   makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
 ],mismatchedPrimaryProfile,'primaries',[],['Square']);
 assert.equal(mismatchedPrimarySearch.proposals.length,0,'An Offense % primary must not satisfy a Kyber reference for flat Offense');
-const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Offense:500,'Physical Damage':1000,'Special Damage':1000}};
+const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5,'Physical Damage':1000,'Special Damage':1000},mods:normalTarget.mods.map(mod=>({...mod}))};
+variablePrimaryTarget.mods.find(mod=>mod.slot==='Square').set_name='Speed';
+variablePrimaryTarget.mods.find(mod=>mod.slot==='Circle').set_name='Potency';
+variablePrimaryTarget.mods.find(mod=>mod.slot==='Cross').set_name='Critical Damage';
 const shorthandPercentProfile={specific_sets:kyber.specific_sets,slots:{Cross:{primaries:{Offense:1}}}};
+const originalVisionnaireEngine=buildSandbox.window.HolocronModEngine;
+buildSandbox.window.HolocronModEngine={...sharedEngine,calculateFinalStats:source=>({complete:true,stats:source.base_stats||source})};
 const shorthandPercentSearch=await runSearch(variablePrimaryTarget,[],[
   makeMod('correct-percent-primary','Cross','Speed',20,'Offense %',5)
 ],shorthandPercentProfile,'primaries',[],['Cross']);
+buildSandbox.window.HolocronModEngine=originalVisionnaireEngine;
 assert.ok(shorthandPercentSearch.proposals.length>0,'A Kyber shorthand Offense primary on a variable slot must match the actual Offense % primary');
 
 // The engine must finish the whole small search space even after it has
@@ -215,6 +238,24 @@ const broadSearch=await runSearch(normalTarget,[],manyChoices,kyber);
 assert.equal(broadSearch.tested,broadSearch.diagnostics.searchSpace,'The complete small candidate space must be evaluated');
 assert.ok(broadSearch.diagnostics.accepted>30,'The fixture must produce more than 30 valid scenarios');
 assert.equal(broadSearch.diagnostics.retainedProposals,30,'Only the top 30 scenarios are retained after full evaluation');
+
+const cappedChoices=[
+  ...Array.from({length:30},(_,i)=>makeMod('cap-square-'+i,'Square','Speed',10,'Speed',10)),
+  ...Array.from({length:30},(_,i)=>makeMod('cap-circle-'+i,'Circle','Speed',10,'Speed',10))
+];
+const cappedSearch=await runSearch(normalTarget,[],cappedChoices,kyber);
+assert.equal(cappedSearch.diagnostics.eligibleBySlot['Carré'],30);
+assert.equal(cappedSearch.diagnostics.eligibleBySlot['Cercle'],30);
+assert.equal(cappedSearch.diagnostics.optionsBySlot['Carré'],24);
+assert.equal(cappedSearch.diagnostics.optionsBySlot['Cercle'],24);
+assert.equal(cappedSearch.diagnostics.truncatedBySlot['Carré'],6);
+assert.equal(cappedSearch.diagnostics.truncatedBySlot['Cercle'],6);
+assert.equal(cappedSearch.diagnostics.fullCandidateSearchSpace,900);
+assert.equal(cappedSearch.diagnostics.searchSpace,576);
+assert.equal(cappedSearch.diagnostics.candidatePoolCoverage,0.64);
+assert.equal(cappedSearch.diagnostics.fullSearchCoverage,0.64,
+  'A fully explored reduced pool must not be reported as exhaustive over all eligible mods');
+assert.equal(cappedSearch.diagnostics.candidatePoolTruncated,true);
 
 const noSources=await runSearch(glTarget,[],[],kyber);
 assert.equal(noSources.proposals.length,0);

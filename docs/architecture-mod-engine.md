@@ -1,10 +1,10 @@
 # Architecture — moteur unique des mods
 
-- Statut : migration en cours, branche isolée `refactor/unified-mod-engine-clean`
-- Moteur de référence : `modules/mod-engine.js` v0.3.22
-- Base de travail : `main@9b2f3962ad2639b50cd23849b713047054fb6421`
+- Statut : moteur unifié intégré à `main` ; audit de fiabilité des profils, Défense %, index des mods et protections GL en cours sur `fix/defense-percent-g13`
+- Moteur de référence : `modules/mod-engine.js` v0.3.27
+- Base de travail : `main@f2c66705f28bdd060f0e99e37235bfdc76360eca`
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
-- Publication : aucune modification de `main` ni de GitHub Pages pendant cette migration.
+- Publication : aucune modification de `main` ni de GitHub Pages pendant cet audit.
 
 ## Décision non négociable
 
@@ -22,7 +22,7 @@ Les modules métier gardent leurs critères de décision (Kyber, GAC, sélection
 | Zone | Responsabilité |
 |---|---|
 | `modules/mod-engine.js` | Normalisation canonique, règles de jeu, calculs communs, complétude des résultats |
-| `modules/core.js` v4.2.31 | Import des données, wrappers historiques temporaires et présentation |
+| `modules/core.js` v4.2.41 | Import des données, wrappers historiques temporaires et présentation |
 | Acolyte | Priorisation GAC et choix des changements ; score générique délégué ; mods incomplets exclus des échanges |
 | Disciple | Filtres de réallocation et choix des donneurs ; identité stat/set/slot et vitesse projetée déléguées |
 | Seigneur Sith | Objectifs Kyber/GAC et recherche de mods ; calculs de vitesse et identité délégués |
@@ -57,8 +57,10 @@ Une unité inconnue ou une formule non implémentée rend le calcul incomplet. A
 | Seigneur Sith | Identité stat/set et vitesse projetée déléguées ; classement Kyber/GAC conservé |
 | Visionnaire | Projection finale déléguée ; identité stat/set/slot déléguée ; scoring de scénario conservé |
 | Optimizer Python | `final_stats`, `mod_stats`, primaire et set délégués au pont JavaScript ; recherche conservée en Python |
-| Worker Pyodide | Une seule source moteur importée ; pont de normalisation et de projection initialisé |
+| Worker Pyodide | Runtime Python chargé une seule fois dans le Worker ; aucun runtime Pyodide principal inutilisé ; pont de normalisation et de projection initialisé |
 | Cache/version | Références index, service worker et Worker réalignées pour cette branche |
+| Propriétaires de mods | Index global construit une fois par snapshot roster/inventaire ; résolution exacte des alias et slots ambigus conservée |
+| Légendes galactiques | Une liste canonique partagée entre Core, Seigneur Sith et Visionnaire ; Hondo GL et Mando/Grogu GL protégés |
 
 Les anciennes fonctions qui ne font que transmettre les données au moteur peuvent rester temporairement comme adaptateurs d'interface. Toute fonction qui recalcule une formule commune doit être supprimée.
 
@@ -66,8 +68,8 @@ Les anciennes fonctions qui ne font que transmettre les données au moteur peuve
 
 - Les bonus de set distinguent le bonus complet au niveau 15 du demi-bonus si un mod du set n'est pas au niveau 15.
 - Le niveau utilisé pour la conversion Défense provient du personnage du roster ; le niveau 85 du profil de référence n'est jamais substitué au niveau réel.
-- Offense fixe et Offense en pourcentage sont des unités différentes ; les dégâts physiques et spéciaux sont projetés séparément.
-- La Défense en pourcentage n'est pas projetée tant que le profil ne fournit pas la composante de défense du palier d'équipement courant. Les valeurs Armor/Resistance affichées ne suffisent pas à la reconstituer exactement.
+- Offense fixe et Offense en pourcentage sont des unités différentes ; les dégâts physiques et spéciaux sont projetés séparément. Les bonus multiplicateurs en % (Offense, Défense, Santé, Protection et Vitesse) doivent porter sur `stats.base`, avant les secondaires des pièces d'équipement.
+- **Bonus multiplicateurs en %** : Crinolo applique les identifiants 48 (Offense %), 49 (Défense %), 55 (Santé %), 56 (Protection %) et 57 (Vitesse %) à `stats.base`, puis ajoute séparément `stats.gear`. Le niveau G13 ne signifie pas que les secondaires d'équipement sont nuls. Les profils statiques actuels ne contiennent pas la séparation vérifiée entre ces deux composantes ; le moteur refuse donc également Speed % et les bonus de set Speed, avec `speed:gear_component_required`, y compris à G13. La seule preuve acceptée est `stat_components: { source: 'Crinolo.stats.base+stats.gear', base: {...}, gear: {...} }`, avec les deux valeurs Speed présentes et leur somme égale à la statistique pré-mod du profil (tolérance 1e-6). Le multiplicateur est appliqué à `base.Speed` ; `gear.Speed` est ajouté après. Sans cette preuve, seuls les apports plats de vitesse peuvent être projetés. Les identifiants 31/32 (`AttackDamagePercentAdditive` / `AbilityPowerPercentAdditive`) restent explicitement non pris en charge : Crinolo les conserve comme statistiques distinctes au lieu de les convertir en bonus des dégâts physiques/spéciaux.
 - Les statistiques reconnues mais dont la projection n'est pas encore implémentée (par exemple précision/pénétration) rendent le résultat incomplet au lieu d'être ignorées.
 - Les identifiants de taux critique 14/15 sont traités comme des ratings et convertis à raison de 24 points de rating par point de pourcentage, conformément au calculateur Crinolo ; les identifiants non documentés restent inconnus.
 - Le fallback HTML SWGOH.GG conserve le signe `%` affiché pour éviter de confondre une valeur en pourcentage avec un rating plat ; sans unité affichée ou identifiant source, une statistique ambiguë reste inconnue. Une valeur ou un niveau absent reste `null` : aucun zéro n'est injecté par l'importeur.
@@ -87,9 +89,9 @@ L'Optimizer Python écarte les mods dont le set, le niveau, la primaire ou une u
 Les règles suivantes ont été confrontées au code source du calculateur [Crinolo SWGOH Stat Calculator](https://github.com/Crinolo/swgoh-stat-calc), à ses conversions internes et aux définitions Comlink :
 
 - **Offense** : l'identifiant 41 est un bonus fixe ; l'identifiant 48 est un bonus en points de pourcentage. Ils affectent séparément Physical Damage et Special Damage, à partir des valeurs de base correspondantes.
-- **Defense** : l'identifiant 42 ajoute du rating de défense aux deux voies Armor/Resistance. La conversion du rating utilise le niveau réel (`rating / (rating + 7.5 × level)`). L'identifiant 49 est un pourcentage appliqué au rating de base ; Holocron refuse encore ce cas lorsque la composante de base requise n'est pas disponible.
+- **Defense** : l'identifiant 42 ajoute du rating de défense aux deux voies Armor/Resistance. La conversion du rating utilise le niveau réel (`rating / (rating + 7.5 × level)`). L'identifiant 49 augmente le rating `stats.base` avant l'ajout de `stats.gear` et la conversion en pourcentage. Le moteur bloque donc Défense % à tout palier tant que la séparation base/équipement n'est pas fournie ; G13 n'est pas une exception.
 - **Critical Chance / Critical Avoidance** : les ratings physiques/spéciaux 14/15 et 39/40 sont convertis séparément. Le calculateur Crinolo utilise 2400 points de rating pour un ratio décimal de 1,0 (soit 100 points de pourcentage). Après normalisation Comlink par 1e8 et conversion du ratio décimal en points de pourcentage, l'incrément Holocron est `rating / 24`. Les points de pourcentage 21/22, 35/36, 53/54 sont traités séparément.
-- **Vitesse** : l'identifiant 5 est plat ; l'identifiant 57 est un pourcentage de la vitesse de base. Le bonus de set est calculé à part et ne doit pas être confondu avec les secondaires.
+- **Vitesse** : l'identifiant 5 est plat ; l'identifiant 57 et le bonus de set Speed sont des multiplicateurs de `stats.base.Speed`. La vitesse totale pré-mod doit être égale à `stats.base.Speed + stats.gear.Speed`. La validation porte sur cette séparation explicite et sa réconciliation numérique, jamais sur le palier G13. Sans ces deux composantes, la projection Speed %/set Speed est incomplète.
 - **Sets** : les huit tailles de set et leurs bonus minimums proviennent de `statModSet.json`. Les bonus maximums au niveau 15 correspondent au tableau de référence des [bonus de sets SWGOH](https://swgoh.wiki/wiki/Mods). Les tests vérifient chaque set, pas seulement Speed et Health.
 - Les identifiants génériques 45 (Critical Rating) et 47 (Critical Negate Rating) ne sont pas assimilés arbitrairement aux ratings physiques/spéciaux : tant qu'aucune formule de conversion validée n'est disponible pour ces identifiants, ils rendent la projection incomplète.
 - Les statistiques de précision, pénétration et autres effets non pris en charge restent explicitement non calculables ; elles ne sont ni ignorées ni ramenées à zéro.
@@ -119,10 +121,12 @@ Le fichier `python/optimizer_profiles.json` contient 334 profils. La relation at
 
 Cela confirme, pour les champs couverts par ces profils, que `base_stats` est le point de départ avant bonus de mods et que `mod_stat_diffs` représente l'écart de mods vers `current_stats`. Le test Python relit désormais le fichier complet et vérifie cette relation sur chaque profil à chaque exécution. La provenance externe initiale de ces profils reste à documenter ; ce contrôle valide leur cohérence interne, pas l'exactitude de leur collecte d'origine.
 
+Le Worker ne réutilise un snapshot que si le niveau, la rareté, le palier d'équipement et le palier de relique du roster correspondent exactement aux métadonnées du profil. Les métadonnées Comlink (`currentLevel`, `currentRarity`, `currentTier`) sont reconnues ; un profil n'est jamais associé par nom si un `baseId` explicite ne correspond pas. Les mods équipés sont indexés une fois par snapshot, et non renormalisés pour chaque personnage. La protection des Légendes galactiques utilise un jeu d'identifiants canonique partagé, incluant GLHONDO et GLMANDOGROGU. Une métadonnée absente ou divergente invalide le snapshot ; les stats courantes ne sont pas substituées. Les profils sont répartis entre 328 profils G13 et 6 profils sous G13 ; aucun ne fournit actuellement `stat_components` vérifié. Aucun de ces profils ne peut donc autoriser une projection multiplicative en %, quel que soit son palier.
+
 ## Tests et critères d'intégration
 
 1. Fixtures brutes Comlink et import JSON : identifiants, échelles, unités et slots.
-2. Tests comportementaux du moteur : stats fixes/%, bonus de sets, vitesse, défense et stat non prise en charge.
+2. Tests comportementaux du moteur : stats fixes/%, bonus de sets, vitesse, défense et stat non prise en charge. Les projections multiplicatives sont testées avec une séparation Crinolo explicite et réconciliée, sans exception G13 ; le test Pyodide parcourt les 334 profils et confirme qu'aucun n'est autorisé sans cette séparation.
 3. Non-régression par module : Acolyte, Disciple, Seigneur, Visionnaire et Optimizer.
 4. Parcours navigateur complet : import Ally Code/JSON, tableau de bord, sanctuaire rouge, salle du conseil bleue, export/import.
 5. Mesure de performance sur un inventaire réel et un jeu de recherche reproductible.

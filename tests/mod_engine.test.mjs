@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.23');
+assert.equal(engine.version, '0.3.28');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -35,6 +35,59 @@ assert.deepEqual(['111','112','113','114','115','116'].map(id => engine.slotFrom
 assert.equal(engine.normalizeMod({ definitionId: '111', level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Square');
 assert.equal(engine.normalizeMod({ definitionId: '112', slot: 2, level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Arrow');
 assert.equal(engine.normalizeMod({ slot_id: 7, level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Cross');
+const comlinkPipsFallback = engine.normalizeMod({
+  slot: 7, set: '1', level: 15, pips: 0, rarity: 5,
+  primary_stat: 'Tenacity %', primary_value: 21,
+  secondary_1_stat: 'Offense', secondary_1_value: 21,
+  secondary_2_stat: 'Speed', secondary_2_value: 4,
+  secondary_3_stat: 'Health %', secondary_3_value: 0.72,
+  secondary_4_stat: 'Defense %', secondary_4_value: 2.37
+});
+assert.equal(comlinkPipsFallback.pips, 5, 'A zero Comlink pips sentinel must not mask the actual rarity');
+assert.equal(engine.normalizeMod({ pips: 6, rarity: 5 }).pips, 6, 'A valid explicit pips value keeps precedence');
+const realComlinkDefenseMod = engine.normalizeMod({
+  slot: 7, set: '1', level: 15, pips: 0, rarity: 5,
+  primary_stat: 'Health %', primary_value: 5.88,
+  secondary_stats: [
+    { name: 'Defense', stat_id: 49, value: 237.1, display_value: '2.37%', unscaled_roll_values: [2336, 2616] },
+    { name: 'Speed', stat_id: 5, value: 40000, display_value: '4', unscaled_roll_values: [40000] },
+    { name: 'Health', stat_id: 1, value: 8350000, display_value: '835', unscaled_roll_values: [41085900, 42449400] },
+    { name: 'Tenacity', stat_id: 18, value: 281.8, display_value: '2.82%', unscaled_roll_values: [1778, 1159, 1761] }
+  ]
+});
+assert.equal(realComlinkDefenseMod.pips, 5);
+assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 49).value, 2.371,
+  'Comlink stat_id 49 value 237.1 must normalize to 2.371 percentage points, not 237.1');
+assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 5).value, 4,
+  'Comlink flat Speed value 40000 must normalize to 4');
+assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 1).value, 835,
+  'Comlink flat Health value 8350000 must normalize to 835');
+assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 18).value, 2.818,
+  'Comlink percentage Tenacity value 281.8 must normalize to 2.818 percentage points');
+
+const realComlinkScaleCases = [
+  [48, 'Offense', 48.1, '0.48%', 0.481, 'percentagePoints'],
+  [49, 'Defense', 237.1, '2.37%', 2.371, 'percentagePoints'],
+  [53, 'Critical Chance', 316.7, '3.17%', 3.167, 'percentagePoints'],
+  [55, 'Health', 71.8, '0.72%', 0.718, 'percentagePoints'],
+  [56, 'Protection', 214, '2.14%', 2.14, 'percentagePoints'],
+  [17, 'Potency', 198.2, '1.98%', 1.982, 'percentagePoints'],
+  [18, 'Tenacity', 281.8, '2.82%', 2.818, 'percentagePoints'],
+  [1, 'Health', 7410000, '741', 741, 'flat'],
+  [5, 'Speed', 40000, '4', 4, 'flat'],
+  [28, 'Protection', 7170000, '717', 717, 'flat'],
+  [41, 'Offense', 210000, '21', 21, 'flat'],
+  [42, 'Defense', 50000, '5', 5, 'flat']
+];
+for (const [id, name, value, display_value, expected, unit] of realComlinkScaleCases) {
+  const normalized = engine.normalizeStat({
+    name, stat_id: id, value, display_value,
+    unscaled_roll_values: [value]
+  });
+  assert.ok(Math.abs(normalized.value - expected) < 1e-9,
+    'Comlink stat_id ' + id + ' must be converted from source scale');
+  assert.equal(normalized.unit, unit, 'Comlink stat_id ' + id + ' unit must remain canonical');
+}
 assert.deepEqual({ ...engine.calculateSetBonuses([
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
@@ -73,7 +126,6 @@ const comlinkStatCases = [
   [22, 'specialCriticalChance', 'percentagePoints'], [23, 'armor', 'percentagePoints'],
   [24, 'resistance', 'percentagePoints'], [25, 'armorPenetration', 'percentagePoints'],
   [26, 'resistancePenetration', 'percentagePoints'], [28, 'protection', 'flat'],
-  [31, 'physicalDamage', 'percentagePoints'], [32, 'specialDamage', 'percentagePoints'],
   [33, 'physicalAccuracy', 'percentagePoints'], [34, 'specialAccuracy', 'percentagePoints'],
   [35, 'physicalCriticalAvoidance', 'percentagePoints'], [36, 'specialCriticalAvoidance', 'percentagePoints'],
   [37, 'physicalAccuracy', 'flat'], [38, 'specialAccuracy', 'flat'],
@@ -90,7 +142,7 @@ for (const [id, key, unit] of comlinkStatCases) {
   assert.equal(stat.unit, unit, 'Comlink UnitStat ' + id + ' unit');
   assert.equal(stat.complete, true, 'Comlink UnitStat ' + id + ' is recognized');
 }
-for (const id of [43, 44, 45, 46, 47, 50, 51, 58, 59, 60, 61]) {
+for (const id of [31, 32, 43, 44, 45, 46, 47, 50, 51, 58, 59, 60, 61]) {
   const stat = engine.normalizeStat({ unitStatId: id, unscaledDecimalValue: 100000000 });
   assert.equal(stat.complete, false, 'unsupported Comlink UnitStat ' + id + ' must remain unknown');
 }
@@ -144,8 +196,8 @@ assert.equal(speedParts.primary, true);
 assert.equal(speedParts.primarySpeed, 30);
 assert.equal(speedParts.secondary, 5);
 assert.equal(speedParts.total, 35);
-assert.equal(engine.normalizeStat({ unitStatId: 31, unscaledDecimalValue: 3000000 }).key, 'physicalDamage');
-assert.equal(engine.normalizeStat({ unitStatId: 32, unscaledDecimalValue: 4000000 }).key, 'specialDamage');
+assert.equal(engine.normalizeStat({ unitStatId: 31, unscaledDecimalValue: 3000000 }).complete, false);
+assert.equal(engine.normalizeStat({ unitStatId: 32, unscaledDecimalValue: 4000000 }).complete, false);
 assert.equal(engine.normalizeStat({ unitStatId: 23, unscaledDecimalValue: 1000000 }).key, 'armor');
 assert.equal(engine.normalizeStat({ unitStatId: 24, unscaledDecimalValue: 2000000 }).key, 'resistance');
 
@@ -199,9 +251,9 @@ const projectionBase = {
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
 };
 // Comlink values are normalized by 1e8; Crinolo returns decimal ratios, while Holocron stores percentage points (x100), so 24 normalized rating units = 1 point.
-const critRatingProjection = engine.calculateFinalStats(projectionBase, [
+const critRatingProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 14, unscaledDecimalValue: 2400000000 } },
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
+  { level: 1, set_name: 'Defense', primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
 ]);
 assert.equal(critRatingProjection.complete, true);
 assert.equal(critRatingProjection.stats['Physical Critical Chance'], 41);
@@ -231,12 +283,27 @@ const unsupportedGenericAvoidanceProjection = engine.calculateFinalStats({
 }, [{ level: 1, set_name: 'Defense', primary_stat: { name: 'Critical Avoidance', value: 24, unit: 'flat' } }]);
 assert.equal(unsupportedGenericAvoidanceProjection.complete, false);
 assert.ok(unsupportedGenericAvoidanceProjection.missing.includes('stat:criticalAvoidance:flat_unsupported'));
-const speedPercentProjection = engine.calculateSpeed(100, [{
+const speedPercentMods = [{
   level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0,
   secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 }
-}]);
+}];
+const g13SpeedPercentWithoutBreakdown = engine.calculateSpeed(100, speedPercentMods, 13);
+assert.equal(g13SpeedPercentWithoutBreakdown.complete, false, 'G13 alone must not authorize Speed %');
+assert.ok(g13SpeedPercentWithoutBreakdown.missing.includes('speed:gear_component_required'));
+const verifiedSpeedComponents = {
+  source: 'Crinolo.stats.base+stats.gear',
+  base: { Speed: 100 }, gear: { Speed: 0 }
+};
+const speedPercentProjection = engine.calculateSpeed(100, speedPercentMods, 13, verifiedSpeedComponents);
 assert.equal(speedPercentProjection.complete, true);
 assert.equal(speedPercentProjection.total, 105);
+const inconsistentSpeedComponents = {
+  source: 'Crinolo.stats.base+stats.gear',
+  base: { Speed: 100 }, gear: { Speed: 1 }
+};
+const inconsistentSpeedProjection = engine.calculateSpeed(100, speedPercentMods, 13, inconsistentSpeedComponents);
+assert.equal(inconsistentSpeedProjection.complete, false, 'base + gear must reconcile with the pre-mod total');
+assert.ok(inconsistentSpeedProjection.missing.includes('speed:gear_component_required'));
 
 const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   slot: ['Square','Arrow','Diamond','Triangle'][index],
@@ -246,31 +313,89 @@ const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 }));
-assert.equal(engine.calculateSpeed(153, completeSpeedSet).setBonus, 15);
-assert.equal(engine.calculateSpeed(153, completeSpeedSet).total, 168);
+const g13SpeedSetWithoutBreakdown = engine.calculateSpeed(153, completeSpeedSet, 13);
+assert.equal(g13SpeedSetWithoutBreakdown.complete, false, 'A G13 Speed set still requires the exact Crinolo base/gear split');
+assert.ok(g13SpeedSetWithoutBreakdown.missing.includes('speed:gear_component_required'));
+const verifiedGideonSpeedComponents = {
+  source: 'Crinolo.stats.base+stats.gear',
+  base: { Speed: 153 }, gear: { Speed: 0 }
+};
+const verifiedGideonSpeedSet = engine.calculateSpeed(153, completeSpeedSet, 13, verifiedGideonSpeedComponents);
+assert.equal(verifiedGideonSpeedSet.setBonus, 15.3);
+assert.equal(verifiedGideonSpeedSet.total, 168.3);
+const gearSpeedComponents = {
+  source: 'Crinolo.stats.base+stats.gear',
+  base: { Speed: 153 }, gear: { Speed: 2 }
+};
+const gearSpeedSet = engine.calculateSpeed(155, completeSpeedSet, 12, gearSpeedComponents);
+assert.equal(gearSpeedSet.complete, true, 'A verified component split is sufficient at any gear level');
+assert.equal(gearSpeedSet.setBonus, 15.3, 'Speed % applies to Crinolo base, not base plus gear');
+assert.equal(gearSpeedSet.total, 170.3, 'Gear Speed is added after the percentage bonus');
 const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: index === 3 ? 14 : 15 }));
-assert.equal(engine.calculateSpeed(153, halfSpeedSet).setBonus, 7);
-assert.equal(engine.calculateSpeed(153, halfSpeedSet).total, 160);
+const verifiedHalfSpeedSet = engine.calculateSpeed(153, halfSpeedSet, 13, verifiedGideonSpeedComponents);
+assert.equal(verifiedHalfSpeedSet.setBonus, 7.65);
+assert.equal(verifiedHalfSpeedSet.total, 160.65);
 
-const accuracyProjection = engine.calculateFinalStats(projectionBase, [
+const accuracyProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 34, unscaledDecimalValue: 6000000 }, secondary_1_stat: { unitStatId: 38, unscaledDecimalValue: 2400000000 } },
-  { level: 1, set_name: 'Health', primary_stat: { unitStatId: 52, unscaledDecimalValue: 12000000 } }
+  { level: 1, set_name: 'Defense', primary_stat: { unitStatId: 34, unscaledDecimalValue: 6000000 }, secondary_1_stat: { unitStatId: 38, unscaledDecimalValue: 2400000000 } },
+  { level: 1, set_name: 'Speed', primary_stat: { unitStatId: 52, unscaledDecimalValue: 12000000 } }
 ]);
 assert.equal(accuracyProjection.complete, true, JSON.stringify(accuracyProjection.missing));
 assert.equal(accuracyProjection.stats['Physical Accuracy'], 13);
 assert.equal(accuracyProjection.stats['Special Accuracy'], 8);
 assert.equal(accuracyProjection.stats.Accuracy, 0.12);
 
-const offenseProjection = engine.calculateFinalStats(projectionBase, [
+const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Offense', primary_value: 40, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Offense %', primary_value: 10, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
-], 85);
-assert.equal(offenseProjection.complete, true);
-assert.equal(offenseProjection.stats['Physical Damage'], 665);
-assert.equal(offenseProjection.stats['Special Damage'], 915);
+];
+const offenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
+assert.equal(offenseProjection.complete, false);
+assert.ok(offenseProjection.missing.includes('offense:gear_component_required'));
+
+const gear12Profile = { gear_level: 12, base_stats: projectionBase };
+const gear12OffenseProjection = engine.calculateFinalStats(gear12Profile, offenseMods, 85);
+assert.equal(gear12OffenseProjection.complete, false);
+assert.ok(gear12OffenseProjection.missing.includes('offense:gear_component_required'));
+const gear13OffenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
+assert.equal(gear13OffenseProjection.complete, false);
+assert.ok(gear13OffenseProjection.missing.includes('offense:gear_component_required'));
+const directDamagePercentMods = [
+  { level: 1, set_name: 'Health', primary_stat: 'Physical Damage %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+];
+const g12DirectDamageProjection = engine.calculateFinalStats(gear12Profile, directDamagePercentMods, 85);
+assert.equal(g12DirectDamageProjection.complete, false);
+assert.ok(g12DirectDamageProjection.missing.includes('offense:gear_component_required'));
+const g13DirectDamageProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, directDamagePercentMods, 85);
+assert.equal(g13DirectDamageProjection.complete, false);
+assert.ok(g13DirectDamageProjection.missing.includes('offense:gear_component_required'));
+
+const gearDependentPercentCases = [
+  ['health', [
+    { level: 1, set_name: 'Health', primary_stat: 'Health %', primary_value: 10 },
+    { level: 1, set_name: 'Defense', primary_stat: 'Health', primary_value: 0 }
+  ]],
+  ['protection', [
+    { level: 1, set_name: 'Health', primary_stat: 'Protection %', primary_value: 10 },
+    { level: 1, set_name: 'Defense', primary_stat: 'Health', primary_value: 0 }
+  ]],
+  ['speed', [
+    { level: 1, set_name: 'Health', primary_stat: 'Speed %', primary_value: 10 },
+    { level: 1, set_name: 'Defense', primary_stat: 'Health', primary_value: 0 }
+  ]]
+];
+for (const [key, mods] of gearDependentPercentCases) {
+  const projection = engine.calculateFinalStats(gear12Profile, mods, 85);
+  assert.equal(projection.complete, false, `${key} % must not use aggregated gear stats`);
+  assert.ok(projection.missing.includes(key + ':gear_component_required'));
+  const g13Projection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, mods, 85);
+  assert.equal(g13Projection.complete, false, key + ' % must not assume a zero gear component from G13');
+  assert.ok(g13Projection.missing.includes(key + ':gear_component_required'));
+}
 
 const defenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 },
@@ -278,8 +403,18 @@ const defenseProjection = engine.calculateFinalStats(projectionBase, [
 ], 85);
 assert.equal(defenseProjection.complete, false);
 assert.ok(defenseProjection.missing.includes('defense:gear_component_required'));
+const defensePercentMods = [
+  { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+];
+const nonG13DefenseProjection = engine.calculateFinalStats({ gear_level: 12, base_stats: projectionBase }, defensePercentMods, 85);
+assert.equal(nonG13DefenseProjection.complete, false);
+assert.ok(nonG13DefenseProjection.missing.includes('defense:gear_component_required'));
+const g13DefenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, defensePercentMods, 85);
+assert.equal(g13DefenseProjection.complete, false);
+assert.ok(g13DefenseProjection.missing.includes('defense:gear_component_required'));
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
-  { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
+  { level: 1, set_name: 'Defense', primary_stat: 'Defense', primary_value: 40 }
 ], 85);
 const missingLevelDefenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: 'Defense', primary_value: 40 }
@@ -290,16 +425,22 @@ assert.equal(flatDefenseProjection.complete, true);
 assert.ok(Math.abs(flatDefenseProjection.stats.Armor - 51.5209) < 0.001);
 assert.ok(Math.abs(flatDefenseProjection.stats.Resistance - 42.1769) < 0.001);
 
-const speedProjection = engine.calculateFinalStats(projectionBase, [
+const speedProjection = engine.calculateFinalStats({
+  gear_level: 13, base_stats: projectionBase,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Speed: 100 }, gear: { Speed: 0 }
+  }
+}, [
   ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }))
 ], 85);
 assert.equal(engine.calculateSetBonuses(Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }))).speed, 10);
-const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries })));
+const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries })), 13, { source: 'Crinolo.stats.base+stats.gear', base: { Speed: 100 }, gear: { Speed: 0 } });
 assert.equal(speedCalc.total, 110, JSON.stringify(speedCalc));
 const incompleteSpeedSet = engine.calculateSpeed(100, [
   { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }, { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100, ...zeroSecondaries },
   { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }, { set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
-]);
+], 13);
 assert.equal(incompleteSpeedSet.complete, false);
 assert.equal(incompleteSpeedSet.total, null);
 assert.ok(incompleteSpeedSet.missing.includes('mod:level_unknown'));

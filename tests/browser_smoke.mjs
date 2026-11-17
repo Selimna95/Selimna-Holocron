@@ -99,7 +99,7 @@ try {
   // Seigneur regression: never trade away a complete Speed-set bonus, even
   // when the incoming mod has the same individual speed as the equipped mod.
   const speedGuard = await page.evaluate(() => {
-    const character = { baseId: "TEST", name: "Test", characterId: "UNIT-SPEED" };
+    const character = { baseId: "TEST", name: "Test", characterId: "UNIT-SPEED", gear_level: 13, base_stats: { Speed: 300 }, stat_components: { source: "Crinolo.stats.base+stats.gear", base: { Speed: 300 }, gear: { Speed: 0 } } };
     const make = (id, set, speed) => ({game_id:id,character:"TEST",slot:"Square",set_name:set,level:15,primary_stat:"Offense",primary_value:5,secondary_1_stat:"Speed",secondary_1_value:speed,secondary_2_stat:"Protection",secondary_2_value:0,secondary_3_stat:"Potency %",secondary_3_value:0,secondary_4_stat:"Tenacity %",secondary_4_value:0});
     const equipped = [make("a","Speed",5),make("b","Speed",5),make("c","Speed",5),make("d","Speed",5),make("e","Health",0),make("f","Health",0)];
     const before = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},equipped);

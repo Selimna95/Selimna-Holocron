@@ -63,26 +63,16 @@ async function boot(){
     log('Références UI non disponibles : le Worker reste autonome.');
   }
 
-  // Pyodide principal est facultatif et ne doit jamais bloquer l'Optimizer.
-  try{
-    if(typeof loadPyodide==='function'){
-      pyodide=await loadPyodide();
-      const optimizerResponse=await fetch(new URL('./python/optimizer.py',document.baseURI).href+'?v=3.4.4-cache-sync',{cache:'force-cache'});
-      if(!optimizerResponse.ok) throw new Error(`optimizer.py HTTP ${optimizerResponse.status}`);
-      const optimizer=await optimizerResponse.text();
-      pyodide.FS.writeFile('/home/pyodide/optimizer.py',optimizer);
-      pyodide.runPython(`import sys; sys.path.append('/home/pyodide'); import optimizer`);
-      log('Moteur Python principal disponible en secours.');
-    }
-  }catch(e){
-    log('Moteur Python principal indisponible : le Worker reste utilisé pour l’optimisation.');
-  }
 }
 
 $('fileInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{currentData=JSON.parse(await file.text());mods=extractMods(currentData);const importedUnits=extractCharacters(currentData);const split=splitRosterUnits(importedUnits);rosterCharacters=split.characters;rosterShips=split.ships;buildFactionMap();updateRosterCounts(rosterCharacters,rosterShips);fillCharacters(rosterCharacters);updateAccountSummary(file.name,'IMPORT JSON');renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();$('dataInfo').textContent=`Fichier: ${file.name}\nMods détectés: ${mods.length}\nPersonnages détectés: ${rosterCharacters.length}\nVaisseaux détectés: ${rosterShips.length}`;$('log').textContent='';log(`Import: ${file.name}`);log(`${mods.length} mods détectés.`);log(`${rosterCharacters.length} personnages + ${rosterShips.length} vaisseaux détectés.`);showPage('dashboard');}catch(e){log('JSON invalide: '+e.message);}});
 
 
-const KNOWN_GALACTIC_LEGEND_IDS=new Set(['GLREY','SUPREMELEADERKYLOREN','GRANDMASTERLUKE','JEDIMASTERKENOBI','LORDVADER','JABBATHEHUTT','GLLEIA','SITHPALPATINE','GLAHSOKATANO']);
+const KNOWN_GALACTIC_LEGEND_IDS=window.HOLOCRON_GALACTIC_LEGENDS||new Set([
+  'JEDIMASTERKENOBI','GRANDMASTERLUKE','SITHPALPATINE','JABBATHEHUTT',
+  'LORDVADER','SUPREMELEADERKYLOREN','GLREY','GLLEIA','GLAHSOKATANO',
+  'GLHONDO','GLMANDOGROGU'
+]);
 function isGalacticLegendCharacter(c){
   const raw=c?.raw||c?.data||c||{};
   const base=compactKey(c?.baseId||c?.base_id||c?.id||'');
@@ -98,6 +88,10 @@ function isGalacticLegendCharacter(c){
 // Classement des donneurs : l'utilisation GAC terrestre et l'utilisation des vaisseaux
 // sont indépendantes de la qualité des mods. Une donnée absente reste inconnue,
 // jamais assimilée à zéro utilisation.
+// Table de correspondance issue des données de jeu SWGoH (swgoh-utils/gamedata, units_gas.json, version 0.41.0:52JZqNt_T52XAT7eQ3wTuw).
+// Le snapshot SWGOH.GG du roster ne transporte pas toujours le champ crew des vaisseaux.
+const SEIGNEUR_SHIP_CREW_BY_BASE_ID = Object.freeze({"GEONOSIANSTARFIGHTER2":["GEONOSIANSOLDIER"],"YWINGREBEL":[],"EMPERORSSHUTTLE":["EMPERORPALPATINE","ROYALGUARD"],"GEONOSIANSTARFIGHTER3":["GEONOSIANSPY"],"BWINGREBEL":["CAPTAINDROGAN"],"CAPITALEXECUTOR":["ADMIRALPIETT"],"GEONOSIANSTARFIGHTER1":["SUNFAC"],"CAPITALCHIMAERA":["GRANDADMIRALTHRAWN"],"OUTRIDER":["DASHRENDAR"],"EBONHAWK":["CARTHONASI","T3_M4"],"XWINGRESISTANCE":["RESISTANCEPILOT"],"BLADEOFDORIN":["PLOKOON"],"CAPITALNEGOTIATOR":["GENERALKENOBI"],"MILLENNIUMFALCONPRISTINE":["L3_37","YOUNGLANDO"],"RAVENSCLAW":["KYLEKATARN"],"FIRSTORDERTIEECHELON":["FIRSTORDEROFFICERMALE"],"SCYTHE":["FIFTHBROTHER","GRANDINQUISITOR"],"PUNISHINGONE":["DENGAR"],"TIEFIGHTERFIRSTORDER":["FIRSTORDERTIEPILOT"],"YWINGCLONEWARS":[],"ARC170REX":["CT7567"],"JEDISTARFIGHTERCONSULAR":["JEDIKNIGHTCONSULAR"],"GAUNTLETSTARFIGHTER":["GARSAXON","IMPERIALSUPERCOMMANDO"],"HOUNDSTOOTH":["BOSSK"],"UWINGROGUEONE":["CASSIANANDOR","JYNERSO","K2SO"],"MILLENNIUMFALCONEP7":["FINN","REY"],"MG100STARFORTRESSSF17":["RESISTANCETROOPER","ROSETICO"],"ARC170CLONESERGEANT":["CLONESERGEANTPHASEI"],"TIEBOMBERIMPERIAL":[],"COMEUPPANCE":["ZORIIBLISS_V2"],"CAPITALMALEVOLENCE":["GRIEVOUS"],"SITHFIGHTER":["SITHASSASSIN"],"UMBARANSTARFIGHTER":["CT5555"],"MILLENNIUMFALCON":["CHEWBACCALEGENDARY","HANSOLO"],"CAPITALPROFUNDITY":["ADMIRALRADDUS"],"XANADUBLOOD":["CADBANE"],"FURYCLASSINTERCEPTOR":["DARTHMALGUS"],"SLAVE1":["BOBAFETT"],"TIEDEFENDER":["IDENVERSIOEMPIRE"],"TIEDAGGER":["FOSITHTROOPER"],"XWINGRED3":["BIGGSDARKLIGHTER"],"XWINGRED2":["WEDGEANTILLES"],"RAZORCREST":["THEMANDALORIANBESKARARMOR"],"SITHSUPREMACYCLASS":["SITHTROOPER"],"SITHBOMBER":["SITHMARAUDER"],"UWINGSCARIF":["BISTAN","SCARIFREBEL"],"CAPITALLEVIATHAN":["DARTHREVAN"],"TIEFIGHTERIMPERIAL":["TIEFIGHTERPILOT"],"TIESILENCER":["KYLORENUNMASKED"],"TIEREAPER":["DEATHTROOPER","SHORETROOPER"],"COMMANDSHUTTLE":["FIRSTORDERTROOPER","KYLOREN","PHASMA"],"PHANTOM2":["CHOPPERS3","EZRABRIDGERS3","SABINEWRENS3"],"JEDISTARFIGHTERAHSOKATANO":["AHSOKATANO"],"CAPITALMONCALAMARICRUISER":["ADMIRALACKBAR"],"TIEFIGHTERFOSF":["FIRSTORDERSPECIALFORCESPILOT"],"VULTUREDROID":[],"MARAUDER":["BADBATCHHUNTER","BADBATCHTECH","BADBATCHWRECKER"],"SITHINFILTRATOR":["MAUL"],"XWINGBLACKONE":["POE"],"CAPITALJEDICRUISER":["MACEWINDU"],"GHOST":["HERASYNDULLAS3","KANANJARRUSS3","ZEBS3"],"CAPITALRADDUS":["AMILYNHOLDO"],"JEDISTARFIGHTERANAKIN":["ANAKINKNIGHT"],"IG2000":["IG88"],"TIEADVANCED":["VADER"],"HYENABOMBER":[],"CAPITALSTARDESTROYER":["GRANDMOFFTARKIN"],"ROGUEONESHIP":["BODHIROOK","PAO"],"TIEINTERCEPTOR":["SECONDSISTER"],"CAPITALFINALIZER":["GENERALHUX"]});
+
 function seigneurUsageKey(value){
   return compactKey(typeof value==='object'&&value
     ? value.baseId??value.base_id??value.characterId??value.character_id??value.unitId??value.unit_id??value.shipId??value.ship_id??value.id??value.name??''
@@ -199,7 +193,18 @@ function seigneurShipCrewAliases(ship){
     if(key)out.add(key);
   };
   for(const field of fields)add(raw[field]);
+  // Le champ crew est conservé lorsqu'il vient de Comlink. Sinon, compléter
+  // avec la table statique du game data, indexée par le baseId canonique.
+  const shipBaseId=seigneurUsageKey(ship?.baseId??ship?.base_id??raw?.baseId??raw?.base_id??ship?.id);
+  for(const crewId of SEIGNEUR_SHIP_CREW_BY_BASE_ID[shipBaseId]||[])add(crewId);
   return [...out];
+}
+function seigneurShipCrewMappingKnown(ship){
+  const raw=ship?.raw?.data||ship?.data||ship?.raw||ship||{};
+  const fields=['crew','crewMembers','crew_members','crewIds','crew_ids','crewUnit','crew_unit','crewUnits','crew_units','pilots','crewMember'];
+  if(fields.some(field=>raw[field]!=null))return true;
+  const baseId=seigneurUsageKey(ship?.baseId??ship?.base_id??raw?.baseId??raw?.base_id??ship?.id);
+  return !!baseId&&Object.prototype.hasOwnProperty.call(SEIGNEUR_SHIP_CREW_BY_BASE_ID,baseId);
 }
 function seigneurShipUsageMap(season){
   const source=season?.ships||season?.shipUsage||season?.ship_usage||{};
@@ -220,15 +225,21 @@ function seigneurShipUsageMap(season){
   // reçoit le nombre d'apparitions des compositions dans lesquelles il figure.
   const fleets=season?.fleets;
   if(Array.isArray(fleets)){
+    // Les fichiers GAC publiés contiennent souvent déjà l'agrégat `ships`,
+    // calculé à partir des mêmes compositions. Additionner les deux sources
+    // double alors chaque utilisation. Les compositions ne servent qu'à
+    // reconstruire les totaux absents de l'agrégat.
+    const fleetTotals=new Map();
     for(const fleet of fleets){
       const uses=seigneurUsageCount(fleet);
       const ships=fleet?.ships||fleet?.units||[];
       if(uses===null||!Array.isArray(ships))continue;
       for(const ship of ships){
         const key=seigneurUsageKey(ship);
-        if(key)out.set(key,(out.get(key)||0)+uses);
+        if(key)fleetTotals.set(key,(fleetTotals.get(key)||0)+uses);
       }
     }
+    for(const [key,uses] of fleetTotals)if(!out.has(key))out.set(key,uses);
   }
   return out;
 }
@@ -237,7 +248,9 @@ function seigneurCharacterFleetUsage(character,season=seigneurLatestGacUsageSeas
   const ships=Array.isArray(rosterShips)?rosterShips:[];
   if(!ships.length)return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau dans le roster'};
   const crewRows=ships.map(ship=>({ship,crew:seigneurShipCrewAliases(ship)}));
-  if(!crewRows.some(row=>row.crew.length))return {uses:null,known:false,shipCount:0,reason:'Correspondance pilotes/vaisseaux indisponible'};
+  const unknownCrewRows=crewRows.filter(row=>!seigneurShipCrewMappingKnown(row.ship));
+  if(unknownCrewRows.length)return {uses:null,known:false,shipCount:unknownCrewRows.length,reason:'Correspondance pilotes/vaisseaux incomplète'};
+  if(!crewRows.some(row=>row.crew.length))return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau possédé avec équipage'};
   const aliases=new Set([character?.baseId,character?.base_id,character?.characterId,character?.character_id,character?.id,character?.name].map(seigneurUsageKey).filter(Boolean));
   const assigned=crewRows.filter(row=>row.crew.some(key=>aliases.has(key)));
   if(!assigned.length)return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau associé'};
@@ -482,10 +495,14 @@ function forgeCandidateScore(m,profile,secA,secB){
 }
 function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
+  const localProfile=typeof optimizerValidatedProfileForCharacter==='function'?(optimizerValidatedProfileForCharacter(character)||{}):{};
+  const metadata=typeof optimizerRosterMetadata==='function'?(optimizerRosterMetadata(character)||{}):{};
   const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
-    character?.raw?.baseStats||character?.data?.base_stats||optimizerProfileForCharacter(character)?.base_stats||{};
-  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
-  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list);
+    character?.raw?.baseStats||character?.data?.base_stats||localProfile.base_stats||{};
+  const baseSpeed=numericValue(localProfile.base_stats?.Speed??localProfile.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
+  const gearLevel=localProfile.gear_level??metadata.gear_level??character?.gear_level??character?.gear;
+  const statComponents=localProfile.stat_components??character?.stat_components??character?.raw?.stat_components??character?.data?.stat_components??null;
+  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list,gearLevel,statComponents);
   return {
     complete:projection.complete===true&&projection.total!=null,
     total:projection.complete===true&&projection.total!=null?projection.total:null,
@@ -742,9 +759,11 @@ function renderResults(data,profileOverride=null){
   const refSets=rec.sets.slice(0,3).map(x=>`${x.label}${x.weight!=null?' · '+(x.weight*100).toFixed(1)+' %':''}`).join(' · ')||'Référence Kyber non détaillée';
   const refSecondaries=rec.secondaries.slice(0,4).map(x=>x.name).join(' · ')||'Secondaires Kyber non détaillées';
   const warningCodes=[...new Set(data.flatMap(row=>Array.isArray(row.warnings)?row.warnings:[]))];
-  const warningMarkup=warningCodes.includes('defense_percent_unavailable')
-    ? '<div class="forge-result-warning"><strong>DÉFENSE % NON ÉVALUÉE</strong><span>Les mods Défense % ont été écartés du calcul : le profil ne fournit pas la composante Armor/Resistance de base séparée de l’équipement secondaire. Les configurations affichées sont calculées sans ce bonus.</span></div>'
-    : '';
+  const warningMarkup=warningCodes.includes('gear_percent_unavailable')
+    ? '<div class="forge-result-warning"><strong>BONUS MULTIPLICATEURS EN % NON ÉVALUÉS</strong><span>Certains bonus % (Offense, Défense, Santé, Protection, Vitesse ou dégâts physiques/spéciaux) ont été écartés : le profil ne sépare pas les statistiques de base des secondaires des pièces d’équipement. Un profil G13 compatible est nécessaire pour calculer ces bonus sans approximation.</span></div>'
+    : warningCodes.includes('defense_percent_unavailable')
+      ? '<div class="forge-result-warning"><strong>DÉFENSE % NON ÉVALUÉE</strong><span>Les mods Défense % ont été écartés du calcul : le profil ne fournit pas la composante Armor/Resistance de base séparée de l’équipement secondaire.</span></div>'
+      : '';
   $('results').innerHTML=`<div class="forge-results-intro forge-results-command">
     <div class="forge-results-heading"><span class="forge-kicker">RÉSULTATS // SEIGNEUR SITH</span><strong>Configurations optimisées</strong><small>${esc(character?.name||'Personnage')} · recherche guidée par la référence Kyber et limitée à <b>${esc(scope)}</b>.</small></div>
     <div class="forge-result-count"><b>${data.length}</b><span>BUILDS</span></div>

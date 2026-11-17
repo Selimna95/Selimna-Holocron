@@ -44,7 +44,7 @@ def _test_engine_bridge(base_json, mods_json, level):
     result["Speed"] = base_speed + totals.get("Speed", 0)
     result["Speed"] += base_speed * totals.get("Speed %", 0) / 100
     if sets.get("Speed", 0) >= 4:
-        result["Speed"] += int(base_speed * (0.10 if all(x >= 15 for x in sorted(levels["Speed"], reverse=True)[:4]) else 0.05))
+        result["Speed"] += base_speed * (0.10 if all(x >= 15 for x in sorted(levels["Speed"], reverse=True)[:4]) else 0.05)
     if "Critical Damage" in result and sets.get("Critical Damage", 0) >= 4:
         result["Critical Damage"] += 0.30 if all(x >= 15 for x in sorted(levels["Critical Damage"], reverse=True)[:4]) else 0.15
     return json.dumps({"complete": not missing, "stats": result, "missing": sorted(set(missing))})
@@ -119,6 +119,26 @@ from python.optimizer import (
 )
 
 
+
+
+class OptimizerBeamRetentionTests(unittest.TestCase):
+    def test_heap_top_k_matches_stable_full_sort_including_ties(self):
+        candidates = [
+            (10.0, "first"),
+            (10.0, "second"),
+            (12.0, "highest"),
+            (10.0, "third"),
+            (9.0, "last"),
+            (11.0, "next"),
+        ]
+        expected = sorted(candidates, key=lambda item: item[0], reverse=True)[:4]
+        actual = optimizer_module._retain_best_beam(candidates, 4)
+        self.assertEqual(actual, expected)
+
+    def test_beam_retention_keeps_full_sort_when_every_candidate_fits(self):
+        candidates = [(2.0, "a"), (1.0, "b"), (3.0, "c")]
+        expected = sorted(candidates, key=lambda item: item[0], reverse=True)
+        self.assertEqual(optimizer_module._retain_best_beam(candidates, 5), expected)
 
 
 class OptimizerScoringMetadataTests(unittest.TestCase):
@@ -220,8 +240,18 @@ class OptimizerProfileResolutionTests(unittest.TestCase):
                        "base_stats": {"Speed": 120}}
         }
         self.assertEqual(
-            resolve_character_base_stats(profiles, "unknown_id", "Chirrut-Imwe"),
+            resolve_character_base_stats(profiles, "", "Chirrut-Imwe"),
             {"Speed": 120},
+        )
+
+    def test_explicit_unknown_base_id_never_falls_back_to_matching_name(self):
+        profiles = {
+            "UNIT_A": {"base_id": "UNIT_A", "name": "Chirrut Îmwe",
+                       "base_stats": {"Speed": 120}}
+        }
+        self.assertEqual(
+            resolve_character_base_stats(profiles, "WRONG_ID", "Chirrut-Imwe"),
+            {},
         )
 
     def test_ignores_empty_profile_and_refuses_ambiguous_name(self):
@@ -285,6 +315,24 @@ class OptimizerNormalizationTests(unittest.TestCase):
         one_mod = [{"id": "only", "slot": "Square", "set": "Speed", "primary_stat": "Speed", "primary_value": 10}]
         with self.assertRaisesRegex(RuntimeError, "données incomplètes"):
             optimize_kyber(one_mod, kyber={}, base_stats={})
+
+    def test_six_slot_build_keeps_mods_without_explicit_source_ids_distinct(self):
+        mods = [
+            {
+                "slot": slot, "set": "Speed", "primary_stat": "Speed", "primary_value": 10,
+                "secondary_1_stat": "Speed", "secondary_1_value": 5,
+                "level": 15, "rarity": 5,
+            }
+            for slot in ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+        ]
+        builds = optimize_kyber(
+            mods, base_stats={"Speed": 100, "Health": 10000, "Protection": 10000},
+            kyber={}, number_of_builds=1, limit_per_slot=1,
+        )
+        self.assertEqual(len(builds), 1)
+        self.assertEqual(len(builds[0]["build"]), 6)
+        self.assertEqual({mod["slot"] for mod in builds[0]["build"]},
+                         {"Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"})
 
     def test_nominal_six_slot_build(self):
         mods = []

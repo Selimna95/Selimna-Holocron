@@ -17,10 +17,20 @@ try {
   throw error;
 }
 console.log('Pyodide runtime loaded.');
+const originalRunPython = pyodide.runPython.bind(pyodide);
+pyodide.runPython = (...args) => {
+  try { return originalRunPython(...args); }
+  catch (error) {
+    console.error('PYODIDE_RUNPYTHON_ERROR:', error?.name, error?.message);
+    throw new Error(`Pyodide runPython failed: ${error?.message || String(error)}`);
+  }
+};
 pyodide.FS.writeFile('/home/pyodide/optimizer.py', read('../python/optimizer.py'));
 const engineBridge = (baseJson, modsJson, level) => {
   scalarBridgeCalls++;
-  return JSON.stringify(engine.calculateFinalStats(JSON.parse(baseJson), JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null));
+  const baseProfile = JSON.parse(baseJson);
+  const result = engine.calculateFinalStats(baseProfile, JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null);
+  return JSON.stringify(result);
 };
 const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse(modJson)));
 let batchBridgeCalls = 0;
@@ -30,15 +40,42 @@ const batchBridge = (baseJson, indexedBuildsJson, level) => {
   batchBridgeCalls++;
   const payload = JSON.parse(indexedBuildsJson);
   batchProjectedBuilds += payload.builds.length;
-  return JSON.stringify(payload.builds.map(indexes => engine.calculateFinalStats(
-    JSON.parse(baseJson), indexes.map(index => payload.mods[index]),
+  const baseProfile = JSON.parse(baseJson);
+  const results = payload.builds.map(indexes => engine.calculateFinalStats(
+    baseProfile, indexes.map(index => payload.mods[index]),
     Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
-  )));
+  ));
+  return JSON.stringify(results);
 };
 pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
 pyodide.globals.set('holocron_mod_normalize_bridge', normalizeBridge);
 pyodide.globals.set('holocron_mod_engine_batch_bridge', batchBridge);
 pyodide.runPython("import sys\nsys.path.insert(0, '/home/pyodide')\nimport optimizer\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge)\n");
+
+const profileValidation = pyodide.runPython(`
+profile = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8,"base_stats":{"Speed":153}}
+metadata = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8}
+optimizer.validate_profile_compatibility(profile, metadata)
+`);
+assert.equal(profileValidation, true);
+pyodide.runPython(`
+try:
+    optimizer.validate_profile_compatibility(profile, {"level":85,"rarity":7,"gear_level":12,"relic_tier":8})
+except RuntimeError as error:
+    incompatible_profile_error = str(error)
+else:
+    incompatible_profile_error = ""
+`);
+assert.match(pyodide.runPython('incompatible_profile_error'), /gear/);
+pyodide.runPython(`
+try:
+    optimizer.validate_profile_compatibility(profile, {"level":85,"rarity":7,"gear_level":13})
+except RuntimeError as error:
+    missing_profile_metadata_error = str(error)
+else:
+    missing_profile_metadata_error = ""
+`);
+assert.match(pyodide.runPython('missing_profile_metadata_error'), /relique/);
 
 const base = {
   Health: 1000, Protection: 2000, Speed: 100,
@@ -58,9 +95,8 @@ const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
 ];
 pyodide.globals.set('mods_json', JSON.stringify(offenseMods));
-const offense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats(json.loads(mods_json), json.loads(base_json))\njson.dumps(result)\n"));
-assert.equal(offense['Physical Damage'], 665);
-assert.equal(offense['Special Damage'], 915);
+pyodide.runPython("import json\ntry:\n optimizer.final_stats(json.loads(mods_json), json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\n offense_projection_error = ''\nexcept RuntimeError as error:\n offense_projection_error = str(error)\n");
+assert.match(pyodide.runPython('offense_projection_error'), /offense:gear_component_required/);
 
 const defense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85})\njson.dumps(result)\n"));
 assert.ok(Math.abs(defense.Armor - 51.5209) < 0.001);
@@ -71,7 +107,7 @@ const missingLevel = pyodide.runPython('missing_level_error');
 assert.match(missingLevel, /level/);
 
 
-const critRating = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 14, 'unscaledDecimalValue': 2400000000}}, {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 15, 'unscaledDecimalValue': 4800000000}}], json.loads(base_json))\njson.dumps(result)\n"));
+const critRating = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 14, 'unscaledDecimalValue': 2400000000}}, {'level': 1, 'set_name': 'Defense', 'primary_stat': {'unitStatId': 15, 'unscaledDecimalValue': 4800000000}}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
 assert.equal(critRating['Physical Critical Chance'], 41);
 assert.equal(critRating['Special Critical Chance'], 32);
 
@@ -84,52 +120,177 @@ const optimizerProfiles = JSON.parse(read('../python/optimizer_profiles.json'));
 const moffGideonProfile = optimizerProfiles.MOFFGIDEONS3;
 assert.ok(moffGideonProfile && moffGideonProfile.base_stats && moffGideonProfile.gear_level === 13);
 assert.equal(moffGideonProfile.gear, undefined, 'profile must not be mistaken for a Crinolo gear-component breakdown');
+const g13SpeedSetMods = Array.from({ length: 4 }, (_, index) => ({
+  slot: ['Square', 'Arrow', 'Diamond', 'Triangle'][index],
+  level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 0,
+  ...zeroSecondaries
+}));
+const unverifiedG13Speed = engine.calculateFinalStats(moffGideonProfile, g13SpeedSetMods, moffGideonProfile.level);
+assert.equal(unverifiedG13Speed.complete, false);
+assert.ok(unverifiedG13Speed.missing.includes('speed:gear_component_required'));
+const verifiedG13SpeedProfile = {
+  ...moffGideonProfile,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Speed: 153 }, gear: { Speed: 0 }
+  }
+};
+const verifiedG13Speed = engine.calculateFinalStats(verifiedG13SpeedProfile, g13SpeedSetMods, verifiedG13SpeedProfile.level);
+assert.equal(verifiedG13Speed.complete, true);
+assert.equal(verifiedG13Speed.stats.Speed, 168.3);
+const r5d4Profile = optimizerProfiles.R5D4;
+assert.ok(r5d4Profile && r5d4Profile.gear_level === 12);
+const r5d4OffenseProjection = engine.calculateFinalStats(r5d4Profile, offenseMods, r5d4Profile.level);
+assert.equal(r5d4OffenseProjection.complete, false);
+assert.ok(r5d4OffenseProjection.missing.includes('offense:gear_component_required'));
+const moffGideonOffenseProjection = engine.calculateFinalStats(moffGideonProfile, offenseMods, moffGideonProfile.level);
+assert.equal(moffGideonOffenseProjection.complete, false);
+assert.ok(moffGideonOffenseProjection.missing.includes('offense:gear_component_required'));
+const defenseProfileMods = [
+  { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+];
+let g13ProfileCount = 0;
+let lowerGearProfileCount = 0;
+for (const profile of Object.values(optimizerProfiles)) {
+  const projection = engine.calculateFinalStats(profile, defenseProfileMods, profile.level);
+  if (Number(profile.gear_level) === 13) g13ProfileCount++;
+  else lowerGearProfileCount++;
+  assert.equal(projection.complete, false, `Profile ${profile.base_id} must not guess the Defense % gear component`);
+  assert.ok(projection.missing.includes('defense:gear_component_required'));
+}
+assert.equal(g13ProfileCount, 328);
+assert.equal(lowerGearProfileCount, 6);
 pyodide.globals.set('moff_gideon_profile_json', JSON.stringify(moffGideonProfile));
-pyodide.runPython(`try:
- optimizer.final_stats(
-  [{'level': 15, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}],
-  json.loads(moff_gideon_profile_json)['base_stats'],
-  json.loads(moff_gideon_profile_json)
- )
- real_profile_defense_error = ''
+pyodide.runPython(`import json
+profile = json.loads(moff_gideon_profile_json)
+mods = [
+ {'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10},
+ {'level': 1, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 0}
+]
+try:
+    optimizer.final_stats(mods, profile['base_stats'], profile)
+    moff_defense_error = ''
 except RuntimeError as error:
- real_profile_defense_error = str(error)
+    moff_defense_error = str(error)
 `);
-assert.match(pyodide.runPython('real_profile_defense_error'), /defense:gear_component_required/);
-assert.match(pyodide.runPython('real_profile_defense_error'), /Défense %/);
+assert.match(pyodide.runPython('moff_defense_error'), /defense:gear_component_required/);
+pyodide.runPython(`try:
+ profile = dict(json.loads(moff_gideon_profile_json), gear_level=12)
+ optimizer.final_stats(
+  [{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}],
+  profile['base_stats'], profile
+ )
+ non_g13_defense_error = ''
+except RuntimeError as error:
+ non_g13_defense_error = str(error)
+`);
+assert.match(pyodide.runPython('non_g13_defense_error'), /defense:gear_component_required/);
 
 const defenseWarningResult = JSON.parse(pyodide.runPython(`import json
 mods = []
-for slot in ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']:
-    mod = {'game_id': 'valid-' + slot, 'slot': slot, 'level': 15, 'set_name': 'Health',
-           'primary_stat': 'Health', 'primary_value': 100,
+for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):
+    mod = {'game_id': 'valid-' + slot, 'slot': slot, 'level': 15,
+           'set_name': ['Offense', 'Speed', 'Defense', 'Critical Damage', 'Potency', 'Tenacity'][index],
+           'primary_stat': 'Defense %' if slot == 'Cross' else 'Health',
+           'primary_value': 10 if slot == 'Cross' else 100,
            'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
            'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
            'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
-           'secondary_4_stat': 'Offense %', 'secondary_4_value': 1}
+           'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 1}
     mods.append(mod)
-mods.append({'game_id': 'unsupported-defense', 'slot': 'Square', 'level': 15,
-             'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10,
-             'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
-             'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
-             'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
-             'secondary_4_stat': 'Offense %', 'secondary_4_value': 1})
-result = optimizer.optimize_kyber(
-    mods, base_stats=json.loads(base_json),
-    base_profile={'base_stats': json.loads(base_json), 'level': 85},
-    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-)
-json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else []})
+try:
+    result = optimizer.optimize_kyber(
+        mods, base_stats=json.loads(base_json),
+        base_profile={'base_stats': json.loads(base_json), 'level': 85},
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    warning_error = ''
+except RuntimeError as error:
+    result = []
+    warning_error = str(error)
+json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else [], 'error': warning_error})
 `));
-assert.equal(defenseWarningResult.count, 1);
-assert.ok(defenseWarningResult.warnings.includes('defense_percent_unavailable'));
+assert.equal(defenseWarningResult.count, 0);
+assert.match(defenseWarningResult.error, /Bonus multiplicateurs en % non calculables/);
+assert.match(defenseWarningResult.error, /séparation base\/équipement vérifiée/);
+assert.match(defenseWarningResult.error, /defense:gear_component_required/);
 
+const g13CandidateMods = JSON.parse(pyodide.runPython('json.dumps(mods)'));
+const g13DirectCandidateProjection = engine.calculateFinalStats(moffGideonProfile, g13CandidateMods, moffGideonProfile.level);
+assert.equal(g13DirectCandidateProjection.complete, false);
+assert.ok(g13DirectCandidateProjection.missing.includes('defense:gear_component_required'));
+const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
+profile = json.loads(moff_gideon_profile_json)
+try:
+    result = optimizer.optimize_kyber(
+        mods, base_stats=profile['base_stats'], base_profile=profile,
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    warning_error = ''
+except RuntimeError as error:
+    warning_error = str(error)
+json.dumps({'error': warning_error})
+`));
+assert.match(g13DefenseWarningResult.error, /defense:gear_component_required/);
+
+const secondaryDefenseSearch = JSON.parse(pyodide.runPython(`import json
+secondary_defense_mods = []
+for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):
+    secondary_defense_mods.append({
+        'game_id': 'secondary-defense-' + slot,
+        'slot': slot, 'level': 15,
+        'set_name': ['Health', 'Offense', 'Speed', 'Defense', 'Potency', 'Tenacity'][index],
+        'primary_stat': 'Health', 'primary_value': 100,
+        'secondary_1_stat': {'stat_id': 49, 'name': 'Defense', 'unscaledDecimalValue': 10000000},
+        'secondary_2_stat': 'Speed', 'secondary_2_value': 10,
+        'secondary_3_stat': 'Potency %', 'secondary_3_value': 1,
+        'secondary_4_stat': 'Tenacity %', 'secondary_4_value': 1
+    })
+try:
+    result = optimizer.optimize_kyber(
+        secondary_defense_mods, base_stats=profile['base_stats'], base_profile=profile,
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    secondary_defense_error = ''
+except RuntimeError as error:
+    secondary_defense_error = str(error)
+json.dumps({'error': secondary_defense_error})
+`));
+assert.match(secondaryDefenseSearch.error, /defense:gear_component_required/);
+
+const realComlinkDefenseSearch = JSON.parse(pyodide.runPython(`import json
+comlink_mods = []
+for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):
+    comlink_mods.append({
+        'game_id': 'real-comlink-defense-' + slot,
+        'slot': slot, 'level': 15, 'pips': 0, 'rarity': 5,
+        'set_name': ['Health', 'Offense', 'Speed', 'Defense', 'Potency', 'Tenacity'][index],
+        'primary_stat': 'Health %', 'primary_value': 5.88,
+        'secondary_stats': [
+            {'name': 'Defense', 'stat_id': 49, 'value': 237.1, 'display_value': '2.37%', 'unscaled_roll_values': [2336, 2616]},
+            {'name': 'Speed', 'stat_id': 5, 'value': 40000, 'display_value': '4', 'unscaled_roll_values': [40000]},
+            {'name': 'Health', 'stat_id': 1, 'value': 8350000, 'display_value': '835', 'unscaled_roll_values': [41085900, 42449400]},
+            {'name': 'Tenacity', 'stat_id': 18, 'value': 281.8, 'display_value': '2.82%', 'unscaled_roll_values': [1778, 1159, 1761]}
+        ]
+    })
+try:
+    optimizer.optimize_kyber(
+        comlink_mods, base_stats=profile['base_stats'], base_profile=profile,
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    real_comlink_defense_error = ''
+except RuntimeError as error:
+    real_comlink_defense_error = str(error)
+json.dumps({'error': real_comlink_defense_error})
+`));
+assert.match(realComlinkDefenseSearch.error, /defense:gear_component_required/);
 
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
 
-const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 33, 'unscaledDecimalValue': 12000000}, 'secondary_1_stat': {'unitStatId': 37, 'unscaledDecimalValue': 1200000000}},\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 34, 'unscaledDecimalValue': 6000000}, 'secondary_1_stat': {'unitStatId': 38, 'unscaledDecimalValue': 2400000000}},\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}\n]\nresult = optimizer.final_stats(mods, json.loads(base_json))\njson.dumps(result)\n"));
+const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 33, 'unscaledDecimalValue': 12000000}, 'secondary_1_stat': {'unitStatId': 37, 'unscaledDecimalValue': 1200000000}},\n {'level': 1, 'set_name': 'Defense', 'primary_stat': {'unitStatId': 34, 'unscaledDecimalValue': 6000000}, 'secondary_1_stat': {'unitStatId': 38, 'unscaledDecimalValue': 2400000000}},\n {'level': 1, 'set_name': 'Speed', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}\n]\nresult = optimizer.final_stats(mods, json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
 assert.equal(accuracy['Physical Accuracy'], 13);
 assert.equal(accuracy['Special Accuracy'], 8);
 assert.equal(accuracy['Accuracy'], 0.12);
@@ -141,7 +302,7 @@ batchProjectedBuilds = 0;
 batchBridgeCalls = 0;
 scalarBridgeCalls = 0;
 
-const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
+const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Potency', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
 assert.equal(batchSearch.count, 1);
 assert.equal(batchSearch.mods, 6);
 assert.equal(batchProjectedBuilds, 60);
@@ -159,12 +320,12 @@ const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
     game_id: `bench-${index}`,
     slot,
     level: 15,
-    set_name: ['Health', 'Offense', 'Speed', 'Defense'][index % 4],
+    set_name: ['Tenacity', 'Potency', 'Speed', 'Critical Damage'][index % 4],
     primary_stat: slot === 'Arrow' ? 'Speed' : 'Health',
     primary_value: slot === 'Arrow' ? 30 : 100,
     secondary_1_stat: 'Speed',
     secondary_1_value: speed,
-    secondary_2_stat: 'Offense %',
+    secondary_2_stat: 'Offense',
     secondary_2_value: 1 + (index % 5),
     secondary_3_stat: 'Potency %',
     secondary_3_value: 1,
@@ -185,7 +346,7 @@ mods = json.loads(benchmark_mods_json)
 result = optimizer.optimize_kyber(
     mods,
     base_stats=json.loads(base_json),
-    base_profile={'base_stats': json.loads(base_json), 'level': 85},
+    base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13},
     kyber={},
     number_of_builds=5,
     limit_per_slot=40,

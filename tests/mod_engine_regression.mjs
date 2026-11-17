@@ -74,6 +74,166 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
 
+const engineScaleSandbox = { module: { exports: {} } };
+vm.createContext(engineScaleSandbox);
+vm.runInContext(read('../modules/mod-engine.js'), engineScaleSandbox);
+const sharedScaleEngine = engineScaleSandbox.module.exports;
+const coreScaleContext = vm.createContext({ window: { HolocronModEngine: sharedScaleEngine } });
+load(core, ['numericValue', 'statNameFromAny', 'statValueFromAny', 'statObjectFromAny', 'normalizeMod'], coreScaleContext);
+const coreNormalizedComlinkMod = coreScaleContext.normalizeMod({
+  game_id: 'core-comlink-defense-scale', slot: 7, set: '1', level: 15,
+  pips: 0, rarity: 5, primary_stat: 'Health %', primary_value: 5.88,
+  secondary_stats: [
+    { name: 'Defense', stat_id: 49, value: 237.1, display_value: '2.37%', unscaled_roll_values: [2336, 2616] },
+    { name: 'Speed', stat_id: 5, value: 40000, display_value: '4', unscaled_roll_values: [40000] },
+    { name: 'Health', stat_id: 1, value: 8350000, display_value: '835', unscaled_roll_values: [41085900, 42449400] },
+    { name: 'Tenacity', stat_id: 18, value: 281.8, display_value: '2.82%', unscaled_roll_values: [1778, 1159, 1761] }
+  ]
+});
+assert.equal(coreNormalizedComlinkMod.secondary_1_value, 2.371,
+  'Core must flatten raw Comlink Defense % at percentage-point scale');
+assert.equal(coreNormalizedComlinkMod.secondary_2_value, 4,
+  'Core must flatten raw Comlink Speed at flat-stat scale');
+assert.equal(coreNormalizedComlinkMod.secondary_3_value, 835,
+  'Core must flatten raw Comlink Health at flat-stat scale');
+assert.equal(coreNormalizedComlinkMod.secondary_4_value, 2.818,
+  'Core must flatten raw Comlink Tenacity at percentage-point scale');
+const coreThousandsProtection = coreScaleContext.statObjectFromAny({
+  name: 'Protection', stat_id: 28, value: 12240000,
+  display_value: '1,224', unscaled_roll_values: [12240000]
+});
+assert.equal(coreThousandsProtection.value, 1224,
+  'Core must not parse a thousands separator as a decimal comma in Comlink flat stats');
+
+
+// Seigneur Sith and Visionnaire must use the same canonical Galactic Legend set as core.
+const galacticLegendSet = new Set([
+  'JEDIMASTERKENOBI','GRANDMASTERLUKE','SITHPALPATINE','JABBATHEHUTT',
+  'LORDVADER','SUPREMELEADERKYLOREN','GLREY','GLLEIA','GLAHSOKATANO',
+  'GLHONDO','GLMANDOGROGU'
+]);
+const galacticLegendContext = vm.createContext({
+  compactKey: value => String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  KNOWN_GALACTIC_LEGEND_IDS: galacticLegendSet,
+  window: { HOLOCRON_GALACTIC_LEGENDS: galacticLegendSet }
+});
+load(read('../modules/seigneur.js'), ['isGalacticLegendCharacter'], galacticLegendContext);
+for (const baseId of galacticLegendSet) {
+  assert.equal(galacticLegendContext.isGalacticLegendCharacter({baseId}), true, baseId+' must never be a donor');
+}
+assert.equal(galacticLegendContext.isGalacticLegendCharacter({baseId:'HONDOSMUGGLER'}), false,
+  'A non-GL Hondo unit must not be protected by a name-only guess');
+
+// Equipped-mod ownership is indexed once per roster/inventory snapshot, not rebuilt per character.
+let normalizedOwnerMods=0;
+const ownerIndexContext=vm.createContext({
+  rosterCharacters:[
+    {baseId:'GLAHSOKATANO',name:'Ahsoka Tano'},
+    {baseId:'AHSOKATANO',name:'Ahsoka Tano (Snips)'}
+  ],
+  characterModsIndexCache:null,
+  mods:[
+    {id:'gl-square',slot:'Square',characterId:'GLAHSOKATANO'},
+    {id:'snips-square',slot:'Square',characterId:'AHSOKATANO'},
+    {id:'gl-arrow',slot:'Arrow',character:{baseId:'GLAHSOKATANO'}}
+  ],
+  characterKey:c=>String(c?.baseId||''),
+  compactKey:value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  normalizeModForDisplay:m=>{normalizedOwnerMods++;return {...m,ownerKey:String(m.characterId||m.character?.baseId||'').toUpperCase()};},
+  modOwnerKey:m=>String(m?.ownerKey||'').toUpperCase()
+});
+load(core,['getCharacterModsIndex','getCharacterMods'],ownerIndexContext);
+const indexedGlMods=ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]);
+const indexedSnipsMods=ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[1]);
+assert.deepEqual(JSON.parse(JSON.stringify(indexedGlMods.map(m=>m.id))),['gl-square','gl-arrow']);
+assert.deepEqual(JSON.parse(JSON.stringify(indexedSnipsMods.map(m=>m.id))),['snips-square']);
+assert.equal(normalizedOwnerMods,3,'The inventory must be normalized once for the whole ownership index');
+ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]);
+assert.equal(normalizedOwnerMods,3,'Repeated lookups must reuse the same roster/inventory index');
+ownerIndexContext.mods=[...ownerIndexContext.mods,{id:'gl-diamond',slot:'Diamond',characterId:'GLAHSOKATANO'}];
+assert.deepEqual(JSON.parse(JSON.stringify(ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]).map(m=>m.id))),['gl-square','gl-arrow','gl-diamond']);
+assert.equal(normalizedOwnerMods,7,'Replacing the inventory snapshot must rebuild the index exactly once');
+
+// Scale regression: 300 characters and 2,000 inventory mods require one normalization pass total.
+let largeIndexNormalizations=0;
+const largeRoster=Array.from({length:300},(_,i)=>({baseId:'UNIT'+i,name:'Unit '+i}));
+const largeSlots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
+const largeInventory=[];
+for(let i=0;i<300;i++)for(let slotIndex=0;slotIndex<6;slotIndex++){
+  largeInventory.push({id:'unit-'+i+'-'+slotIndex,slot:largeSlots[slotIndex],characterId:'UNIT'+i});
+}
+for(let i=0;i<200;i++)largeInventory.push({id:'free-'+i,slot:largeSlots[i%6]});
+const largeOwnerIndexContext=vm.createContext({
+  rosterCharacters:largeRoster,mods:largeInventory,characterModsIndexCache:null,
+  characterKey:c=>String(c?.baseId||''),
+  compactKey:value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  normalizeModForDisplay:m=>{largeIndexNormalizations++;return {...m,ownerKey:String(m.characterId||'').toUpperCase()};},
+  modOwnerKey:m=>String(m?.ownerKey||'').toUpperCase()
+});
+load(core,['getCharacterModsIndex','getCharacterMods'],largeOwnerIndexContext);
+for(const character of largeOwnerIndexContext.rosterCharacters){
+  assert.equal(largeOwnerIndexContext.getCharacterMods(character).length,6);
+}
+assert.equal(largeIndexNormalizations,2000,
+  'A 2,000-mod inventory must be normalized once, not once for each of 300 character lookups');
+
+// Static snapshots must never be attached by a colliding display name when a baseId exists.
+const profileResolverContext = vm.createContext({
+  optimizerProfiles: {
+    AHSOKATANO: { base_id: 'AHSOKATANO', name: 'Ahsoka Tano', marker: 'snips' },
+    GLAHSOKATANO: { base_id: 'GLAHSOKATANO', name: 'Ahsoka Tano', marker: 'galactic-legend' }
+  },
+  slug: value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+});
+load(core, ['optimizerProfileForCharacter'], profileResolverContext);
+assert.equal(profileResolverContext.optimizerProfileForCharacter({ baseId: 'GLAHSOKATANO', name: 'Ahsoka Tano' }).marker, 'galactic-legend');
+assert.equal(profileResolverContext.optimizerProfileForCharacter({ baseId: 'UNKNOWN_AHSOKA', name: 'Ahsoka Tano' }), null,
+  'A supplied but unmatched baseId must not fall back to a colliding display name');
+assert.equal(profileResolverContext.optimizerProfileForCharacter({ name: 'Ahsoka Tano' }), null,
+  'Name-only profile lookup must reject ambiguous aliases');
+
+// Comlink roster records may expose progression as currentLevel/currentRarity/currentTier.
+// Verify the API adapter accepts these fields, not just the downstream metadata reader.
+const comlinkUnitContext = vm.createContext({});
+load(core, ['unitToCharacter'], comlinkUnitContext);
+const rawComlinkUnit = { data: {
+  baseId: 'MOFFGIDEONS3', name: 'Dark Trooper Moff Gideon',
+  currentLevel: 85, currentRarity: 7, currentTier: 13,
+  relic: { currentTier: 8 }
+} };
+const parsedComlinkUnit = comlinkUnitContext.unitToCharacter(rawComlinkUnit);
+assert.ok(parsedComlinkUnit, 'Comlink progression fields must be sufficient to recognize a roster unit');
+assert.deepEqual(
+  { baseId: parsedComlinkUnit.baseId, level: parsedComlinkUnit.level, stars: parsedComlinkUnit.stars, gear: parsedComlinkUnit.gear, relic_tier: parsedComlinkUnit.relic_tier },
+  { baseId: 'MOFFGIDEONS3', level: 85, stars: 7, gear: 13, relic_tier: 8 }
+);
+assert.equal(parsedComlinkUnit.raw, rawComlinkUnit, 'The original Comlink payload must remain available for profile validation');
+
+// Roster metadata must support both SWGOH.GG fields and raw Comlink progression fields.
+const rosterMetadataContext = vm.createContext({ numericValue });
+load(core, ['optimizerRosterMetadata'], rosterMetadataContext);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(rosterMetadataContext.optimizerRosterMetadata({
+    raw: { data: { currentLevel: 85, currentRarity: 7, currentTier: 13, relic: { currentTier: 8 } } }
+  }))),
+  { level: 85, rarity: 7, gear_level: 13, relic_tier: 8 },
+  'Raw Comlink currentLevel/currentRarity/currentTier/relic metadata must be recognized'
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(rosterMetadataContext.optimizerRosterMetadata({
+    level: 85, stars: 7, gear: 13, relic_tier: 8,
+    raw: { data: { level: 85, stars: 7, gear_level: 13 } }
+  }))),
+  { level: 85, rarity: 7, gear_level: 13, relic_tier: 8 },
+  'Top-level relic metadata must remain a fallback when raw payload omits relic'
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(rosterMetadataContext.optimizerRosterMetadata({
+    raw: { currentLevel: 85, currentRarity: 7, currentTier: 12, relic: { currentTier: 0 } }
+  }))),
+  { level: 85, rarity: 7, gear_level: 12, relic_tier: 0 },
+  'Direct Comlink raw payloads must preserve zero relic tier'
+);
 
 // Missing mod metadata must remain unknown rather than being fabricated.
 const iconContext = vm.createContext({});
@@ -449,9 +609,13 @@ const donorContext = vm.createContext({
     { baseId: 'HIGHSHIP', raw: { data: { crew: [{ baseId: 'PILOTHIGH' }] } } }
   ]
 });
+const shipCrewMapStart=seigneur.indexOf('const SEIGNEUR_SHIP_CREW_BY_BASE_ID =');
+const shipCrewMapEnd=seigneur.indexOf('function seigneurUsageKey(',shipCrewMapStart);
+assert.ok(shipCrewMapStart>=0&&shipCrewMapEnd>shipCrewMapStart,'Canonical ship crew map must be present');
+vm.runInContext(seigneur.slice(shipCrewMapStart,shipCrewMapEnd),donorContext);
 load(seigneur, [
   'seigneurUsageKey','seigneurUsageRecord','seigneurUsageCount','seigneurLatestGacUsageSeason',
-  'seigneurCharacterGacUsage','seigneurShipCrewAliases','seigneurShipUsageMap',
+  'seigneurCharacterGacUsage','seigneurShipCrewAliases','seigneurShipCrewMappingKnown','seigneurShipUsageMap',
   'seigneurCharacterFleetUsage','seigneurDonorPriority'
 ], donorContext);
 const donorGateContext = vm.createContext({
@@ -572,7 +736,7 @@ const forgeContext = vm.createContext({
   optimizerProfileForCharacter: () => ({})
 });
 load(seigneur, ['forgeProjectedModSpeed', 'forgeCandidatePreservesSpeed'], forgeContext);
-const baseSpeedCharacter = { base_stats: { Speed: 100 } };
+const baseSpeedCharacter = { gear_level: 13, base_stats: { Speed: 100 }, stat_components: { source: 'Crinolo.stats.base+stats.gear', base: { Speed: 100 }, gear: { Speed: 0 } } };
 const makeSpeedMod = (id, slot, set_name, speedValue) => ({
   id, slot, set_name, level: 1, speed: speedValue,
   primary_stat: 'Health', primary_value: 0,

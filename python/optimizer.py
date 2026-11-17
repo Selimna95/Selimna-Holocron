@@ -10,6 +10,7 @@ Important:
 """
 
 import json
+import heapq
 import re
 import os
 import unicodedata
@@ -84,6 +85,9 @@ def resolve_character_profile(profiles, base_id="", name=""):
         ]
         if len(matches) == 1:
             return matches[0]
+        # An explicit baseId is authoritative. Never substitute a name match:
+        # homonyms and stale profile labels must fail closed.
+        return {}
     if wanted_name:
         matches = [
             profile for profile in profiles.values()
@@ -100,6 +104,41 @@ def resolve_character_profile(profiles, base_id="", name=""):
 def resolve_character_base_stats(profiles, base_id="", name=""):
     profile = resolve_character_profile(profiles, base_id, name)
     return profile.get("base_stats", {}) if isinstance(profile, dict) else {}
+
+
+def validate_profile_compatibility(profile, character_metadata):
+    """Refuse a static stat snapshot when its progression differs from the live roster."""
+    if not isinstance(profile, dict) or not profile:
+        raise RuntimeError("Profil de référence absent : compatibilité impossible à vérifier.")
+    if not isinstance(character_metadata, dict):
+        raise RuntimeError("Métadonnées du personnage absentes : compatibilité impossible à vérifier.")
+
+    fields = (
+        ("level", "niveau"),
+        ("rarity", "rareté"),
+        ("gear_level", "gear"),
+        ("relic_tier", "palier de relique"),
+    )
+    for field, label in fields:
+        expected = profile.get(field)
+        actual = character_metadata.get(field)
+        if expected is None or actual is None:
+            raise RuntimeError(
+                f"Profil de statistiques non vérifiable : {label} absent "
+                f"de la référence ou du roster."
+            )
+        try:
+            expected_number = float(expected)
+            actual_number = float(actual)
+        except (TypeError, ValueError):
+            raise RuntimeError(f"Profil de statistiques non vérifiable : {label} invalide.")
+        if expected_number != actual_number:
+            raise RuntimeError(
+                f"Profil de statistiques incompatible : {label} référence "
+                f"{expected_number:g}, roster {actual_number:g}. "
+                "Aucune optimisation ne sera calculée avec cette référence."
+            )
+    return True
 
 
 def normalize_slot(slot):
@@ -121,7 +160,11 @@ def mod_slot_value(mod):
 
 
 def mod_id(mod):
-    return mod.get("game_id") or mod.get("id")
+    """Return a stable-in-search identity, even when an importer omits mod IDs."""
+    if not isinstance(mod, dict):
+        return ("__object__", id(mod))
+    explicit = mod.get("game_id") or mod.get("id")
+    return explicit if explicit is not None else ("__object__", id(mod))
 
 
 def normalize_set(value):
@@ -171,11 +214,11 @@ def _mod_metadata(mod):
     primary = normalized.get("primary") or {}
     primary_label = primary.get("name") or primary.get("key") or ""
     if primary.get("unit") == "percentagePoints" and primary.get("key") in {
-        "offense", "defense", "health", "protection", "speed"
+        "offense", "defense", "health", "protection", "speed", "physicalDamage", "specialDamage"
     }:
         primary_label += " %"
     stats = {}
-    percent_suffix = {"offense", "defense", "health", "protection", "speed"}
+    percent_suffix = {"offense", "defense", "health", "protection", "speed", "physicalDamage", "specialDamage"}
     for stat in [primary] + list(normalized.get("secondaries") or []):
         if not isinstance(stat, dict) or not stat.get("key") or stat.get("unit") not in {"flat", "percentagePoints"}:
             continue
@@ -194,12 +237,21 @@ def _mod_metadata(mod):
 
 
 def _format_missing_stats(missing):
+    labels = {
+        "defense": "Défense",
+        "offense": "Offense",
+        "health": "Health",
+        "protection": "Protection",
+        "speed": "Speed",
+    }
     details = []
     for code in missing or []:
-        if code == "defense:gear_component_required":
+        if str(code).endswith(":gear_component_required"):
+            key = str(code).split(":", 1)[0]
+            label = labels.get(key, key)
             details.append(
-                "Défense % : le profil ne sépare pas les valeurs Armor/Resistance de base "
-                "des statistiques secondaires d'équipement (defense:gear_component_required)"
+                f"{label} % : le profil ne sépare pas la statistique de base "
+                f"des secondaires des pièces d'équipement actuellement équipées ({code})."
             )
         else:
             details.append(str(code))
@@ -500,6 +552,14 @@ def _matches_set_plan(build, plan):
     return counts == plan
 
 
+def _retain_best_beam(expanded, beam_width):
+    """Keep the exact stable top-k beam without sorting every rejected candidate."""
+    if beam_width > 0 and len(expanded) > beam_width:
+        return heapq.nlargest(beam_width, expanded, key=lambda item: item[0])
+    expanded.sort(key=lambda item: item[0], reverse=True)
+    return expanded[:beam_width]
+
+
 def optimize_kyber(
     mods,
     base_stats=None,
@@ -633,14 +693,29 @@ def optimize_kyber(
     # the hard constraint instead of returning an empty result.
     projection_failures = []
     projection_warnings = set()
-    if any(
+    profile_gear_level = to_float(base_profile.get("gear_level"), None) if isinstance(base_profile, dict) else None
+    gear_dependent_percent_names = {
+        "Offense %", "Defense %", "Health %", "Protection %", "Speed %",
+        "Physical Damage %", "Special Damage %",
+    }
+    has_gear_dependent_percent = any(
+        metadata.get("primary") in gear_dependent_percent_names
+        or any(name in gear_dependent_percent_names for name in metadata.get("stats", {}))
+        for metadata in mod_metadata.values()
+    )
+    has_defense_percent = any(
         metadata.get("primary") == "Defense %" or "Defense %" in metadata.get("stats", {})
         for metadata in mod_metadata.values()
-    ):
+    )
+    if has_gear_dependent_percent and profile_gear_level != 13:
+        projection_warnings.add("gear_percent_unavailable")
+    if has_defense_percent and profile_gear_level != 13:
         projection_warnings.add("defense_percent_unavailable")
 
     def record_projection_failure(error):
         message = str(error)
+        if "gear_component_required" in message:
+            projection_warnings.add("gear_percent_unavailable")
         if "defense:gear_component_required" in message:
             projection_warnings.add("defense_percent_unavailable")
         if len(projection_failures) < 12:
@@ -689,8 +764,8 @@ def optimize_kyber(
                     score = build_score(build, kyber, weights, base_stats, base_profile, projected_stats,
                                         mod_metadata, scoring_context)
                     expanded.append((score, build, projected_stats))
-            expanded.sort(key=lambda x: x[0], reverse=True)
-            current_beam = [(build, stats) for _, build, stats in expanded[:beam_width]]
+            retained = _retain_best_beam(expanded, beam_width)
+            current_beam = [(build, stats) for _, build, stats in retained]
             if progress_callback:
                 try:
                     progress_callback(slot_index, slot, len(current_beam))
@@ -706,9 +781,12 @@ def optimize_kyber(
         beam = search_builds(None)
     if not beam:
         detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
-        if "defense_percent_unavailable" in projection_warnings:
-            detail = ("Défense % non calculable : le profil ne fournit pas les valeurs Armor/Resistance "
-                      "de base séparées des statistiques secondaires d'équipement.")
+        if "gear_percent_unavailable" in projection_warnings:
+            first_projection_failure = projection_failures[0] if projection_failures else "composante d'équipement inconnue"
+            detail = ("Bonus multiplicateurs en % non calculables : le profil ne sépare pas "
+                      "les statistiques de base des secondaires des pièces d'équipement. "
+                      "Un profil avec séparation base/équipement vérifiée est nécessaire pour ces projections. "
+                      "Détail du premier rejet : " + first_projection_failure)
         raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
 
     def speed_safe(projected_stats):

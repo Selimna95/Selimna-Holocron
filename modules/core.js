@@ -171,20 +171,52 @@ function optimizerProfileForCharacter(character) {
   if (!character || !optimizerProfiles || typeof optimizerProfiles !== 'object') return null;
   const base=String(character?.baseId||character?.base_id||'').toUpperCase();
   const name=slug(character?.name||character?.character||'');
-  if (base && optimizerProfiles[base]) return optimizerProfiles[base];
-  for (const p of Object.values(optimizerProfiles)) {
-    if (base && String(p?.base_id||'').toUpperCase()===base) return p;
-    if (name && slug(p?.name||p?.character)===name) return p;
+  if (base) {
+    if (optimizerProfiles[base]) return optimizerProfiles[base];
+    const exact=Object.values(optimizerProfiles).filter(p=>String(p?.base_id||'').toUpperCase()===base);
+    return exact.length===1?exact[0]:null;
   }
-  return null;
+  if (!name) return null;
+  const matches=Object.values(optimizerProfiles).filter(p=>slug(p?.name||p?.character)===name);
+  return matches.length===1?matches[0]:null;
+}
+function optimizerRosterMetadata(character) {
+  const raw=character?.raw?.data && typeof character.raw.data === 'object'
+    ? character.raw.data
+    : character?.raw;
+  const read = (source, keys) => {
+    if (!source || typeof source !== 'object') return null;
+    for (const key of keys) if (source[key] != null) return source[key];
+    return null;
+  };
+  const readBoth = keys => read(raw, keys) ?? read(character, keys);
+  const relicObject = read(raw, ['relic']) ?? read(character, ['relic']);
+  const relicValue = readBoth(['relic_tier','relicTier','relic_level','relicLevel']) ??
+    read(relicObject, ['currentTier','tier','relicTier']);
+  return {
+    level: numericValue(readBoth(['level','currentLevel']), null),
+    rarity: numericValue(readBoth(['rarity','starLevel','stars','currentRarity']), null),
+    gear_level: numericValue(readBoth(['gear_level','gearLevel','gear','currentTier']), null),
+    relic_tier: numericValue(relicValue, null)
+  };
+}
+function optimizerValidatedProfileForCharacter(character) {
+  const profile=optimizerProfileForCharacter(character);
+  if (!profile || !profile.base_stats || typeof profile.base_stats !== 'object' || !Object.keys(profile.base_stats).length) return null;
+  const metadata=optimizerRosterMetadata(character);
+  for (const field of ['level','rarity','gear_level','relic_tier']) {
+    if (profile[field] == null) return null;
+    const expected=Number(profile[field]);
+    const actual=metadata[field];
+    if (actual == null || !Number.isFinite(expected) || expected !== Number(actual)) return null;
+  }
+  return profile;
 }
 function baseStatsForCharacter(character) {
   const direct=character?.base_stats || character?.baseStats;
   if (direct && typeof direct === 'object' && Object.keys(direct).length) return direct;
-  const p=optimizerProfileForCharacter(character);
-  if (p?.base_stats && typeof p.base_stats === 'object' && Object.keys(p.base_stats).length) return p.base_stats;
-  // character.stats is the equipped/current stat block, not guaranteed base stats.
-  // Leave it empty so the Worker resolves the canonical profile or fails safely.
+  // Static snapshots are resolved and checked in the Worker against the live roster metadata.
+  // Current/equipped stats are never substituted for base stats.
   return {};
 }
 
@@ -587,7 +619,7 @@ async function fetchKyberProfile(character,options={}){
 }
 let kyberRequestSeq=0;
 function buildLocalOptimizerReference(character){
-  const p=optimizerProfileForCharacter(character)||{};
+  const p=optimizerValidatedProfileForCharacter(character)||{};
   const current=p.current_stats||{};
   return {
     character:String(character?.name||character?.baseId||''),
@@ -767,7 +799,7 @@ function updateCharacterInfo() {
   const c=selectedCharacter();
   if(!c){$('characterInfo').textContent='Aucun personnage sélectionné.';return;}
   const p=profileForCharacter(c);
-  const local=optimizerProfileForCharacter(c);
+  const local=optimizerValidatedProfileForCharacter(c);
   const ref=p || null;
   const fallback=local&&!p;
   const gacPriority=window.holocronGacPriorityForCharacter?.(c)||{known:false};
@@ -852,7 +884,7 @@ function extractApiMods(json){
   const seen=new Set();
   return out.filter(m=>m&&!seen.has(m.game_id)&&seen.add(m.game_id));
 }
-function unitToCharacter(u,index=0){const o=u?.data&&typeof u.data==='object'?u.data:u;if(!o||typeof o!=='object')return null;const baseId=o.base_id??o.baseId??o.definitionId;const name=o.name??o.character??o.characterName??o.unitName;const hasRosterFields=baseId&&Number.isFinite(Number(o.level))&&Number.isFinite(Number(o.rarity))&&(Object.prototype.hasOwnProperty.call(o,'gear_level')||Object.prototype.hasOwnProperty.call(o,'gearLevel')||Object.prototype.hasOwnProperty.call(o,'gear')||Object.prototype.hasOwnProperty.call(o,'power')||Object.prototype.hasOwnProperty.call(o,'combat_type'));if(!hasRosterFields)return null;const relicTierRaw=o.relic_tier??o.relicTier??o.relic_level??o.relicLevel??o.relic?.tier??o.relic?.relicTier??0;const thumbnailName=o.thumbnail_name??o.thumbnailName??o.thumbnail??o.icon??o.image??'';const portraitUrl=o.portrait_url??o.portraitUrl??o.image_url??o.imageUrl??'';return{name:name||baseId,baseId,level:Number(o.level||0),gear:Number(o.gear_level??o.gearLevel??o.gear??0),stars:Number(o.rarity??o.starLevel??o.stars??0),power:Number(o.power||0),combatType:Number(o.combat_type??o.combatType??1),relic_tier:Number(relicTierRaw)||0,thumbnailName,portraitUrl,raw:u};}
+function unitToCharacter(u,index=0){const o=u?.data&&typeof u.data==='object'?u.data:u;if(!o||typeof o!=='object')return null;const baseId=o.base_id??o.baseId??o.definitionId;const name=o.name??o.character??o.characterName??o.unitName;const levelRaw=o.level??o.currentLevel;const rarityRaw=o.rarity??o.currentRarity??o.starLevel??o.stars;const gearRaw=o.gear_level??o.gearLevel??o.gear??o.currentTier;const hasRosterFields=baseId&&levelRaw!=null&&rarityRaw!=null&&Number.isFinite(Number(levelRaw))&&Number.isFinite(Number(rarityRaw))&&(gearRaw!=null||Object.prototype.hasOwnProperty.call(o,'power')||Object.prototype.hasOwnProperty.call(o,'combat_type')||Object.prototype.hasOwnProperty.call(o,'combatType'));if(!hasRosterFields)return null;const relicTierRaw=o.relic_tier??o.relicTier??o.relic_level??o.relicLevel??o.relic?.currentTier??o.relic?.tier??o.relic?.relicTier??0;const thumbnailName=o.thumbnail_name??o.thumbnailName??o.thumbnail??o.icon??o.image??'';const portraitUrl=o.portrait_url??o.portraitUrl??o.image_url??o.imageUrl??'';return{name:name||baseId,baseId,level:Number(levelRaw),gear:Number(gearRaw??0),stars:Number(rarityRaw),power:Number(o.power||0),combatType:Number(o.combat_type??o.combatType??1),relic_tier:Number(relicTierRaw)||0,thumbnailName,portraitUrl,raw:u};}
 function extractApiCharacters(json){const direct=Array.isArray(json?.units)?json.units:[];let out=direct.map(unitToCharacter).filter(Boolean);if(!out.length){const candidates=[];walkObjects(json,o=>{const unit=unitToCharacter(o);if(unit)candidates.push(unit);});out=candidates;}const seen=new Set();return out.filter(x=>{const key=`${x.baseId||''}|${x.name||''}`;if(seen.has(key))return false;seen.add(key);return true;});}
 function profilePowerNumber(value){const n=Number(String(value??'').replace(/[\s,]/g,''));return Number.isFinite(n)&&n>0?n:0;}
 function normalizeProfilePower(total,characters,ships){const c=profilePowerNumber(characters),s=profilePowerNumber(ships);let t=profilePowerNumber(total);if(!t)t=c+s;return{total:t,characters:c,ships:s};}
@@ -1147,7 +1179,7 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.14-defense-percent-warning', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.16-gear-dependent-percent', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
@@ -1174,7 +1206,8 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
       }
     };
     worker.addEventListener('message', onMessage);
-    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_level: Number(character?.level)||null, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
+    const characterMetadata = optimizerRosterMetadata(character);
+    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_metadata: characterMetadata, character_level: characterMetadata.level, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
   });
 }
 
@@ -1255,74 +1288,74 @@ function modOwnerKey(m){
   }
   return '';
 }
-function getCharacterMods(c){
-  if(!c) return [];
+let characterModsIndexCache=null;
+function getCharacterModsIndex(){
+  if(characterModsIndexCache?.roster===rosterCharacters&&characterModsIndexCache?.sourceMods===mods)return characterModsIndexCache.index;
+  const characters=Array.isArray(rosterCharacters)?rosterCharacters:[];
+  const sourceMods=Array.isArray(mods)?mods:[];
   const aliasOwners=new Map(),baseIdOwners=new Map();
-  for(const unit of rosterCharacters||[]){
-    const ck=characterKey(unit);
+  for(const unit of characters){
+    const owner=characterKey(unit);
     const base=compactKey(unit?.baseId??unit?.base_id??unit?.characterId??unit?.character_id);
-    if(base){
-      if(!baseIdOwners.has(base))baseIdOwners.set(base,new Set());
-      baseIdOwners.get(base).add(ck);
-    }
+    if(base){if(!baseIdOwners.has(base))baseIdOwners.set(base,new Set());baseIdOwners.get(base).add(owner);}
     const keys=new Set([unit?.baseId,unit?.base_id,unit?.characterId,unit?.character_id,unit?.name,unit?.character].map(compactKey).filter(Boolean));
-    for(const key of keys){
-      if(!aliasOwners.has(key))aliasOwners.set(key,new Set());
-      aliasOwners.get(key).add(ck);
-    }
+    for(const key of keys){if(!aliasOwners.has(key))aliasOwners.set(key,new Set());aliasOwners.get(key).add(owner);}
   }
-  // Le baseId est l'identité canonique : il reste prioritaire même si sa chaîne
-  // ressemble au nom affiché d'une autre unité (ex. AHSOKATANO / GLAHSOKATANO).
-  const ownKey=characterKey(c);
-  const ownBase=compactKey(c.baseId??c.base_id??c.characterId??c.character_id);
-  const aliases=new Set();
-  if(ownBase&&baseIdOwners.get(ownBase)?.size===1&&baseIdOwners.get(ownBase).has(ownKey))aliases.add(ownBase);
-  for(const key of [c.baseId,c.base_id,c.characterId,c.character_id,c.name,c.character].map(compactKey).filter(Boolean)){
-    const owners=aliasOwners.get(key),baseOwners=baseIdOwners.get(key);
-    if(owners?.size===1&&owners.has(ownKey)&&(!baseOwners||(baseOwners.size===1&&baseOwners.has(ownKey))))aliases.add(key);
+  // Seuls les alias non ambigus sont utilisables. Le baseId garde la priorité.
+  const uniqueOwners=new Map();
+  // A unique canonical baseId wins even when it collides with another unit's display name.
+  for(const [key,owners] of baseIdOwners)if(owners.size===1)uniqueOwners.set(key,[...owners][0]);
+  for(const [key,owners] of aliasOwners){
+    const baseOwners=baseIdOwners.get(key);
+    if(!uniqueOwners.has(key)&&owners.size===1&&!baseOwners)uniqueOwners.set(key,[...owners][0]);
   }
   const slots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
-  const rankOwner=(m)=>{
-    const raw=m?._rawOwnerFields||[];
-    // Prefer an explicit equipped-unit base ID over a display label.
-    for(const value of raw){
-      if(value==null)continue;
-      const k=compactKey(typeof value==='object'?(value.baseId??value.base_id??value.characterId??value.character_id??value.id??value.name??''):value);
-      if(k&&aliases.has(k))return 3;
+  const byOwner=new Map();
+  const add=(owner,mod,score)=>{
+    if(!owner)return;
+    if(!byOwner.has(owner))byOwner.set(owner,{slots:new Map(),ambiguous:new Set()});
+    const state=byOwner.get(owner),slot=String(mod.slot||'');
+    if(!slots.includes(slot)||state.ambiguous.has(slot))return;
+    const previous=state.slots.get(slot),previousScore=previous?previous._ownerScore:0;
+    if(!previous||score>previousScore){state.slots.set(slot,{...mod,_ownerScore:score});return;}
+    if(score===previousScore){
+      const previousId=String(previous.game_id||previous.id||'');
+      const currentId=String(mod.game_id||mod.id||'');
+      if(!previousId||!currentId||previousId!==currentId){state.slots.delete(slot);state.ambiguous.add(slot);}
     }
-    const owner=modOwnerKey(m);
-    if(owner&&aliases.has(owner))return 2;
-    const base=compactKey(m?.ownerBaseId||m?.equippedToId||m?.equipped_to_id||'');
-    if(base&&aliases.has(base))return 3;
-    return 0;
   };
-  const matched=mods.map((raw,i)=>{
+  for(let index=0;index<sourceMods.length;index++){
+    const raw=sourceMods[index];
     const normalized=normalizeModForDisplay(raw);
-    return {...normalized,_index:i,_rawOwnerFields:[
+    const mod={...normalized,_index:index,_rawOwnerFields:[
       raw?.characterId,raw?.character_id,raw?.equippedToId,raw?.equipped_to_id,
       raw?.unit_equiped,raw?.unitEquiped,raw?.equippedTo,raw?.equipped_to,
       raw?.characterName,raw?.character,raw?.location,raw?.usingIn
     ]};
-  }).filter(m=>rankOwner(m)>0);
-  // One equipped mod per physical slot. Duplicate API aliases/rows must never
-  // inflate a character's equipment grid beyond the six real slots.
-  const bySlot=new Map(),ambiguousSlots=new Set();
-  for(const m of matched){
-    const slot=String(m.slot||'');
-    if(!slots.includes(slot)||ambiguousSlots.has(slot))continue;
-    const previous=bySlot.get(slot);
-    const score=rankOwner(m);
-    const previousScore=previous?rankOwner(previous):0;
-    if(!previous||score>previousScore){bySlot.set(slot,m);continue;}
-    if(score===previousScore){
-      const previousId=String(previous.game_id||previous.id||'');
-      const currentId=String(m.game_id||m.id||'');
-      // Des lignes dupliquées portant le même identifiant sont fusionnables.
-      // Deux mods distincts revendiquant le même slot sont ambigus : aucun n'est choisi.
-      if(!previousId||!currentId||previousId!==currentId){bySlot.delete(slot);ambiguousSlots.add(slot);}
+    const rawOwners=new Set();
+    for(const value of mod._rawOwnerFields){
+      if(value==null)continue;
+      const key=compactKey(typeof value==='object'?(value.baseId??value.base_id??value.characterId??value.character_id??value.id??value.name??''):value);
+      const owner=uniqueOwners.get(key);if(owner)rawOwners.add(owner);
     }
+    // Multiple raw ownership fields resolving to different roster units are
+    // contradictory evidence. Keep the mod unassigned rather than duplicating it.
+    if(rawOwners.size>1)continue;
+    if(rawOwners.size===1){add(rawOwners.values().next().value,mod,3);continue;}
+    const normalizedOwner=uniqueOwners.get(modOwnerKey(mod));
+    if(normalizedOwner){add(normalizedOwner,mod,2);continue;}
+    const base=compactKey(mod.ownerBaseId||mod.equippedToId||mod.equipped_to_id||'');
+    const baseOwner=uniqueOwners.get(base);
+    if(baseOwner)add(baseOwner,mod,3);
   }
-  return slots.map(slot=>bySlot.get(slot)).filter(Boolean);
+  const index=new Map();
+  for(const [owner,state] of byOwner)index.set(owner,slots.map(slot=>state.slots.get(slot)).filter(Boolean).map(({_ownerScore,...mod})=>mod));
+  characterModsIndexCache={roster:rosterCharacters,sourceMods:mods,index};
+  return index;
+}
+function getCharacterMods(c){
+  if(!c)return [];
+  return getCharacterModsIndex().get(characterKey(c))||[];
 }
 function modSpeedMetrics(m){ return window.HolocronModEngine.speedMetrics(m); }
 function modPrimarySpeed(m){ return window.HolocronModEngine.speedMetrics(m).primarySpeed; }
@@ -1459,3 +1492,4 @@ const HOLOCRON_GALACTIC_LEGENDS = new Set([
   // Historical aliases retained for older exports.
   'JEDIMASTERLUKE','JABBA','GLAHSOKA','AHSOKATANOGL','JML','SLKR','SEE','JMK','LV'
 ]);
+window.HOLOCRON_GALACTIC_LEGENDS=HOLOCRON_GALACTIC_LEGENDS;

@@ -20,8 +20,6 @@
     25: { key: 'armorPenetration', name: 'Armor Penetration', unit: 'percentagePoints' },
     26: { key: 'resistancePenetration', name: 'Resistance Penetration', unit: 'percentagePoints' },
     28: { key: 'protection', name: 'Protection', unit: 'flat' },
-    31: { key: 'physicalDamage', name: 'Physical Damage', unit: 'percentagePoints' },
-    32: { key: 'specialDamage', name: 'Special Damage', unit: 'percentagePoints' },
     33: { key: 'physicalAccuracy', name: 'Physical Accuracy', unit: 'percentagePoints' },
     34: { key: 'specialAccuracy', name: 'Special Accuracy', unit: 'percentagePoints' },
     35: { key: 'physicalCriticalAvoidance', name: 'Physical Critical Avoidance', unit: 'percentagePoints' },
@@ -125,9 +123,18 @@
     let value = numeric(sourceValue);
     const isUnscaled = !hasExplicitValue && (nested.unscaledDecimalValue != null || nested.unscaled_decimal_value != null ||
       raw.unscaledDecimalValue != null || raw.unscaled_decimal_value != null);
+    const hasComlinkRollValues = Array.isArray(nested.unscaled_roll_values) ||
+      Array.isArray(nested.unscaledRollValues) || Array.isArray(raw.unscaled_roll_values) ||
+      Array.isArray(raw.unscaledRollValues);
     if (value != null && isUnscaled) {
       value /= 100000000;
       if (unit === 'percentagePoints') value *= 100;
+    } else if (value != null && hasComlinkRollValues) {
+      // SWGOH.GG's Comlink-shaped secondary_stats.value is stored at a
+      // different scale from the displayed stat: x100 for percentages,
+      // x10000 for flat ratings. Convert once before any scoring/projection.
+      if (unit === 'percentagePoints') value /= 100;
+      else if (unit === 'flat') value /= 10000;
     } else if (value != null && display != null && /%/.test(String(display))) {
       unit = 'percentagePoints';
     }
@@ -147,7 +154,17 @@
     return NAME_ALIASES[compact(name)] || null;
   }
 
-  function calculateSpeed(baseSpeed, mods) {
+  function verifiedStatComponents(statComponents, statName, totalValue) {
+    if (statComponents?.source !== 'Crinolo.stats.base+stats.gear') return null;
+    const base = numeric(statComponents.base?.[statName]);
+    const gear = numeric(statComponents.gear?.[statName]);
+    const total = numeric(totalValue);
+    if (base == null || gear == null || total == null) return null;
+    if (Math.abs((base + gear) - total) > 1e-6) return null;
+    return { base, gear };
+  }
+
+  function calculateSpeed(baseSpeed, mods, gearLevel, statComponents = null) {
     const base = numeric(baseSpeed);
     let modSpeed = 0;
     let speedPercent = 0;
@@ -166,18 +183,25 @@
     const setBonuses = calculateSetBonuses(mods);
     const speedSetCount = (Array.isArray(mods) ? mods : []).filter(mod => canonicalSetFromMod(mod) === 'speed').length;
     const hasFourPieceSpeedSet = speedSetCount >= 4;
+    const setBonusPercent = setBonuses.speed || 0;
     if (base == null) missing.push('base_speed');
     missing.push(...(setBonuses.missing || []));
+    const components = (setBonusPercent || speedPercent)
+      ? verifiedStatComponents(statComponents, 'Speed', base)
+      : null;
+    if ((setBonusPercent || speedPercent) && !components) {
+      missing.push('speed:gear_component_required');
+    }
     const missingUnique = [...new Set(missing)];
     if (missingUnique.length) {
       return { complete: false, total: null, modSpeed, setBonus: null, hasFourPieceSpeedSet, missing: missingUnique };
     }
-    const setBonusPercent = setBonuses.speed || 0;
-    const setBonus = setBonusPercent ? Math.floor(base * setBonusPercent / 100) : 0;
+    const modBaseSpeed = components?.base ?? base;
+    const setBonus = setBonusPercent ? modBaseSpeed * setBonusPercent / 100 : 0;
     const modPercent = speedPercent;
     return {
       complete: true,
-      total: base + modSpeed + setBonus + base * modPercent / 100,
+      total: base + modSpeed + setBonus + modBaseSpeed * modPercent / 100,
       modSpeed,
       setBonus,
       hasFourPieceSpeedSet: setBonusPercent > 0
@@ -210,7 +234,13 @@
       }
     }
     level = numeric(level);
-    const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level]);
+    const gearLevel = numeric(profile?.gear_level ?? profile?.gearLevel);
+    // Percentage mod bonuses are calculated from Crinolo stats.base, before current
+    // gear-piece secondary stats. The static profile schema has no verified gear
+    // component field, so gear level alone cannot authorize these projections.
+    const gearComponentKnownForPercent = false;
+    // Gear level is part of the projection contract and therefore part of the cache key.
+    const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level, gearLevel, profile?.stat_components ?? null]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
     if (cachedProjection) return { stats: { ...cachedProjection.stats }, complete: cachedProjection.complete, missing: [...cachedProjection.missing] };
     const base = {};
@@ -281,14 +311,28 @@
     };
 
     for (const key of ['health', 'protection']) {
-      if (flat(key) || pct(key)) {
+      const ratio = pct(key);
+      if (flat(key) || ratio) {
         if (!has(key)) missing.push(key);
-        else setResult(key, get(key) + flat(key) + get(key) * pct(key));
+        else {
+          if (ratio && !gearComponentKnownForPercent) missing.push(key + ':gear_component_required');
+          setResult(key, get(key) + flat(key) + get(key) * (gearComponentKnownForPercent ? ratio : 0));
+        }
       }
     }
-    if (flat('speed') || pct('speed')) {
+    const speedRatio = pct('speed');
+    const speedSetRatio = setBonuses.speed || 0;
+    if (flat('speed') || speedRatio || speedSetRatio) {
       if (!has('speed')) missing.push('speed');
-      else setResult('speed', calculateSpeed(get('speed'), mods).total);
+      else {
+        const speedProjection = calculateSpeed(get('speed'), mods, gearLevel, profile?.stat_components);
+        if (!speedProjection.complete) {
+          missing.push(...speedProjection.missing);
+          if (Number.isFinite(get('speed')) && Number.isFinite(speedProjection.modSpeed)) {
+            setResult('speed', get('speed') + speedProjection.modSpeed);
+          }
+        } else setResult('speed', speedProjection.total);
+      }
     }
 
     const offenseFlat = flat('offense');
@@ -298,7 +342,11 @@
       const directRatio = pct(key);
       if (offenseFlat || offenseRatio || directFlat || directRatio) {
         if (!has(key)) missing.push(key);
-        else setResult(key, get(key) + offenseFlat + directFlat + get(key) * (offenseRatio + directRatio));
+        else {
+          if ((offenseRatio || directRatio) && !gearComponentKnownForPercent) missing.push('offense:gear_component_required');
+          const appliedRatio = gearComponentKnownForPercent ? offenseRatio + directRatio : 0;
+          setResult(key, get(key) + offenseFlat + directFlat + get(key) * appliedRatio);
+        }
       }
     }
 
@@ -309,16 +357,20 @@
       if (!Number.isFinite(characterLevel) || characterLevel <= 0) missing.push('level');
       else {
         const levelEffect = characterLevel * 7.5;
-        // Defense % needs the current gear-tier compoundable component, which is not
-        // present in the SWGOH.GG base profile. Do not infer it from displayed percentages.
-        if (defenseRatio) missing.push('defense:gear_component_required');
+        // Crinolo applies Defense % to stats.base, then adds equipped-gear
+        // secondary stats separately. The static profiles do not carry that split;
+        // gear_level alone is not a verified gear-component breakdown. Refuse every
+        // Defense % projection until the profile supplies the exact source component.
+        const canProjectDefensePercent = !defenseRatio;
+        if (defenseRatio && !canProjectDefensePercent) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
           const displayPercent = get(key) > 1 ? get(key) : get(key) * 100;
           const ratio = displayPercent / 100;
           if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
           const baseRating = ratio * levelEffect / (1 - ratio);
-          const finalRating = baseRating + defenseFlat;
+          const defensePercentBonus = defenseRatio && canProjectDefensePercent ? baseRating * defenseRatio : 0;
+          const finalRating = baseRating + defenseFlat + defensePercentBonus;
           const finalPercent = finalRating / (levelEffect + finalRating) * 100;
           setResult(key, finalPercent);
         }
@@ -561,6 +613,10 @@
     const level = numeric(mod.level);
     const validLevel = Number.isInteger(level) && level >= 1 && level <= 15;
     const expectedSecondaries = validLevel ? Math.min(4, Math.floor(level / 3)) : null;
+    // Some Comlink snapshots serialize pips as 0 while rarity carries the actual 1–6 dots.
+    // Select the first valid dot count instead of letting the zero sentinel mask rarity.
+    const pips = [mod.pips, mod.dots, mod.dotCount, mod.rarity]
+      .map(numeric).find(value => Number.isInteger(value) && value >= 1 && value <= 6) ?? null;
     const slot = slotFromDefinitionId(mod.definitionId) ||
       canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot);
     const normalized = Object.freeze({
@@ -569,7 +625,7 @@
       set,
       setName: SET_DEFINITIONS[set]?.name || null,
       slot,
-      pips: numeric(mod.pips ?? mod.dots ?? mod.dotCount ?? mod.rarity) ?? null,
+      pips,
       primary,
       secondaries: Object.freeze(secondaries),
       expectedSecondaries,
@@ -581,7 +637,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.23',
+    version: '0.3.28',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,

@@ -19,8 +19,8 @@ class VisionnaireContractTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
         self.assertIn('id="visionnaire"', html)
         self.assertIn('data-page="visionnaire"', html)
-        self.assertIn("modules/visionnaire.js?v=4.1.79-kyber-refresh-status", html)
-        self.assertIn("./modules/visionnaire.js?v=4.1.79-kyber-refresh-status", sw)
+        self.assertIn("modules/visionnaire.js?v=4.1.81-validated-speed-projection", html)
+        self.assertIn("./modules/visionnaire.js?v=4.1.81-validated-speed-projection", sw)
         self.assertIn("visionnaire.css?v=4.1.61-kyber-refresh", html)
 
     def test_full_roster_and_explicit_slot_selection_are_used(self):
@@ -138,6 +138,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("mod._sourcePriorityKnown!==true", js)
         self.assertIn("exchangeSetBonusesPreserved(before,after)", js)
         self.assertIn("diverse.length>=24", js)
+        self.assertIn(".sort(visionnaireCandidatePriority)", js)
+        self.assertIn("const usage=mod=>", js)
         self.assertIn("Échantillonnage équilibré de tous les slots avec filtre vitesse préalable", js)
         self.assertIn("attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000)", js)
         self.assertIn("speedPruned++", js)

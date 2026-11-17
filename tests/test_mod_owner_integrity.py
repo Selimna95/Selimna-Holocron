@@ -14,13 +14,20 @@ class ModOwnerIntegrityTests(unittest.TestCase):
         cls.seigneur = (ROOT / "modules/seigneur.js").read_text(encoding="utf-8")
         cls.seigneur_impact = (ROOT / "modules/seigneur-impact.js").read_text(encoding="utf-8")
 
-    def test_core_prefers_unique_base_id_when_display_name_collides(self):
-        start = self.core.index("function getCharacterMods(c){")
-        end = self.core.index("\nfunction modSpeedMetrics(m)", start)
+    def test_core_indexes_mod_owners_once_and_keeps_base_id_identity(self):
+        start = self.core.index("function getCharacterModsIndex(){")
+        end = self.core.index("\nfunction getCharacterMods(c)", start)
         body = self.core[start:end]
         self.assertIn("baseIdOwners", body)
-        self.assertIn("ownBase", body)
-        self.assertIn("baseOwners", body)
+        self.assertIn("uniqueOwners", body)
+        self.assertIn("rawOwners", body)
+        self.assertIn("rawOwners.size>1", body)
+        self.assertIn("rawOwners.size===1", body)
+        self.assertIn("characterModsIndexCache", body)
+        lookup_start = self.core.index("function getCharacterMods(c){")
+        lookup_end = self.core.index("\nfunction modSpeedMetrics(m)", lookup_start)
+        lookup = self.core[lookup_start:lookup_end]
+        self.assertIn("getCharacterModsIndex().get(characterKey(c))", lookup)
 
     def test_disciple_resolves_exact_owner_without_partial_matches(self):
         start = self.disciple.index("function reallocationSourceRows(selected){")

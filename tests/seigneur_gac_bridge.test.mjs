@@ -56,3 +56,81 @@ assert.equal(stalePriority.known,false,'Stale GAC snapshots must never rank dono
 assert.match(stalePriority.reason,/périmées/i);
 const freshPriority=prioritySandbox.priority({baseId:'REY'},{sourceStatus:'observed',formatSeasons:{}});
 assert.equal(freshPriority.known,true,'Fresh observed GAC data remains eligible for donor ranking');
+
+
+// Real roster exports may omit ship crew arrays. Recover pilot links from the
+// canonical game-data map and include verified fleet usage in donor priority.
+const crewStart=seigneurSource.indexOf('const SEIGNEUR_SHIP_CREW_BY_BASE_ID =');
+const crewEnd=seigneurSource.indexOf('function seigneurDonorPriority(',crewStart);
+assert.ok(crewStart>=0&&crewEnd>crewStart,'Canonical ship-to-crew map and fleet resolver must exist');
+const crewSandbox=vm.createContext({
+  compactKey:value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  rosterShips:[{baseId:'HOUNDSTOOTH',name:"Hound's Tooth",raw:{}}],
+});
+vm.runInContext(seigneurSource.slice(crewStart,crewEnd)+
+  '\nthis.fleetUsage=seigneurCharacterFleetUsage;this.shipCrew=seigneurShipCrewAliases;this.shipUsageMap=seigneurShipUsageMap;',crewSandbox);
+const mappedFleet=crewSandbox.fleetUsage(
+  {baseId:'BOSSK',name:'Bossk'},
+  {ships:{"Hound's Tooth":{uses:77}},fleets:[]}
+);
+assert.equal(mappedFleet.known,true,'A roster ship with canonical crew metadata must be associated to its pilot');
+assert.equal(mappedFleet.uses,77,'The pilot must inherit the observed GAC usage of their owned ship');
+assert.equal(mappedFleet.shipCount,1);
+assert.deepEqual(Array.from(crewSandbox.shipCrew(crewSandbox.rosterShips[0])),['BOSSK']);
+const missingFleet=crewSandbox.fleetUsage(
+  {baseId:'BOSSK',name:'Bossk'},
+  {ships:{},fleets:[]}
+);
+assert.equal(missingFleet.known,false,'An owned pilot ship with no observed GAC usage remains unknown, never zero');
+assert.equal(missingFleet.shipCount,1);
+assert.equal(crewSandbox.shipCrew({baseId:'YWINGREBEL',name:'Rebel Y-wing',raw:{}}).length,0,
+  'Crewless ships must not be assigned an invented pilot');
+assert.equal(crewSandbox.shipCrew({baseId:'BWINGREBEL',name:'Rebel B-wing',raw:{}})[0],'CAPTAINDROGAN',
+  'The canonical mapping must include ships beyond the sample pilot');
+
+const incompleteRosterSandbox=vm.createContext({
+  compactKey:value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  rosterShips:[
+    {baseId:'HOUNDSTOOTH',name:"Hound's Tooth",raw:{}},
+    {baseId:'NEWUNMAPPEDSHIP',name:'New unmapped ship',raw:{}}
+  ]
+});
+vm.runInContext(seigneurSource.slice(crewStart,crewEnd)+
+  ';this.fleetUsage=seigneurCharacterFleetUsage;',incompleteRosterSandbox);
+const incompleteCrewUsage=incompleteRosterSandbox.fleetUsage(
+  {baseId:'BOSSK',name:'Bossk'},
+  {ships:{"Hound's Tooth":{uses:77}},fleets:[]}
+);
+assert.equal(incompleteCrewUsage.known,false,
+  'An unmapped owned ship must prevent an unsupported zero fleet-use assumption');
+assert.match(incompleteCrewUsage.reason,/incomplète/i);
+
+const aggregatedShipUsage=crewSandbox.shipUsageMap({
+  ships:{"Hound's Tooth":{uses:77}},
+  fleets:[{uses:77,ships:["Hound's Tooth"]}]
+});
+assert.equal(aggregatedShipUsage.get('HOUNDSTOOTH'),77,
+  'Fleet compositions must not be added again when the aggregate ship total already exists');
+const fallbackShipUsage=crewSandbox.shipUsageMap({
+  ships:{},
+  fleets:[{uses:20,ships:["Hound's Tooth"]},{uses:30,ships:["Hound's Tooth"]}]
+});
+assert.equal(fallbackShipUsage.get('HOUNDSTOOTH'),50,
+  'Fleet compositions must still aggregate when the explicit ship totals are absent');
+
+const actualGacData=JSON.parse(fs.readFileSync(new URL('../gac-usage.json',import.meta.url),'utf8'));
+const actualSeason84=actualGacData.seasons.find(season=>Number(season.season)===84);
+assert.ok(actualSeason84&&Object.keys(actualSeason84.ships||{}).length>0,'The repository must expose its observed season-84 ship totals');
+const actualUsageMap=crewSandbox.shipUsageMap(actualSeason84);
+const canonicalShipKey=value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+for(const [shipName,record] of Object.entries(actualSeason84.ships||{})){
+  const compositionTotal=(actualSeason84.fleets||[]).reduce((sum,fleet)=>{
+    const ships=fleet?.ships||fleet?.units||[];
+    return ships.some(ship=>canonicalShipKey(ship)===canonicalShipKey(shipName))
+      ?sum+(Number(fleet.uses)||0):sum;
+  },0);
+  assert.equal(compositionTotal,Number(record.uses),
+    'Observed season-84 fleet composition sum must match the stored ship aggregate for '+shipName);
+  assert.equal(actualUsageMap.get(canonicalShipKey(shipName)),Number(record.uses),
+    'The donor usage map must not double-count actual season-84 ship usage for '+shipName);
+}
