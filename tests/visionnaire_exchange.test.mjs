@@ -43,7 +43,17 @@ assert.ok(js.includes('searchSpace'), 'Search diagnostics must expose the comple
 assert.ok(js.includes('acceptedCount++'), 'The engine must count every valid scenario in the explored sample');
 assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not terminate the search before the sample is exhausted');
 assert.ok(js.includes('return !reference.length||reference.some'), 'Missing primary reference data must not reject every candidate');
-assert.ok(js.includes('modTotalSpeed(b)-modTotalSpeed(a)'), 'Candidate search must prioritize speed-preserving mods before donor-usage tie breaks');
+assert.ok(js.includes('.sort(visionnaireCandidatePriority)'), 'Candidate search must rank free mods and lowest-GAC-use donors before speed');
+const priorityStart=js.indexOf('  function visionnaireCandidatePriority(');
+const priorityEnd=js.indexOf('  const exchangeModSummary',priorityStart);
+assert.ok(priorityStart>=0&&priorityEnd>priorityStart,'Visionnaire donor-priority comparator must exist');
+const prioritySandbox={modTotalSpeed:mod=>Number(mod?.speed||0)};
+vm.createContext(prioritySandbox);
+vm.runInContext(js.slice(priorityStart,priorityEnd)+'\\nthis.priority=visionnaireCandidatePriority;',prioritySandbox);
+const priority=prioritySandbox.priority;
+assert.ok(priority({_sourceOwnerKey:null,speed:0},{_sourceOwnerKey:'DONOR',_sourceUsage:0,speed:100})<0,'Free inventory must precede donor-owned mods');
+assert.ok(priority({_sourceOwnerKey:'RARE',_sourceUsage:3,speed:0},{_sourceOwnerKey:'COMMON',_sourceUsage:40,speed:100})<0,'Lower GAC usage must beat a much faster but frequently used donor');
+assert.ok(priority({_sourceOwnerKey:'DONOR',_sourceUsage:8,speed:25},{_sourceOwnerKey:'DONOR2',_sourceUsage:8,speed:10})<0,'Speed is a tie-breaker when GAC usage is equal');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
 assert.ok(js.includes('baseSpeed+retainedSpeed+combo.reduce'), 'Theoretical speed ceiling must include the character base speed');
 assert.ok(js.includes('if(!beforeProjection.complete||!afterProjection.complete)'), 'Target speed projections must fail closed when incomplete');
