@@ -210,12 +210,16 @@ mods = [
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10},
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 0}
 ]
-moff_defense_missing = optimizer.final_stats(mods, profile['base_stats'], profile).get('_projection_missing', [])
+moff_defense_missing = optimizer.final_stats_many(
+ [mods], profile['base_stats'], profile,
+ required_stats={'Speed', 'Health', 'Protection'}
+)[0].get('_projection_missing', [])
 profile = dict(profile, gear_level=12)
-non_g13_defense_missing = optimizer.final_stats(
- [{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}],
- profile['base_stats'], profile
-).get('_projection_missing', [])
+non_g13_defense_missing = optimizer.final_stats_many(
+ [[{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}]],
+ profile['base_stats'], profile,
+ required_stats={'Speed', 'Health', 'Protection'}
+)[0].get('_projection_missing', [])
 non_g13_defense_reported = 'defense:gear_component_required' in non_g13_defense_missing
 `);
 assert.equal(pyodide.runPython("'defense:gear_component_required' in moff_defense_missing"), false);
