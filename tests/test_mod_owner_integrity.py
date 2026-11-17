@@ -16,14 +16,14 @@ class ModOwnerIntegrityTests(unittest.TestCase):
 
     def test_core_indexes_mod_owners_once_and_keeps_base_id_identity(self):
         start = self.core.index("function getCharacterModsIndex(){")
-        end = self.core.index("\\nfunction getCharacterMods(c)", start)
+        end = self.core.index("\nfunction getCharacterMods(c)", start)
         body = self.core[start:end]
         self.assertIn("baseIdOwners", body)
         self.assertIn("uniqueOwners", body)
         self.assertIn("rawOwners", body)
         self.assertIn("characterModsIndexCache", body)
         lookup_start = self.core.index("function getCharacterMods(c){")
-        lookup_end = self.core.index("\\nfunction modSpeedMetrics(m)", lookup_start)
+        lookup_end = self.core.index("\nfunction modSpeedMetrics(m)", lookup_start)
         lookup = self.core[lookup_start:lookup_end]
         self.assertIn("getCharacterModsIndex().get(characterKey(c))", lookup)
 
