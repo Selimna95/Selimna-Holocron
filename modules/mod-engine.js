@@ -158,7 +158,16 @@
     const total = numeric(totalValue);
     // At G13 the character has no equipped gear pieces. Crinolo's stats.gear
     // is derived only from char.equipped, so the equipment contribution is exactly zero.
-    if (numeric(gearLevel) === 13 && total != null) return { base: total, gear: 0 };
+    if (numeric(gearLevel) === 13) {
+      if (total == null) return null;
+      if (statComponents?.source === 'Crinolo.stats.base+stats.gear') {
+        const reportedBase = numeric(statComponents.base?.[statName]);
+        const reportedGear = numeric(statComponents.gear?.[statName]);
+        if (reportedBase == null || reportedGear == null ||
+            Math.abs(reportedBase - total) > 1e-6 || Math.abs(reportedGear) > 1e-6) return null;
+      }
+      return { base: total, gear: 0 };
+    }
     if (statComponents?.source !== 'Crinolo.stats.base+stats.gear') return null;
     const base = numeric(statComponents.base?.[statName]);
     const gear = numeric(statComponents.gear?.[statName]);

@@ -288,8 +288,8 @@ const speedPercentMods = [{
   secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 }
 }];
 const g13SpeedPercentWithoutBreakdown = engine.calculateSpeed(100, speedPercentMods, 13);
-assert.equal(g13SpeedPercentWithoutBreakdown.complete, false, 'G13 alone must not authorize Speed %');
-assert.ok(g13SpeedPercentWithoutBreakdown.missing.includes('speed:gear_component_required'));
+assert.equal(g13SpeedPercentWithoutBreakdown.complete, true, 'G13 has a known zero equipment contribution for Speed %');
+assert.equal(g13SpeedPercentWithoutBreakdown.total, 105);
 const verifiedSpeedComponents = {
   source: 'Crinolo.stats.base+stats.gear',
   base: { Speed: 100 }, gear: { Speed: 0 }
@@ -314,8 +314,9 @@ const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 }));
 const g13SpeedSetWithoutBreakdown = engine.calculateSpeed(153, completeSpeedSet, 13);
-assert.equal(g13SpeedSetWithoutBreakdown.complete, false, 'A G13 Speed set still requires the exact Crinolo base/gear split');
-assert.ok(g13SpeedSetWithoutBreakdown.missing.includes('speed:gear_component_required'));
+assert.equal(g13SpeedSetWithoutBreakdown.complete, true, 'G13 Speed set needs no synthetic gear split');
+assert.equal(g13SpeedSetWithoutBreakdown.setBonus, 15);
+assert.equal(g13SpeedSetWithoutBreakdown.total, 168);
 const verifiedGideonSpeedComponents = {
   source: 'Crinolo.stats.base+stats.gear',
   base: { Speed: 153 }, gear: { Speed: 0 }
@@ -323,6 +324,9 @@ const verifiedGideonSpeedComponents = {
 const verifiedGideonSpeedSet = engine.calculateSpeed(153, completeSpeedSet, 13, verifiedGideonSpeedComponents);
 assert.equal(verifiedGideonSpeedSet.setBonus, 15, 'Crinolo floors the percentage-derived Speed set bonus');
 assert.equal(verifiedGideonSpeedSet.total, 168);
+const fractionalSpeedSet = engine.calculateSpeed(153.9, completeSpeedSet, 13);
+assert.equal(fractionalSpeedSet.setBonus, 15, 'Speed set bonus floors fractional base × 10%');
+assert.equal(fractionalSpeedSet.total, 168.9);
 const gearSpeedComponents = {
   source: 'Crinolo.stats.base+stats.gear',
   base: { Speed: 153 }, gear: { Speed: 2 }
