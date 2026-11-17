@@ -82,6 +82,7 @@ const ownerIndexContext=vm.createContext({
     {baseId:'GLAHSOKATANO',name:'Ahsoka Tano'},
     {baseId:'AHSOKATANO',name:'Ahsoka Tano (Snips)'}
   ],
+  characterModsIndexCache:null,
   mods:[
     {id:'gl-square',slot:'Square',characterId:'GLAHSOKATANO'},
     {id:'snips-square',slot:'Square',characterId:'AHSOKATANO'},
