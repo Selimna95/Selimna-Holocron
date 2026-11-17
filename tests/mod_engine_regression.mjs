@@ -74,13 +74,13 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
 
-const engineSandbox = { module: { exports: {} } };
-vm.createContext(engineSandbox);
-vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
-const sharedModEngine = engineSandbox.module.exports;
-const coreModContext = vm.createContext({ window: { HolocronModEngine: sharedModEngine } });
-load(core, ['numericValue', 'statNameFromAny', 'statValueFromAny', 'statObjectFromAny', 'normalizeMod'], coreModContext);
-const coreNormalizedComlinkMod = coreModContext.normalizeMod({
+const engineScaleSandbox = { module: { exports: {} } };
+vm.createContext(engineScaleSandbox);
+vm.runInContext(read('../modules/mod-engine.js'), engineScaleSandbox);
+const sharedScaleEngine = engineScaleSandbox.module.exports;
+const coreScaleContext = vm.createContext({ window: { HolocronModEngine: sharedScaleEngine } });
+load(core, ['numericValue', 'statNameFromAny', 'statValueFromAny', 'statObjectFromAny', 'normalizeMod'], coreScaleContext);
+const coreNormalizedComlinkMod = coreScaleContext.normalizeMod({
   game_id: 'core-comlink-defense-scale', slot: 7, set: '1', level: 15,
   pips: 0, rarity: 5, primary_stat: 'Health %', primary_value: 5.88,
   secondary_stats: [
