@@ -215,6 +215,35 @@ assert.equal(g13DefenseWarningResult.count, 1);
 assert.ok(!g13DefenseWarningResult.warnings.includes('defense_percent_unavailable'));
 assert.ok(!g13DefenseWarningResult.warnings.includes('gear_percent_unavailable'));
 
+const secondaryDefenseSearch = JSON.parse(pyodide.runPython(`import json
+secondary_defense_mods = []
+for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):
+    secondary_defense_mods.append({
+        'game_id': 'secondary-defense-' + slot,
+        'slot': slot, 'level': 15,
+        'set_name': ['Health', 'Offense', 'Speed', 'Defense', 'Potency', 'Tenacity'][index],
+        'primary_stat': 'Health', 'primary_value': 100,
+        'secondary_1_stat': {'stat_id': 49, 'name': 'Defense', 'unscaledDecimalValue': 10000000},
+        'secondary_2_stat': 'Speed', 'secondary_2_value': 10,
+        'secondary_3_stat': 'Potency %', 'secondary_3_value': 1,
+        'secondary_4_stat': 'Tenacity %', 'secondary_4_value': 1
+    })
+result = optimizer.optimize_kyber(
+    secondary_defense_mods, base_stats=profile['base_stats'], base_profile=profile,
+    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+)
+json.dumps({
+    'count': len(result),
+    'warnings': result[0].get('warnings', []) if result else [],
+    'stats': result[0].get('stats', {}) if result else {}
+})
+`));
+assert.equal(secondaryDefenseSearch.count, 1, 'A complete six-mod build with Comlink stat ID 49 secondaries must remain eligible at G13');
+assert.ok(!secondaryDefenseSearch.warnings.includes('defense_percent_unavailable'));
+assert.ok(!secondaryDefenseSearch.warnings.includes('gear_percent_unavailable'));
+assert.ok(Number.isFinite(secondaryDefenseSearch.stats.Armor), 'Defense % secondaries must be applied to Armor');
+assert.ok(Number.isFinite(secondaryDefenseSearch.stats.Resistance), 'Defense % secondaries must be applied to Resistance');
+
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
