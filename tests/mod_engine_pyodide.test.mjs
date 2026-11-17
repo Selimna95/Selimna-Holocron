@@ -244,6 +244,44 @@ assert.ok(!secondaryDefenseSearch.warnings.includes('gear_percent_unavailable'))
 assert.ok(Number.isFinite(secondaryDefenseSearch.stats.Armor), 'Defense % secondaries must be applied to Armor');
 assert.ok(Number.isFinite(secondaryDefenseSearch.stats.Resistance), 'Defense % secondaries must be applied to Resistance');
 
+const realComlinkDefenseSearch = JSON.parse(pyodide.runPython(`import json
+comlink_mods = []
+for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):
+    comlink_mods.append({
+        'game_id': 'real-comlink-defense-' + slot,
+        'slot': slot, 'level': 15, 'pips': 0, 'rarity': 5,
+        'set_name': ['Health', 'Offense', 'Speed', 'Defense', 'Potency', 'Tenacity'][index],
+        'primary_stat': 'Health %', 'primary_value': 5.88,
+        'secondary_stats': [
+            {'name': 'Defense', 'stat_id': 49, 'value': 237.1, 'display_value': '2.37%', 'unscaled_roll_values': [2336, 2616]},
+            {'name': 'Speed', 'stat_id': 5, 'value': 40000, 'display_value': '4', 'unscaled_roll_values': [40000]},
+            {'name': 'Health', 'stat_id': 1, 'value': 8350000, 'display_value': '835', 'unscaled_roll_values': [41085900, 42449400]},
+            {'name': 'Tenacity', 'stat_id': 18, 'value': 281.8, 'display_value': '2.82%', 'unscaled_roll_values': [1778, 1159, 1761]}
+        ]
+    })
+result = optimizer.optimize_kyber(
+    comlink_mods, base_stats=profile['base_stats'], base_profile=profile,
+    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+)
+json.dumps({
+    'count': len(result),
+    'stats': result[0].get('stats', {}) if result else {},
+    'mods': result[0].get('mods', []) if result else []
+})
+`));
+assert.equal(realComlinkDefenseSearch.count, 1, 'Real Comlink-shaped secondary_stats must survive the complete Python optimizer path');
+const expectedDefenseRatio = 6 * 2.371 / 100;
+for (const key of ['Armor', 'Resistance']) {
+  const basePercent = moffGideonProfile.base_stats[key] > 1
+    ? moffGideonProfile.base_stats[key] : moffGideonProfile.base_stats[key] * 100;
+  const levelEffect = moffGideonProfile.level * 7.5;
+  const baseRating = (basePercent / 100) * levelEffect / (1 - basePercent / 100);
+  const expected = (baseRating * (1 + expectedDefenseRatio)) /
+    (levelEffect + baseRating * (1 + expectedDefenseRatio)) * 100;
+  assert.ok(Math.abs(realComlinkDefenseSearch.stats[key] - expected) < 1e-8,
+    key + ' must use the real Comlink Defense % scale, not a 100x inflated value');
+}
+
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
