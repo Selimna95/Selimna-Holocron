@@ -270,7 +270,7 @@ json.dumps({
 assert.equal(g13DefenseWarningResult.count, 1, 'G13 builds must calculate Defense % using the known zero gear contribution');
 assert.ok(!g13DefenseWarningResult.missing.includes('defense:gear_component_required'));
 pyodide.globals.set('score_missing_profile_json', JSON.stringify({
-  base_stats: base, level: 85, gear_level: 13
+  base_stats: base, level: 85, gear_level: 12
 }));
 pyodide.globals.set('score_missing_mod_json', JSON.stringify({
   level: 1, set_name: 'Health', primary_stat: 'Health %', primary_value: 10
