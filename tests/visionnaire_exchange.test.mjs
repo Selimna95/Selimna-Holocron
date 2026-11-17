@@ -134,7 +134,7 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
     forgeProjectedModSpeed:(c,_p,list)=>{
       const rawBase=c.base_stats?.Speed;
       const base=rawBase==null?null:Number(rawBase);
-      const projection=sharedEngine.calculateSpeed(Number.isFinite(base)?base:null,list);
+      const projection=sharedEngine.calculateSpeed(Number.isFinite(base)?base:null,list,character?.gear_level);
       return {...projection,baseSpeed:Number.isFinite(base)?base:null};
     }
   });
