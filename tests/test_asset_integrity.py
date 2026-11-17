@@ -121,7 +121,7 @@ class AssetIntegrityTests(unittest.TestCase):
         self.assertIn("def validate_profile_compatibility(profile, character_metadata)", optimizer)
         self.assertIn("mod-engine.js?v=0.3.29", worker)
         self.assertIn("minimum_speed=None", optimizer)
-        self.assertIn("python/optimizer.py?v=3.5.13-gear-dependent-percent", worker)
+        self.assertIn("python/optimizer.py?v=3.5.14-speed-floor", worker)
         self.assertIn("optimizer-worker.mjs?v=3.5.16-gear-dependent-percent", core)
         self.assertIn("modules/core.js?v=4.2.41-canonical-owner-index", self.sw)
         self.assertIn("normalized.get(\"complete\") is not True", optimizer)
