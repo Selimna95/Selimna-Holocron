@@ -147,8 +147,9 @@
     return NAME_ALIASES[compact(name)] || null;
   }
 
-  function calculateSpeed(baseSpeed, mods) {
+  function calculateSpeed(baseSpeed, mods, gearLevel) {
     const base = numeric(baseSpeed);
+    const knownGearLevel = numeric(gearLevel);
     let modSpeed = 0;
     let speedPercent = 0;
     const missing = [];
@@ -166,13 +167,14 @@
     const setBonuses = calculateSetBonuses(mods);
     const speedSetCount = (Array.isArray(mods) ? mods : []).filter(mod => canonicalSetFromMod(mod) === 'speed').length;
     const hasFourPieceSpeedSet = speedSetCount >= 4;
+    const setBonusPercent = setBonuses.speed || 0;
     if (base == null) missing.push('base_speed');
     missing.push(...(setBonuses.missing || []));
+    if ((setBonusPercent || speedPercent) && knownGearLevel !== 13) missing.push('speed:gear_component_required');
     const missingUnique = [...new Set(missing)];
     if (missingUnique.length) {
       return { complete: false, total: null, modSpeed, setBonus: null, hasFourPieceSpeedSet, missing: missingUnique };
     }
-    const setBonusPercent = setBonuses.speed || 0;
     const setBonus = setBonusPercent ? Math.floor(base * setBonusPercent / 100) : 0;
     const modPercent = speedPercent;
     return {
@@ -213,7 +215,7 @@
     const gearLevel = numeric(profile?.gear_level ?? profile?.gearLevel);
     // Percentage mod bonuses are calculated from Crinolo stats.base, before current
     // gear-piece secondary stats. Static profiles do not expose that split below G13.
-    const gearComponentKnownForPercent = !profile || gearLevel === 13;
+    const gearComponentKnownForPercent = gearLevel === 13;
     // Gear level is part of the projection contract and therefore part of the cache key.
     const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level, gearLevel]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
@@ -299,11 +301,15 @@
     const speedSetRatio = setBonuses.speed || 0;
     if (flat('speed') || speedRatio || speedSetRatio) {
       if (!has('speed')) missing.push('speed');
-      else if ((speedRatio || speedSetRatio) && !gearComponentKnownForPercent) {
-        missing.push('speed:gear_component_required');
-        const partialSpeed = calculateSpeed(get('speed'), mods);
-        setResult('speed', get('speed') + partialSpeed.modSpeed);
-      } else setResult('speed', calculateSpeed(get('speed'), mods).total);
+      else {
+        const speedProjection = calculateSpeed(get('speed'), mods, gearLevel);
+        if (!speedProjection.complete) {
+          missing.push(...speedProjection.missing);
+          if (Number.isFinite(get('speed')) && Number.isFinite(speedProjection.modSpeed)) {
+            setResult('speed', get('speed') + speedProjection.modSpeed);
+          }
+        } else setResult('speed', speedProjection.total);
+      }
     }
 
     const offenseFlat = flat('offense');
