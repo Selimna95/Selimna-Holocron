@@ -42,12 +42,11 @@ const batchBridge = (baseJson, indexedBuildsJson, level) => {
   const payload = JSON.parse(indexedBuildsJson);
   batchProjectedBuilds += payload.builds.length;
   const baseProfile = JSON.parse(baseJson);
-  if (baseProfile.gear_level == null) console.log('BATCH_UNKNOWN_MODS', JSON.stringify(payload.mods));
   const results = payload.builds.map(indexes => engine.calculateFinalStats(
     baseProfile, indexes.map(index => payload.mods[index]),
     Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null
   ));
-  if (baseProfile.gear_level == null) console.log('BATCH_UNKNOWN_MISSING', JSON.stringify(results.map(x => x.missing)));
+  console.log('BATCH_GEAR_AND_MISSING', baseProfile.gear_level, JSON.stringify(results.map(x => x.missing)));
   return JSON.stringify(results);
 };
 pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
