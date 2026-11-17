@@ -254,8 +254,8 @@ assert.ok(defenseWarningResult.missing.includes('defense:gear_component_required
 
 const g13CandidateMods = JSON.parse(pyodide.runPython('json.dumps(mods)'));
 const g13DirectCandidateProjection = engine.calculateFinalStats(moffGideonProfile, g13CandidateMods, moffGideonProfile.level);
-assert.equal(g13DirectCandidateProjection.complete, false);
-assert.ok(g13DirectCandidateProjection.missing.includes('defense:gear_component_required'));
+assert.equal(g13DirectCandidateProjection.complete, true, 'G13 Defense % is calculable with zero gear contribution');
+assert.ok(!g13DirectCandidateProjection.missing.includes('defense:gear_component_required'));
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
 result = optimizer.optimize_kyber(
@@ -267,8 +267,8 @@ json.dumps({
     'missing': result[0].get('missing_stats', []) if result else []
 })
 `));
-assert.equal(g13DefenseWarningResult.count, 1, 'G13 builds must not be rejected for unavailable Defense when score stats are complete');
-assert.ok(g13DefenseWarningResult.missing.includes('defense:gear_component_required'));
+assert.equal(g13DefenseWarningResult.count, 1, 'G13 builds must calculate Defense % using the known zero gear contribution');
+assert.ok(!g13DefenseWarningResult.missing.includes('defense:gear_component_required'));
 pyodide.globals.set('score_missing_profile_json', JSON.stringify({
   base_stats: base, level: 85, gear_level: 13
 }));
