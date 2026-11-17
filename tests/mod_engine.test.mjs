@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.24');
+assert.equal(engine.version, '0.3.25');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
