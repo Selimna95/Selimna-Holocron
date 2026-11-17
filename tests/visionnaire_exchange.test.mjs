@@ -49,7 +49,7 @@ const priorityEnd=js.indexOf('  const exchangeModSummary',priorityStart);
 assert.ok(priorityStart>=0&&priorityEnd>priorityStart,'Visionnaire donor-priority comparator must exist');
 const prioritySandbox={modTotalSpeed:mod=>Number(mod?.speed||0)};
 vm.createContext(prioritySandbox);
-vm.runInContext(js.slice(priorityStart,priorityEnd)+'\\nthis.priority=visionnaireCandidatePriority;',prioritySandbox);
+vm.runInContext(js.slice(priorityStart,priorityEnd)+'\nthis.priority=visionnaireCandidatePriority;',prioritySandbox);
 const priority=prioritySandbox.priority;
 assert.ok(priority({_sourceOwnerKey:null,speed:0},{_sourceOwnerKey:'DONOR',_sourceUsage:0,speed:100})<0,'Free inventory must precede donor-owned mods');
 assert.ok(priority({_sourceOwnerKey:'RARE',_sourceUsage:3,speed:0},{_sourceOwnerKey:'COMMON',_sourceUsage:40,speed:100})<0,'Lower GAC usage must beat a much faster but frequently used donor');
