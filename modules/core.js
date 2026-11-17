@@ -1303,9 +1303,11 @@ function getCharacterModsIndex(){
   }
   // Seuls les alias non ambigus sont utilisables. Le baseId garde la priorité.
   const uniqueOwners=new Map();
+  // A unique canonical baseId wins even when it collides with another unit's display name.
+  for(const [key,owners] of baseIdOwners)if(owners.size===1)uniqueOwners.set(key,[...owners][0]);
   for(const [key,owners] of aliasOwners){
     const baseOwners=baseIdOwners.get(key);
-    if(owners.size===1&&(!baseOwners||baseOwners.size===1))uniqueOwners.set(key,[...owners][0]);
+    if(!uniqueOwners.has(key)&&owners.size===1&&!baseOwners)uniqueOwners.set(key,[...owners][0]);
   }
   const slots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
   const byOwner=new Map();
