@@ -121,6 +121,26 @@ from python.optimizer import (
 
 
 
+class OptimizerBeamRetentionTests(unittest.TestCase):
+    def test_heap_top_k_matches_stable_full_sort_including_ties(self):
+        candidates = [
+            (10.0, "first"),
+            (10.0, "second"),
+            (12.0, "highest"),
+            (10.0, "third"),
+            (9.0, "last"),
+            (11.0, "next"),
+        ]
+        expected = sorted(candidates, key=lambda item: item[0], reverse=True)[:4]
+        actual = optimizer_module._retain_best_beam(candidates, 4)
+        self.assertEqual(actual, expected)
+
+    def test_beam_retention_keeps_full_sort_when_every_candidate_fits(self):
+        candidates = [(2.0, "a"), (1.0, "b"), (3.0, "c")]
+        expected = sorted(candidates, key=lambda item: item[0], reverse=True)
+        self.assertEqual(optimizer_module._retain_best_beam(candidates, 5), expected)
+
+
 class OptimizerScoringMetadataTests(unittest.TestCase):
     def test_precomputed_metadata_matches_existing_mod_helpers(self):
         mod = {
