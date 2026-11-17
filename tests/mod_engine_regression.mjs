@@ -75,6 +75,32 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 const core = read('../modules/core.js');
 
 
+// Roster metadata must support both SWGOH.GG fields and raw Comlink progression fields.
+const rosterMetadataContext = vm.createContext({ numericValue });
+load(core, ['optimizerRosterMetadata'], rosterMetadataContext);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(rosterMetadataContext.optimizerRosterMetadata({
+    raw: { data: { currentLevel: 85, currentRarity: 7, currentTier: 13, relic: { currentTier: 8 } } }
+  }))),
+  { level: 85, rarity: 7, gear_level: 13, relic_tier: 8 },
+  'Raw Comlink currentLevel/currentRarity/currentTier/relic metadata must be recognized'
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(rosterMetadataContext.optimizerRosterMetadata({
+    level: 85, stars: 7, gear: 13, relic_tier: 8,
+    raw: { data: { level: 85, stars: 7, gear_level: 13 } }
+  }))),
+  { level: 85, rarity: 7, gear_level: 13, relic_tier: 8 },
+  'Top-level relic metadata must remain a fallback when raw payload omits relic'
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(rosterMetadataContext.optimizerRosterMetadata({
+    raw: { currentLevel: 85, currentRarity: 7, currentTier: 12, relic: { currentTier: 0 } }
+  }))),
+  { level: 85, rarity: 7, gear_level: 12, relic_tier: 0 },
+  'Direct Comlink raw payloads must preserve zero relic tier'
+);
+
 // Missing mod metadata must remain unknown rather than being fabricated.
 const iconContext = vm.createContext({});
 load(core, ['modIconTier','modDots'], iconContext);
