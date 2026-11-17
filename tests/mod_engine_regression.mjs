@@ -572,7 +572,7 @@ const forgeContext = vm.createContext({
   optimizerProfileForCharacter: () => ({})
 });
 load(seigneur, ['forgeProjectedModSpeed', 'forgeCandidatePreservesSpeed'], forgeContext);
-const baseSpeedCharacter = { base_stats: { Speed: 100 } };
+const baseSpeedCharacter = { gear_level: 13, base_stats: { Speed: 100 } };
 const makeSpeedMod = (id, slot, set_name, speedValue) => ({
   id, slot, set_name, level: 1, speed: speedValue,
   primary_stat: 'Health', primary_value: 0,
