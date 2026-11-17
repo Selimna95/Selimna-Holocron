@@ -234,7 +234,7 @@ assert.ok(unsupportedGenericAvoidanceProjection.missing.includes('stat:criticalA
 const speedPercentProjection = engine.calculateSpeed(100, [{
   level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0,
   secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 }
-}]);
+}], 13);
 assert.equal(speedPercentProjection.complete, true);
 assert.equal(speedPercentProjection.total, 105);
 
@@ -246,10 +246,10 @@ const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 }));
-assert.equal(engine.calculateSpeed(153, completeSpeedSet).setBonus, 15);
+assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).setBonus, 15);
 assert.equal(engine.calculateSpeed(153, completeSpeedSet).total, 168);
 const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: index === 3 ? 14 : 15 }));
-assert.equal(engine.calculateSpeed(153, halfSpeedSet).setBonus, 7);
+assert.equal(engine.calculateSpeed(153, halfSpeedSet, 13).setBonus, 7);
 assert.equal(engine.calculateSpeed(153, halfSpeedSet).total, 160);
 
 const accuracyProjection = engine.calculateFinalStats(projectionBase, [
@@ -268,7 +268,7 @@ const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
 ];
-const offenseProjection = engine.calculateFinalStats(projectionBase, offenseMods, 85);
+const offenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
 assert.equal(offenseProjection.complete, true);
 assert.equal(offenseProjection.stats['Physical Damage'], 665);
 assert.equal(offenseProjection.stats['Special Damage'], 915);
@@ -340,16 +340,16 @@ assert.equal(flatDefenseProjection.complete, true);
 assert.ok(Math.abs(flatDefenseProjection.stats.Armor - 51.5209) < 0.001);
 assert.ok(Math.abs(flatDefenseProjection.stats.Resistance - 42.1769) < 0.001);
 
-const speedProjection = engine.calculateFinalStats(projectionBase, [
+const speedProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }))
 ], 85);
 assert.equal(engine.calculateSetBonuses(Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }))).speed, 10);
-const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries })));
+const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries })), 13);
 assert.equal(speedCalc.total, 110, JSON.stringify(speedCalc));
 const incompleteSpeedSet = engine.calculateSpeed(100, [
   { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }, { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100, ...zeroSecondaries },
   { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }, { set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
-]);
+], 13);
 assert.equal(incompleteSpeedSet.complete, false);
 assert.equal(incompleteSpeedSet.total, null);
 assert.ok(incompleteSpeedSet.missing.includes('mod:level_unknown'));
