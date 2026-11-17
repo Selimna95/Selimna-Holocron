@@ -218,15 +218,21 @@ function seigneurShipUsageMap(season){
   // reçoit le nombre d'apparitions des compositions dans lesquelles il figure.
   const fleets=season?.fleets;
   if(Array.isArray(fleets)){
+    // Les fichiers GAC publiés contiennent souvent déjà l'agrégat `ships`,
+    // calculé à partir des mêmes compositions. Additionner les deux sources
+    // double alors chaque utilisation. Les compositions ne servent qu'à
+    // reconstruire les totaux absents de l'agrégat.
+    const fleetTotals=new Map();
     for(const fleet of fleets){
       const uses=seigneurUsageCount(fleet);
       const ships=fleet?.ships||fleet?.units||[];
       if(uses===null||!Array.isArray(ships))continue;
       for(const ship of ships){
         const key=seigneurUsageKey(ship);
-        if(key)out.set(key,(out.get(key)||0)+uses);
+        if(key)fleetTotals.set(key,(fleetTotals.get(key)||0)+uses);
       }
     }
+    for(const [key,uses] of fleetTotals)if(!out.has(key))out.set(key,uses);
   }
   return out;
 }
