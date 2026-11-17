@@ -75,6 +75,23 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 const core = read('../modules/core.js');
 
 
+// Seigneur Sith and Visionnaire must use the same canonical Galactic Legend set as core.
+const galacticLegendSet = new Set([
+  'JEDIMASTERKENOBI','GRANDMASTERLUKE','SITHPALPATINE','JABBATHEHUTT',
+  'LORDVADER','SUPREMELEADERKYLOREN','GLREY','GLLEIA','GLAHSOKATANO',
+  'GLHONDO','GLMANDOGROGU'
+]);
+const galacticLegendContext = vm.createContext({
+  compactKey: value => String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  window: { HOLOCRON_GALACTIC_LEGENDS: galacticLegendSet }
+});
+load(read('../modules/seigneur.js'), ['isGalacticLegendCharacter'], galacticLegendContext);
+for (const baseId of galacticLegendSet) {
+  assert.equal(galacticLegendContext.isGalacticLegendCharacter({baseId}), true, baseId+' must never be a donor');
+}
+assert.equal(galacticLegendContext.isGalacticLegendCharacter({baseId:'HONDOSMUGGLER'}), false,
+  'A non-GL Hondo unit must not be protected by a name-only guess');
+
 // Equipped-mod ownership is indexed once per roster/inventory snapshot, not rebuilt per character.
 let normalizedOwnerMods=0;
 const ownerIndexContext=vm.createContext({
