@@ -85,18 +85,28 @@ const moffGideonProfile = optimizerProfiles.MOFFGIDEONS3;
 assert.ok(moffGideonProfile && moffGideonProfile.base_stats && moffGideonProfile.gear_level === 13);
 assert.equal(moffGideonProfile.gear, undefined, 'profile must not be mistaken for a Crinolo gear-component breakdown');
 pyodide.globals.set('moff_gideon_profile_json', JSON.stringify(moffGideonProfile));
+const moffGideonDefense = JSON.parse(pyodide.runPython(`import json
+profile = json.loads(moff_gideon_profile_json)
+mods = [
+ {'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10},
+ {'level': 1, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 0}
+]
+result = optimizer.final_stats(mods, profile['base_stats'], profile)
+json.dumps(result)
+`));
+assert.ok(Math.abs(moffGideonDefense.Armor - 59.74107988632776) < 1e-8);
+assert.ok(Math.abs(moffGideonDefense.Resistance - 54.457779682811825) < 1e-8);
 pyodide.runPython(`try:
+ profile = dict(json.loads(moff_gideon_profile_json), gear_level=12)
  optimizer.final_stats(
-  [{'level': 15, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}],
-  json.loads(moff_gideon_profile_json)['base_stats'],
-  json.loads(moff_gideon_profile_json)
+  [{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}],
+  profile['base_stats'], profile
  )
- real_profile_defense_error = ''
+ non_g13_defense_error = ''
 except RuntimeError as error:
- real_profile_defense_error = str(error)
+ non_g13_defense_error = str(error)
 `);
-assert.match(pyodide.runPython('real_profile_defense_error'), /defense:gear_component_required/);
-assert.match(pyodide.runPython('real_profile_defense_error'), /Défense %/);
+assert.match(pyodide.runPython('non_g13_defense_error'), /defense:gear_component_required/);
 
 const defenseWarningResult = JSON.parse(pyodide.runPython(`import json
 mods = []
