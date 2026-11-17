@@ -35,6 +35,16 @@ assert.deepEqual(['111','112','113','114','115','116'].map(id => engine.slotFrom
 assert.equal(engine.normalizeMod({ definitionId: '111', level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Square');
 assert.equal(engine.normalizeMod({ definitionId: '112', slot: 2, level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Arrow');
 assert.equal(engine.normalizeMod({ slot_id: 7, level: 15, primary_stat: 'Speed', primary_value: 15 }).slot, 'Cross');
+const comlinkPipsFallback = engine.normalizeMod({
+  slot: 7, set: '1', level: 15, pips: 0, rarity: 5,
+  primary_stat: 'Tenacity %', primary_value: 21,
+  secondary_1_stat: 'Offense', secondary_1_value: 21,
+  secondary_2_stat: 'Speed', secondary_2_value: 4,
+  secondary_3_stat: 'Health %', secondary_3_value: 0.72,
+  secondary_4_stat: 'Defense %', secondary_4_value: 2.37
+});
+assert.equal(comlinkPipsFallback.pips, 5, 'A zero Comlink pips sentinel must not mask the actual rarity');
+assert.equal(engine.normalizeMod({ pips: 6, rarity: 5 }).pips, 6, 'A valid explicit pips value keeps precedence');
 assert.deepEqual({ ...engine.calculateSetBonuses([
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
