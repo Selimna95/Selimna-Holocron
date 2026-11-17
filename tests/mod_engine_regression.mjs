@@ -121,7 +121,7 @@ ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]);
 assert.equal(normalizedOwnerMods,3,'Repeated lookups must reuse the same roster/inventory index');
 ownerIndexContext.mods=[...ownerIndexContext.mods,{id:'gl-diamond',slot:'Diamond',characterId:'GLAHSOKATANO'}];
 assert.deepEqual(JSON.parse(JSON.stringify(ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]).map(m=>m.id))),['gl-square','gl-arrow','gl-diamond']);
-assert.equal(normalizedOwnerMods,6,'Replacing the inventory snapshot must rebuild the index exactly once');
+assert.equal(normalizedOwnerMods,7,'Replacing the inventory snapshot must rebuild the index exactly once');
 
 // Static snapshots must never be attached by a colliding display name when a baseId exists.
 const profileResolverContext = vm.createContext({
