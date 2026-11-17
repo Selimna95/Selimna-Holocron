@@ -279,6 +279,15 @@ assert.equal(gear12OffenseProjection.complete, false);
 assert.ok(gear12OffenseProjection.missing.includes('offense:gear_component_required'));
 const gear13OffenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
 assert.equal(gear13OffenseProjection.complete, true, JSON.stringify(gear13OffenseProjection.missing));
+const directDamagePercentMods = [
+  { level: 1, set_name: 'Health', primary_stat: 'Physical Damage %', primary_value: 10 },
+  { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
+];
+const g12DirectDamageProjection = engine.calculateFinalStats(gear12Profile, directDamagePercentMods, 85);
+assert.equal(g12DirectDamageProjection.complete, false);
+assert.ok(g12DirectDamageProjection.missing.includes('offense:gear_component_required'));
+const g13DirectDamageProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, directDamagePercentMods, 85);
+assert.equal(g13DirectDamageProjection.complete, true, JSON.stringify(g13DirectDamageProjection.missing));
 
 const gearDependentPercentCases = [
   ['health', [
