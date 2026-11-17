@@ -221,8 +221,9 @@
     level = numeric(level);
     const gearLevel = numeric(profile?.gear_level ?? profile?.gearLevel);
     // Percentage mod bonuses are calculated from Crinolo stats.base, before current
-    // gear-piece secondary stats. Static profiles do not expose that split below G13.
-    const gearComponentKnownForPercent = gearLevel === 13;
+    // gear-piece secondary stats. The static profile schema has no verified gear
+    // component field, so gear level alone cannot authorize these projections.
+    const gearComponentKnownForPercent = false;
     // Gear level is part of the projection contract and therefore part of the cache key.
     const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level, gearLevel]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
