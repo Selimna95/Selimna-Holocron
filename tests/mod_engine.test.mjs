@@ -237,6 +237,9 @@ const speedPercentProjection = engine.calculateSpeed(100, [{
 }], 13);
 assert.equal(speedPercentProjection.complete, true);
 assert.equal(speedPercentProjection.total, 105);
+const g12SpeedPercentProjection = engine.calculateSpeed(100, [{ level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0, secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 } }], 12);
+assert.equal(g12SpeedPercentProjection.complete, false);
+assert.ok(g12SpeedPercentProjection.missing.includes('speed:gear_component_required'));
 
 const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   slot: ['Square','Arrow','Diamond','Triangle'][index],
@@ -247,10 +250,13 @@ const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 }));
 assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).setBonus, 15);
-assert.equal(engine.calculateSpeed(153, completeSpeedSet).total, 168);
+assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).total, 168);
+const g12CompleteSpeedSet = engine.calculateSpeed(153, completeSpeedSet, 12);
+assert.equal(g12CompleteSpeedSet.complete, false);
+assert.ok(g12CompleteSpeedSet.missing.includes('speed:gear_component_required'));
 const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: index === 3 ? 14 : 15 }));
 assert.equal(engine.calculateSpeed(153, halfSpeedSet, 13).setBonus, 7);
-assert.equal(engine.calculateSpeed(153, halfSpeedSet).total, 160);
+assert.equal(engine.calculateSpeed(153, halfSpeedSet, 13).total, 160);
 
 const accuracyProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },
