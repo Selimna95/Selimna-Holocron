@@ -120,6 +120,24 @@ const optimizerProfiles = JSON.parse(read('../python/optimizer_profiles.json'));
 const moffGideonProfile = optimizerProfiles.MOFFGIDEONS3;
 assert.ok(moffGideonProfile && moffGideonProfile.base_stats && moffGideonProfile.gear_level === 13);
 assert.equal(moffGideonProfile.gear, undefined, 'profile must not be mistaken for a Crinolo gear-component breakdown');
+const g13SpeedSetMods = Array.from({ length: 4 }, (_, index) => ({
+  slot: ['Square', 'Arrow', 'Diamond', 'Triangle'][index],
+  level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 0,
+  ...zeroSecondaries
+}));
+const unverifiedG13Speed = engine.calculateFinalStats(moffGideonProfile, g13SpeedSetMods, moffGideonProfile.level);
+assert.equal(unverifiedG13Speed.complete, false);
+assert.ok(unverifiedG13Speed.missing.includes('speed:gear_component_required'));
+const verifiedG13SpeedProfile = {
+  ...moffGideonProfile,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Speed: 153 }, gear: { Speed: 0 }
+  }
+};
+const verifiedG13Speed = engine.calculateFinalStats(verifiedG13SpeedProfile, g13SpeedSetMods, verifiedG13SpeedProfile.level);
+assert.equal(verifiedG13Speed.complete, true);
+assert.equal(verifiedG13Speed.stats.Speed, 168.3);
 const r5d4Profile = optimizerProfiles.R5D4;
 assert.ok(r5d4Profile && r5d4Profile.gear_level === 12);
 const r5d4OffenseProjection = engine.calculateFinalStats(r5d4Profile, offenseMods, r5d4Profile.level);

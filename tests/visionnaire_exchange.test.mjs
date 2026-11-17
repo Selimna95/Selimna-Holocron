@@ -131,9 +131,9 @@ vm.createContext(buildSandbox);
 vm.runInContext(js.slice(sampleStart,sampleEnd)+'\n'+js.slice(start,end)+'\n'+js.slice(buildStart,buildEnd)+'\nthis.search=buildExchangeProposals;',buildSandbox);
 const makeMod=(id,slot,set,speed,primary='Speed',value=5)=>({game_id:id,slot,set_name:set,level:15,primary_stat:primary,primary_value:value,secondary_1_stat:'Speed',secondary_1_value:speed,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0});
 async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMods=[],selectedSlots=['Square','Circle']){
-  const donor={baseId:'DONOR',name:'Donneur',gear_level:13,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5}};
+  const donor={baseId:'DONOR',name:'Donneur',gear_level:13,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
   donor.mods=donorMods;
-  const glDonor={baseId:'GLDONOR',name:'Donneur GL',gear_level:13,base_stats:{Speed:100},mods:glDonorMods};
+  const glDonor={baseId:'GLDONOR',name:'Donneur GL',gear_level:13,base_stats:{Speed:100},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}},mods:glDonorMods};
   const roster=[target,...(donorMods.length?[donor]:[]),...(glDonorMods.length?[glDonor]:[])];
   const byOwner=new Map(roster.map(c=>[c.baseId,c.mods||[]]));
   const sources=[
@@ -148,13 +148,13 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
     forgeProjectedModSpeed:(c,_p,list)=>{
       const rawBase=c.base_stats?.Speed;
       const base=rawBase==null?null:Number(rawBase);
-      const projection=sharedEngine.calculateSpeed(Number.isFinite(base)?base:null,list,c?.gear_level);
+      const projection=sharedEngine.calculateSpeed(Number.isFinite(base)?base:null,list,c?.gear_level,c?.stat_components);
       return {...projection,baseSpeed:Number.isFinite(base)?base:null};
     }
   });
   return buildSandbox.search({character:target,profile},selectedSlots);
 }
-const glTarget={baseId:'GLREY',name:'Rey',gear_level:13,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5}};
+const glTarget={baseId:'GLREY',name:'Rey',gear_level:13,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
 glTarget.mods=[
  makeMod('t1','Square','Tenacity',1,'Health',100),makeMod('t2','Arrow','Speed',1),
  makeMod('t3','Diamond','Potency',1,'Health',100),makeMod('t4','Triangle','Speed',1),
@@ -178,7 +178,7 @@ assert.equal(freeSearch.proposals[0].freeMods,2);
 assert.equal(freeSearch.proposals[0].donors.length,0);
 
 // The hard speed floor rejects a primary-only exchange that would lower total speed.
-const speedTarget={baseId:'GLLEIA',name:'Leia',gear_level:13,base_stats:{Speed:100,Health:1000}};
+const speedTarget={baseId:'GLLEIA',name:'Leia',gear_level:13,base_stats:{Speed:100,Health:1000},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
 speedTarget.mods=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('sp'+i,slot,'Speed',10,'Speed',5));
 const slowFree=[makeMod('slow-s','Square','Health',0,'Speed',5),makeMod('slow-c','Circle','Health',0,'Speed',5)];
 const primaryProfile={slots:{Square:{primaries:{Speed:1}},Circle:{primaries:{Speed:1}}}};

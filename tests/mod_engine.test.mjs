@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.27');
+assert.equal(engine.version, '0.3.28');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -283,15 +283,27 @@ const unsupportedGenericAvoidanceProjection = engine.calculateFinalStats({
 }, [{ level: 1, set_name: 'Defense', primary_stat: { name: 'Critical Avoidance', value: 24, unit: 'flat' } }]);
 assert.equal(unsupportedGenericAvoidanceProjection.complete, false);
 assert.ok(unsupportedGenericAvoidanceProjection.missing.includes('stat:criticalAvoidance:flat_unsupported'));
-const speedPercentProjection = engine.calculateSpeed(100, [{
+const speedPercentMods = [{
   level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0,
   secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 }
-}], 13);
+}];
+const g13SpeedPercentWithoutBreakdown = engine.calculateSpeed(100, speedPercentMods, 13);
+assert.equal(g13SpeedPercentWithoutBreakdown.complete, false, 'G13 alone must not authorize Speed %');
+assert.ok(g13SpeedPercentWithoutBreakdown.missing.includes('speed:gear_component_required'));
+const verifiedSpeedComponents = {
+  source: 'Crinolo.stats.base+stats.gear',
+  base: { Speed: 100 }, gear: { Speed: 0 }
+};
+const speedPercentProjection = engine.calculateSpeed(100, speedPercentMods, 13, verifiedSpeedComponents);
 assert.equal(speedPercentProjection.complete, true);
 assert.equal(speedPercentProjection.total, 105);
-const g12SpeedPercentProjection = engine.calculateSpeed(100, [{ level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0, secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 } }], 12);
-assert.equal(g12SpeedPercentProjection.complete, false);
-assert.ok(g12SpeedPercentProjection.missing.includes('speed:gear_component_required'));
+const inconsistentSpeedComponents = {
+  source: 'Crinolo.stats.base+stats.gear',
+  base: { Speed: 100 }, gear: { Speed: 1 }
+};
+const inconsistentSpeedProjection = engine.calculateSpeed(100, speedPercentMods, 13, inconsistentSpeedComponents);
+assert.equal(inconsistentSpeedProjection.complete, false, 'base + gear must reconcile with the pre-mod total');
+assert.ok(inconsistentSpeedProjection.missing.includes('speed:gear_component_required'));
 
 const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   slot: ['Square','Arrow','Diamond','Triangle'][index],
@@ -301,14 +313,28 @@ const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   secondary_3_stat: 'Tenacity %', secondary_3_value: 0,
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 }));
-assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).setBonus, 15.3);
-assert.equal(engine.calculateSpeed(153, completeSpeedSet, 13).total, 168.3);
-const g12CompleteSpeedSet = engine.calculateSpeed(153, completeSpeedSet, 12);
-assert.equal(g12CompleteSpeedSet.complete, false);
-assert.ok(g12CompleteSpeedSet.missing.includes('speed:gear_component_required'));
+const g13SpeedSetWithoutBreakdown = engine.calculateSpeed(153, completeSpeedSet, 13);
+assert.equal(g13SpeedSetWithoutBreakdown.complete, false, 'A G13 Speed set still requires the exact Crinolo base/gear split');
+assert.ok(g13SpeedSetWithoutBreakdown.missing.includes('speed:gear_component_required'));
+const verifiedGideonSpeedComponents = {
+  source: 'Crinolo.stats.base+stats.gear',
+  base: { Speed: 153 }, gear: { Speed: 0 }
+};
+const verifiedGideonSpeedSet = engine.calculateSpeed(153, completeSpeedSet, 13, verifiedGideonSpeedComponents);
+assert.equal(verifiedGideonSpeedSet.setBonus, 15.3);
+assert.equal(verifiedGideonSpeedSet.total, 168.3);
+const gearSpeedComponents = {
+  source: 'Crinolo.stats.base+stats.gear',
+  base: { Speed: 153 }, gear: { Speed: 2 }
+};
+const gearSpeedSet = engine.calculateSpeed(155, completeSpeedSet, 12, gearSpeedComponents);
+assert.equal(gearSpeedSet.complete, true, 'A verified component split is sufficient at any gear level');
+assert.equal(gearSpeedSet.setBonus, 15.3, 'Speed % applies to Crinolo base, not base plus gear');
+assert.equal(gearSpeedSet.total, 170.3, 'Gear Speed is added after the percentage bonus');
 const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: index === 3 ? 14 : 15 }));
-assert.equal(engine.calculateSpeed(153, halfSpeedSet, 13).setBonus, 7.65);
-assert.equal(engine.calculateSpeed(153, halfSpeedSet, 13).total, 160.65);
+const verifiedHalfSpeedSet = engine.calculateSpeed(153, halfSpeedSet, 13, verifiedGideonSpeedComponents);
+assert.equal(verifiedHalfSpeedSet.setBonus, 7.65);
+assert.equal(verifiedHalfSpeedSet.total, 160.65);
 
 const accuracyProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },
@@ -403,11 +429,17 @@ assert.equal(flatDefenseProjection.complete, true);
 assert.ok(Math.abs(flatDefenseProjection.stats.Armor - 51.5209) < 0.001);
 assert.ok(Math.abs(flatDefenseProjection.stats.Resistance - 42.1769) < 0.001);
 
-const speedProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
+const speedProjection = engine.calculateFinalStats({
+  gear_level: 13, base_stats: projectionBase,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Speed: 100 }, gear: { Speed: 0 }
+  }
+}, [
   ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }))
 ], 85);
 assert.equal(engine.calculateSetBonuses(Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }))).speed, 10);
-const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries })), 13);
+const speedCalc = engine.calculateSpeed(100, Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries })), 13, { source: 'Crinolo.stats.base+stats.gear', base: { Speed: 100 }, gear: { Speed: 0 } });
 assert.equal(speedCalc.total, 110, JSON.stringify(speedCalc));
 const incompleteSpeedSet = engine.calculateSpeed(100, [
   { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }, { set_name: 'Speed', level: 15, primary_stat: 'Health', primary_value: 100, ...zeroSecondaries },

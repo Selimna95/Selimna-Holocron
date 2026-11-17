@@ -148,7 +148,7 @@ function renderCharacterReport(){
   if(!c){box.innerHTML='<div class="empty">Sélectionnez un personnage depuis PERSONNAGE / FACTION.</div>';return;}
   const cm=getCharacterMods(c), s=v176ModStatus(cm), p=optimizerValidatedProfileForCharacter(c)||{}, st=characterReportStats(c);
   const baseSpeed=numericValue(st.profile?.base_stats?.Speed,null);
-  const speedProjection=window.HolocronModEngine.calculateSpeed(baseSpeed,cm,p.gear_level);
+  const speedProjection=window.HolocronModEngine.calculateSpeed(baseSpeed,cm,p.gear_level,p.stat_components);
   const speedDataComplete=cm.length===6&&s.status!=='DONNÉES INCOMPLÈTES'&&speedProjection.complete;
   const totalSpeed=speedDataComplete?speedProjection.total:null;
   const secSpeed=speedDataComplete?cm.reduce((n,m)=>n+(modSpeedMetrics(m).secondary||0),0):null;

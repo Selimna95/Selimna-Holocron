@@ -154,9 +154,18 @@
     return NAME_ALIASES[compact(name)] || null;
   }
 
-  function calculateSpeed(baseSpeed, mods, gearLevel) {
+  function verifiedStatComponents(statComponents, statName, totalValue) {
+    if (statComponents?.source !== 'Crinolo.stats.base+stats.gear') return null;
+    const base = numeric(statComponents.base?.[statName]);
+    const gear = numeric(statComponents.gear?.[statName]);
+    const total = numeric(totalValue);
+    if (base == null || gear == null || total == null) return null;
+    if (Math.abs((base + gear) - total) > 1e-6) return null;
+    return { base, gear };
+  }
+
+  function calculateSpeed(baseSpeed, mods, gearLevel, statComponents = null) {
     const base = numeric(baseSpeed);
-    const knownGearLevel = numeric(gearLevel);
     let modSpeed = 0;
     let speedPercent = 0;
     const missing = [];
@@ -177,16 +186,22 @@
     const setBonusPercent = setBonuses.speed || 0;
     if (base == null) missing.push('base_speed');
     missing.push(...(setBonuses.missing || []));
-    if ((setBonusPercent || speedPercent) && knownGearLevel !== 13) missing.push('speed:gear_component_required');
+    const components = (setBonusPercent || speedPercent)
+      ? verifiedStatComponents(statComponents, 'Speed', base)
+      : null;
+    if ((setBonusPercent || speedPercent) && !components) {
+      missing.push('speed:gear_component_required');
+    }
     const missingUnique = [...new Set(missing)];
     if (missingUnique.length) {
       return { complete: false, total: null, modSpeed, setBonus: null, hasFourPieceSpeedSet, missing: missingUnique };
     }
-    const setBonus = setBonusPercent ? base * setBonusPercent / 100 : 0;
+    const modBaseSpeed = components?.base ?? base;
+    const setBonus = setBonusPercent ? modBaseSpeed * setBonusPercent / 100 : 0;
     const modPercent = speedPercent;
     return {
       complete: true,
-      total: base + modSpeed + setBonus + base * modPercent / 100,
+      total: base + modSpeed + setBonus + modBaseSpeed * modPercent / 100,
       modSpeed,
       setBonus,
       hasFourPieceSpeedSet: setBonusPercent > 0
@@ -310,7 +325,7 @@
     if (flat('speed') || speedRatio || speedSetRatio) {
       if (!has('speed')) missing.push('speed');
       else {
-        const speedProjection = calculateSpeed(get('speed'), mods, gearLevel);
+        const speedProjection = calculateSpeed(get('speed'), mods, gearLevel, profile?.stat_components);
         if (!speedProjection.complete) {
           missing.push(...speedProjection.missing);
           if (Number.isFinite(get('speed')) && Number.isFinite(speedProjection.modSpeed)) {
@@ -622,7 +637,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.27',
+    version: '0.3.28',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
