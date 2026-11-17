@@ -1,6 +1,6 @@
 # Architecture — moteur unique des mods
 
-- Statut : moteur unifié intégré à `main` ; audit de fiabilité des profils, Défense %, index des mods et protections GL en cours sur `fix/defense-percent-g13`
+- Statut : moteur unifié intégré à `main` ; correction du plancher de vitesse Seigneur, de l'arrondi Speed et de l'acceptation des projections partielles en cours sur `fix/optimizer-speed-floor-partial-projections`
 - Moteur de référence : `modules/mod-engine.js` v0.3.27
 - Base de travail : `main@f2c66705f28bdd060f0e99e37235bfdc76360eca`
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
@@ -56,7 +56,7 @@ Une unité inconnue ou une formule non implémentée rend le calcul incomplet. A
 | Disciple | Identité stat/set/slot et vitesse projetée déléguées ; filtres métier conservés |
 | Seigneur Sith | Identité stat/set et vitesse projetée déléguées ; classement Kyber/GAC conservé |
 | Visionnaire | Projection finale déléguée ; identité stat/set/slot déléguée ; scoring de scénario conservé |
-| Optimizer Python | `final_stats`, `mod_stats`, primaire et set délégués au pont JavaScript ; recherche conservée en Python |
+| Optimizer Python | Normalisation et projections déléguées au moteur JavaScript ; recherche Python n'accepte un build que si Speed, Health et Protection (statistiques de score) sont calculables ; les autres statistiques absentes sont signalées dans `missing_stats` |
 | Worker Pyodide | Runtime Python chargé une seule fois dans le Worker ; aucun runtime Pyodide principal inutilisé ; pont de normalisation et de projection initialisé |
 | Cache/version | Références index, service worker et Worker réalignées pour cette branche |
 | Propriétaires de mods | Index global construit une fois par snapshot roster/inventaire ; résolution exacte des alias et slots ambigus conservée |
@@ -66,14 +66,14 @@ Les anciennes fonctions qui ne font que transmettre les données au moteur peuve
 
 ## Limites de calcul actuellement explicites
 
-- Les bonus de set distinguent le bonus complet au niveau 15 du demi-bonus si un mod du set n'est pas au niveau 15.
+- Les bonus de set distinguent le bonus complet au niveau 15 du demi-bonus si un mod du set n'est pas au niveau 15. Le bonus de set Speed est arrondi à l'entier inférieur, comme dans Crinolo.
 - Le niveau utilisé pour la conversion Défense provient du personnage du roster ; le niveau 85 du profil de référence n'est jamais substitué au niveau réel.
 - Offense fixe et Offense en pourcentage sont des unités différentes ; les dégâts physiques et spéciaux sont projetés séparément. Les bonus multiplicateurs en % (Offense, Défense, Santé, Protection et Vitesse) doivent porter sur `stats.base`, avant les secondaires des pièces d'équipement.
 - **Bonus multiplicateurs en %** : Crinolo applique les identifiants 48 (Offense %), 49 (Défense %), 55 (Santé %), 56 (Protection %) et 57 (Vitesse %) à `stats.base`, puis ajoute séparément `stats.gear`. Le niveau G13 ne signifie pas que les secondaires d'équipement sont nuls. Les profils statiques actuels ne contiennent pas la séparation vérifiée entre ces deux composantes ; le moteur refuse donc également Speed % et les bonus de set Speed, avec `speed:gear_component_required`, y compris à G13. La seule preuve acceptée est `stat_components: { source: 'Crinolo.stats.base+stats.gear', base: {...}, gear: {...} }`, avec les deux valeurs Speed présentes et leur somme égale à la statistique pré-mod du profil (tolérance 1e-6). Le multiplicateur est appliqué à `base.Speed` ; `gear.Speed` est ajouté après. Sans cette preuve, seuls les apports plats de vitesse peuvent être projetés. Les identifiants 31/32 (`AttackDamagePercentAdditive` / `AbilityPowerPercentAdditive`) restent explicitement non pris en charge : Crinolo les conserve comme statistiques distinctes au lieu de les convertir en bonus des dégâts physiques/spéciaux.
 - Les statistiques reconnues mais dont la projection n'est pas encore implémentée (par exemple précision/pénétration) rendent le résultat incomplet au lieu d'être ignorées.
 - Les identifiants de taux critique 14/15 sont traités comme des ratings et convertis à raison de 24 points de rating par point de pourcentage, conformément au calculateur Crinolo ; les identifiants non documentés restent inconnus.
 - Le fallback HTML SWGOH.GG conserve le signe `%` affiché pour éviter de confondre une valeur en pourcentage avec un rating plat ; sans unité affichée ou identifiant source, une statistique ambiguë reste inconnue. Une valeur ou un niveau absent reste `null` : aucun zéro n'est injecté par l'importeur.
-- Les scénarios qui nécessitent un résultat complet doivent donc s'abstenir de proposer une permutation quand ces données manquent.
+- Les modules qui nécessitent une projection complète doivent s'abstenir de proposer une permutation quand les données nécessaires manquent. L'Optimizer a une règle plus ciblée : une projection partielle peut être classée uniquement si les trois statistiques effectivement utilisées par son score (Speed, Health, Protection) sont complètes ; toute autre statistique non calculée est transmise séparément dans `missing_stats`, sans être assimilée à un rejet du build.
 
 ## Sources externes vérifiées (sans dépendance à l'API SWGOH.GG)
 
@@ -82,7 +82,7 @@ Les anciennes fonctions qui ne font que transmettre les données au moteur peuve
 - Encodage Comlink : le troisième chiffre de `definitionId` est un code de slot 1 à 6 ; le champ `statMod.slot` correspondant vaut ce code + 1. L'adaptateur mappe directement 1→`Square`, 2→`Arrow`, 3→`Diamond`, 4→`Triangle`, 5→`Circle`, 6→`Cross`. Le fichier [statMod.json](https://github.com/swgoh-utils/gamedata/blob/main/statMod.json) confirme par exemple `id=111` avec `slot=2` ; le code `111` désigne donc `Square`. La documentation est [Comlink player data](https://github.com/swgoh-utils/swgoh-comlink/wiki/Player-Data).
 - Les numéros de slot historiques de l'importeur restent distincts : `1` et `2` désignent `Square`, puis `3` à `7` désignent respectivement `Arrow`, `Diamond`, `Triangle`, `Circle` et `Cross`. Les valeurs numériques `8` à `12` ne sont pas reconnues. Cette table conserve le comportement historique du dépôt ; elle n'est pas utilisée pour décoder `definitionId`.
 
-L'Optimizer Python écarte les mods dont le set, le niveau, la primaire ou une unité de statistique ne peuvent pas être validés. Une projection impossible est signalée et ne devient jamais un score ou une vitesse égale à zéro.
+L'Optimizer Python écarte les mods dont le set, le niveau, la primaire ou une unité de statistique ne peuvent pas être validés. Une projection incomplète est ensuite évaluée par rapport aux statistiques nécessaires au score : une absence de Speed, Health ou Protection rejette le build ; une absence d'une autre statistique est conservée dans `missing_stats` et ne le rejette pas à elle seule. Une donnée absente ne devient jamais un zéro.
 
 ## Vérification indépendante des formules
 
@@ -113,7 +113,7 @@ Les contributions statistiques sont comparées par clé canonique incluant l'uni
 
 ## Garde-fou de vitesse Visionnaire
 
-Le plafond théorique de vitesse doit inclure la vitesse de base du personnage, les mods conservés, les mods candidats et un plafond de bonus de set. La comparaison se fait avec la vitesse actuelle complète calculée par `calculateSpeed`. Si la vitesse de base ou un mod requis est incomplet, la recherche s'arrête sans proposition ; les projections de vitesse des donneurs sont également obligatoires.
+Le plafond théorique de vitesse doit inclure la vitesse de base du personnage, les mods conservés, les mods candidats et un plafond de bonus de set. Le plancher Seigneur est calculé par un pont dédié vers `calculateSpeed` ; il ne dépend pas de la complétude de Health, Offense, Defense ou des autres statistiques. Si la projection de vitesse elle-même est incomplète, la recherche s'arrête sans proposition. Les projections de vitesse des donneurs restent obligatoires.
 
 ## Vérification des profils de statistiques
 
@@ -126,7 +126,7 @@ Le Worker ne réutilise un snapshot que si le niveau, la rareté, le palier d'é
 ## Tests et critères d'intégration
 
 1. Fixtures brutes Comlink et import JSON : identifiants, échelles, unités et slots.
-2. Tests comportementaux du moteur : stats fixes/%, bonus de sets, vitesse, défense et stat non prise en charge. Les projections multiplicatives sont testées avec une séparation Crinolo explicite et réconciliée, sans exception G13 ; le test Pyodide parcourt les 334 profils et confirme qu'aucun n'est autorisé sans cette séparation.
+2. Tests comportementaux du moteur : stats fixes/%, bonus de sets, vitesse, défense et stat non prise en charge. Les projections multiplicatives sont testées avec une séparation Crinolo explicite et réconciliée, sans exception G13 ; le test Pyodide parcourt les 334 profils et confirme qu'aucun n'est autorisé sans cette séparation. Les tests vérifient aussi l'arrondi entier du set Speed, le pont `calculateSpeed` seul pour le plancher Seigneur et l'acceptation d'une projection partielle lorsque les statistiques de score restent complètes.
 3. Non-régression par module : Acolyte, Disciple, Seigneur, Visionnaire et Optimizer.
 4. Parcours navigateur complet : import Ally Code/JSON, tableau de bord, sanctuaire rouge, salle du conseil bleue, export/import.
 5. Mesure de performance sur un inventaire réel et un jeu de recherche reproductible.
