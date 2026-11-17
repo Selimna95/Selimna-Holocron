@@ -100,3 +100,20 @@ const fallbackShipUsage=crewSandbox.shipUsageMap({
 });
 assert.equal(fallbackShipUsage.get('HOUNDSTOOTH'),50,
   'Fleet compositions must still aggregate when the explicit ship totals are absent');
+
+const actualGacData=JSON.parse(fs.readFileSync(new URL('../gac-usage.json',import.meta.url),'utf8'));
+const actualSeason84=actualGacData.seasons.find(season=>Number(season.season)===84);
+assert.ok(actualSeason84&&Object.keys(actualSeason84.ships||{}).length>0,'The repository must expose its observed season-84 ship totals');
+const actualUsageMap=crewSandbox.shipUsageMap(actualSeason84);
+const canonicalShipKey=value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+for(const [shipName,record] of Object.entries(actualSeason84.ships||{})){
+  const compositionTotal=(actualSeason84.fleets||[]).reduce((sum,fleet)=>{
+    const ships=fleet?.ships||fleet?.units||[];
+    return ships.some(ship=>canonicalShipKey(ship)===canonicalShipKey(shipName))
+      ?sum+(Number(fleet.uses)||0):sum;
+  },0);
+  assert.equal(compositionTotal,Number(record.uses),
+    'Observed season-84 fleet composition sum must match the stored ship aggregate for '+shipName);
+  assert.equal(actualUsageMap.get(canonicalShipKey(shipName)),Number(record.uses),
+    'The donor usage map must not double-count actual season-84 ship usage for '+shipName);
+}
