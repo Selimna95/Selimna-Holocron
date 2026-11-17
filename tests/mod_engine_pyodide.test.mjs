@@ -270,17 +270,19 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
         'secondary_3_stat': 'Potency %', 'secondary_3_value': 1,
         'secondary_4_stat': 'Tenacity %', 'secondary_4_value': 1
     })
-try:
-    result = optimizer.optimize_kyber(
-        secondary_defense_mods, base_stats=profile['base_stats'], base_profile=profile,
-        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-    )
-    secondary_defense_error = ''
-except RuntimeError as error:
-    secondary_defense_error = str(error)
-json.dumps({'error': secondary_defense_error})
+score_profile = {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}
+result = optimizer.optimize_kyber(
+    secondary_defense_mods, base_stats=json.loads(base_json), base_profile=score_profile,
+    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+)
+json.dumps({
+    'count': len(result),
+    'missing': result[0].get('missing_stats', []) if result else []
+})
 `));
-assert.match(secondaryDefenseSearch.error, /defense:gear_component_required/);
+assert.equal(secondaryDefenseSearch.count, 1, 'Uncalculable Defense must not reject a build when the score stats are complete');
+assert.ok(secondaryDefenseSearch.missing.includes('defense:gear_component_required'), 'The accepted build must disclose the unavailable Defense projection');
+
 
 const realComlinkDefenseSearch = JSON.parse(pyodide.runPython(`import json
 comlink_mods = []
@@ -289,7 +291,7 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
         'game_id': 'real-comlink-defense-' + slot,
         'slot': slot, 'level': 15, 'pips': 0, 'rarity': 5,
         'set_name': ['Health', 'Offense', 'Speed', 'Defense', 'Potency', 'Tenacity'][index],
-        'primary_stat': 'Health %', 'primary_value': 5.88,
+        'primary_stat': 'Health', 'primary_value': 100,
         'secondary_stats': [
             {'name': 'Defense', 'stat_id': 49, 'value': 237.1, 'display_value': '2.37%', 'unscaled_roll_values': [2336, 2616]},
             {'name': 'Speed', 'stat_id': 5, 'value': 40000, 'display_value': '4', 'unscaled_roll_values': [40000]},
@@ -297,17 +299,19 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
             {'name': 'Tenacity', 'stat_id': 18, 'value': 281.8, 'display_value': '2.82%', 'unscaled_roll_values': [1778, 1159, 1761]}
         ]
     })
-try:
-    optimizer.optimize_kyber(
-        comlink_mods, base_stats=profile['base_stats'], base_profile=profile,
-        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-    )
-    real_comlink_defense_error = ''
-except RuntimeError as error:
-    real_comlink_defense_error = str(error)
-json.dumps({'error': real_comlink_defense_error})
+score_profile = {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}
+result = optimizer.optimize_kyber(
+    comlink_mods, base_stats=json.loads(base_json), base_profile=score_profile,
+    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+)
+json.dumps({
+    'count': len(result),
+    'missing': result[0].get('missing_stats', []) if result else []
+})
 `));
-assert.match(realComlinkDefenseSearch.error, /defense:gear_component_required/);
+assert.equal(realComlinkDefenseSearch.count, 1, 'Comlink mods must remain optimizable when only Defense projection is unavailable');
+assert.ok(realComlinkDefenseSearch.missing.includes('defense:gear_component_required'));
+
 
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
