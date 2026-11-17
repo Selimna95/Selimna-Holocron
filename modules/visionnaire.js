@@ -246,10 +246,15 @@
     return normalized?.key ? normalized.name : String(value??'').trim().replace(/%$/,'').trim();
   };
   function exchangeFinalStats(character,build){
-    const profile=typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{};
+    const hasValidatedProfile=typeof optimizerValidatedProfileForCharacter==='function';
+    const profile=hasValidatedProfile
+      ? (optimizerValidatedProfileForCharacter(character)||{})
+      : (typeof optimizerProfileForCharacter==='function'?(optimizerProfileForCharacter(character)||{}):{});
     const base=profile.base_stats || (typeof baseStatsForCharacter==='function'?baseStatsForCharacter(character):null);
     if(!base||typeof base!=='object'||!Object.keys(base).length)return null;
-    const source=profile.base_stats ? profile : base;
+    const metadata=typeof optimizerRosterMetadata==='function'?(optimizerRosterMetadata(character)||{}):{};
+    const gearLevel=metadata.gear_level ?? character?.gear_level ?? character?.gear;
+    const source=profile.base_stats ? profile : {base_stats:base,gear_level:gearLevel};
     const calculation=window.HolocronModEngine.calculateFinalStats(source,build,character?.level);
     if(!calculation.complete)return null;
     return Object.fromEntries(Object.entries(calculation.stats||{}).map(([name,value])=>[exchangeStatName(name),Number(value)]));
