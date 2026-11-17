@@ -262,18 +262,25 @@ pyodide.globals.set('score_missing_mod_json', JSON.stringify({
 }));
 const scoreStatMissing = JSON.parse(pyodide.runPython(`
 import json
-projection = optimizer.final_stats_many(
-    [[json.loads(score_missing_mod_json)]],
-    json.loads(base_json),
-    json.loads(score_missing_profile_json)
+builds = [[json.loads(score_missing_mod_json)]]
+base_profile = json.loads(score_missing_profile_json)
+speed_only_projection = optimizer.final_stats_many(
+    builds, json.loads(base_json), base_profile, required_stats={"Speed"}
+)[0]
+health_score_projection = optimizer.final_stats_many(
+    builds, json.loads(base_json), base_profile, required_stats={"Health"}
 )[0]
 json.dumps({
-    'rejected': isinstance(projection, RuntimeError),
-    'reason': str(projection) if isinstance(projection, RuntimeError) else ''
+    'speed_only_accepted': not isinstance(speed_only_projection, RuntimeError),
+    'missing': speed_only_projection.get('_projection_missing', []) if isinstance(speed_only_projection, dict) else [],
+    'health_rejected': isinstance(health_score_projection, RuntimeError),
+    'health_reason': str(health_score_projection) if isinstance(health_score_projection, RuntimeError) else ''
 })
 `));
-assert.equal(scoreStatMissing.rejected, true, 'A build must be rejected when a statistic used by the score is incomplete');
-assert.match(scoreStatMissing.reason, /Health/);
+assert.equal(scoreStatMissing.speed_only_accepted, true, 'A missing Health projection must not block a score that does not use Health');
+assert.ok(scoreStatMissing.missing.includes('health:gear_component_required'));
+assert.equal(scoreStatMissing.health_rejected, true, 'The same build must be rejected when Health is part of the score');
+assert.match(scoreStatMissing.health_reason, /Health/);
 
 const secondaryDefenseSearch = JSON.parse(pyodide.runPython(`import json
 secondary_defense_mods = []

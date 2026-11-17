@@ -301,8 +301,10 @@ def final_stats(build, base_stats=None, base_profile=None):
 _SCORE_REQUIRED_STATS = ("Speed", "Health", "Protection")
 
 
-def _projection_for_optimizer_score(result):
-    """Accept partial projections only when every stat used by the score is exact."""
+def _projection_for_optimizer_score(result, required_stats=None):
+    """Accept partial projections only when every stat used by this score is exact."""
+    required_stats = tuple(required_stats) if required_stats is not None else _SCORE_REQUIRED_STATS
+    required_keys = {str(name).casefold() for name in required_stats}
     if not isinstance(result, dict) or not isinstance(result.get("stats"), dict):
         missing = result.get("missing", []) if isinstance(result, dict) else []
         return RuntimeError("Projection de statistiques absente : " + _format_missing_stats(missing))
@@ -310,9 +312,9 @@ def _projection_for_optimizer_score(result):
     missing = list(result.get("missing") or [])
     blocking = [
         code for code in missing
-        if str(code).split(":", 1)[0].casefold() in {"speed", "health", "protection"}
+        if str(code).split(":", 1)[0].casefold() in required_keys
     ]
-    absent_score_stats = [name for name in _SCORE_REQUIRED_STATS if name not in stats]
+    absent_score_stats = [name for name in required_stats if name not in stats]
     if blocking or absent_score_stats:
         details = []
         if blocking:
@@ -326,7 +328,7 @@ def _projection_for_optimizer_score(result):
     return accepted
 
 
-def final_stats_many(builds, base_stats=None, base_profile=None):
+def final_stats_many(builds, base_stats=None, base_profile=None, required_stats=None):
     """Project many candidate builds through the shared JS engine in one bridge call.
 
     The scalar bridge remains the compatibility fallback for standalone callers/tests.
@@ -351,7 +353,7 @@ def final_stats_many(builds, base_stats=None, base_profile=None):
             except Exception as exc:
                 results.append(RuntimeError("Réponse invalide du moteur de calcul partagé.")) 
                 continue
-            results.append(_projection_for_optimizer_score(projection))
+            results.append(_projection_for_optimizer_score(projection, required_stats))
         return results
     source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
     # Candidate builds repeatedly reference the same small pool of mods. Send
@@ -387,7 +389,7 @@ def final_stats_many(builds, base_stats=None, base_profile=None):
         raise RuntimeError("Réponse invalide du moteur partagé (lot de projections).") from exc
     if not isinstance(projections, list) or len(projections) != len(builds):
         raise RuntimeError("Réponse incomplète du moteur partagé (taille du lot incorrecte).")
-    return [_projection_for_optimizer_score(result) for result in projections]
+    return [_projection_for_optimizer_score(result, required_stats) for result in projections]
 
 
 def _get_kyber_set_distribution(kyber):
@@ -783,7 +785,15 @@ def optimize_kyber(
                 if not batch:
                     break
                 try:
-                    projections = final_stats_many(batch, base_stats, base_profile)
+                    required_score_stats = {
+                        stat for stat in _SCORE_REQUIRED_STATS
+                        if to_float(scoring_context["averages"].get(stat), 0.0) > 0
+                    }
+                    if minimum_speed is not None:
+                        required_score_stats.add("Speed")
+                    projections = final_stats_many(
+                        batch, base_stats, base_profile, required_stats=required_score_stats
+                    )
                 except RuntimeError as exc:
                     record_projection_failure(exc)
                     continue
