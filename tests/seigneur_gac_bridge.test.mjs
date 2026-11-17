@@ -88,6 +88,23 @@ assert.equal(crewSandbox.shipCrew({baseId:'YWINGREBEL',name:'Rebel Y-wing',raw:{
 assert.equal(crewSandbox.shipCrew({baseId:'BWINGREBEL',name:'Rebel B-wing',raw:{}})[0],'CAPTAINDROGAN',
   'The canonical mapping must include ships beyond the sample pilot');
 
+const incompleteRosterSandbox=vm.createContext({
+  compactKey:value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  rosterShips:[
+    {baseId:'HOUNDSTOOTH',name:"Hound's Tooth",raw:{}},
+    {baseId:'NEWUNMAPPEDSHIP',name:'New unmapped ship',raw:{}}
+  ]
+});
+vm.runInContext(seigneurSource.slice(crewStart,crewEnd)+
+  '\\nthis.fleetUsage=seigneurCharacterFleetUsage;',incompleteRosterSandbox);
+const incompleteCrewUsage=incompleteRosterSandbox.fleetUsage(
+  {baseId:'BOSSK',name:'Bossk'},
+  {ships:{"Hound's Tooth":{uses:77}},fleets:[]}
+);
+assert.equal(incompleteCrewUsage.known,false,
+  'An unmapped owned ship must prevent an unsupported zero fleet-use assumption');
+assert.match(incompleteCrewUsage.reason,/incomplète/i);
+
 const aggregatedShipUsage=crewSandbox.shipUsageMap({
   ships:{"Hound's Tooth":{uses:77}},
   fleets:[{uses:77,ships:["Hound's Tooth"]}]
