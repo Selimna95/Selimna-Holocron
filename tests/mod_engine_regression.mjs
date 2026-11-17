@@ -98,6 +98,12 @@ assert.equal(coreNormalizedComlinkMod.secondary_3_value, 835,
   'Core must flatten raw Comlink Health at flat-stat scale');
 assert.equal(coreNormalizedComlinkMod.secondary_4_value, 2.818,
   'Core must flatten raw Comlink Tenacity at percentage-point scale');
+const coreThousandsProtection = coreScaleContext.statObjectFromAny({
+  name: 'Protection', stat_id: 28, value: 12240000,
+  display_value: '1,224', unscaled_roll_values: [12240000]
+});
+assert.equal(coreThousandsProtection.value, 1224,
+  'Core must not parse a thousands separator as a decimal comma in Comlink flat stats');
 
 
 // Seigneur Sith and Visionnaire must use the same canonical Galactic Legend set as core.
