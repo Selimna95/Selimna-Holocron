@@ -63,20 +63,6 @@ async function boot(){
     log('Références UI non disponibles : le Worker reste autonome.');
   }
 
-  // Pyodide principal est facultatif et ne doit jamais bloquer l'Optimizer.
-  try{
-    if(typeof loadPyodide==='function'){
-      pyodide=await loadPyodide();
-      const optimizerResponse=await fetch(new URL('./python/optimizer.py',document.baseURI).href+'?v=3.4.4-cache-sync',{cache:'force-cache'});
-      if(!optimizerResponse.ok) throw new Error(`optimizer.py HTTP ${optimizerResponse.status}`);
-      const optimizer=await optimizerResponse.text();
-      pyodide.FS.writeFile('/home/pyodide/optimizer.py',optimizer);
-      pyodide.runPython(`import sys; sys.path.append('/home/pyodide'); import optimizer`);
-      log('Moteur Python principal disponible en secours.');
-    }
-  }catch(e){
-    log('Moteur Python principal indisponible : le Worker reste utilisé pour l’optimisation.');
-  }
 }
 
 $('fileInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{currentData=JSON.parse(await file.text());mods=extractMods(currentData);const importedUnits=extractCharacters(currentData);const split=splitRosterUnits(importedUnits);rosterCharacters=split.characters;rosterShips=split.ships;buildFactionMap();updateRosterCounts(rosterCharacters,rosterShips);fillCharacters(rosterCharacters);updateAccountSummary(file.name,'IMPORT JSON');renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();$('dataInfo').textContent=`Fichier: ${file.name}\nMods détectés: ${mods.length}\nPersonnages détectés: ${rosterCharacters.length}\nVaisseaux détectés: ${rosterShips.length}`;$('log').textContent='';log(`Import: ${file.name}`);log(`${mods.length} mods détectés.`);log(`${rosterCharacters.length} personnages + ${rosterShips.length} vaisseaux détectés.`);showPage('dashboard');}catch(e){log('JSON invalide: '+e.message);}});
