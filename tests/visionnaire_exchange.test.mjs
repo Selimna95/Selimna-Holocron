@@ -95,7 +95,7 @@ const healthMods=[
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0},
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}
 ];
-assert.equal(sandbox.project(fixture,healthMods).Health,1150);
+assert.equal(sandbox.project(fixture,healthMods),null,'Visionnaire must refuse Health % when the profile has no verified gear component');
 const speedMods=['Square','Arrow','Diamond','Triangle'].map(slot=>({slot,set_name:'Speed',level:14,primary_stat:'Speed',primary_value:5,secondary_1_stat:'Health',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}));
 assert.equal(sandbox.project(fixture,speedMods).Speed,125);
 const better=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:0,primaryShare:.9,targetBalance:.02,donors:[{uses:5,statBalance:.01,statusWorsened:false}]});
