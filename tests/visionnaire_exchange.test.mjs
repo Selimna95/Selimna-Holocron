@@ -215,7 +215,10 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
   makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
 ],mismatchedPrimaryProfile,'primaries',[],['Square']);
 assert.equal(mismatchedPrimarySearch.proposals.length,0,'An Offense % primary must not satisfy a Kyber reference for flat Offense');
-const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Offense:500,'Physical Damage':1000,'Special Damage':1000}};
+const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5,'Physical Damage':1000,'Special Damage':1000},mods:normalTarget.mods.map(mod=>({...mod}))};
+variablePrimaryTarget.mods.find(mod=>mod.slot==='Square').set_name='Speed';
+variablePrimaryTarget.mods.find(mod=>mod.slot==='Circle').set_name='Potency';
+variablePrimaryTarget.mods.find(mod=>mod.slot==='Cross').set_name='Critical Damage';
 const shorthandPercentProfile={specific_sets:kyber.specific_sets,slots:{Cross:{primaries:{Offense:1}}}};
 const originalVisionnaireEngine=buildSandbox.window.HolocronModEngine;
 buildSandbox.window.HolocronModEngine={...sharedEngine,calculateFinalStats:source=>({complete:true,stats:source.base_stats||source})};
