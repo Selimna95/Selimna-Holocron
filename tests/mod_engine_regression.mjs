@@ -74,6 +74,31 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 // 1) Exact baseId identity must win over a colliding display-name alias.
 const core = read('../modules/core.js');
 
+const engineSandbox = { module: { exports: {} } };
+vm.createContext(engineSandbox);
+vm.runInContext(read('../modules/mod-engine.js'), engineSandbox);
+const sharedModEngine = engineSandbox.module.exports;
+const coreModContext = vm.createContext({ window: { HolocronModEngine: sharedModEngine } });
+load(core, ['numericValue', 'statNameFromAny', 'statValueFromAny', 'statObjectFromAny', 'normalizeMod'], coreModContext);
+const coreNormalizedComlinkMod = coreModContext.normalizeMod({
+  game_id: 'core-comlink-defense-scale', slot: 7, set: '1', level: 15,
+  pips: 0, rarity: 5, primary_stat: 'Health %', primary_value: 5.88,
+  secondary_stats: [
+    { name: 'Defense', stat_id: 49, value: 237.1, display_value: '2.37%', unscaled_roll_values: [2336, 2616] },
+    { name: 'Speed', stat_id: 5, value: 40000, display_value: '4', unscaled_roll_values: [40000] },
+    { name: 'Health', stat_id: 1, value: 8350000, display_value: '835', unscaled_roll_values: [41085900, 42449400] },
+    { name: 'Tenacity', stat_id: 18, value: 281.8, display_value: '2.82%', unscaled_roll_values: [1778, 1159, 1761] }
+  ]
+});
+assert.equal(coreNormalizedComlinkMod.secondary_1_value, 2.371,
+  'Core must flatten raw Comlink Defense % at percentage-point scale');
+assert.equal(coreNormalizedComlinkMod.secondary_2_value, 4,
+  'Core must flatten raw Comlink Speed at flat-stat scale');
+assert.equal(coreNormalizedComlinkMod.secondary_3_value, 835,
+  'Core must flatten raw Comlink Health at flat-stat scale');
+assert.equal(coreNormalizedComlinkMod.secondary_4_value, 2.818,
+  'Core must flatten raw Comlink Tenacity at percentage-point scale');
+
 
 // Seigneur Sith and Visionnaire must use the same canonical Galactic Legend set as core.
 const galacticLegendSet = new Set([
