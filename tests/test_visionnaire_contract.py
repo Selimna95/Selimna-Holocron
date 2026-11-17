@@ -138,6 +138,8 @@ class VisionnaireContractTests(unittest.TestCase):
         self.assertIn("mod._sourcePriorityKnown!==true", js)
         self.assertIn("exchangeSetBonusesPreserved(before,after)", js)
         self.assertIn("diverse.length>=24", js)
+        self.assertIn(".sort(visionnaireCandidatePriority)", js)
+        self.assertIn("const usage=mod=>", js)
         self.assertIn("Échantillonnage équilibré de tous les slots avec filtre vitesse préalable", js)
         self.assertIn("attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000)", js)
         self.assertIn("speedPruned++", js)
