@@ -124,7 +124,7 @@ Le Worker ne réutilise un snapshot que si le niveau, la rareté, le palier d'é
 ## Tests et critères d'intégration
 
 1. Fixtures brutes Comlink et import JSON : identifiants, échelles, unités et slots.
-2. Tests comportementaux du moteur : stats fixes/%, bonus de sets, vitesse, défense et stat non prise en charge.
+2. Tests comportementaux du moteur : stats fixes/%, bonus de sets, vitesse, défense et stat non prise en charge. Les bonus multiplicateurs en % (Offense, Défense, Santé, Protection, Vitesse) sont testés avec et sans composante d'équipement connue ; le test Pyodide parcourt les 334 profils (328 G13, 6 sous G13).
 3. Non-régression par module : Acolyte, Disciple, Seigneur, Visionnaire et Optimizer.
 4. Parcours navigateur complet : import Ally Code/JSON, tableau de bord, sanctuaire rouge, salle du conseil bleue, export/import.
 5. Mesure de performance sur un inventaire réel et un jeu de recherche reproductible.
