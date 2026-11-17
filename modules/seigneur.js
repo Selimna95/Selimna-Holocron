@@ -728,9 +728,11 @@ function renderResults(data,profileOverride=null){
   const refSets=rec.sets.slice(0,3).map(x=>`${x.label}${x.weight!=null?' · '+(x.weight*100).toFixed(1)+' %':''}`).join(' · ')||'Référence Kyber non détaillée';
   const refSecondaries=rec.secondaries.slice(0,4).map(x=>x.name).join(' · ')||'Secondaires Kyber non détaillées';
   const warningCodes=[...new Set(data.flatMap(row=>Array.isArray(row.warnings)?row.warnings:[]))];
-  const warningMarkup=warningCodes.includes('defense_percent_unavailable')
-    ? '<div class="forge-result-warning"><strong>DÉFENSE % NON ÉVALUÉE</strong><span>Les mods Défense % ont été écartés du calcul : le profil ne fournit pas la composante Armor/Resistance de base séparée de l’équipement secondaire. Les configurations affichées sont calculées sans ce bonus.</span></div>'
-    : '';
+  const warningMarkup=warningCodes.includes('gear_percent_unavailable')
+    ? '<div class="forge-result-warning"><strong>BONUS MULTIPLICATEURS EN % NON ÉVALUÉS</strong><span>Certains bonus % (Offense, Défense, Santé, Protection ou Vitesse) ont été écartés : le profil ne sépare pas les statistiques de base des secondaires des pièces d’équipement. Un profil G13 compatible est nécessaire pour calculer ces bonus sans approximation.</span></div>'
+    : warningCodes.includes('defense_percent_unavailable')
+      ? '<div class="forge-result-warning"><strong>DÉFENSE % NON ÉVALUÉE</strong><span>Les mods Défense % ont été écartés du calcul : le profil ne fournit pas la composante Armor/Resistance de base séparée de l’équipement secondaire.</span></div>'
+      : '';
   $('results').innerHTML=`<div class="forge-results-intro forge-results-command">
     <div class="forge-results-heading"><span class="forge-kicker">RÉSULTATS // SEIGNEUR SITH</span><strong>Configurations optimisées</strong><small>${esc(character?.name||'Personnage')} · recherche guidée par la référence Kyber et limitée à <b>${esc(scope)}</b>.</small></div>
     <div class="forge-result-count"><b>${data.length}</b><span>BUILDS</span></div>
