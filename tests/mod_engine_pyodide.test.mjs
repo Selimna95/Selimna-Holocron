@@ -136,14 +136,10 @@ let g13ProfileCount = 0;
 let lowerGearProfileCount = 0;
 for (const profile of Object.values(optimizerProfiles)) {
   const projection = engine.calculateFinalStats(profile, defenseProfileMods, profile.level);
-  if (Number(profile.gear_level) === 13) {
-    g13ProfileCount++;
-    assert.equal(projection.complete, true, `G13 profile ${profile.base_id} rejected: ${projection.missing.join(', ')}`);
-  } else {
-    lowerGearProfileCount++;
-    assert.equal(projection.complete, false, `Lower-gear profile ${profile.base_id} must not guess the gear component`);
-    assert.ok(projection.missing.includes('defense:gear_component_required'));
-  }
+  if (Number(profile.gear_level) === 13) g13ProfileCount++;
+  else lowerGearProfileCount++;
+  assert.equal(projection.complete, false, `Profile ${profile.base_id} must not guess the Defense % gear component`);
+  assert.ok(projection.missing.includes('defense:gear_component_required'));
 }
 assert.equal(g13ProfileCount, 328);
 assert.equal(lowerGearProfileCount, 6);
