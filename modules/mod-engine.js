@@ -341,11 +341,11 @@
       if (!Number.isFinite(characterLevel) || characterLevel <= 0) missing.push('level');
       else {
         const levelEffect = characterLevel * 7.5;
-        // Crinolo applies Defense % to stats.base before the current equipped-gear
-        // secondary component. At G13 there are no current-tier gear pieces, so that
-        // non-compoundable component is exactly zero and the whole base rating qualifies.
-        // Below G13, the profile does not expose the gear/base split: refuse rather than guess.
-        const canProjectDefensePercent = !defenseRatio || gearLevel === 13;
+        // Crinolo applies Defense % to stats.base, then adds equipped-gear
+        // secondary stats separately. The static profiles do not carry that split;
+        // gear_level alone is not a verified gear-component breakdown. Refuse every
+        // Defense % projection until the profile supplies the exact source component.
+        const canProjectDefensePercent = !defenseRatio;
         if (defenseRatio && !canProjectDefensePercent) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
