@@ -172,31 +172,28 @@ mods = []
 for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):
     mod = {'game_id': 'valid-' + slot, 'slot': slot, 'level': 15,
            'set_name': ['Health', 'Offense', 'Speed', 'Defense', 'Critical Damage', 'Potency'][index],
-           'primary_stat': 'Health', 'primary_value': 100,
+           'primary_stat': 'Defense %' if slot == 'Cross' else 'Health',
+           'primary_value': 10 if slot == 'Cross' else 100,
            'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
            'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
            'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
            'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 1}
     mods.append(mod)
-mods.append({'game_id': 'unsupported-defense', 'slot': 'Cross', 'level': 15,
-             'set_name': 'Tenacity', 'primary_stat': 'Defense %', 'primary_value': 10,
-             'secondary_1_stat': 'Speed', 'secondary_1_value': 10,
-             'secondary_2_stat': 'Potency %', 'secondary_2_value': 1,
-             'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 1,
-             'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 1})
-valid_build_projection = optimizer.final_stats(
-    mods[:6], json.loads(base_json),
-    {'base_stats': json.loads(base_json), 'level': 85}
-)
-result = optimizer.optimize_kyber(
-    mods, base_stats=json.loads(base_json),
-    base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13},
-    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-)
-json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else []})
+try:
+    result = optimizer.optimize_kyber(
+        mods, base_stats=json.loads(base_json),
+        base_profile={'base_stats': json.loads(base_json), 'level': 85},
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    warning_error = ''
+except RuntimeError as error:
+    result = []
+    warning_error = str(error)
+json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else [], 'error': warning_error})
 `));
-assert.equal(defenseWarningResult.count, 1);
-assert.ok(defenseWarningResult.warnings.includes('gear_percent_unavailable'));
+assert.equal(defenseWarningResult.count, 0);
+assert.match(defenseWarningResult.error, /Bonus multiplicateurs en % non calculables/);
+assert.match(defenseWarningResult.error, /G13 compatible/);
 
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
@@ -210,8 +207,6 @@ assert.equal(g13DefenseWarningResult.count, 1);
 assert.ok(!g13DefenseWarningResult.warnings.includes('defense_percent_unavailable'));
 assert.ok(!g13DefenseWarningResult.warnings.includes('gear_percent_unavailable'));
 
-
-pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
 
