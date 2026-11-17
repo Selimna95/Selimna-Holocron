@@ -306,6 +306,24 @@ class OptimizerNormalizationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "données incomplètes"):
             optimize_kyber(one_mod, kyber={}, base_stats={})
 
+    def test_six_slot_build_keeps_mods_without_explicit_source_ids_distinct(self):
+        mods = [
+            {
+                "slot": slot, "set": "Speed", "primary_stat": "Speed", "primary_value": 10,
+                "secondary_1_stat": "Speed", "secondary_1_value": 5,
+                "level": 15, "rarity": 5,
+            }
+            for slot in ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+        ]
+        builds = optimize_kyber(
+            mods, base_stats={"Speed": 100, "Health": 10000, "Protection": 10000},
+            kyber={}, number_of_builds=1, limit_per_slot=1,
+        )
+        self.assertEqual(len(builds), 1)
+        self.assertEqual(len(builds[0]["build"]), 6)
+        self.assertEqual({mod["slot"] for mod in builds[0]["build"]},
+                         {"Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"})
+
     def test_nominal_six_slot_build(self):
         mods = []
         for slot in ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"):
