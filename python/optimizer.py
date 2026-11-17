@@ -229,12 +229,21 @@ def _mod_metadata(mod):
 
 
 def _format_missing_stats(missing):
+    labels = {
+        "defense": "Défense",
+        "offense": "Offense",
+        "health": "Health",
+        "protection": "Protection",
+        "speed": "Speed",
+    }
     details = []
     for code in missing or []:
-        if code == "defense:gear_component_required":
+        if str(code).endswith(":gear_component_required"):
+            key = str(code).split(":", 1)[0]
+            label = labels.get(key, key)
             details.append(
-                "Défense % : le profil ne sépare pas les valeurs Armor/Resistance de base "
-                "des statistiques secondaires d'équipement (defense:gear_component_required)"
+                f"{label} % : le profil ne sépare pas la statistique de base "
+                "des secondaires des pièces d'équipement actuellement équipées."
             )
         else:
             details.append(str(code))
@@ -669,15 +678,28 @@ def optimize_kyber(
     projection_failures = []
     projection_warnings = set()
     profile_gear_level = to_float(base_profile.get("gear_level"), None) if isinstance(base_profile, dict) else None
+    gear_dependent_percent_names = {
+        "Offense %", "Defense %", "Health %", "Protection %", "Speed %",
+        "Physical Damage %", "Special Damage %",
+    }
+    has_gear_dependent_percent = any(
+        metadata.get("primary") in gear_dependent_percent_names
+        or any(name in gear_dependent_percent_names for name in metadata.get("stats", {}))
+        for metadata in mod_metadata.values()
+    )
     has_defense_percent = any(
         metadata.get("primary") == "Defense %" or "Defense %" in metadata.get("stats", {})
         for metadata in mod_metadata.values()
     )
+    if has_gear_dependent_percent and profile_gear_level != 13:
+        projection_warnings.add("gear_percent_unavailable")
     if has_defense_percent and profile_gear_level != 13:
         projection_warnings.add("defense_percent_unavailable")
 
     def record_projection_failure(error):
         message = str(error)
+        if "gear_component_required" in message:
+            projection_warnings.add("gear_percent_unavailable")
         if "defense:gear_component_required" in message:
             projection_warnings.add("defense_percent_unavailable")
         if len(projection_failures) < 12:
@@ -743,9 +765,10 @@ def optimize_kyber(
         beam = search_builds(None)
     if not beam:
         detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
-        if "defense_percent_unavailable" in projection_warnings:
-            detail = ("Défense % non calculable : le profil ne fournit pas les valeurs Armor/Resistance "
-                      "de base séparées des statistiques secondaires d'équipement.")
+        if "gear_percent_unavailable" in projection_warnings:
+            detail = ("Bonus multiplicateurs en % non calculables : le profil ne sépare pas "
+                      "les statistiques de base des secondaires des pièces d'équipement. "
+                      "Un profil G13 compatible est nécessaire pour ces projections.")
         raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
 
     def speed_safe(projected_stats):
