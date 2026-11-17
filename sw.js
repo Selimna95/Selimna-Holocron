@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.111-validated-gear-projection';
+const CACHE_NAME = 'holocron-static-v4.4.112-validated-speed-projection';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -23,13 +23,13 @@ const STATIC_ASSETS = [
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.6.0-gac-freshness',
   './modules/seigneur-gac.js?v=1.1.0-history-fallback',
-  './modules/mod-engine.js?v=0.3.26',
+  './modules/mod-engine.js?v=0.3.27',
   './modules/core.js?v=4.2.39-gear-dependent-percent',
   './modules/acolyte.js?v=3.4.9-weak-donor-recipient',
-  './modules/disciple.js?v=3.5.9-complete-secondary-options',
-  './modules/seigneur.js?v=3.9.13-gear-dependent-percent',
+  './modules/disciple.js?v=3.5.10-validated-gear-speed',
+  './modules/seigneur.js?v=3.9.14-validated-speed-floor',
   './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
-  './modules/visionnaire.js?v=4.1.80-validated-gear-projection',
+  './modules/visionnaire.js?v=4.1.81-validated-speed-projection',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
   './optimizer-worker.mjs?v=3.5.16-gear-dependent-percent',
   './python/optimizer.py?v=3.5.13-gear-dependent-percent',
