@@ -32,6 +32,16 @@ const engineBridge = (baseJson, modsJson, level) => {
   const result = engine.calculateFinalStats(baseProfile, JSON.parse(modsJson), Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null);
   return JSON.stringify(result);
 };
+const speedBridge = (baseJson, modsJson) => {
+  const source = JSON.parse(baseJson);
+  const base = source.base_stats || source;
+  return JSON.stringify(engine.calculateSpeed(
+    base.Speed ?? base.speed,
+    JSON.parse(modsJson),
+    source.gear_level ?? source.gearLevel,
+    source.stat_components ?? null
+  ));
+};
 const normalizeBridge = modJson => JSON.stringify(engine.normalizeMod(JSON.parse(modJson)));
 let batchBridgeCalls = 0;
 let batchProjectedBuilds = 0;
@@ -50,7 +60,8 @@ const batchBridge = (baseJson, indexedBuildsJson, level) => {
 pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
 pyodide.globals.set('holocron_mod_normalize_bridge', normalizeBridge);
 pyodide.globals.set('holocron_mod_engine_batch_bridge', batchBridge);
-pyodide.runPython("import sys\nsys.path.insert(0, '/home/pyodide')\nimport optimizer\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge)\n");
+pyodide.globals.set('holocron_mod_engine_speed_bridge', speedBridge);
+pyodide.runPython("import sys\nsys.path.insert(0, '/home/pyodide')\nimport optimizer\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)\n");
 
 const profileValidation = pyodide.runPython(`
 profile = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8,"base_stats":{"Speed":153}}
@@ -138,6 +149,18 @@ const verifiedG13SpeedProfile = {
 const verifiedG13Speed = engine.calculateFinalStats(verifiedG13SpeedProfile, g13SpeedSetMods, verifiedG13SpeedProfile.level);
 assert.equal(verifiedG13Speed.complete, true);
 assert.equal(verifiedG13Speed.stats.Speed, 168, 'Pyodide uses Crinolo integer flooring for Speed set bonuses');
+pyodide.globals.set('speed_test_mods_json', JSON.stringify(g13SpeedSetMods));
+pyodide.globals.set('speed_test_profile_json', JSON.stringify(verifiedG13SpeedProfile));
+const pythonSpeedProjection = JSON.parse(pyodide.runPython(`
+import json
+json.dumps(optimizer.calculate_speed(
+    json.loads(speed_test_mods_json),
+    {"Speed": 153},
+    json.loads(speed_test_profile_json)
+))
+`));
+assert.equal(pythonSpeedProjection.complete, true);
+assert.equal(pythonSpeedProjection.total, 168, 'Python Seigneur speed floor must use calculateSpeed only');
 const r5d4Profile = optimizerProfiles.R5D4;
 assert.ok(r5d4Profile && r5d4Profile.gear_level === 12);
 const r5d4OffenseProjection = engine.calculateFinalStats(r5d4Profile, offenseMods, r5d4Profile.level);
