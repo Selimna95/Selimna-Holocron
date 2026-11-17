@@ -365,7 +365,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
             for slot, set_name in zip(slots, sets)
         ]
         kyber = {"specific_sets": [{"name": "Health x6", "counts": {"Health": 6}, "weight": 1.0}]}
-        builds = optimize_kyber(mods, base_stats={"Speed": 100, "Health": 1000}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
+        builds = optimize_kyber(mods, base_stats={"Speed": 100, "Health": 1000, "Protection": 1000}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
         self.assertEqual(len(builds), 1)
         self.assertEqual(len(builds[0]["build"]), 6)
         self.assertEqual(builds[0]["set_plan"], {})
@@ -379,7 +379,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
             for slot in slots
         ]
         kyber = {"specific_sets": [{"name": "Speed x6", "counts": {"Speed": 6}, "weight": 1.0}]}
-        builds = optimize_kyber(mods, base_stats={"Speed": 100}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
+        builds = optimize_kyber(mods, base_stats={"Speed": 100, "Health": 1000, "Protection": 1000}, kyber=kyber, number_of_builds=1, limit_per_slot=1)
         self.assertEqual(len(builds), 1)
         self.assertEqual(builds[0]["set_plan"], {"Speed": 6})
 
@@ -423,7 +423,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
         kyber = {"sets": {"Health": 1.0},
                  "specific_sets": [{"name": "Health x6", "counts": {"Health": 6}, "weight": 1.0}]}
         builds = optimize_kyber(
-            mods, base_stats={"Speed": 100}, kyber=kyber,
+            mods, base_stats={"Speed": 100, "Health": 1000, "Protection": 1000}, kyber=kyber,
             number_of_builds=3, limit_per_slot=2, minimum_speed=160,
         )
         self.assertTrue(builds)
@@ -440,7 +440,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
         } for slot in slots]
         with self.assertRaisesRegex(RuntimeError, "Vitesse actuelle : 200.0"):
             optimize_kyber(
-                mods, base_stats={"Speed": 100, "Health": 1000}, kyber={},
+                mods, base_stats={"Speed": 100, "Health": 1000, "Protection": 1000}, kyber={},
                 number_of_builds=3, limit_per_slot=1, minimum_speed=200,
             )
 

@@ -25,14 +25,16 @@ SLOTS = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
 _MOD_ENGINE_BRIDGE = None
 _MOD_NORMALIZE_BRIDGE = None
 _MOD_ENGINE_BATCH_BRIDGE = None
+_MOD_ENGINE_SPEED_BRIDGE = None
 
 
-def set_mod_engine_bridge(bridge, normalize_bridge=None, batch_bridge=None):
-    """Inject the single JavaScript calculation, batch calculation and normalization engine."""
-    global _MOD_ENGINE_BRIDGE, _MOD_NORMALIZE_BRIDGE, _MOD_ENGINE_BATCH_BRIDGE
+def set_mod_engine_bridge(bridge, normalize_bridge=None, batch_bridge=None, speed_bridge=None):
+    """Inject the shared JS projection, batch, normalization and speed-only bridges."""
+    global _MOD_ENGINE_BRIDGE, _MOD_NORMALIZE_BRIDGE, _MOD_ENGINE_BATCH_BRIDGE, _MOD_ENGINE_SPEED_BRIDGE
     _MOD_ENGINE_BRIDGE = bridge
     _MOD_NORMALIZE_BRIDGE = normalize_bridge
     _MOD_ENGINE_BATCH_BRIDGE = batch_bridge
+    _MOD_ENGINE_SPEED_BRIDGE = speed_bridge
     _normalized_mod_cached.cache_clear()
 
 
@@ -258,6 +260,24 @@ def _format_missing_stats(missing):
     return ", ".join(details)
 
 
+def calculate_speed(mods, base_stats=None, base_profile=None):
+    """Calculate only Speed through the shared JS engine (Seigneur hard floor)."""
+    if _MOD_ENGINE_SPEED_BRIDGE is None:
+        raise RuntimeError("Calcul de vitesse partagé non initialisé dans l'Optimizer.")
+    source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
+    payload = _MOD_ENGINE_SPEED_BRIDGE(
+        json.dumps(source, ensure_ascii=False, separators=(",", ":")),
+        json.dumps(list(mods or []), ensure_ascii=False, separators=(",", ":")),
+    )
+    try:
+        result = json.loads(str(payload))
+    except Exception as exc:
+        raise RuntimeError("Réponse invalide du moteur de vitesse partagé.") from exc
+    if not isinstance(result, dict):
+        raise RuntimeError("Réponse invalide du moteur de vitesse partagé.")
+    return result
+
+
 def final_stats(build, base_stats=None, base_profile=None):
     """Delegate every stat projection to the shared JavaScript engine."""
     if _MOD_ENGINE_BRIDGE is None:
@@ -278,7 +298,37 @@ def final_stats(build, base_stats=None, base_profile=None):
     return result["stats"]
 
 
-def final_stats_many(builds, base_stats=None, base_profile=None):
+_SCORE_REQUIRED_STATS = ("Speed", "Health", "Protection")
+
+
+def _projection_for_optimizer_score(result, required_stats=None):
+    """Accept partial projections only when every stat used by this score is exact."""
+    required_stats = tuple(required_stats) if required_stats is not None else _SCORE_REQUIRED_STATS
+    required_keys = {str(name).casefold() for name in required_stats}
+    if not isinstance(result, dict) or not isinstance(result.get("stats"), dict):
+        missing = result.get("missing", []) if isinstance(result, dict) else []
+        return RuntimeError("Projection de statistiques absente : " + _format_missing_stats(missing))
+    stats = result["stats"]
+    missing = list(result.get("missing") or [])
+    blocking = [
+        code for code in missing
+        if str(code).split(":", 1)[0].casefold() in required_keys
+    ]
+    absent_score_stats = [name for name in required_stats if name not in stats]
+    if blocking or absent_score_stats:
+        details = []
+        if blocking:
+            details.append(_format_missing_stats(blocking))
+        if absent_score_stats:
+            details.append("statistiques du score absentes : " + ", ".join(absent_score_stats))
+        return RuntimeError("Calcul incomplet pour le score : " + "; ".join(details))
+    accepted = dict(stats)
+    if missing:
+        accepted["_projection_missing"] = missing
+    return accepted
+
+
+def final_stats_many(builds, base_stats=None, base_profile=None, required_stats=None):
     """Project many candidate builds through the shared JS engine in one bridge call.
 
     The scalar bridge remains the compatibility fallback for standalone callers/tests.
@@ -288,12 +338,22 @@ def final_stats_many(builds, base_stats=None, base_profile=None):
     if not builds:
         return []
     if _MOD_ENGINE_BATCH_BRIDGE is None:
+        if _MOD_ENGINE_BRIDGE is None:
+            raise RuntimeError("Moteur de calcul partagé non initialisé dans l'Optimizer.")
+        source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
         results = []
         for build in builds:
+            payload = _MOD_ENGINE_BRIDGE(
+                json.dumps(source, ensure_ascii=False, separators=(",", ":")),
+                json.dumps(list(build or []), ensure_ascii=False, separators=(",", ":")),
+                to_float(source.get("level"), None) if isinstance(source, dict) else None,
+            )
             try:
-                results.append(final_stats(build, base_stats, base_profile))
-            except RuntimeError as exc:
-                results.append(exc)
+                projection = json.loads(str(payload))
+            except Exception as exc:
+                results.append(RuntimeError("Réponse invalide du moteur de calcul partagé.")) 
+                continue
+            results.append(_projection_for_optimizer_score(projection, required_stats))
         return results
     source = base_profile if isinstance(base_profile, dict) and base_profile else (base_stats or {})
     # Candidate builds repeatedly reference the same small pool of mods. Send
@@ -329,14 +389,7 @@ def final_stats_many(builds, base_stats=None, base_profile=None):
         raise RuntimeError("Réponse invalide du moteur partagé (lot de projections).") from exc
     if not isinstance(projections, list) or len(projections) != len(builds):
         raise RuntimeError("Réponse incomplète du moteur partagé (taille du lot incorrecte).")
-    results = []
-    for result in projections:
-        if isinstance(result, dict) and result.get("complete") and isinstance(result.get("stats"), dict):
-            results.append(result["stats"])
-        else:
-            missing = result.get("missing", []) if isinstance(result, dict) else []
-            results.append(RuntimeError("Calcul de statistiques incomplet : " + _format_missing_stats(missing)))
-    return results
+    return [_projection_for_optimizer_score(result, required_stats) for result in projections]
 
 
 def _get_kyber_set_distribution(kyber):
@@ -693,31 +746,10 @@ def optimize_kyber(
     # the hard constraint instead of returning an empty result.
     projection_failures = []
     projection_warnings = set()
-    profile_gear_level = to_float(base_profile.get("gear_level"), None) if isinstance(base_profile, dict) else None
-    gear_dependent_percent_names = {
-        "Offense %", "Defense %", "Health %", "Protection %", "Speed %",
-        "Physical Damage %", "Special Damage %",
-    }
-    has_gear_dependent_percent = any(
-        metadata.get("primary") in gear_dependent_percent_names
-        or any(name in gear_dependent_percent_names for name in metadata.get("stats", {}))
-        for metadata in mod_metadata.values()
-    )
-    has_defense_percent = any(
-        metadata.get("primary") == "Defense %" or "Defense %" in metadata.get("stats", {})
-        for metadata in mod_metadata.values()
-    )
-    if has_gear_dependent_percent and profile_gear_level != 13:
-        projection_warnings.add("gear_percent_unavailable")
-    if has_defense_percent and profile_gear_level != 13:
-        projection_warnings.add("defense_percent_unavailable")
-
     def record_projection_failure(error):
         message = str(error)
         if "gear_component_required" in message:
             projection_warnings.add("gear_percent_unavailable")
-        if "defense:gear_component_required" in message:
-            projection_warnings.add("defense_percent_unavailable")
         if len(projection_failures) < 12:
             projection_failures.append(message)
 
@@ -753,7 +785,15 @@ def optimize_kyber(
                 if not batch:
                     break
                 try:
-                    projections = final_stats_many(batch, base_stats, base_profile)
+                    required_score_stats = {
+                        stat for stat in _SCORE_REQUIRED_STATS
+                        if to_float(scoring_context["averages"].get(stat), 0.0) > 0
+                    }
+                    if minimum_speed is not None:
+                        required_score_stats.add("Speed")
+                    projections = final_stats_many(
+                        batch, base_stats, base_profile, required_stats=required_score_stats
+                    )
                 except RuntimeError as exc:
                     record_projection_failure(exc)
                     continue
@@ -780,14 +820,14 @@ def optimize_kyber(
     if set_plan and applied_set_plan is None:
         beam = search_builds(None)
     if not beam:
-        detail = projection_failures[0] if projection_failures else "Aucun build complet ne peut être calculé avec les données disponibles."
+        detail = projection_failures[0] if projection_failures else "Aucun build ne permet de calculer les statistiques nécessaires au score."
         if "gear_percent_unavailable" in projection_warnings:
             first_projection_failure = projection_failures[0] if projection_failures else "composante d'équipement inconnue"
             detail = ("Bonus multiplicateurs en % non calculables : le profil ne sépare pas "
                       "les statistiques de base des secondaires des pièces d'équipement. "
                       "Un profil avec séparation base/équipement vérifiée est nécessaire pour ces projections. "
                       "Détail du premier rejet : " + first_projection_failure)
-        raise RuntimeError("Aucune combinaison de mods ne permet un calcul complet. " + detail)
+        raise RuntimeError("Aucune combinaison ne permet un calcul fiable des statistiques utilisées par le score. " + detail)
 
     def speed_safe(projected_stats):
         if minimum_speed is None:
@@ -829,7 +869,8 @@ def optimize_kyber(
             "build": list(build),
             "score": build_score(build, kyber, weights, base_stats, base_profile, stats,
                                  mod_metadata, scoring_context),
-            "stats": stats,
+            "stats": {key: value for key, value in stats.items() if key != "_projection_missing"},
+            "missing_stats": list(stats.get("_projection_missing", [])),
             "set_plan": applied_set_plan or {},
             "warnings": sorted(projection_warnings),
         })

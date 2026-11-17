@@ -1,9 +1,9 @@
 import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs";
-import "./modules/mod-engine.js?v=0.3.28";
+import "./modules/mod-engine.js?v=0.3.29";
 
 let pyodideReadyPromise = (async () => {
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
-  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.13-gear-dependent-percent", import.meta.url), { cache: "force-cache" });
+  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.14-speed-floor", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
   const optimizerSource = await optimizerResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer.py", optimizerSource);
@@ -24,6 +24,18 @@ let pyodideReadyPromise = (async () => {
     const base = JSON.parse(baseJson);
     const mods = JSON.parse(modsJson);
     const result = self.HolocronModEngine.calculateFinalStats(base, mods, Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : null);
+    return JSON.stringify(result);
+  };
+  const modEngineSpeedBridge = (baseJson, modsJson) => {
+    const source = JSON.parse(baseJson);
+    const base = source.base_stats && typeof source.base_stats === "object" ? source.base_stats : source;
+    const speed = base.Speed ?? base.speed;
+    const result = self.HolocronModEngine.calculateSpeed(
+      speed,
+      JSON.parse(modsJson),
+      source.gear_level ?? source.gearLevel,
+      source.stat_components ?? null
+    );
     return JSON.stringify(result);
   };
   const modNormalizeBridge = (modJson) => {
@@ -50,12 +62,13 @@ let pyodideReadyPromise = (async () => {
   pyodide.globals.set("holocron_mod_engine_bridge", modEngineBridge);
   pyodide.globals.set("holocron_mod_normalize_bridge", modNormalizeBridge);
   pyodide.globals.set("holocron_mod_engine_batch_bridge", modEngineBatchBridge);
+  pyodide.globals.set("holocron_mod_engine_speed_bridge", modEngineSpeedBridge);
 
   pyodide.runPython(`
 import sys, json
 sys.path.append('/home/pyodide')
 import optimizer
-optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge)
+optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)
 with open('/home/pyodide/optimizer_profiles.json', encoding='utf-8') as _f:
     _optimizer_profiles = json.load(_f)
 `);
@@ -129,9 +142,10 @@ if not isinstance(profile, dict):
 
 minimum_speed = None
 if context.get("mode") == "seigneur-six-mods":
-    # The current six-mod speed is the hard floor for Seigneur Sith.
-    # final_stats includes arrow primary speed and the four-piece Speed-set bonus.
-    minimum_speed = optimizer.final_stats(current_target_mods, base_stats, base_profile).get("Speed")
+    # The Seigneur hard floor depends only on Speed. Do not reject the current
+    # build because unrelated stats (Health, Offense, Defense, etc.) are unavailable.
+    speed_projection = optimizer.calculate_speed(current_target_mods, base_stats, base_profile)
+    minimum_speed = speed_projection.get("total") if speed_projection.get("complete") else None
     if minimum_speed is None or float(minimum_speed) <= 0:
         raise RuntimeError(
             "Vitesse actuelle du personnage non calculable : "
