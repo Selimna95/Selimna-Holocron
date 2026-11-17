@@ -126,7 +126,6 @@ const comlinkStatCases = [
   [22, 'specialCriticalChance', 'percentagePoints'], [23, 'armor', 'percentagePoints'],
   [24, 'resistance', 'percentagePoints'], [25, 'armorPenetration', 'percentagePoints'],
   [26, 'resistancePenetration', 'percentagePoints'], [28, 'protection', 'flat'],
-  [31, 'physicalDamage', 'percentagePoints'], [32, 'specialDamage', 'percentagePoints'],
   [33, 'physicalAccuracy', 'percentagePoints'], [34, 'specialAccuracy', 'percentagePoints'],
   [35, 'physicalCriticalAvoidance', 'percentagePoints'], [36, 'specialCriticalAvoidance', 'percentagePoints'],
   [37, 'physicalAccuracy', 'flat'], [38, 'specialAccuracy', 'flat'],
@@ -143,7 +142,7 @@ for (const [id, key, unit] of comlinkStatCases) {
   assert.equal(stat.unit, unit, 'Comlink UnitStat ' + id + ' unit');
   assert.equal(stat.complete, true, 'Comlink UnitStat ' + id + ' is recognized');
 }
-for (const id of [43, 44, 45, 46, 47, 50, 51, 58, 59, 60, 61]) {
+for (const id of [31, 32, 43, 44, 45, 46, 47, 50, 51, 58, 59, 60, 61]) {
   const stat = engine.normalizeStat({ unitStatId: id, unscaledDecimalValue: 100000000 });
   assert.equal(stat.complete, false, 'unsupported Comlink UnitStat ' + id + ' must remain unknown');
 }
@@ -197,8 +196,8 @@ assert.equal(speedParts.primary, true);
 assert.equal(speedParts.primarySpeed, 30);
 assert.equal(speedParts.secondary, 5);
 assert.equal(speedParts.total, 35);
-assert.equal(engine.normalizeStat({ unitStatId: 31, unscaledDecimalValue: 3000000 }).key, 'physicalDamage');
-assert.equal(engine.normalizeStat({ unitStatId: 32, unscaledDecimalValue: 4000000 }).key, 'specialDamage');
+assert.equal(engine.normalizeStat({ unitStatId: 31, unscaledDecimalValue: 3000000 }).complete, false);
+assert.equal(engine.normalizeStat({ unitStatId: 32, unscaledDecimalValue: 4000000 }).complete, false);
 assert.equal(engine.normalizeStat({ unitStatId: 23, unscaledDecimalValue: 1000000 }).key, 'armor');
 assert.equal(engine.normalizeStat({ unitStatId: 24, unscaledDecimalValue: 2000000 }).key, 'resistance');
 
