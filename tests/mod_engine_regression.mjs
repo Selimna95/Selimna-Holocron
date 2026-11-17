@@ -75,6 +75,35 @@ for (let firstSlot = 0; firstSlot < 6; firstSlot++) {
 const core = read('../modules/core.js');
 
 
+// Equipped-mod ownership is indexed once per roster/inventory snapshot, not rebuilt per character.
+let normalizedOwnerMods=0;
+const ownerIndexContext=vm.createContext({
+  rosterCharacters:[
+    {baseId:'GLAHSOKATANO',name:'Ahsoka Tano'},
+    {baseId:'AHSOKATANO',name:'Ahsoka Tano (Snips)'}
+  ],
+  mods:[
+    {id:'gl-square',slot:'Square',characterId:'GLAHSOKATANO'},
+    {id:'snips-square',slot:'Square',characterId:'AHSOKATANO'},
+    {id:'gl-arrow',slot:'Arrow',character:{baseId:'GLAHSOKATANO'}}
+  ],
+  characterKey:c=>String(c?.baseId||''),
+  compactKey:value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  normalizeModForDisplay:m=>{normalizedOwnerMods++;return {...m,ownerKey:String(m.characterId||m.character?.baseId||'').toUpperCase()};},
+  modOwnerKey:m=>String(m?.ownerKey||'').toUpperCase()
+});
+load(core,['getCharacterModsIndex','getCharacterMods'],ownerIndexContext);
+const indexedGlMods=ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]);
+const indexedSnipsMods=ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[1]);
+assert.deepEqual(indexedGlMods.map(m=>m.id),['gl-square','gl-arrow']);
+assert.deepEqual(indexedSnipsMods.map(m=>m.id),['snips-square']);
+assert.equal(normalizedOwnerMods,3,'The inventory must be normalized once for the whole ownership index');
+ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]);
+assert.equal(normalizedOwnerMods,3,'Repeated lookups must reuse the same roster/inventory index');
+ownerIndexContext.mods=[...ownerIndexContext.mods,{id:'gl-diamond',slot:'Diamond',characterId:'GLAHSOKATANO'}];
+assert.deepEqual(ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]).map(m=>m.id),['gl-square','gl-arrow','gl-diamond']);
+assert.equal(normalizedOwnerMods,6,'Replacing the inventory snapshot must rebuild the index exactly once');
+
 // Static snapshots must never be attached by a colliding display name when a baseId exists.
 const profileResolverContext = vm.createContext({
   optimizerProfiles: {
