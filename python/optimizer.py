@@ -243,7 +243,7 @@ def _format_missing_stats(missing):
             label = labels.get(key, key)
             details.append(
                 f"{label} % : le profil ne sépare pas la statistique de base "
-                "des secondaires des pièces d'équipement actuellement équipées."
+                f"des secondaires des pièces d'équipement actuellement équipées ({code})."
             )
         else:
             details.append(str(code))
