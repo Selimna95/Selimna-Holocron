@@ -184,7 +184,7 @@
     if (missingUnique.length) {
       return { complete: false, total: null, modSpeed, setBonus: null, hasFourPieceSpeedSet, missing: missingUnique };
     }
-    const setBonus = setBonusPercent ? Math.floor(base * setBonusPercent / 100) : 0;
+    const setBonus = setBonusPercent ? base * setBonusPercent / 100 : 0;
     const modPercent = speedPercent;
     return {
       complete: true,
