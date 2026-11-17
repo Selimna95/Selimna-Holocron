@@ -85,6 +85,9 @@ def resolve_character_profile(profiles, base_id="", name=""):
         ]
         if len(matches) == 1:
             return matches[0]
+        # An explicit baseId is authoritative. Never substitute a name match:
+        # homonyms and stale profile labels must fail closed.
+        return {}
     if wanted_name:
         matches = [
             profile for profile in profiles.values()
