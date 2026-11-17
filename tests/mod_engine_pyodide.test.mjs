@@ -40,6 +40,31 @@ pyodide.globals.set('holocron_mod_normalize_bridge', normalizeBridge);
 pyodide.globals.set('holocron_mod_engine_batch_bridge', batchBridge);
 pyodide.runPython("import sys\nsys.path.insert(0, '/home/pyodide')\nimport optimizer\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge)\n");
 
+const profileValidation = pyodide.runPython(`
+profile = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8,"base_stats":{"Speed":153}}
+metadata = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8}
+optimizer.validate_profile_compatibility(profile, metadata)
+`);
+assert.equal(profileValidation, true);
+pyodide.runPython(`
+try:
+    optimizer.validate_profile_compatibility(profile, {"level":85,"rarity":7,"gear_level":12,"relic_tier":8})
+except RuntimeError as error:
+    incompatible_profile_error = str(error)
+else:
+    incompatible_profile_error = ""
+`);
+assert.match(pyodide.runPython('incompatible_profile_error'), /gear/);
+pyodide.runPython(`
+try:
+    optimizer.validate_profile_compatibility(profile, {"level":85,"rarity":7,"gear_level":13})
+except RuntimeError as error:
+    missing_profile_metadata_error = str(error)
+else:
+    missing_profile_metadata_error = ""
+`);
+assert.match(pyodide.runPython('missing_profile_metadata_error'), /relique/);
+
 const base = {
   Health: 1000, Protection: 2000, Speed: 100,
   'Physical Damage': 500, 'Special Damage': 700,
