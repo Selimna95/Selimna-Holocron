@@ -199,7 +199,7 @@ const projectionBase = {
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
 };
 // Comlink values are normalized by 1e8; Crinolo returns decimal ratios, while Holocron stores percentage points (x100), so 24 normalized rating units = 1 point.
-const critRatingProjection = engine.calculateFinalStats(projectionBase, [
+const critRatingProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 14, unscaledDecimalValue: 2400000000 } },
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 15, unscaledDecimalValue: 4800000000 } }
 ]);
@@ -258,7 +258,7 @@ const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: inde
 assert.equal(engine.calculateSpeed(153, halfSpeedSet, 13).setBonus, 7);
 assert.equal(engine.calculateSpeed(153, halfSpeedSet, 13).total, 160);
 
-const accuracyProjection = engine.calculateFinalStats(projectionBase, [
+const accuracyProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 34, unscaledDecimalValue: 6000000 }, secondary_1_stat: { unitStatId: 38, unscaledDecimalValue: 2400000000 } },
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 52, unscaledDecimalValue: 12000000 } }
