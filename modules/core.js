@@ -187,18 +187,14 @@ function optimizerRosterMetadata(character) {
     for (const key of keys) if (source[key] != null) return source[key];
     return null;
   };
-  const readCharacter = keys => read(character, keys);
-  const readRaw = keys => read(raw, keys);
-  const relicObject = readRaw(['relic']);
-  const rawRelic = readRaw(['relic_tier','relicTier','relic_level','relicLevel']) ??
+  const readBoth = keys => read(raw, keys) ?? read(character, keys);
+  const relicObject = read(raw, ['relic']) ?? read(character, ['relic']);
+  const relicValue = readBoth(['relic_tier','relicTier','relic_level','relicLevel']) ??
     read(relicObject, ['currentTier','tier','relicTier']);
-  const relicValue = raw && typeof raw === 'object'
-    ? rawRelic
-    : readCharacter(['relic_tier','relicTier','relic_level','relicLevel']);
   return {
-    level: numericValue(readRaw(['level']) ?? readCharacter(['level']), null),
-    rarity: numericValue(readRaw(['rarity','starLevel','stars']) ?? readCharacter(['stars','rarity','starLevel']), null),
-    gear_level: numericValue(readRaw(['gear_level','gearLevel','gear']) ?? readCharacter(['gear','gear_level','gearLevel']), null),
+    level: numericValue(readBoth(['level','currentLevel']), null),
+    rarity: numericValue(readBoth(['rarity','starLevel','stars','currentRarity']), null),
+    gear_level: numericValue(readBoth(['gear_level','gearLevel','gear','currentTier']), null),
     relic_tier: numericValue(relicValue, null)
   };
 }
