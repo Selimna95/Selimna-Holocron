@@ -68,7 +68,7 @@ const crewSandbox=vm.createContext({
   rosterShips:[{baseId:'HOUNDSTOOTH',name:"Hound's Tooth",raw:{}}],
 });
 vm.runInContext(seigneurSource.slice(crewStart,crewEnd)+
-  '\\nthis.fleetUsage=seigneurCharacterFleetUsage;this.shipCrew=seigneurShipCrewAliases;',crewSandbox);
+  '\nthis.fleetUsage=seigneurCharacterFleetUsage;this.shipCrew=seigneurShipCrewAliases;',crewSandbox);
 const mappedFleet=crewSandbox.fleetUsage(
   {baseId:'BOSSK',name:'Bossk'},
   {ships:{"Hound's Tooth":{uses:77}},fleets:[]}
