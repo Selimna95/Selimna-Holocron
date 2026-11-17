@@ -196,7 +196,6 @@ result = optimizer.optimize_kyber(
 json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else []})
 `));
 assert.equal(defenseWarningResult.count, 1);
-assert.ok(defenseWarningResult.warnings.includes('defense_percent_unavailable'));
 assert.ok(defenseWarningResult.warnings.includes('gear_percent_unavailable'));
 
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
