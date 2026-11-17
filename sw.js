@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.113-indexed-owner-mods';
+const CACHE_NAME = 'holocron-static-v4.4.114-shared-gl-protection';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -27,7 +27,7 @@ const STATIC_ASSETS = [
   './modules/core.js?v=4.2.40-indexed-owner-mods',
   './modules/acolyte.js?v=3.4.9-weak-donor-recipient',
   './modules/disciple.js?v=3.5.10-validated-gear-speed',
-  './modules/seigneur.js?v=3.9.14-validated-speed-floor',
+  './modules/seigneur.js?v=3.9.15-shared-gl-protection',
   './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
   './modules/visionnaire.js?v=4.1.81-validated-speed-projection',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
