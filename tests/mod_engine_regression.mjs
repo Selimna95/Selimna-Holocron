@@ -123,6 +123,29 @@ ownerIndexContext.mods=[...ownerIndexContext.mods,{id:'gl-diamond',slot:'Diamond
 assert.deepEqual(JSON.parse(JSON.stringify(ownerIndexContext.getCharacterMods(ownerIndexContext.rosterCharacters[0]).map(m=>m.id))),['gl-square','gl-arrow','gl-diamond']);
 assert.equal(normalizedOwnerMods,7,'Replacing the inventory snapshot must rebuild the index exactly once');
 
+// Scale regression: 300 characters and 2,000 inventory mods require one normalization pass total.
+let largeIndexNormalizations=0;
+const largeRoster=Array.from({length:300},(_,i)=>({baseId:'UNIT'+i,name:'Unit '+i}));
+const largeSlots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
+const largeInventory=[];
+for(let i=0;i<300;i++)for(let slotIndex=0;slotIndex<6;slotIndex++){
+  largeInventory.push({id:'unit-'+i+'-'+slotIndex,slot:largeSlots[slotIndex],characterId:'UNIT'+i});
+}
+for(let i=0;i<200;i++)largeInventory.push({id:'free-'+i,slot:largeSlots[i%6]});
+const largeOwnerIndexContext=vm.createContext({
+  rosterCharacters:largeRoster,mods:largeInventory,characterModsIndexCache:null,
+  characterKey:c=>String(c?.baseId||''),
+  compactKey:value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  normalizeModForDisplay:m=>{largeIndexNormalizations++;return {...m,ownerKey:String(m.characterId||'').toUpperCase()};},
+  modOwnerKey:m=>String(m?.ownerKey||'').toUpperCase()
+});
+load(core,['getCharacterModsIndex','getCharacterMods'],largeOwnerIndexContext);
+for(const character of largeOwnerIndexContext.rosterCharacters){
+  assert.equal(largeOwnerIndexContext.getCharacterMods(character).length,6);
+}
+assert.equal(largeIndexNormalizations,2000,
+  'A 2,000-mod inventory must be normalized once, not once for each of 300 character lookups');
+
 // Static snapshots must never be attached by a colliding display name when a baseId exists.
 const profileResolverContext = vm.createContext({
   optimizerProfiles: {
