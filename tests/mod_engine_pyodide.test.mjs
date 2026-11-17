@@ -134,6 +134,17 @@ json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if r
 assert.equal(defenseWarningResult.count, 1);
 assert.ok(defenseWarningResult.warnings.includes('defense_percent_unavailable'));
 
+const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
+profile = json.loads(moff_gideon_profile_json)
+result = optimizer.optimize_kyber(
+    mods, base_stats=profile['base_stats'], base_profile=profile,
+    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+)
+json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else []})
+`));
+assert.equal(g13DefenseWarningResult.count, 1);
+assert.ok(!g13DefenseWarningResult.warnings.includes('defense_percent_unavailable'));
+
 
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
