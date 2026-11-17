@@ -244,6 +244,16 @@ class OptimizerProfileResolutionTests(unittest.TestCase):
             {"Speed": 120},
         )
 
+    def test_explicit_unknown_base_id_never_falls_back_to_matching_name(self):
+        profiles = {
+            "UNIT_A": {"base_id": "UNIT_A", "name": "Chirrut Îmwe",
+                       "base_stats": {"Speed": 120}}
+        }
+        self.assertEqual(
+            resolve_character_base_stats(profiles, "WRONG_ID", "Chirrut-Imwe"),
+            {},
+        )
+
     def test_ignores_empty_profile_and_refuses_ambiguous_name(self):
         profiles = {
             "EMPTY": {"base_id": "EMPTY", "name": "No Stats", "base_stats": {}},
