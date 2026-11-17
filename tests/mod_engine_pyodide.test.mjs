@@ -254,6 +254,26 @@ json.dumps({
 `));
 assert.equal(g13DefenseWarningResult.count, 1, 'G13 builds must not be rejected for unavailable Defense when score stats are complete');
 assert.ok(g13DefenseWarningResult.missing.includes('defense:gear_component_required'));
+pyodide.globals.set('score_missing_profile_json', JSON.stringify({
+  base_stats: base, level: 85, gear_level: 13
+}));
+pyodide.globals.set('score_missing_mod_json', JSON.stringify({
+  level: 1, set_name: 'Health', primary_stat: 'Health %', primary_value: 10
+}));
+const scoreStatMissing = JSON.parse(pyodide.runPython(`
+import json
+projection = optimizer.final_stats_many(
+    [json.loads(score_missing_mod_json)],
+    json.loads(base_json),
+    json.loads(score_missing_profile_json)
+)[0]
+json.dumps({
+    'rejected': isinstance(projection, RuntimeError),
+    'reason': str(projection) if isinstance(projection, RuntimeError) else ''
+})
+`));
+assert.equal(scoreStatMissing.rejected, true, 'A build must be rejected when a statistic used by the score is incomplete');
+assert.match(scoreStatMissing.reason, /Health/);
 
 const secondaryDefenseSearch = JSON.parse(pyodide.runPython(`import json
 secondary_defense_mods = []
