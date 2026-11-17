@@ -468,10 +468,13 @@ function forgeCandidateScore(m,profile,secA,secB){
 }
 function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
+  const localProfile=typeof optimizerValidatedProfileForCharacter==='function'?(optimizerValidatedProfileForCharacter(character)||{}):{};
+  const metadata=typeof optimizerRosterMetadata==='function'?(optimizerRosterMetadata(character)||{}):{};
   const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
-    character?.raw?.baseStats||character?.data?.base_stats||optimizerProfileForCharacter(character)?.base_stats||{};
-  const baseSpeed=numericValue(profile?.base_stats?.Speed??profile?.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
-  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list);
+    character?.raw?.baseStats||character?.data?.base_stats||localProfile.base_stats||{};
+  const baseSpeed=numericValue(localProfile.base_stats?.Speed??localProfile.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
+  const gearLevel=localProfile.gear_level??metadata.gear_level??character?.gear_level??character?.gear;
+  const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list,gearLevel);
   return {
     complete:projection.complete===true&&projection.total!=null,
     total:projection.complete===true&&projection.total!=null?projection.total:null,
