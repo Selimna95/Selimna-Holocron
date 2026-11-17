@@ -210,24 +210,16 @@ mods = [
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10},
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 0}
 ]
-try:
-    optimizer.final_stats(mods, profile['base_stats'], profile)
-    moff_defense_error = ''
-except RuntimeError as error:
-    moff_defense_error = str(error)
+moff_defense_missing = optimizer.final_stats(mods, profile['base_stats'], profile).get('_projection_missing', [])
+profile = dict(profile, gear_level=12)
+non_g13_defense_missing = optimizer.final_stats(
+ [{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}],
+ profile['base_stats'], profile
+).get('_projection_missing', [])
+non_g13_defense_reported = 'defense:gear_component_required' in non_g13_defense_missing
 `);
-assert.match(pyodide.runPython('moff_defense_error'), /defense:gear_component_required/);
-pyodide.runPython(`try:
- profile = dict(json.loads(moff_gideon_profile_json), gear_level=12)
- optimizer.final_stats(
-  [{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10}],
-  profile['base_stats'], profile
- )
- non_g13_defense_error = ''
-except RuntimeError as error:
- non_g13_defense_error = str(error)
-`);
-assert.match(pyodide.runPython('non_g13_defense_error'), /defense:gear_component_required/);
+assert.equal(pyodide.runPython("'defense:gear_component_required' in moff_defense_missing"), false);
+assert.equal(pyodide.runPython('non_g13_defense_reported'), true);
 
 const defenseWarningResult = JSON.parse(pyodide.runPython(`import json
 mods = []
