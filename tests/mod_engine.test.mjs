@@ -262,12 +262,13 @@ assert.equal(accuracyProjection.stats['Physical Accuracy'], 13);
 assert.equal(accuracyProjection.stats['Special Accuracy'], 8);
 assert.equal(accuracyProjection.stats.Accuracy, 0.12);
 
-const offenseProjection = engine.calculateFinalStats(projectionBase, [
+const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Offense', primary_value: 40, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Offense %', primary_value: 10, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
-], 85);
+];
+const offenseProjection = engine.calculateFinalStats(projectionBase, offenseMods, 85);
 assert.equal(offenseProjection.complete, true);
 assert.equal(offenseProjection.stats['Physical Damage'], 665);
 assert.equal(offenseProjection.stats['Special Damage'], 915);
