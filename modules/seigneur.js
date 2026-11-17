@@ -199,6 +199,13 @@ function seigneurShipCrewAliases(ship){
   for(const crewId of SEIGNEUR_SHIP_CREW_BY_BASE_ID[shipBaseId]||[])add(crewId);
   return [...out];
 }
+function seigneurShipCrewMappingKnown(ship){
+  const raw=ship?.raw?.data||ship?.data||ship?.raw||ship||{};
+  const fields=['crew','crewMembers','crew_members','crewIds','crew_ids','crewUnit','crew_unit','crewUnits','crew_units','pilots','crewMember'];
+  if(fields.some(field=>raw[field]!=null))return true;
+  const baseId=seigneurUsageKey(ship?.baseId??ship?.base_id??raw?.baseId??raw?.base_id??ship?.id);
+  return !!baseId&&Object.prototype.hasOwnProperty.call(SEIGNEUR_SHIP_CREW_BY_BASE_ID,baseId);
+}
 function seigneurShipUsageMap(season){
   const source=season?.ships||season?.shipUsage||season?.ship_usage||{};
   const out=new Map();
@@ -241,7 +248,9 @@ function seigneurCharacterFleetUsage(character,season=seigneurLatestGacUsageSeas
   const ships=Array.isArray(rosterShips)?rosterShips:[];
   if(!ships.length)return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau dans le roster'};
   const crewRows=ships.map(ship=>({ship,crew:seigneurShipCrewAliases(ship)}));
-  if(!crewRows.some(row=>row.crew.length))return {uses:null,known:false,shipCount:0,reason:'Correspondance pilotes/vaisseaux indisponible'};
+  const unknownCrewRows=crewRows.filter(row=>!seigneurShipCrewMappingKnown(row.ship));
+  if(unknownCrewRows.length)return {uses:null,known:false,shipCount:unknownCrewRows.length,reason:'Correspondance pilotes/vaisseaux incomplète'};
+  if(!crewRows.some(row=>row.crew.length))return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau possédé avec équipage'};
   const aliases=new Set([character?.baseId,character?.base_id,character?.characterId,character?.character_id,character?.id,character?.name].map(seigneurUsageKey).filter(Boolean));
   const assigned=crewRows.filter(row=>row.crew.some(key=>aliases.has(key)));
   if(!assigned.length)return {uses:0,known:true,shipCount:0,reason:'Aucun vaisseau associé'};
