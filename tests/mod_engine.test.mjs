@@ -64,6 +64,29 @@ assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 1).value
   'Comlink flat Health value 8350000 must normalize to 835');
 assert.equal(realComlinkDefenseMod.secondaries.find(stat => stat.id === 18).value, 2.818,
   'Comlink percentage Tenacity value 281.8 must normalize to 2.818 percentage points');
+
+const realComlinkScaleCases = [
+  [48, 'Offense', 48.1, '0.48%', 0.481, 'percentagePoints'],
+  [49, 'Defense', 237.1, '2.37%', 2.371, 'percentagePoints'],
+  [53, 'Critical Chance', 316.7, '3.17%', 3.167, 'percentagePoints'],
+  [55, 'Health', 71.8, '0.72%', 0.718, 'percentagePoints'],
+  [56, 'Protection', 214, '2.14%', 2.14, 'percentagePoints'],
+  [17, 'Potency', 198.2, '1.98%', 1.982, 'percentagePoints'],
+  [18, 'Tenacity', 281.8, '2.82%', 2.818, 'percentagePoints'],
+  [1, 'Health', 7410000, '741', 741, 'flat'],
+  [5, 'Speed', 40000, '4', 4, 'flat'],
+  [28, 'Protection', 7170000, '717', 717, 'flat'],
+  [41, 'Offense', 210000, '21', 21, 'flat'],
+  [42, 'Defense', 50000, '5', 5, 'flat']
+];
+for (const [id, name, value, display_value, expected, unit] of realComlinkScaleCases) {
+  const normalized = engine.normalizeStat({
+    name, stat_id: id, value, display_value,
+    unscaled_roll_values: [value]
+  });
+  assert.equal(normalized.value, expected, 'Comlink stat_id ' + id + ' must be converted from source scale');
+  assert.equal(normalized.unit, unit, 'Comlink stat_id ' + id + ' unit must remain canonical');
+}
 assert.deepEqual({ ...engine.calculateSetBonuses([
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 },
   { set_name: 'Speed', level: 15 }, { set_name: 'Speed', level: 15 }
