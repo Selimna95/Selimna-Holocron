@@ -157,8 +157,8 @@ async function runSearch(target,donorMods,freeMods,profile,mode='sets',glDonorMo
 const glTarget={baseId:'GLREY',name:'Rey',gear_level:13,base_stats:{Speed:100,Health:1000,Offense:500}};
 glTarget.mods=[
  makeMod('t1','Square','Health',1,'Health %',5),makeMod('t2','Arrow','Speed',1),
- makeMod('t3','Diamond','Health',1,'Health %',5),makeMod('t4','Triangle','Speed',1),
- makeMod('t5','Circle','Health',1,'Health %',5),makeMod('t6','Cross','Health',1,'Health %',5)
+ makeMod('t3','Diamond','Potency',1,'Health %',5),makeMod('t4','Triangle','Speed',1),
+ makeMod('t5','Circle','Tenacity',1,'Health %',5),makeMod('t6','Cross','Critical Damage',1,'Health %',5)
 ];
 const kyber={specific_sets:[{name:'4 Speed + 2 Offense',counts:{Speed:4,Offense:2},weight:1}]};
 const weakDonor=['Square','Arrow','Diamond','Triangle','Circle','Cross'].map((slot,i)=>makeMod('d'+i,slot,'Speed',10,'Speed',10));
