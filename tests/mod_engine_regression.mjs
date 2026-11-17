@@ -83,6 +83,7 @@ const galacticLegendSet = new Set([
 ]);
 const galacticLegendContext = vm.createContext({
   compactKey: value => String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  KNOWN_GALACTIC_LEGEND_IDS: galacticLegendSet,
   window: { HOLOCRON_GALACTIC_LEGENDS: galacticLegendSet }
 });
 load(read('../modules/seigneur.js'), ['isGalacticLegendCharacter'], galacticLegendContext);
