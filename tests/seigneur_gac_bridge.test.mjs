@@ -56,3 +56,34 @@ assert.equal(stalePriority.known,false,'Stale GAC snapshots must never rank dono
 assert.match(stalePriority.reason,/périmées/i);
 const freshPriority=prioritySandbox.priority({baseId:'REY'},{sourceStatus:'observed',formatSeasons:{}});
 assert.equal(freshPriority.known,true,'Fresh observed GAC data remains eligible for donor ranking');
+
+
+// Real roster exports may omit ship crew arrays. Recover pilot links from the
+// canonical game-data map and include verified fleet usage in donor priority.
+const crewStart=seigneurSource.indexOf('const SEIGNEUR_SHIP_CREW_BY_BASE_ID =');
+const crewEnd=seigneurSource.indexOf('function seigneurDonorPriority(',crewStart);
+assert.ok(crewStart>=0&&crewEnd>crewStart,'Canonical ship-to-crew map and fleet resolver must exist');
+const crewSandbox=vm.createContext({
+  compactKey:value=>String(value??'').toUpperCase().replace(/[^A-Z0-9]/g,''),
+  rosterShips:[{baseId:'HOUNDSTOOTH',name:"Hound's Tooth",raw:{}}],
+});
+vm.runInContext(seigneurSource.slice(crewStart,crewEnd)+
+  '\\nthis.fleetUsage=seigneurCharacterFleetUsage;this.shipCrew=seigneurShipCrewAliases;',crewSandbox);
+const mappedFleet=crewSandbox.fleetUsage(
+  {baseId:'BOSSK',name:'Bossk'},
+  {ships:{"Hound's Tooth":{uses:77}},fleets:[]}
+);
+assert.equal(mappedFleet.known,true,'A roster ship with canonical crew metadata must be associated to its pilot');
+assert.equal(mappedFleet.uses,77,'The pilot must inherit the observed GAC usage of their owned ship');
+assert.equal(mappedFleet.shipCount,1);
+assert.deepEqual(Array.from(crewSandbox.shipCrew(crewSandbox.rosterShips[0])),['BOSSK']);
+const missingFleet=crewSandbox.fleetUsage(
+  {baseId:'BOSSK',name:'Bossk'},
+  {ships:{},fleets:[]}
+);
+assert.equal(missingFleet.known,false,'An owned pilot ship with no observed GAC usage remains unknown, never zero');
+assert.equal(missingFleet.shipCount,1);
+assert.equal(crewSandbox.shipCrew({baseId:'YWINGREBEL',name:'Rebel Y-wing',raw:{}}).length,0,
+  'Crewless ships must not be assigned an invented pilot');
+assert.equal(crewSandbox.shipCrew({baseId:'BWINGREBEL',name:'Rebel B-wing',raw:{}})[0],'CAPTAINDROGAN',
+  'The canonical mapping must include ships beyond the sample pilot');
