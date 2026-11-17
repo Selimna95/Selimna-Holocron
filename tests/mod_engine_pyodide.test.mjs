@@ -263,7 +263,7 @@ pyodide.globals.set('score_missing_mod_json', JSON.stringify({
 const scoreStatMissing = JSON.parse(pyodide.runPython(`
 import json
 projection = optimizer.final_stats_many(
-    [json.loads(score_missing_mod_json)],
+    [[json.loads(score_missing_mod_json)]],
     json.loads(base_json),
     json.loads(score_missing_profile_json)
 )[0]
