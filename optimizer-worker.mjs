@@ -93,7 +93,7 @@ character_metadata = json.loads(character_metadata_json)
 if isinstance(base_stats, dict) and base_stats:
     # Explicit base stats supplied with the live character take precedence.
     # Do not mix them with progression or mod deltas from a static snapshot.
-    base_profile = {'base_stats': base_stats}
+    base_profile = {'base_stats': base_stats, **(character_metadata if isinstance(character_metadata, dict) else {})}
 else:
     base_profile = optimizer.resolve_character_profile(_optimizer_profiles, character_base_id, character_name)
     if isinstance(base_profile, dict) and base_profile:
