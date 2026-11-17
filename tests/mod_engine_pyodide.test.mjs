@@ -188,16 +188,21 @@ valid_build_projection = optimizer.final_stats(
     mods[:6], json.loads(base_json),
     {'base_stats': json.loads(base_json), 'level': 85}
 )
-result = optimizer.optimize_kyber(
-    mods, base_stats=json.loads(base_json),
-    base_profile={'base_stats': json.loads(base_json), 'level': 85},
-    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
-)
-json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else []})
+try:
+    result = optimizer.optimize_kyber(
+        mods, base_stats=json.loads(base_json),
+        base_profile={'base_stats': json.loads(base_json), 'level': 85},
+        kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
+    )
+    warning_error = ''
+except RuntimeError as error:
+    result = []
+    warning_error = str(error)
+json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if result else [], 'error': warning_error})
 `));
-assert.equal(defenseWarningResult.count, 1);
-assert.ok(defenseWarningResult.warnings.includes('defense_percent_unavailable'));
-assert.ok(defenseWarningResult.warnings.includes('gear_percent_unavailable'));
+assert.equal(defenseWarningResult.count, 0);
+assert.match(defenseWarningResult.error, /Bonus multiplicateurs en % non calculables/);
+assert.match(defenseWarningResult.error, /G13 compatible/);
 
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
