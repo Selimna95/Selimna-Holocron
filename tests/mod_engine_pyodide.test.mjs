@@ -109,6 +109,13 @@ const optimizerProfiles = JSON.parse(read('../python/optimizer_profiles.json'));
 const moffGideonProfile = optimizerProfiles.MOFFGIDEONS3;
 assert.ok(moffGideonProfile && moffGideonProfile.base_stats && moffGideonProfile.gear_level === 13);
 assert.equal(moffGideonProfile.gear, undefined, 'profile must not be mistaken for a Crinolo gear-component breakdown');
+const r5d4Profile = optimizerProfiles.R5D4;
+assert.ok(r5d4Profile && r5d4Profile.gear_level === 12);
+const r5d4OffenseProjection = engine.calculateFinalStats(r5d4Profile, offenseMods, r5d4Profile.level);
+assert.equal(r5d4OffenseProjection.complete, false);
+assert.ok(r5d4OffenseProjection.missing.includes('offense:gear_component_required'));
+const moffGideonOffenseProjection = engine.calculateFinalStats(moffGideonProfile, offenseMods, moffGideonProfile.level);
+assert.equal(moffGideonOffenseProjection.complete, true, JSON.stringify(moffGideonOffenseProjection.missing));
 const defenseProfileMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 },
   { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
@@ -177,6 +184,7 @@ json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if r
 `));
 assert.equal(defenseWarningResult.count, 1);
 assert.ok(defenseWarningResult.warnings.includes('defense_percent_unavailable'));
+assert.ok(defenseWarningResult.warnings.includes('gear_percent_unavailable'));
 
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
 profile = json.loads(moff_gideon_profile_json)
@@ -188,6 +196,7 @@ json.dumps({'count': len(result), 'warnings': result[0].get('warnings', []) if r
 `));
 assert.equal(g13DefenseWarningResult.count, 1);
 assert.ok(!g13DefenseWarningResult.warnings.includes('defense_percent_unavailable'));
+assert.ok(!g13DefenseWarningResult.warnings.includes('gear_percent_unavailable'));
 
 
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
