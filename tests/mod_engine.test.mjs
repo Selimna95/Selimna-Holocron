@@ -357,16 +357,14 @@ const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
 ];
 const offenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
-assert.equal(offenseProjection.complete, false);
-assert.ok(offenseProjection.missing.includes('offense:gear_component_required'));
+assert.equal(offenseProjection.complete, true, 'G13 has no gear contribution to Offense %');
 
 const gear12Profile = { gear_level: 12, base_stats: projectionBase };
 const gear12OffenseProjection = engine.calculateFinalStats(gear12Profile, offenseMods, 85);
 assert.equal(gear12OffenseProjection.complete, false);
 assert.ok(gear12OffenseProjection.missing.includes('offense:gear_component_required'));
 const gear13OffenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
-assert.equal(gear13OffenseProjection.complete, false);
-assert.ok(gear13OffenseProjection.missing.includes('offense:gear_component_required'));
+assert.equal(gear13OffenseProjection.complete, true, 'G13 Offense % is calculable without a supplied split');
 const directDamagePercentMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Physical Damage %', primary_value: 10 },
   { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
@@ -375,8 +373,7 @@ const g12DirectDamageProjection = engine.calculateFinalStats(gear12Profile, dire
 assert.equal(g12DirectDamageProjection.complete, false);
 assert.ok(g12DirectDamageProjection.missing.includes('offense:gear_component_required'));
 const g13DirectDamageProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, directDamagePercentMods, 85);
-assert.equal(g13DirectDamageProjection.complete, false);
-assert.ok(g13DirectDamageProjection.missing.includes('offense:gear_component_required'));
+assert.equal(g13DirectDamageProjection.complete, true, 'G13 direct damage % uses the zero-gear base');
 
 const gearDependentPercentCases = [
   ['health', [
@@ -397,8 +394,7 @@ for (const [key, mods] of gearDependentPercentCases) {
   assert.equal(projection.complete, false, `${key} % must not use aggregated gear stats`);
   assert.ok(projection.missing.includes(key + ':gear_component_required'));
   const g13Projection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, mods, 85);
-  assert.equal(g13Projection.complete, false, key + ' % must not assume a zero gear component from G13');
-  assert.ok(g13Projection.missing.includes(key + ':gear_component_required'));
+  assert.equal(g13Projection.complete, true, key + ' % must use the known zero gear component at G13');
 }
 
 const defenseProjection = engine.calculateFinalStats(projectionBase, [
@@ -415,8 +411,7 @@ const nonG13DefenseProjection = engine.calculateFinalStats({ gear_level: 12, bas
 assert.equal(nonG13DefenseProjection.complete, false);
 assert.ok(nonG13DefenseProjection.missing.includes('defense:gear_component_required'));
 const g13DefenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, defensePercentMods, 85);
-assert.equal(g13DefenseProjection.complete, false);
-assert.ok(g13DefenseProjection.missing.includes('defense:gear_component_required'));
+assert.equal(g13DefenseProjection.complete, true, 'G13 Defense % must use the known zero gear component');
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Defense', primary_stat: 'Defense', primary_value: 40 }
 ], 85);
