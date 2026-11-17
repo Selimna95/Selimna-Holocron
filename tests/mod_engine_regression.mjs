@@ -615,7 +615,7 @@ assert.ok(shipCrewMapStart>=0&&shipCrewMapEnd>shipCrewMapStart,'Canonical ship c
 vm.runInContext(seigneur.slice(shipCrewMapStart,shipCrewMapEnd),donorContext);
 load(seigneur, [
   'seigneurUsageKey','seigneurUsageRecord','seigneurUsageCount','seigneurLatestGacUsageSeason',
-  'seigneurCharacterGacUsage','seigneurShipCrewAliases','seigneurShipUsageMap',
+  'seigneurCharacterGacUsage','seigneurShipCrewAliases','seigneurShipCrewMappingKnown','seigneurShipUsageMap',
   'seigneurCharacterFleetUsage','seigneurDonorPriority'
 ], donorContext);
 const donorGateContext = vm.createContext({
