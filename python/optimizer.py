@@ -157,7 +157,11 @@ def mod_slot_value(mod):
 
 
 def mod_id(mod):
-    return mod.get("game_id") or mod.get("id")
+    """Return a stable-in-search identity, even when an importer omits mod IDs."""
+    if not isinstance(mod, dict):
+        return ("__object__", id(mod))
+    explicit = mod.get("game_id") or mod.get("id")
+    return explicit if explicit is not None else ("__object__", id(mod))
 
 
 def normalize_set(value):
