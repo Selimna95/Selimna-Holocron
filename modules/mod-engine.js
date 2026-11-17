@@ -240,7 +240,7 @@
     // component field, so gear level alone cannot authorize these projections.
     const gearComponentKnownForPercent = false;
     // Gear level is part of the projection contract and therefore part of the cache key.
-    const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level, gearLevel]);
+    const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level, gearLevel, profile?.stat_components ?? null]);
     const cachedProjection = FINAL_STATS_CACHE.get(cacheKey);
     if (cachedProjection) return { stats: { ...cachedProjection.stats }, complete: cachedProjection.complete, missing: [...cachedProjection.missing] };
     const base = {};
