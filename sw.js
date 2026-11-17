@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.107-kyber-expired-fallback';
+const CACHE_NAME = 'holocron-static-v4.4.108-defense-percent-g13';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -23,16 +23,16 @@ const STATIC_ASSETS = [
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.6.0-gac-freshness',
   './modules/seigneur-gac.js?v=1.1.0-history-fallback',
-  './modules/mod-engine.js?v=0.3.23',
-  './modules/core.js?v=4.2.37-kyber-expired-fallback',
+  './modules/mod-engine.js?v=0.3.24',
+  './modules/core.js?v=4.2.38-defense-percent-g13',
   './modules/acolyte.js?v=3.4.9-weak-donor-recipient',
   './modules/disciple.js?v=3.5.9-complete-secondary-options',
   './modules/seigneur.js?v=3.9.10-defense-percent-diagnostics',
   './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
   './modules/visionnaire.js?v=4.1.79-kyber-refresh-status',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
-  './optimizer-worker.mjs?v=3.5.14-defense-percent-warning',
-  './python/optimizer.py?v=3.5.10-defense-percent-warning',
+  './optimizer-worker.mjs?v=3.5.15-defense-percent-g13',
+  './python/optimizer.py?v=3.5.11-defense-percent-g13',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
