@@ -81,7 +81,7 @@ const profileResolverContext = vm.createContext({
     AHSOKATANO: { base_id: 'AHSOKATANO', name: 'Ahsoka Tano', marker: 'snips' },
     GLAHSOKATANO: { base_id: 'GLAHSOKATANO', name: 'Ahsoka Tano', marker: 'galactic-legend' }
   },
-  slug: value => String(value || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+  slug: value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
 });
 load(core, ['optimizerProfileForCharacter'], profileResolverContext);
 assert.equal(profileResolverContext.optimizerProfileForCharacter({ baseId: 'GLAHSOKATANO', name: 'Ahsoka Tano' }).marker, 'galactic-legend');
