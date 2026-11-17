@@ -57,7 +57,7 @@ Une unité inconnue ou une formule non implémentée rend le calcul incomplet. A
 | Seigneur Sith | Identité stat/set et vitesse projetée déléguées ; classement Kyber/GAC conservé |
 | Visionnaire | Projection finale déléguée ; identité stat/set/slot déléguée ; scoring de scénario conservé |
 | Optimizer Python | `final_stats`, `mod_stats`, primaire et set délégués au pont JavaScript ; recherche conservée en Python |
-| Worker Pyodide | Une seule source moteur importée ; pont de normalisation et de projection initialisé |
+| Worker Pyodide | Runtime Python chargé une seule fois dans le Worker ; aucun runtime Pyodide principal inutilisé ; pont de normalisation et de projection initialisé |
 | Cache/version | Références index, service worker et Worker réalignées pour cette branche |
 
 Les anciennes fonctions qui ne font que transmettre les données au moteur peuvent rester temporairement comme adaptateurs d'interface. Toute fonction qui recalcule une formule commune doit être supprimée.
@@ -118,6 +118,8 @@ Le plafond théorique de vitesse doit inclure la vitesse de base du personnage, 
 Le fichier `python/optimizer_profiles.json` contient 334 profils. La relation attendue entre les champs `base_stats`, `current_stats` et `mod_stat_diffs` a été contrôlée sur les 2 913 valeurs comparables : `current_stats[stat] - base_stats[stat] - mod_stat_diffs[stat] = 0`, avec une tolérance de 1e-6. Le résidu maximal observé est inférieur à 1.2e-16.
 
 Cela confirme, pour les champs couverts par ces profils, que `base_stats` est le point de départ avant bonus de mods et que `mod_stat_diffs` représente l'écart de mods vers `current_stats`. Le test Python relit désormais le fichier complet et vérifie cette relation sur chaque profil à chaque exécution. La provenance externe initiale de ces profils reste à documenter ; ce contrôle valide leur cohérence interne, pas l'exactitude de leur collecte d'origine.
+
+Le Worker ne réutilise un snapshot que si le niveau, la rareté, le palier d'équipement et le palier de relique du roster correspondent exactement aux métadonnées du profil. Une métadonnée absente ou divergente invalide le snapshot ; les stats courantes ne sont pas substituées. Les profils sont répartis entre 328 profils G13 et 6 profils sous G13 ; seuls les premiers permettent actuellement la projection Défense % sans composante d'équipement manquante.
 
 ## Tests et critères d'intégration
 
