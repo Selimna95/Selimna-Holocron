@@ -207,6 +207,7 @@ assert.equal(g13DefenseWarningResult.count, 1);
 assert.ok(!g13DefenseWarningResult.warnings.includes('defense_percent_unavailable'));
 assert.ok(!g13DefenseWarningResult.warnings.includes('gear_percent_unavailable'));
 
+pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 999, 'unscaledDecimalValue': 120000000}}], json.loads(base_json))\nexcept RuntimeError as error:\n incomplete_unknown_error = str(error)\nelse:\n incomplete_unknown_error = ''\n");
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
 
