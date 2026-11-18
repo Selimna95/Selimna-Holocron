@@ -10,7 +10,7 @@ const sharedEngine=engineSandbox.module.exports;
 const statKeyStart=js.indexOf('  const KYBER_PERCENT_PRIMARY_KEYS=');
 const statKeyEnd=js.indexOf('  const normalizeCounts =',statKeyStart);
 if(statKeyStart<0||statKeyEnd<0)throw new Error('Visionnaire slot-aware primary key helper is missing');
-const statKeySandbox={window:{HolocronModEngine:sharedEngine},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,'')};
+const statKeySandbox={window:{HolocronModEngine:sharedEngine},FIXED:{Square:'Offense',Diamond:'Defense'},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,'')};
 vm.createContext(statKeySandbox);
 vm.runInContext(js.slice(statKeyStart,statKeyEnd)+'\nthis.statKey=statKey;',statKeySandbox);
 const actualStatKey=statKeySandbox.statKey;
@@ -118,6 +118,7 @@ const buildSandbox={
   state:{mode:'sets'},render:()=>{},setTimeout:fn=>{fn();return 0;},key:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   labelSet:value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,''),
   statKey:actualStatKey,
+  FIXED:{Square:'Offense',Diamond:'Defense'},
   modTotalSpeed:mod=>sharedEngine.speedMetrics(mod).total,
   characterKey:c=>String(c.baseId),
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
