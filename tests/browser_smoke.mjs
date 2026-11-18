@@ -221,7 +221,7 @@ try {
     window.__kyberReferenceStatuses = {
       testjedi: { status: "fresh", label: "Référence actualisée" },
       testsith: { status: "fresh", label: "Référence actualisée" },
-      testnoref: { status: "unavailable", label: "Pas de référence Kyber disponible", reason: "Aucun échantillon Kyber publié." }
+      noreference: { status: "unavailable", label: "Pas de référence Kyber disponible", reason: "Aucun échantillon Kyber publié." }
     };
     window.fetchKyberProfile = async character => character.baseId === "TESTNOREF" ? null : profile;
     window.forgeAllSourceMods = () => [{
