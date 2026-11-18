@@ -399,8 +399,12 @@
           const ratio = displayPercent / 100;
           if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
           const baseRating = ratio * levelEffect / (1 - ratio);
+          // Use the base Defense component for the percentage bonus. The
+          // armor/resistance-derived baseRating already includes gear Defense;
+          // multiplying it would incorrectly apply Defense % to gear secondaries.
+          const defensePercentBase = defenseComponents?.base ?? baseRating;
           const defensePercentBonus = defenseRatio && canProjectDefensePercent
-            ? floorGameStatBonus(baseRating * defenseRatio) : 0;
+            ? floorGameStatBonus(defensePercentBase * defenseRatio) : 0;
           const finalRating = baseRating + defenseFlat + defensePercentBonus;
           const finalPercent = finalRating / (levelEffect + finalRating) * 100;
           setResult(key, finalPercent);
@@ -668,7 +672,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.30',
+    version: '0.3.33',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,

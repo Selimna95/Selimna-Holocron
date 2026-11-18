@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.30');
+assert.equal(engine.version, '0.3.33');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -282,6 +282,37 @@ assert.equal(critRatingProjection.stats['Physical Critical Chance'], 41);
 assert.equal(critRatingProjection.stats['Special Critical Chance'], 32);
 assert.equal(critRatingProjection.stats['Physical Critical Chance'] - projectionBase['Physical Critical Chance'], 1);
 assert.equal(critRatingProjection.stats['Special Critical Chance'] - projectionBase['Special Critical Chance'], 2);
+
+// Below G13, Defense % applies to the verified base Defense component only,
+// not to the total Armor/Resistance-derived rating that already includes gear.
+const defenseLevelEffect = 85 * 7.5;
+const defenseTotalRating = 100;
+const defenseBasePercent = defenseTotalRating / (defenseLevelEffect + defenseTotalRating) * 100;
+const splitDefenseProfile = {
+  gear_level: 12,
+  base_stats: {
+    Defense: defenseTotalRating,
+    Armor: defenseBasePercent,
+    Resistance: defenseBasePercent
+  },
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Defense: 80 },
+    gear: { Defense: 20 }
+  }
+};
+const splitDefenseProjection = engine.calculateFinalStats(splitDefenseProfile, [{
+  level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10
+}], 85);
+const expectedBaseOnlyDefensePercent = 108 / (defenseLevelEffect + 108) * 100;
+const incorrectlyGearInclusiveDefensePercent = 110 / (defenseLevelEffect + 110) * 100;
+assert.equal(splitDefenseProjection.complete, true);
+assert.ok(Math.abs(splitDefenseProjection.stats.Armor - expectedBaseOnlyDefensePercent) < 1e-10,
+  'Armor Defense % bonus must use 10% of base Defense 80, not total Defense 100');
+assert.ok(Math.abs(splitDefenseProjection.stats.Resistance - expectedBaseOnlyDefensePercent) < 1e-10,
+  'Resistance Defense % bonus must use the same base Defense component');
+assert.ok(Math.abs(splitDefenseProjection.stats.Armor - incorrectlyGearInclusiveDefensePercent) > 0.02,
+  'The old gear-inclusive calculation must be observably different');
 
 const critAvoidanceProjection = engine.calculateFinalStats({
   'Physical Critical Avoidance': 10, 'Special Critical Avoidance': 5
