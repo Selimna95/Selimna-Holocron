@@ -391,10 +391,10 @@ assert.equal(protectionRounding.complete, true, JSON.stringify(protectionRoundin
 assert.equal(protectionRounding.stats.Protection, 1059,
   'Protection % must floor its base-derived bonus to an integer');
 const offenseRounding = engine.calculateFinalStats(roundingProfile, [
-  ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 0 })),
+  ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries })),
   { level: 15, set_name: 'Health', primary_stat: 'Offense %', primary_value: 5.88, ...zeroSecondaries }
 ]);
-assert.equal(offenseRounding.complete, true);
+assert.equal(offenseRounding.complete, true, JSON.stringify(offenseRounding));
 assert.equal(offenseRounding.stats['Physical Damage'], 605,
   'Offense set + Offense % must floor the combined bonus on Physical Damage');
 assert.equal(offenseRounding.stats['Special Damage'], 847,
