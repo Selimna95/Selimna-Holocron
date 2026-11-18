@@ -746,6 +746,11 @@ def optimize_kyber(
     # the hard constraint instead of returning an empty result.
     projection_failures = []
     projection_warnings = set()
+    # At the final slot, reject speed-losing builds before beam pruning so
+    # high-scoring unsafe builds cannot crowd out valid Seigneur candidates.
+    rejected_speed_values = []
+    missing_speed_projection = [False]
+
     def record_projection_failure(error):
         message = str(error)
         if "gear_component_required" in message:
@@ -801,6 +806,17 @@ def optimize_kyber(
                     if isinstance(projected_stats, RuntimeError):
                         record_projection_failure(projected_stats)
                         continue
+                    # Speed can only be checked safely once all six mods and
+                    # their set bonuses are present. Filter before the final
+                    # beam reduction, not after it.
+                    if minimum_speed is not None and slot_index == len(SLOTS):
+                        projected_speed = to_float(projected_stats.get("Speed"), None)
+                        if projected_speed is None:
+                            missing_speed_projection[0] = True
+                            continue
+                        if projected_speed + 1e-9 < minimum_speed:
+                            rejected_speed_values.append(projected_speed)
+                            continue
                     score = build_score(build, kyber, weights, base_stats, base_profile, projected_stats,
                                         mod_metadata, scoring_context)
                     expanded.append((score, build, projected_stats))
@@ -820,6 +836,17 @@ def optimize_kyber(
     if set_plan and applied_set_plan is None:
         beam = search_builds(None)
     if not beam:
+        if minimum_speed is not None:
+            if rejected_speed_values:
+                best_speed = max(rejected_speed_values)
+                raise RuntimeError(
+                    "Aucune configuration ne respecte la vitesse minimale du personnage cible. "
+                    f"Vitesse actuelle : {to_float(minimum_speed):.1f} ; "
+                    f"meilleure configuration examinée : {best_speed:.1f}. "
+                    "Aucun transfert entraînant une perte de vitesse n'est proposé."
+                )
+            if missing_speed_projection[0]:
+                raise RuntimeError("Vitesse cible non calculable : la statistique Speed manque dans le profil source.")
         detail = projection_failures[0] if projection_failures else "Aucun build ne permet de calculer les statistiques nécessaires au score."
         if "gear_percent_unavailable" in projection_warnings:
             first_projection_failure = projection_failures[0] if projection_failures else "composante d'équipement inconnue"
