@@ -9437,5 +9437,5 @@
   ],
   "sourceStatus": "observed",
   "evidenceType": "unit-usage",
-  "fallbackReason": "Cannot fetch https://swgoh.gg/tier-list/units/?fmt=5v5&side=offense&league=kyber: HTTP Error 401: Unauthorized"
+  "fallbackReason": "Cannot fetch https://swgoh.gg/tier-list/units/?fmt=5v5&side=offense&league=kyber: SWGOH.GG/Reader returned a block or challenge page for https://swgoh.gg/tier-list/units/?fmt=5v5&side=offense&league=kyber"
 }
