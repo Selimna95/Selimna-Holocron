@@ -94,6 +94,13 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
 
+  // Crinolo calculates mod-derived percentage bonuses on the game's 1e8
+  // integer scale, then floors the resulting stat bonus to a whole point.
+  // Apply that floor once after all applicable percentages have been summed.
+  function floorGameStatBonus(value) {
+    return Math.floor(value);
+  }
+
   function compact(value) {
     return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -210,11 +217,16 @@
     }
     const modBaseSpeed = components?.base ?? base;
     // Crinolo floors percentage-derived speed bonuses at the game's integer stat scale.
-    const setBonus = setBonusPercent ? Math.floor(modBaseSpeed * setBonusPercent / 100) : 0;
+    const setBonus = setBonusPercent ? floorGameStatBonus(modBaseSpeed * setBonusPercent / 100) : 0;
     const modPercent = speedPercent;
+    // Crinolo combines Speed set and Speed % mod values before flooring the
+    // percentage-derived Speed bonus. Flooring them separately can add a point.
+    const totalPercentBonus = floorGameStatBonus(
+      modBaseSpeed * (setBonusPercent + modPercent) / 100
+    );
     return {
       complete: true,
-      total: base + modSpeed + setBonus + modBaseSpeed * modPercent / 100,
+      total: base + modSpeed + totalPercentBonus,
       modSpeed,
       setBonus,
       hasFourPieceSpeedSet: setBonusPercent > 0
@@ -332,7 +344,7 @@
         else {
           const components = ratio ? percentBase(key[0].toUpperCase() + key.slice(1), get(key)) : null;
           if (ratio && !components) missing.push(key + ':gear_component_required');
-          setResult(key, get(key) + flat(key) + (components ? components.base * ratio : 0));
+          setResult(key, get(key) + flat(key) + (components ? floorGameStatBonus(components.base * ratio) : 0));
         }
       }
     }
@@ -364,7 +376,7 @@
             : null;
           if ((offenseRatio || directRatio) && !components) missing.push('offense:gear_component_required');
           const appliedRatio = offenseRatio + directRatio;
-          setResult(key, get(key) + offenseFlat + directFlat + (components ? components.base * appliedRatio : 0));
+          setResult(key, get(key) + offenseFlat + directFlat + (components ? floorGameStatBonus(components.base * appliedRatio) : 0));
         }
       }
     }
@@ -387,7 +399,8 @@
           const ratio = displayPercent / 100;
           if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
           const baseRating = ratio * levelEffect / (1 - ratio);
-          const defensePercentBonus = defenseRatio && canProjectDefensePercent ? baseRating * defenseRatio : 0;
+          const defensePercentBonus = defenseRatio && canProjectDefensePercent
+            ? floorGameStatBonus(baseRating * defenseRatio) : 0;
           const finalRating = baseRating + defenseFlat + defensePercentBonus;
           const finalPercent = finalRating / (levelEffect + finalRating) * 100;
           setResult(key, finalPercent);
@@ -655,7 +668,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.29',
+    version: '0.3.30',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,

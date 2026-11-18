@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.29');
+assert.equal(engine.version, '0.3.30');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -115,6 +115,28 @@ const setReferenceCases = [
 for (const [name, required, key, minimum, maximum] of setReferenceCases) {
   assert.equal(engine.calculateSetBonuses(Array.from({ length: required }, () => ({ set_name: name, level: 14 } )))[key], minimum, name + ' minimum set bonus');
   assert.equal(engine.calculateSetBonuses(Array.from({ length: required }, () => ({ set_name: name, level: 15 } )))[key], maximum, name + ' level-15 set bonus');
+}
+
+// Exhaustively compare set grouping with Crinolo's count/maxLevel formula.
+// A completed group earns the minimum bonus; every fully level-15 group
+// earns one additional minimum bonus (equivalent to the documented maximum).
+for (const [name, required, key, minimum] of setReferenceCases) {
+  for (let count = 0; count <= 12; count++) {
+    for (let maxLevelCount = 0; maxLevelCount <= count; maxLevelCount++) {
+      const levels = [
+        ...Array(maxLevelCount).fill(15),
+        ...Array(count - maxLevelCount).fill(14)
+      ];
+      const expectedGroups = Math.floor(count / required) + Math.floor(maxLevelCount / required);
+      const expected = expectedGroups * minimum;
+      const mods = levels.map(level => ({ set_name: name, level }));
+      const actual = engine.calculateSetBonuses(mods)[key] || 0;
+      assert.equal(actual, expected,
+        name + ' set count=' + count + ' level-15=' + maxLevelCount + ' must match Crinolo grouping');
+      assert.equal(engine.calculateSetBonuses([...mods].reverse())[key] || 0, expected,
+        name + ' set bonus must not depend on input order');
+    }
+  }
 }
 
 // Comlink IDs preserve the distinction that core.js previously erased.
@@ -339,6 +361,87 @@ const halfSpeedSet = completeSpeedSet.map((mod, index) => ({ ...mod, level: inde
 const verifiedHalfSpeedSet = engine.calculateSpeed(153, halfSpeedSet, 13, verifiedGideonSpeedComponents);
 assert.equal(verifiedHalfSpeedSet.setBonus, 7, 'Half Speed set bonus is floored to an integer');
 assert.equal(verifiedHalfSpeedSet.total, 160);
+
+// Percentage-derived stat bonuses follow Crinolo's integer stat flooring.
+// Set bonuses and mod percentage secondaries are summed before one floor.
+const roundingProfile = {
+  gear_level: 13,
+  base_stats: {
+    Health: 1001, Protection: 1001, Speed: 153,
+    'Physical Damage': 501, 'Special Damage': 701,
+    Armor: 50, Resistance: 40,
+    Potency: 0.1, Tenacity: 0.2, 'Critical Damage': 1.5,
+    'Physical Critical Chance': 40, 'Special Critical Chance': 30,
+    'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
+  }
+};
+const completeSetMods = (setName, count) => Array.from({ length: count }, () => ({
+  level: 15, set_name: setName, primary_stat: 'Health', primary_value: 0, ...zeroSecondaries
+}));
+const healthSetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Health', 2));
+assert.equal(healthSetProjection.stats.Health, 1101, 'Health set bonus must reach Health');
+const criticalChanceSetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Critical Chance', 2));
+assert.equal(criticalChanceSetProjection.stats['Physical Critical Chance'], 48);
+assert.equal(criticalChanceSetProjection.stats['Special Critical Chance'], 38);
+const tenacitySetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Tenacity', 2));
+assert.equal(tenacitySetProjection.stats.Tenacity, 0.4);
+const potencySetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Potency', 2));
+assert.equal(potencySetProjection.stats.Potency, 0.25);
+const criticalDamageSetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Critical Damage', 4));
+assert.equal(criticalDamageSetProjection.stats['Critical Damage'], 1.8);
+
+const healthRoundingMods = [
+  { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries },
+  { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries },
+  { level: 15, set_name: 'Health', primary_stat: 'Health %', primary_value: 5.88, ...zeroSecondaries }
+];
+const healthRounding = engine.calculateFinalStats(roundingProfile, healthRoundingMods);
+assert.equal(healthRounding.complete, true, JSON.stringify(healthRounding));
+assert.equal(healthRounding.stats.Health, 1159,
+  'Health set + Health % must floor the combined 15.88% base-derived bonus once');
+const protectionRounding = engine.calculateFinalStats(roundingProfile, [
+  { level: 15, set_name: 'Health', primary_stat: 'Protection %', primary_value: 5.88, ...zeroSecondaries }
+]);
+assert.equal(protectionRounding.complete, true, JSON.stringify(protectionRounding));
+assert.equal(protectionRounding.stats.Protection, 1059,
+  'Protection % must floor its base-derived bonus to an integer');
+const offenseRounding = engine.calculateFinalStats(roundingProfile, [
+  ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries })),
+  { level: 15, set_name: 'Health', primary_stat: 'Offense %', primary_value: 5.88, ...zeroSecondaries }
+]);
+assert.equal(offenseRounding.complete, true, JSON.stringify(offenseRounding));
+assert.equal(offenseRounding.stats['Physical Damage'], 605,
+  'Offense set + Offense % must floor the combined bonus on Physical Damage');
+assert.equal(offenseRounding.stats['Special Damage'], 847,
+  'Offense set + Offense % must floor the combined bonus on Special Damage');
+const speedRounding = engine.calculateSpeed(153, [
+  ...completeSpeedSet,
+  { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0,
+    ...zeroSecondaries, secondary_1_stat: 'Speed %', secondary_1_value: 2.5 }
+], 13);
+assert.equal(speedRounding.complete, true);
+assert.equal(speedRounding.setBonus, 15);
+assert.equal(speedRounding.total, 172,
+  'Speed set + Speed % mod must be combined before flooring (153 × 12.5% = 19)');
+const defenseRounding = engine.calculateFinalStats(roundingProfile, [
+  { level: 15, set_name: 'Defense', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries },
+  { level: 15, set_name: 'Defense', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries }
+], 85);
+const expectedArmorRating = 637.5 + Math.floor(637.5 * 0.25);
+const expectedResistanceRating = 425 + Math.floor(425 * 0.25);
+assert.equal(defenseRounding.complete, true);
+assert.equal(defenseRounding.stats.Armor,
+  expectedArmorRating / (637.5 + expectedArmorRating) * 100,
+  'Defense set must floor the derived Armor rating bonus before conversion');
+assert.equal(defenseRounding.stats.Resistance,
+  expectedResistanceRating / (637.5 + expectedResistanceRating) * 100,
+  'Defense set must floor the derived Resistance rating bonus before conversion');
+const stackingPercentRounding = engine.calculateFinalStats(roundingProfile, [
+  { level: 15, set_name: 'Health', primary_stat: 'Potency %', primary_value: 2.5,
+    ...zeroSecondaries, secondary_1_stat: 'Tenacity %', secondary_1_value: 0 }
+]);
+assert.equal(stackingPercentRounding.stats.Potency, 0.125,
+  'Stacking percentage-point stats retain fractional precision; they are not integer-floored');
 
 const accuracyProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 33, unscaledDecimalValue: 12000000 }, secondary_1_stat: { unitStatId: 37, unscaledDecimalValue: 1200000000 } },
