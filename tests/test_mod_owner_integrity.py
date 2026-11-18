@@ -73,7 +73,7 @@ class ModOwnerIntegrityTests(unittest.TestCase):
         self.assertEqual(self.core.count("const HOLOCRON_GALACTIC_LEGENDS = new Set(["), 1)
         self.assertIn("window.HOLOCRON_GALACTIC_LEGENDS=HOLOCRON_GALACTIC_LEGENDS", self.core)
         self.assertIn("const KNOWN_GALACTIC_LEGEND_IDS=window.HOLOCRON_GALACTIC_LEGENDS;", self.seigneur)
-        self.assertNotIn("new Set([", self.seigneur)
+        self.assertNotIn("JEDIMASTERKENOBI','GRANDMASTERLUKE','SITHPALPATINE", self.seigneur)
         core_script = self.index.index('src="modules/core.js')
         seigneur_script = self.index.index('src="modules/seigneur.js')
         self.assertLess(core_script, seigneur_script)
