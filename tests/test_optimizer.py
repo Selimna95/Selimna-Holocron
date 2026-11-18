@@ -4,6 +4,11 @@ import json
 import os
 from pathlib import Path
 import python.optimizer as optimizer_module
+from python.optimizer import (
+    normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
+    _partial_matches_set_plan, _mod_score, build_score, _mod_metadata, _prepare_scoring_context,
+    resolve_character_base_stats,
+)
 
 def load_tests(loader, tests, pattern):
     """Run optimizer tests only inside Pyodide with the shared JavaScript engine."""
