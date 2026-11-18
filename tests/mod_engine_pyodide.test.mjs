@@ -521,7 +521,7 @@ const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
   const secondaryKeys = new Set([primary.key]);
   // Keep Speed as a common, realistic secondary unless it is already the primary.
   if (primary.key !== 'speed') {
-    const speedStat = secondaryPool[0];
+    const speedStat = { ...secondaryPool[0], raw: 500_000_000 + ((index * 7) % 11) * 100_000_000 };
     secondaries.push(speedStat);
     secondaryKeys.add(speedStat.key);
     seenSecondaryIds.add(speedStat.id);
@@ -596,15 +596,16 @@ result = optimizer.optimize_kyber(
     mods,
     base_stats=json.loads(base_json),
     base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13},
-    kyber={},
+    kyber={'specific_sets': [{'name': 'Speed x4 + Health x2', 'counts': {'Speed': 4, 'Health': 2}, 'weight': 1.0}]},
     number_of_builds=5,
     limit_per_slot=40,
     beam_width=240,
     projection_batch_size=${batchSize},
-    minimum_speed=150,
+    minimum_speed=130,
 )
 json.dumps([
     {'ids': [m.get('game_id') or m.get('id') for m in item['build']],
+     'sets': [m.get('set_name') or m.get('set') for m in item['build']],
      'score': item['score'], 'stats': item['stats']}
     for item in result
 ])`));
@@ -624,10 +625,13 @@ function optimizerBridgeReset(useBatch) {
   pyodide.runPython("optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge if benchmark_use_batch else None)");
 }
 
+// Measure the complete realistic inventory pass first: 2,000 individual
+// mod projections plus one full six-slot optimizer search.
+const batch1024 = runOptimizerBridgeBenchmark(true, 1024);
+const fullE2ECalculationMs = individualCalculationMs + batch1024.elapsedMs;
 const scalarBenchmark = runOptimizerBridgeBenchmark(false, 256);
 const batch256 = runOptimizerBridgeBenchmark(true, 256);
 const batch512 = runOptimizerBridgeBenchmark(true, 512);
-const batch1024 = runOptimizerBridgeBenchmark(true, 1024);
 assert.equal(scalarBenchmark.projectedBuilds, 0);
 assert.equal(scalarBenchmark.scalarCalls, 40040);
 for (const benchmark of [batch256, batch512, batch1024]) {
@@ -639,8 +643,12 @@ assert.ok(batch512.batchCalls < batch256.batchCalls);
 assert.ok(batch1024.batchCalls < batch512.batchCalls);
 assert.ok(batch1024.result.length >= 1, 'the realistic 2,000-mod inventory must produce at least one optimizer result');
 assert.equal(batch1024.result[0].ids.length, 6, 'the optimizer result must contain a complete six-slot build');
-assert.ok(batch1024.elapsedMs <= 18000,
-  `realistic 2,000-mod optimization exceeded 18,000 ms: ${batch1024.elapsedMs.toFixed(1)} ms`);
+assert.ok(batch1024.result[0].sets.filter(name => name === 'Speed').length >= 4,
+  'the end-to-end result must retain the required four-piece Speed set');
+assert.ok(batch1024.result[0].stats.Speed >= 130,
+  'the six-slot result must satisfy the Speed floor with its Speed set');
+assert.ok(fullE2ECalculationMs <= 18000,
+  `realistic 2,000-mod full calculation exceeded 18,000 ms: ${fullE2ECalculationMs.toFixed(1)} ms`);
 console.log('End-to-end realistic Comlink inventory:');
 console.log(JSON.stringify({
   mods: benchmarkMods.length,
@@ -649,6 +657,8 @@ console.log(JSON.stringify({
   individualCalculationMs: Number(individualCalculationMs.toFixed(1)),
   optimizerResults: batch1024.result.length,
   optimizerElapsedMs: Number(batch1024.elapsedMs.toFixed(1)),
+  fullCalculationMs: Number(fullE2ECalculationMs.toFixed(1)),
+  speedSetPieces: batch1024.result[0].sets.filter(name => name === 'Speed').length,
   sixSlotBuild: batch1024.result[0].ids.length
 }));
 console.log('Optimizer bridge benchmark (synthetic 2,000-mod inventory; 40 candidates/slot; beam 240):');
