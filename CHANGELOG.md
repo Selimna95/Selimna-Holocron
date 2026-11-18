@@ -3,6 +3,7 @@
 - Le filtre de vitesse du Seigneur Sith est appliqué avant la réduction finale du faisceau : les builds qui perdent de la vitesse ne peuvent plus évincer les builds sûrs.
 - Ajout d'un test de régression où les builds non sûrs ont volontairement un score supérieur, afin de vérifier que les configurations respectant le plancher restent trouvables.
 - Le diagnostic conserve la meilleure vitesse examinée lorsqu'aucune configuration sûre n'existe.
+- La liste des Légendes Galactiques est centralisée dans `core.js` et partagée avec Seigneur Sith, sans copie de secours divergente.
 
 ## V4.1.57 — compatibilité des snapshots GAC
 
