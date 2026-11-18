@@ -1,0 +1,51 @@
+name: Review gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  review-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require an automated review of the current PR head
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pullNumber = context.payload.pull_request?.number;
+            if (!pullNumber) {
+              core.setFailed("Impossible d'identifier la Pull Request à contrôler.");
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber
+            });
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber
+            });
+
+            const marker = "Relecture automatisée du diff complet effectuée.";
+            const hasCurrentHeadReview = reviews.some(review =>
+              review.commit_id === pr.head.sha &&
+              ["COMMENTED", "APPROVED"].includes(review.state) &&
+              String(review.body || "").includes(marker)
+            );
+
+            if (!hasCurrentHeadReview) {
+              core.setFailed(
+                "Une revue de l'outil doit être publiée sur le SHA actuel de la PR. " +
+                "Le commentaire doit contenir le marqueur : " + marker
+              );
+            } else {
+              core.info("Revue de l'outil trouvée sur le SHA actuel : " + pr.head.sha);
+            }
