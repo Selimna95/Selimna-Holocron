@@ -13,28 +13,23 @@ class AssetIntegrityTests(unittest.TestCase):
         blue_html = (ROOT / "blue-gac" / "index.html").read_text(encoding="utf-8")
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
 
-        refs = re.findall(
-            r"""<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)""",
-            html, re.I,
-        )
-        refs += re.findall(r"""<script\b[^>]*\bsrc=["']([^"']+)""", html, re.I)
-        refs += [
-            "blue-gac/" + ref
-            for ref in re.findall(
-            r"""<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)""",
-                blue_html, re.I,
+        refs = []
+        for document, prefix in ((html, ""), (blue_html, "blue-gac/")):
+            styles = re.findall(
+                r"""<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)""",
+                document, re.I,
             )
-        ]
-        refs += [
-            "blue-gac/" + ref
-        refs += re.findall(r"""<script\b[^>]*\bsrc=["']([^"']+)""", html, re.I)
-        ]
+            scripts = re.findall(
+                r"""<script\b[^>]*\bsrc=["']([^"']+)""",
+                document, re.I,
+            )
+            refs.extend(prefix + ref for ref in styles + scripts)
+
         local_refs = sorted({
             ref.removeprefix("./")
             for ref in refs
             if "://" not in ref and not ref.startswith("data:")
         })
-
         static_section = sw.split("const STATIC_ASSETS = [", 1)[1].split("];", 1)[0]
         cached_assets = {
             value.removeprefix("./")
