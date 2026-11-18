@@ -104,6 +104,8 @@ class OptimizerScoringMetadataTests(unittest.TestCase):
         self.assertEqual(metadata["primary"], primary_name(mod))
         self.assertEqual(metadata["stats"], mod_stats(mod))
         self.assertEqual(metadata["donor_uses"], 17.0)
+        self.assertAlmostEqual(metadata["normalized_stats"]["Speed"], 12 / 31)
+        self.assertAlmostEqual(metadata["normalized_stats"]["Offense %"], 5 / 8.5)
         kyber = {
             "sets": {"Speed": 0.7},
             "slots": {"Arrow": {"primaries": {"Speed": 0.8, "Health": 0.2}}},
@@ -114,6 +116,26 @@ class OptimizerScoringMetadataTests(unittest.TestCase):
             _mod_score(mod, kyber, weights),
             _mod_score(mod, kyber, weights, metadata, context),
             places=12,
+        )
+
+    def test_python_mod_ranking_uses_shared_dot_normalized_secondary_values(self):
+        health_mod = {
+            "slot": "Square", "pips": 6, "level": 15, "set_name": "Health",
+            "primary_stat": "Offense", "primary_value": 100,
+            "secondary_1_stat": "Health", "secondary_1_value": 2700,
+            "_source_usage": 1000,
+        }
+        offense_mod = {
+            "slot": "Square", "pips": 6, "level": 15, "set_name": "Health",
+            "primary_stat": "Offense", "primary_value": 100,
+            "secondary_1_stat": "Offense %", "secondary_1_value": 8.5,
+            "_source_usage": 1000,
+        }
+        weights = {"Health": 0.12, "Offense": 0.42}
+        self.assertGreater(
+            _mod_score(offense_mod, {}, weights),
+            _mod_score(health_mod, {}, weights),
+            "The Python candidate pre-ranker must consume shared normalized secondary quality",
         )
 
     def test_cached_build_score_matches_uncached_score(self):
@@ -149,6 +171,39 @@ class OptimizerScoringMetadataTests(unittest.TestCase):
         cached = build_score(build, kyber, weights, {}, projected_stats=projected,
                              mod_metadata=metadata, scoring_context=_prepare_scoring_context(kyber))
         self.assertAlmostEqual(cached, uncached, places=12)
+
+
+class OptimizerScoringCalibrationTests(unittest.TestCase):
+    def test_named_mod_set_share_weight_is_applied_to_fractional_distribution(self):
+        mod = {
+            "slot": "Square", "level": 15, "set_name": "Speed",
+            "primary_stat": "Offense", "primary_value": 100,
+            "_source_usage": 1000,
+        }
+        score = _mod_score(mod, {"sets": {"Speed": 1.0}}, {})
+        self.assertEqual(score, optimizer_module.KYBER_MOD_SET_SHARE_WEIGHT)
+
+    def test_dominant_set_missing_mod_penalty_uses_named_constant(self):
+        build = [
+            {"slot": slot, "level": 15, "set_name": "Health",
+             "primary_stat": "Offense", "primary_value": 100,
+             "_source_usage": 1000}
+            for slot in ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+        ]
+        kyber = {"sets": {"Speed": 0.8}}
+        score = build_score(build, kyber, {}, {}, projected_stats={})
+        expected = -6 * 0.8 * optimizer_module.KYBER_BUILD_DOMINANT_SET_MISSING_MOD_PENALTY
+        self.assertEqual(score, expected)
+
+    def test_primary_mismatch_penalty_uses_named_constant(self):
+        build = [{
+            "slot": "Arrow", "level": 15, "set_name": "Health",
+            "primary_stat": "Health", "primary_value": 5,
+            "_source_usage": 1000,
+        }]
+        kyber = {"slots": {"Arrow": {"primaries": {"Speed": 0.8, "Offense": 0.2}}}}
+        score = build_score(build, kyber, {}, {}, projected_stats={})
+        self.assertEqual(score, -0.8 * optimizer_module.KYBER_BUILD_PRIMARY_MISMATCH_PENALTY)
 
 
 class OptimizerProfileResolutionTests(unittest.TestCase):

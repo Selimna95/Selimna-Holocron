@@ -1,5 +1,5 @@
 """
-SWGOH Optimizer — version Kyber / Web V17
+SWGOH Optimizer — version Kyber / Web V18
 Drop-in module exposing optimize_kyber().
 
 Important:
@@ -22,6 +22,20 @@ except Exception:
         pass
 
 SLOTS = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+
+# Kyber score calibration. Distribution values are fractions in [0, 1];
+# these constants convert those fractions into comparable optimizer score units.
+# A set match is weighted per mod; missing pieces of a dominant (>=80%) set
+# are penalized per missing mod. At build level, a primary mismatch (10,000)
+# outweighs the maximum positive primary match (9,000); per-mod primary match
+# and mismatch use the same 12,000 scale.
+KYBER_MOD_SET_SHARE_WEIGHT = 5000.0
+KYBER_MOD_PRIMARY_MATCH_WEIGHT = 12000.0
+KYBER_MOD_PRIMARY_MISMATCH_PENALTY = 12000.0
+KYBER_BUILD_SET_MATCH_PER_MOD_WEIGHT = 3000.0
+KYBER_BUILD_DOMINANT_SET_MISSING_MOD_PENALTY = 5000.0
+KYBER_BUILD_PRIMARY_MATCH_WEIGHT = 9000.0
+KYBER_BUILD_PRIMARY_MISMATCH_PENALTY = 10000.0
 _MOD_ENGINE_BRIDGE = None
 _MOD_NORMALIZE_BRIDGE = None
 _MOD_ENGINE_BATCH_BRIDGE = None
@@ -220,6 +234,7 @@ def _mod_metadata(mod):
     }:
         primary_label += " %"
     stats = {}
+    normalized_stats = {}
     percent_suffix = {"offense", "defense", "health", "protection", "speed", "physicalDamage", "specialDamage"}
     for stat in [primary] + list(normalized.get("secondaries") or []):
         if not isinstance(stat, dict) or not stat.get("key") or stat.get("unit") not in {"flat", "percentagePoints"}:
@@ -229,11 +244,14 @@ def _mod_metadata(mod):
         if stat.get("unit") == "percentagePoints" and key in percent_suffix:
             name += " %"
         stats[name] = stats.get(name, 0.0) + to_float(stat.get("value"))
+        if stat is not primary and stat.get("normalizedValue") is not None:
+            normalized_stats[name] = normalized_stats.get(name, 0.0) + to_float(stat.get("normalizedValue"))
     return {
         "slot": normalized.get("slot") or normalize_slot(mod.get("slot")),
         "set": normalized.get("setName"),
         "primary": primary_label,
         "stats": stats,
+        "normalized_stats": normalized_stats,
         "donor_uses": to_float(mod.get("_source_usage"), 0.0),
     }
 
@@ -439,14 +457,14 @@ def _mod_score(mod, kyber, weights, metadata=None, scoring_context=None):
     metadata = metadata or _mod_metadata(mod)
     slot = metadata["slot"]
     primary = metadata["primary"]
-    stats = metadata["stats"]
+    normalized_stats = metadata.get("normalized_stats", {})
 
     # Kyber set distribution has priority.
     set_dist = (scoring_context or {}).get("set_distribution")
     if set_dist is None:
         set_dist = _get_kyber_set_distribution(kyber)
     set_share = set_dist.get(str(metadata["set"]), 0.0)
-    score += set_share * 5000.0
+    score += set_share * KYBER_MOD_SET_SHARE_WEIGHT
 
     # Kyber primary distribution has very strong priority.
     distribution = (scoring_context or {}).get("slot_distributions", {}).get(slot)
@@ -462,19 +480,18 @@ def _mod_score(mod, kyber, weights, metadata=None, scoring_context=None):
                 return re.sub(r"\s*%\s*$", "", str(name).strip()).casefold()
             target = _cmp(primary)
             own = sum(v for k, v in distribution.items() if _cmp(k) == target)
-        score += own * 12000.0
+        score += own * KYBER_MOD_PRIMARY_MATCH_WEIGHT
         if own == 0.0 and dominant:
-            score -= dominant * 12000.0
+            score -= dominant * KYBER_MOD_PRIMARY_MISMATCH_PENALTY
 
-    # Secondary stats.
-    for stat, value in stats.items():
-        if stat == primary:
-            continue
+    # Secondary quality comes from the shared JS engine's dot-aware maxima.
+    # Python applies only the caller's strategic weights; it never redefines roll caps.
+    for stat, value in normalized_stats.items():
         weight_key = str(stat).removesuffix(' %')
         score += value * to_float(weights.get(stat, weights.get(weight_key)), 0.0)
 
     # Speed secondary is always useful, but remains below Kyber primary.
-    score += stats.get("Speed", 0.0) * 8.0
+    score += normalized_stats.get("Speed", 0.0) * 8.0
 
     # Prefer mods from less-used GAC donors after preserving the target build fit.
     # Missing usage is never encoded as zero by the browser-side donor selector.
@@ -500,9 +517,9 @@ def build_score(build, kyber, weights, base_stats, base_profile=None, projected_
         if share <= 0:
             continue
         count = counts.get(name, 0)
-        score += share * 3000.0 * count
+        score += share * KYBER_BUILD_SET_MATCH_PER_MOD_WEIGHT * count
         if share >= 0.80:
-            score -= (6 - count) * share * 5000.0
+            score -= (6 - count) * share * KYBER_BUILD_DOMINANT_SET_MISSING_MOD_PENALTY
 
     # Strongly reward Kyber primaries.
     for slot in ("Arrow", "Triangle", "Circle", "Cross"):
@@ -519,9 +536,9 @@ def build_score(build, kyber, weights, base_stats, base_profile=None, projected_
             target = re.sub(r"\s*%\s*$", "", str(primary).strip()).casefold()
             own = sum(v for k, v in dist.items()
                       if re.sub(r"\s*%\s*$", "", str(k).strip()).casefold() == target)
-        score += own * 9000.0
+        score += own * KYBER_BUILD_PRIMARY_MATCH_WEIGHT
         if own == 0.0:
-            score -= dominant * 10000.0
+            score -= dominant * KYBER_BUILD_PRIMARY_MISMATCH_PENALTY
 
     # Match Kyber reference stats without making them hard constraints.
     for stat in ("Speed", "Health", "Protection"):

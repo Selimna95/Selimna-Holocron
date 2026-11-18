@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.30');
+assert.equal(engine.version, '0.3.32');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -253,6 +253,7 @@ assert.equal(unknown.unit, 'unknown');
 assert.equal(unknown.complete, false);
 
 const scored = engine.scoreMod({
+  pips: 5,
   level: 15,
   primary_stat: 'Offense %',
   primary_value: 5.88,
@@ -261,7 +262,58 @@ const scored = engine.scoreMod({
   secondary_2_stat: 'Potency %',
   secondary_2_value: 2.5
 });
-assert.equal(scored, 37.35);
+assert.ok(Math.abs(scored - (20 / 30 * 1.8 + 2.5 / 11.25 * 0.24 + 0.75)) < 1e-12,
+  'Each secondary is normalized against its dot-specific maximum before weighting');
+
+const secondaryMaximumCases = [
+  ['Critical Chance %', [5, 6.25, 7.5, 10, 11.25, 11.75]],
+  ['Defense', [20, 25, 30, 40, 49, 80]],
+  ['Defense %', [5, 5.5, 6.5, 7.5, 8.5, 20]],
+  ['Health', [995, 1180, 1500, 1735, 2143, 2700]],
+  ['Health %', [2.5, 3.13, 3.75, 5, 5.625, 10]],
+  ['Offense', [80, 100, 140, 180, 228, 251]],
+  ['Offense %', [1.25, 1.565, 1.875, 2.5, 2.815, 8.5]],
+  ['Potency %', [5, 6.25, 7.5, 10, 11.25, 15]],
+  ['Protection', [995, 1545, 2415, 3195, 4153, 4600]],
+  ['Protection %', [5, 6.25, 7.5, 10, 11.25, 15]],
+  ['Speed', [10, 15, 20, 25, 30, 31]],
+  ['Tenacity %', [5, 6.25, 7.5, 10, 11.25, 15]]
+];
+for (const [name, maxima] of secondaryMaximumCases) {
+  const unit = name.endsWith('%') ? 'percentagePoints' : 'flat';
+  const key = engine.normalizeStat(name, 1).key;
+  const stat = { key, unit };
+  for (let pips = 1; pips <= 6; pips++) {
+    assert.equal(engine.maxSecondaryValue(stat, pips), maxima[pips - 1],
+      name + ' ' + pips + '-dot maximum');
+  }
+}
+assert.equal(engine.maxSecondaryValue(engine.normalizeStat('Offense %', 1), null), 8.5,
+  'Unknown dot count uses the conservative 6-dot ceiling');
+
+const maxOffenseSixDot = engine.scoreMod({
+  pips: 6, level: 15, secondary_1_stat: 'Offense %', secondary_1_value: 8.5
+});
+const maxHealthSixDot = engine.scoreMod({
+  pips: 6, level: 15, secondary_1_stat: 'Health', secondary_1_value: 2700
+});
+assert.ok(maxOffenseSixDot > maxHealthSixDot,
+  'A maxed Offense % secondary ranks above maxed flat Health under the configured priorities');
+
+const maxOffenseFiveDot = engine.scoreMod({
+  pips: 5, level: 15, secondary_1_stat: 'Offense %', secondary_1_value: 2.815
+});
+assert.ok(Math.abs(maxOffenseFiveDot - maxOffenseSixDot) < 1e-12,
+  'Equivalent 5-dot and 6-dot secondary quality must receive the same normalized score');
+
+const speedFiveDot = engine.scoreMod({
+  pips: 5, level: 15, secondary_1_stat: 'Speed', secondary_1_value: 15
+});
+const speedSixDot = engine.scoreMod({
+  pips: 6, level: 15, secondary_1_stat: 'Speed', secondary_1_value: 15.5
+});
+assert.ok(Math.abs(speedFiveDot - speedSixDot) < 1e-12,
+  'Equivalent 5-dot and 6-dot Speed secondary quality must receive the same normalized score');
 
 
 const projectionBase = {
