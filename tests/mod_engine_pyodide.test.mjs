@@ -26,6 +26,11 @@ pyodide.runPython = (...args) => {
   }
 };
 pyodide.FS.writeFile('/home/pyodide/optimizer.py', read('../python/optimizer.py'));
+pyodide.FS.mkdirTree('/home/pyodide/python');
+pyodide.FS.writeFile('/home/pyodide/python/optimizer.py', read('../python/optimizer.py'));
+pyodide.FS.writeFile('/home/pyodide/python/optimizer_profiles.json', read('../python/optimizer_profiles.json'));
+pyodide.FS.mkdirTree('/home/pyodide/tests');
+pyodide.FS.writeFile('/home/pyodide/tests/test_optimizer.py', read('./test_optimizer.py'));
 const engineBridge = (baseJson, modsJson, level) => {
   scalarBridgeCalls++;
   const baseProfile = JSON.parse(baseJson);
@@ -61,7 +66,7 @@ pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
 pyodide.globals.set('holocron_mod_normalize_bridge', normalizeBridge);
 pyodide.globals.set('holocron_mod_engine_batch_bridge', batchBridge);
 pyodide.globals.set('holocron_mod_engine_speed_bridge', speedBridge);
-pyodide.runPython("import sys\nsys.path.insert(0, '/home/pyodide')\nimport optimizer\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)\n");
+pyodide.runPython("import sys\\nsys.path.insert(0, '/home/pyodide')\\nimport optimizer\\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)\\nimport python.optimizer as package_optimizer\\npackage_optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)\\n");
 
 const profileValidation = pyodide.runPython(`
 profile = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8,"base_stats":{"Speed":153}}
@@ -379,6 +384,19 @@ pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Heal
 const incompleteSecondary = pyodide.runPython('incomplete_secondary_error');
 assert.match(incompleteSecondary, /mod:secondary_incomplete/);
 
+
+// Run the Python optimizer unit suite inside Pyodide. Both Python imports use
+// the exact same JavaScript mod engine and normalizer as the browser worker.
+pyodide.runPython(`import os, sys, unittest
+os.environ["HOLOCRON_PYODIDE"] = "1"
+sys.path.insert(0, "/home/pyodide/tests")
+import test_optimizer
+suite = unittest.defaultTestLoader.loadTestsFromModule(test_optimizer)
+result = unittest.TextTestRunner(verbosity=2).run(suite)
+if not result.wasSuccessful():
+    raise AssertionError("Python optimizer tests failed against the shared JavaScript mod engine")
+`);
+console.log('Python optimizer unittest suite executed through the shared JavaScript engine.');
 
 const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
   const slot = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'][index % 6];
