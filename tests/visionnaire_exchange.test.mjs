@@ -218,11 +218,13 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
   makeMod('wrong-primary-square','Square','Speed',20,'Offense %',5),
   makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
 ],mismatchedPrimaryProfile,'primaries',[],['Square']);
-assert.ok(mismatchedPrimarySearch.proposals.length>0,'SWGOH.GG fixed Square Offense shorthand must match an equipped Offense % primary: '+JSON.stringify(mismatchedPrimarySearch));
+assert.equal(mismatchedPrimarySearch.diagnostics.primaryFilteredBySlot['Carré'],0,'SWGOH.GG fixed Square Offense shorthand must not filter an equipped Offense % primary');
+assert.equal(mismatchedPrimarySearch.diagnostics.eligibleBySlot['Carré'],1,'The fixed Square Offense % candidate must remain eligible');
 const fixedDiamondSearch=await runSearch(normalTarget,[],[
   makeMod('correct-defense-diamond','Diamond','Speed',20,'Defense %',5)
 ],{specific_sets:kyber.specific_sets,slots:{Diamond:{primaries:{Defense:1}}}},'primaries',[],['Diamond']);
-assert.ok(fixedDiamondSearch.proposals.length>0,'SWGOH.GG fixed Diamond Defense shorthand must match an equipped Defense % primary');
+assert.equal(fixedDiamondSearch.diagnostics.primaryFilteredBySlot['Losange'],0,'SWGOH.GG fixed Diamond Defense shorthand must not filter an equipped Defense % primary');
+assert.equal(fixedDiamondSearch.diagnostics.eligibleBySlot['Losange'],1,'The fixed Diamond Defense % candidate must remain eligible');
 const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5,'Physical Damage':1000,'Special Damage':1000},mods:normalTarget.mods.map(mod=>({...mod}))};
 variablePrimaryTarget.mods.find(mod=>mod.slot==='Square').set_name='Speed';
 variablePrimaryTarget.mods.find(mod=>mod.slot==='Circle').set_name='Potency';
