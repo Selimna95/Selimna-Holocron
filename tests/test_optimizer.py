@@ -1,124 +1,15 @@
 import unittest
 from unittest import mock
 import json
+import os
 from pathlib import Path
 import python.optimizer as optimizer_module
 
-# This lightweight bridge isolates Python search behavior only; the real
-# JavaScript/Pyodide bridge and formulas are exercised in mod_engine_pyodide.test.mjs.
-
-def _test_engine_bridge(base_json, mods_json, level):
-    source = json.loads(base_json)
-    base = source.get("base_stats", source) if isinstance(source, dict) else {}
-    result = dict(base)
-    mods = json.loads(mods_json)
-    totals = {}
-    sets = {}
-    levels = {}
-    missing = []
-    for mod in mods:
-        set_name = optimizer_module.mod_set(mod)
-        if not set_name:
-            missing.append("set:unknown")
-        else:
-            sets[set_name] = sets.get(set_name, 0) + 1
-            levels.setdefault(set_name, []).append(int(mod.get("level") or 0))
-        try:
-            level_value = float(mod.get("level"))
-            valid_level = level_value.is_integer() and 1 <= level_value <= 15
-        except (TypeError, ValueError):
-            level_value = None
-            valid_level = False
-        if not valid_level:
-            missing.append("mod:level_unknown" if level_value is None else "mod:level_invalid")
-        if not mod.get("primary_stat") or mod.get("primary_value") is None:
-            missing.append("mod:primary_incomplete")
-        entries = [(mod.get("primary_stat"), mod.get("primary_value"))]
-        entries += [(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value")) for i in range(1, 5)]
-        for name, value in entries:
-            if not name or value is None:
-                continue
-            key = str(name).strip()
-            totals[key] = totals.get(key, 0.0) + float(value)
-    base_speed = float(base.get("Speed", 0))
-    result["Speed"] = base_speed + totals.get("Speed", 0)
-    result["Speed"] += base_speed * totals.get("Speed %", 0) / 100
-    if sets.get("Speed", 0) >= 4:
-        result["Speed"] += base_speed * (0.10 if all(x >= 15 for x in sorted(levels["Speed"], reverse=True)[:4]) else 0.05)
-    if "Critical Damage" in result and sets.get("Critical Damage", 0) >= 4:
-        result["Critical Damage"] += 0.30 if all(x >= 15 for x in sorted(levels["Critical Damage"], reverse=True)[:4]) else 0.15
-    return json.dumps({"complete": not missing, "stats": result, "missing": sorted(set(missing))})
-
-def _test_normalize_bridge(mod_json):
-    mod = json.loads(mod_json)
-    raw_set = mod.get("set_name", mod.get("set", mod.get("setId")))
-    set_names = {
-        "1": "Health", "2": "Offense", "3": "Defense", "4": "Speed",
-        "5": "Critical Chance", "6": "Critical Damage", "7": "Potency", "8": "Tenacity",
-        "health": "Health", "offense": "Offense", "defense": "Defense", "speed": "Speed",
-        "crit chance": "Critical Chance", "critical chance": "Critical Chance",
-        "crit damage": "Critical Damage", "critical damage": "Critical Damage",
-        "potency": "Potency", "tenacity": "Tenacity",
-    }
-    set_value = set_names.get(str(raw_set or "").casefold(), set_names.get(str(raw_set or "")))
-    def stat(name, value):
-        if not name:
-            return None
-        text = str(name).strip()
-        is_percent = text.endswith("%")
-        clean = text[:-1].strip() if is_percent else text
-        key = clean.replace(" ", "").casefold()
-        aliases = {"critchance": "criticalChance", "critdamage": "criticalDamage"}
-        key = aliases.get(key, key)
-        flat_keys = {"health", "protection", "speed", "offense", "defense"}
-        unit = "percentagePoints" if is_percent else ("flat" if key in flat_keys else "unknown")
-        return {
-            "key": key, "name": clean, "unit": unit,
-            "value": float(value) if value is not None else None
-        }
-    primary = stat(mod.get("primary_stat"), mod.get("primary_value"))
-    secondaries = []
-    for i in range(1, 5):
-        item = stat(mod.get(f"secondary_{i}_stat"), mod.get(f"secondary_{i}_value"))
-        if item:
-            secondaries.append(item)
-    raw_slot = mod.get("slot", mod.get("slot_id", mod.get("slotId")))
-    if mod.get("definitionId") is not None:
-        definition = str(mod.get("definitionId")).split(":")[0]
-        if len(definition) == 3 and definition.isdigit() and 1 <= int(definition[2]) <= 6:
-            raw_slot = ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"][int(definition[2]) - 1]
-    slot_names = {
-        "1": "Square", "2": "Square", "3": "Arrow", "4": "Diamond",
-        "5": "Triangle", "6": "Circle", "7": "Cross",
-        "square": "Square", "arrow": "Arrow", "diamond": "Diamond",
-        "triangle": "Triangle", "circle": "Circle", "cross": "Cross"
-    }
-    slot_text = str(raw_slot or "").strip()
-    slot_key = slot_text.casefold().removeprefix("slot_")
-    slot_value = slot_names.get(slot_key, slot_text or None)
-    try:
-        level_value = float(mod.get("level"))
-        valid_level = level_value.is_integer() and 1 <= level_value <= 15
-    except (TypeError, ValueError):
-        valid_level = False
-    complete = bool(
-        set_value and valid_level and primary
-        and primary.get("value") is not None and primary.get("unit") in {"flat", "percentagePoints"}
-        and all(item.get("value") is not None and item.get("unit") in {"flat", "percentagePoints"} for item in secondaries)
-    )
-    return json.dumps({"set": set_value, "setName": set_value, "slot": slot_value,
-                       "primary": primary, "secondaries": secondaries, "level": mod.get("level"),
-                       "complete": complete})
-
-optimizer_module.set_mod_engine_bridge(_test_engine_bridge, _test_normalize_bridge)
-
-from python.optimizer import (
-    normalize_slot, normalize_set, mod_slot_value, optimize_kyber, final_stats,
-    _partial_matches_set_plan, _mod_score, build_score, _mod_metadata, _prepare_scoring_context,
-    resolve_character_base_stats,
-)
-
-
+def load_tests(loader, tests, pattern):
+    """Run optimizer tests only inside Pyodide with the shared JavaScript engine."""
+    if os.environ.get("HOLOCRON_PYODIDE") != "1":
+        return unittest.TestSuite()
+    return tests
 
 
 class OptimizerBeamRetentionTests(unittest.TestCase):
