@@ -14,20 +14,20 @@ class AssetIntegrityTests(unittest.TestCase):
         sw = (ROOT / "sw.js").read_text(encoding="utf-8")
 
         refs = re.findall(
-            r'<link\\b[^>]*\\brel=["\\']stylesheet["\\'][^>]*\\bhref=["\\']([^"\\']+)',
+            r"""<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)""",
             html, re.I,
         )
-        refs += re.findall(r'<script\\b[^>]*\\bsrc=["\\']([^"\\']+)', html, re.I)
+        refs += re.findall(r"""<script\b[^>]*\bsrc=["']([^"']+)""", html, re.I)
         refs += [
             "blue-gac/" + ref
             for ref in re.findall(
-                r'<link\\b[^>]*\\brel=["\\']stylesheet["\\'][^>]*\\bhref=["\\']([^"\\']+)',
+            r"""<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)""",
                 blue_html, re.I,
             )
         ]
         refs += [
             "blue-gac/" + ref
-            for ref in re.findall(r'<script\\b[^>]*\\bsrc=["\\']([^"\\']+)', blue_html, re.I)
+        refs += re.findall(r"""<script\b[^>]*\bsrc=["']([^"']+)""", html, re.I)
         ]
         local_refs = sorted({
             ref.removeprefix("./")
