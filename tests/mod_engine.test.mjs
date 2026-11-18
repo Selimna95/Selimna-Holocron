@@ -376,23 +376,23 @@ const roundingProfile = {
   }
 };
 const healthRoundingMods = [
-  { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0 },
-  { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0 },
-  { level: 15, set_name: 'Health', primary_stat: 'Health %', primary_value: 5.88 }
+  { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries },
+  { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries },
+  { level: 15, set_name: 'Health', primary_stat: 'Health %', primary_value: 5.88, ...zeroSecondaries }
 ];
 const healthRounding = engine.calculateFinalStats(roundingProfile, healthRoundingMods);
 assert.equal(healthRounding.complete, true);
 assert.equal(healthRounding.stats.Health, 1159,
   'Health set + Health % must floor the combined 15.88% base-derived bonus once');
 const protectionRounding = engine.calculateFinalStats(roundingProfile, [
-  { level: 15, set_name: 'Health', primary_stat: 'Protection %', primary_value: 5.88 }
+  { level: 15, set_name: 'Health', primary_stat: 'Protection %', primary_value: 5.88, ...zeroSecondaries }
 ]);
 assert.equal(protectionRounding.complete, true);
 assert.equal(protectionRounding.stats.Protection, 1059,
   'Protection % must floor its base-derived bonus to an integer');
 const offenseRounding = engine.calculateFinalStats(roundingProfile, [
   ...Array.from({ length: 4 }, () => ({ level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 0 })),
-  { level: 15, set_name: 'Health', primary_stat: 'Offense %', primary_value: 5.88 }
+  { level: 15, set_name: 'Health', primary_stat: 'Offense %', primary_value: 5.88, ...zeroSecondaries }
 ]);
 assert.equal(offenseRounding.complete, true);
 assert.equal(offenseRounding.stats['Physical Damage'], 605,
@@ -402,15 +402,15 @@ assert.equal(offenseRounding.stats['Special Damage'], 847,
 const speedRounding = engine.calculateSpeed(153, [
   ...completeSpeedSet,
   { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0,
-    secondary_1_stat: 'Speed %', secondary_1_value: 2.5 }
+    ...zeroSecondaries, secondary_1_stat: 'Speed %', secondary_1_value: 2.5 }
 ], 13);
 assert.equal(speedRounding.complete, true);
 assert.equal(speedRounding.setBonus, 15);
 assert.equal(speedRounding.total, 172,
   'Speed set + Speed % mod must be combined before flooring (153 × 12.5% = 19)');
 const defenseRounding = engine.calculateFinalStats(roundingProfile, [
-  { level: 15, set_name: 'Defense', primary_stat: 'Health', primary_value: 0 },
-  { level: 15, set_name: 'Defense', primary_stat: 'Health', primary_value: 0 }
+  { level: 15, set_name: 'Defense', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries },
+  { level: 15, set_name: 'Defense', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries }
 ], 85);
 const expectedArmorRating = 637.5 + Math.floor(637.5 * 0.25);
 const expectedResistanceRating = 425 + Math.floor(425 * 0.25);
@@ -423,7 +423,7 @@ assert.equal(defenseRounding.stats.Resistance,
   'Defense set must floor the derived Resistance rating bonus before conversion');
 const stackingPercentRounding = engine.calculateFinalStats(roundingProfile, [
   { level: 15, set_name: 'Health', primary_stat: 'Potency %', primary_value: 2.5,
-    secondary_1_stat: 'Tenacity %', secondary_1_value: 0 }
+    ...zeroSecondaries, secondary_1_stat: 'Tenacity %', secondary_1_value: 0 }
 ]);
 assert.equal(stackingPercentRounding.stats.Potency, 0.125,
   'Stacking percentage-point stats retain fractional precision; they are not integer-floored');
