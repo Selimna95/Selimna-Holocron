@@ -68,11 +68,11 @@ async function boot(){
 $('fileInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{currentData=JSON.parse(await file.text());mods=extractMods(currentData);const importedUnits=extractCharacters(currentData);const split=splitRosterUnits(importedUnits);rosterCharacters=split.characters;rosterShips=split.ships;buildFactionMap();updateRosterCounts(rosterCharacters,rosterShips);fillCharacters(rosterCharacters);updateAccountSummary(file.name,'IMPORT JSON');renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderSithariNexus();$('dataInfo').textContent=`Fichier: ${file.name}\nMods détectés: ${mods.length}\nPersonnages détectés: ${rosterCharacters.length}\nVaisseaux détectés: ${rosterShips.length}`;$('log').textContent='';log(`Import: ${file.name}`);log(`${mods.length} mods détectés.`);log(`${rosterCharacters.length} personnages + ${rosterShips.length} vaisseaux détectés.`);showPage('dashboard');}catch(e){log('JSON invalide: '+e.message);}});
 
 
-const KNOWN_GALACTIC_LEGEND_IDS=window.HOLOCRON_GALACTIC_LEGENDS||new Set([
-  'JEDIMASTERKENOBI','GRANDMASTERLUKE','SITHPALPATINE','JABBATHEHUTT',
-  'LORDVADER','SUPREMELEADERKYLOREN','GLREY','GLLEIA','GLAHSOKATANO',
-  'GLHONDO','GLMANDOGROGU'
-]);
+// The canonical GL registry is defined once by core.js and shared by every module.
+const KNOWN_GALACTIC_LEGEND_IDS=window.HOLOCRON_GALACTIC_LEGENDS;
+if(!(KNOWN_GALACTIC_LEGEND_IDS instanceof Set)){
+  throw new Error('Registre partagé des Légendes Galactiques indisponible.');
+}
 function isGalacticLegendCharacter(c){
   const raw=c?.raw||c?.data||c||{};
   const base=compactKey(c?.baseId||c?.base_id||c?.id||'');
