@@ -9,6 +9,7 @@ class ModOwnerIntegrityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.core = (ROOT / "modules/core.js").read_text(encoding="utf-8")
+        cls.index = (ROOT / "index.html").read_text(encoding="utf-8")
         cls.disciple = (ROOT / "modules/disciple.js").read_text(encoding="utf-8")
         cls.acolyte = (ROOT / "modules/acolyte.js").read_text(encoding="utf-8")
         cls.seigneur = (ROOT / "modules/seigneur.js").read_text(encoding="utf-8")
