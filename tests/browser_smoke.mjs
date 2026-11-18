@@ -129,7 +129,7 @@ try {
         cacheHit: cached === profile,
         cacheStatus,
         requestsAfterCacheHit,
-        staleFallback: stale === profile,
+        staleFallback: stale?.url === profile.url && stale?.data_slice === profile.data_slice,
         staleStatus: window.__kyberReferenceStatuses.cacheprobe?.status,
         refreshRequests: requests - requestsAfterCacheHit
       };
