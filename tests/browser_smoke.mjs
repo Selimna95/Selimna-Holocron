@@ -188,7 +188,7 @@ try {
     };
     const sets = { Square: "Speed", Arrow: "Speed", Diamond: "Health", Triangle: "Health", Circle: "Potency", Cross: "Potency" };
     const primaries = {
-      Square: ["Offense", 5], Arrow: ["Speed", 30], Diamond: ["Defense", 5],
+      Square: ["Offense %", 5], Arrow: ["Speed", 30], Diamond: ["Defense %", 5],
       Triangle: ["Critical Damage %", 30], Circle: ["Protection %", 5.88], Cross: ["Potency %", 10]
     };
     const fixtureMods = [];

@@ -43,6 +43,14 @@
     const plain=canonical.replace(/PERCENT$/,'');
     if(raw.includes('%')&&KYBER_PERCENT_PRIMARY_KEYS.has(plain)&&!canonical.endsWith('PERCENT'))canonical+='PERCENT';
     const variableSlot=['Arrow','Triangle','Circle','Cross'].includes(slot);
+    // SWGOH.GG omits the percent sign on fixed primaries: Square is always
+    // Offense % and Diamond is always Defense %. Normalize that source shorthand
+    // to the actual mod primary without changing the shared engine's flat/percent distinction.
+    const fixedPrimary=FIXED[slot];
+    if(fromKyber&&!canonical.endsWith('PERCENT')&&fixedPrimary&&canonical===window.HolocronModEngine.canonicalStatKey(fixedPrimary).toUpperCase()){
+      const percent=window.HolocronModEngine.canonicalStatKey(fixedPrimary+' %').toUpperCase();
+      canonical=percent||canonical+'PERCENT';
+    }
     if(fromKyber&&variableSlot&&!canonical.endsWith('PERCENT')&&KYBER_PERCENT_PRIMARY_KEYS.has(canonical)){
       const percent=window.HolocronModEngine.canonicalStatKey(raw+' %').toUpperCase();
       canonical=percent||canonical;
