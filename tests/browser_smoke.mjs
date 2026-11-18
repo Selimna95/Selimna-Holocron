@@ -5,8 +5,15 @@ const origin = "http://127.0.0.1:8765";
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const pageErrors = [];
+const failedLocalAssets = [];
 
 page.on("pageerror", error => pageErrors.push(error.message));
+page.on("response", response => {
+  const url = new URL(response.url());
+  if (url.origin === origin && /\\.(?:css|js)$/.test(url.pathname) && response.status() >= 400) {
+    failedLocalAssets.push({ url: url.pathname, status: response.status() });
+  }
+});
 
 // Pyodide is external and is intentionally stubbed here: this suite tests the
 // application shell and local UI contracts, not the optimizer's Python runtime.
@@ -79,6 +86,228 @@ try {
   assert.equal(await page.locator("body").getAttribute("data-page"), "visionnaire");
   assert.equal(await page.locator("#visionnaire").getAttribute("aria-hidden"), "false");
   assert.equal(await page.locator("#visionnaireRoot").count(), 1);
+
+  // Visionnaire: exercise the actual audit, mode filters, faction filter,
+  // explicit slot selection, unavailable-reference handling and donor guards.
+  const kyberCacheBehavior = await page.evaluate(async () => {
+    const profile = {
+      source: "SWGOH.GG",
+      url: "https://swgoh.gg/gac/season/84/units/cache-probe/",
+      data_slice: "kyber",
+      specific_sets: [{ name: "Speed x4 + Health x2", counts: { Speed: 4, Health: 2 }, weight: 1 }],
+      slots: {
+        Square: { primaries: { Offense: 1 } },
+        Arrow: { primaries: { Speed: 1 } },
+        Diamond: { primaries: { Defense: 1 } },
+        Triangle: { primaries: { "Critical Damage": 1 } },
+        Circle: { primaries: { Health: 1 } },
+        Cross: { primaries: { Potency: 1 } }
+      }
+    };
+    const originalFetch = window.fetch;
+    const oldQueue = kyberFetchQueue;
+    const oldNextFetchAt = kyberNextFetchAt;
+    const oldCircuitOpenUntil = kyberCircuitOpenUntil;
+    const oldUnitIndexPromise = kyberUnitIndexPromise;
+    const oldUnitIndexFailureUntil = kyberUnitIndexFailureUntil;
+    let requests = 0;
+    try {
+      persistKyberProfile("cacheprobe", "cache-probe", profile);
+      window.fetch = async () => {
+        requests++;
+        return new Response("upstream unavailable", { status: 502, headers: { "X-Upstream-Status": "502" } });
+      };
+      const cached = await fetchKyberProfile({ name: "Cache Probe", baseId: "CACHEPROBE" });
+      const cacheStatus = window.__kyberReferenceStatuses.cacheprobe?.status;
+      const requestsAfterCacheHit = requests;
+      const cache = JSON.parse(localStorage.getItem("holocron-kyber-profile-cache-v3-full-distributions") || "{}");
+      cache.cacheprobe.savedAt = Date.now() - 13 * 60 * 60 * 1000;
+      localStorage.setItem("holocron-kyber-profile-cache-v3-full-distributions", JSON.stringify(cache));
+      kyberPersistentCache = null;
+      const stale = await fetchKyberProfile({ name: "Cache Probe", baseId: "CACHEPROBE" }, { forceRefresh: true });
+      return {
+        cacheHit: cached === profile,
+        cacheStatus,
+        requestsAfterCacheHit,
+        staleFallback: stale?.url === profile.url && stale?.data_slice === profile.data_slice,
+        staleStatus: window.__kyberReferenceStatuses.cacheprobe?.status,
+        refreshRequests: requests - requestsAfterCacheHit
+      };
+    } finally {
+      window.fetch = originalFetch;
+      discardKyberPersistentCacheEntry("cacheprobe");
+      kyberPersistentCache = null;
+      kyberFetchQueue = oldQueue;
+      kyberNextFetchAt = oldNextFetchAt;
+      kyberCircuitOpenUntil = oldCircuitOpenUntil;
+      kyberUnitIndexPromise = oldUnitIndexPromise;
+      kyberUnitIndexFailureUntil = oldUnitIndexFailureUntil;
+      if (window.__kyberReferenceStatuses) delete window.__kyberReferenceStatuses.cacheprobe;
+    }
+  });
+  assert.equal(kyberCacheBehavior.cacheHit, true, "A fresh Kyber cache entry must be used before any network request.");
+  assert.equal(kyberCacheBehavior.cacheStatus, "cached");
+  assert.equal(kyberCacheBehavior.requestsAfterCacheHit, 0);
+  assert.equal(kyberCacheBehavior.staleFallback, true, "An expired valid profile must survive a failed refresh.");
+  assert.equal(kyberCacheBehavior.staleStatus, "stale");
+  assert.ok(kyberCacheBehavior.refreshRequests >= 1);
+
+  const visionnaireFixture = await page.evaluate(() => {
+    const original = {
+      rosterCharacters,
+      mods,
+      factionMap,
+      fetchKyberProfile: window.fetchKyberProfile,
+      referenceStatuses: window.__kyberReferenceStatuses,
+      forgeAllSourceMods: window.forgeAllSourceMods,
+      forgeSourceAllowedForSearch: window.forgeSourceAllowedForSearch,
+      forgeProjectedModSpeed: window.forgeProjectedModSpeed,
+      isGalacticLegendCharacter: window.isGalacticLegendCharacter,
+    };
+    window.__visionnaireSmokeRestore = original;
+    const characters = [
+      { baseId: "TESTJEDI", characterId: "UNIT-JEDI", name: "Jedi Test", combat_type: 1, gear_level: 13, factions: ["Jedi"], base_stats: { Speed: 300 } },
+      { baseId: "TESTSITH", characterId: "UNIT-SITH", name: "Sith Test", combat_type: 1, gear_level: 13, factions: ["Sith"], base_stats: { Speed: 300 } },
+      { baseId: "TESTNOREF", characterId: "UNIT-NOREF", name: "No Reference", combat_type: 1, gear_level: 13, factions: ["Jedi"], base_stats: { Speed: 300 } },
+    ];
+    const profile = {
+      source: "SWGOH.GG",
+      url: "https://swgoh.gg/gac/season/84/units/test-jedi/",
+      data_slice: "kyber",
+      sample_size: 100,
+      updated_label: "Saison 84",
+      specific_sets: [{ name: "Speed x4 + Health x2", counts: { Speed: 4, Health: 2 }, weight: 1 }],
+      slots: {
+        Square: { primaries: { Offense: 1 } },
+        Arrow: { primaries: { Speed: 1 } },
+        Diamond: { primaries: { Defense: 1 } },
+        Triangle: { primaries: { "Critical Damage": 1 } },
+        Circle: { primaries: { Health: 1 } },
+        Cross: { primaries: { Potency: 1 } }
+      }
+    };
+    const sets = { Square: "Speed", Arrow: "Speed", Diamond: "Health", Triangle: "Health", Circle: "Potency", Cross: "Potency" };
+    const primaries = {
+      Square: ["Offense", 5], Arrow: ["Speed", 30], Diamond: ["Defense", 5],
+      Triangle: ["Critical Damage %", 30], Circle: ["Protection %", 5.88], Cross: ["Potency %", 10]
+    };
+    const fixtureMods = [];
+    for (const character of characters) {
+      for (const slot of ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"]) {
+        const [primary, value] = primaries[slot];
+        const secondaries = slot === "Arrow"
+          ? [["Protection", 100], ["Health", 100], ["Potency %", 2], ["Tenacity %", 2]]
+          : [["Speed", 5], ["Protection", 100], ["Potency %", 2], ["Tenacity %", 2]];
+        fixtureMods.push({
+          game_id: character.baseId + "-" + slot,
+          characterId: character.characterId,
+          slot,
+          set_name: sets[slot],
+          level: 15,
+          pips: 5,
+          rarity: 5,
+          primary_stat: primary,
+          primary_value: value,
+          secondary_1_stat: secondaries[0][0], secondary_1_value: secondaries[0][1],
+          secondary_2_stat: secondaries[1][0], secondary_2_value: secondaries[1][1],
+          secondary_3_stat: secondaries[2][0], secondary_3_value: secondaries[2][1],
+          secondary_4_stat: secondaries[3][0], secondary_4_value: secondaries[3][1],
+        });
+      }
+    }
+    rosterCharacters = characters;
+    mods = fixtureMods;
+    factionMap = { TESTJEDI: ["Jedi"], TESTSITH: ["Sith"], TESTNOREF: ["Jedi"] };
+    window.__kyberReferenceStatuses = {
+      testjedi: { status: "fresh", label: "Référence actualisée" },
+      testsith: { status: "fresh", label: "Référence actualisée" },
+      noreference: { status: "unavailable", label: "Pas de référence Kyber disponible", reason: "Aucun échantillon Kyber publié." }
+    };
+    window.fetchKyberProfile = async character => character.baseId === "TESTNOREF" ? null : profile;
+    window.forgeAllSourceMods = () => [{
+      game_id: "unknown-gac-donor",
+      slot: "Square",
+      set_name: "Speed",
+      level: 15,
+      primary_stat: "Offense",
+      primary_value: 5,
+      secondary_1_stat: "Speed",
+      secondary_1_value: 10,
+      _sourceOwnerKey: "TESTSITH",
+      _sourcePriorityKnown: false,
+      _sourceUsage: null
+    }];
+    window.forgeSourceAllowedForSearch = () => true;
+    window.forgeProjectedModSpeed = () => ({ complete: true, total: 300, baseSpeed: 300, hasFourPieceSpeedSet: true });
+    window.isGalacticLegendCharacter = () => false;
+    window.renderVisionnaire();
+    return {
+      jediMods: getCharacterMods(characters[0]).length,
+      sithMods: getCharacterMods(characters[1]).length,
+      noReferenceMods: getCharacterMods(characters[2]).length
+    };
+  });
+  assert.deepEqual(visionnaireFixture, { jediMods: 6, sithMods: 6, noReferenceMods: 6 });
+  await page.waitForFunction(() =>
+    document.querySelector("#visionnaireRoot .visionnaire-state")?.textContent.includes("AUDIT 3 PERSONNAGES")
+  );
+  assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 2,
+    "The audit must use the complete roster while keeping unavailable Kyber references out of mismatch lists.");
+  assert.match(await page.locator("#visionnaireRoot").textContent(), /Pas de référence Kyber disponible/);
+  await page.locator('#visionnaireRoot [data-mode="primaries"]').click();
+  assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 2);
+  await page.locator('#visionnaireRoot [data-mode="both"]').click();
+  assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 2);
+  await page.locator('#visionnaireRoot [data-faction-toggle]').click();
+  await page.locator('#visionnaireRoot [data-faction-option="Jedi"]').click();
+  assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 1,
+    "The faction filter must update the visible character list.");
+  assert.match(await page.locator('#visionnaireRoot [data-character]').textContent(), /Jedi Test/);
+  await page.locator('#visionnaireRoot [data-mode="primaries"]').click();
+  assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 1,
+    "The selected faction must persist when the discrepancy mode changes.");
+  await page.locator('#visionnaireRoot [data-mode="both"]').click();
+  assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 1,
+    "The selected faction must remain active across subsequent mode changes.");
+  await page.locator('#visionnaireRoot [data-character="TESTJEDI"]').click();
+  assert.equal(await page.locator('#visionnaireRoot .visionnaire-selected').count(), 1);
+  const selectedBefore = await page.locator('#visionnaireRoot [data-slot].selected').count();
+  assert.equal(selectedBefore, 4, "The slots with set or primary mismatches must be preselected.");
+  await page.locator('#visionnaireRoot [data-slot="Square"]').click();
+  assert.equal(await page.locator('#visionnaireRoot [data-slot].selected').count(), 3,
+    "The user must be able to remove a preselected slot.");
+  await page.locator('#visionnaireRoot [data-slot="Square"]').click();
+  for (const slot of ["Arrow", "Circle", "Cross"]) {
+    await page.locator('#visionnaireRoot [data-slot="' + slot + '"]').click();
+  }
+  assert.equal(await page.locator('#visionnaireRoot [data-slot].selected').count(), 1);
+  await page.locator('#visionnaireRoot [data-search-exchanges]').click();
+  await page.waitForFunction(() => {
+    const node = document.querySelector("#visionnaireRoot .visionnaire-selected .visionnaire-empty");
+    return node && /donneur|GAC/i.test(node.textContent || "");
+  });
+  assert.equal(await page.locator('#visionnaireRoot .visionnaire-proposal').count(), 0,
+    "A donor with unknown GAC priority must not become an exchange proposal.");
+  const visionnaireSearchMessage = await page.locator('#visionnaireRoot .visionnaire-selected .visionnaire-empty').textContent();
+  assert.match(visionnaireSearchMessage, /donneur|GAC/i);
+
+  // Verify the loaded local JavaScript and CSS assets are actually served.
+  await page.evaluate(() => {
+    const saved = window.__visionnaireSmokeRestore;
+    if (!saved) return;
+    showPage("dashboard");
+    rosterCharacters = saved.rosterCharacters;
+    mods = saved.mods;
+    factionMap = saved.factionMap;
+    window.fetchKyberProfile = saved.fetchKyberProfile;
+    window.__kyberReferenceStatuses = saved.referenceStatuses;
+    window.forgeAllSourceMods = saved.forgeAllSourceMods;
+    window.forgeSourceAllowedForSearch = saved.forgeSourceAllowedForSearch;
+    window.forgeProjectedModSpeed = saved.forgeProjectedModSpeed;
+    window.isGalacticLegendCharacter = saved.isGalacticLegendCharacter;
+    delete window.__visionnaireSmokeRestore;
+    window.dispatchEvent(new Event("holocron:data-updated"));
+  });
 
   const ambiguousSlotCount = await page.evaluate(() => {
     const character = { baseId: "AHSOKATANO", name: "Ahsoka Tano", characterId: "UNIT-42" };
@@ -355,7 +584,8 @@ try {
   assert.match(await page.locator("#padawanStatus").textContent(), /catalogue dynamique|compositions observées|équipes défensives retenues|classement actuel/i);
   assert.equal(await page.locator(".access-scene img").count(), 1);
   assert.deepEqual(pageErrors, [], "Unexpected uncaught browser errors: " + pageErrors.join(" | "));
-  console.log("Browser smoke passed: shell, navigation, profile sync, and blue-GAC flow.");
+  assert.deepEqual(failedLocalAssets, [], "Local JavaScript/CSS assets must be served successfully: " + JSON.stringify(failedLocalAssets));
+  console.log("Browser smoke passed: shell, navigation, Visionnaire behavior, profile sync, and blue-GAC flow.");
 } finally {
   await browser.close();
 }
