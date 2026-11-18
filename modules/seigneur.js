@@ -750,6 +750,49 @@ function optimizerVerdictForBuild(audit, scope, index){
   return {kind:'neutral',title:`Candidat ${index+1} analysé`,text:'La configuration est évaluée par rapport aux sets, primaires et secondaires de référence Kyber.'};
 }
 
+function seigneurMissingStatLabel(code){
+  const raw=String(code??'').trim();
+  const labels={
+    health:'Santé',protection:'Protection',speed:'Vitesse',offense:'Offense',defense:'Défense',
+    physicalDamage:'Dégâts physiques',specialDamage:'Dégâts spéciaux',armor:'Armure',resistance:'Résistance',
+    potency:'Précision',tenacity:'Ténacité',criticalDamage:'Dégâts critiques',
+    physicalCriticalChance:'Chances de coup critique physique',
+    specialCriticalChance:'Chances de coup critique spécial',
+    physicalCriticalAvoidance:'Évitement critique physique',
+    specialCriticalAvoidance:'Évitement critique spécial'
+  };
+  if(raw.endsWith(':gear_component_required')){
+    const key=raw.split(':',1)[0];
+    return `${labels[key]||key} % : séparation base / équipement indisponible`;
+  }
+  if(raw==='mod:primary_incomplete')return 'Primaire de mod incomplète';
+  if(raw==='mod:secondary_incomplete')return 'Secondaires de mod incomplètes';
+  if(raw==='mod:level_unknown')return 'Niveau de mod inconnu';
+  if(raw==='mod:level_invalid')return 'Niveau de mod invalide';
+  if(raw==='mod:invalid')return 'Mod invalide';
+  if(raw==='stat:value_missing')return 'Valeur de statistique manquante';
+  if(raw==='stat:unknown')return 'Type de statistique inconnu';
+  if(raw==='set:unknown')return 'Set de mod inconnu';
+  if(raw==='set:level_unknown')return 'Niveau de set inconnu';
+  if(raw==='base_stats')return 'Statistiques de base absentes';
+  if(raw==='base_speed')return 'Vitesse de base absente';
+  if(raw.startsWith('stat:')){
+    const parts=raw.split(':');
+    const label=labels[parts[1]]||parts[1]||'Statistique';
+    const reason=parts.slice(2).join(':');
+    if(reason==='unsupported'||reason.endsWith('_unsupported'))return `${label} : calcul non pris en charge`;
+    return `${label} : ${reason.replaceAll('_',' ')}`;
+  }
+  return labels[raw]||raw.replaceAll('_',' ');
+}
+
+function seigneurMissingStatsMarkup(missingStats){
+  const codes=[...new Set(Array.isArray(missingStats)?missingStats.map(String).filter(Boolean):[])];
+  if(!codes.length)return '';
+  const labels=codes.map(seigneurMissingStatLabel);
+  return `<div class="forge-result-warning forge-result-missing-stats"><strong>STATISTIQUES NON CALCULÉES POUR CE BUILD</strong><span>${labels.map(esc).join(' · ')}</span></div>`;
+}
+
 function renderResults(data,profileOverride=null){
   if(!data.length){$('results').textContent='Aucun build.';return;}
   const character=selectedCharacter();
@@ -774,6 +817,7 @@ function renderResults(data,profileOverride=null){
     <div><span>SOURCE MODS</span><b>${esc(scope)} · GL EXCLUES</b></div>
   </div>`+warningMarkup+data.map((r,i)=>{
     const build=r.build||[];
+    const missingStatsMarkup=seigneurMissingStatsMarkup(r.missing_stats);
     const setCounts={};
     build.forEach(m=>{const set=String(m.set_name||m.set||'').trim();if(set)setCounts[set]=(setCounts[set]||0)+1;});
     const setSummary=Object.entries(setCounts).map(([set,n])=>`${set} ×${n}`).join(' · ')||'Sets non renseignés';
@@ -849,6 +893,7 @@ function renderResults(data,profileOverride=null){
         </div>
       </section>
       ${impactMarkup}
+      ${missingStatsMarkup}
       <section class="forge-stats-block">
         <div class="forge-section-title"><span>ÉTAT APRÈS APPLICATION</span><small>6 mods · comparaison immédiate</small></div>
         <div class="forge-featured-stats">${featuredStats}</div>
