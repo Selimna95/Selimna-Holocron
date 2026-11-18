@@ -263,6 +263,12 @@ try {
   assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 1,
     "The faction filter must update the visible character list.");
   assert.match(await page.locator('#visionnaireRoot [data-character]').textContent(), /Jedi Test/);
+  await page.locator('#visionnaireRoot [data-mode="primaries"]').click();
+  assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 1,
+    "The selected faction must persist when the discrepancy mode changes.");
+  await page.locator('#visionnaireRoot [data-mode="both"]').click();
+  assert.equal(await page.locator('#visionnaireRoot [data-character]').count(), 1,
+    "The selected faction must remain active across subsequent mode changes.");
   await page.locator('#visionnaireRoot [data-character="TESTJEDI"]').click();
   assert.equal(await page.locator('#visionnaireRoot .visionnaire-selected').count(), 1);
   const selectedBefore = await page.locator('#visionnaireRoot [data-slot].selected').count();
