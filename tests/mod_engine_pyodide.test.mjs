@@ -381,7 +381,45 @@ batchProjectedBuilds = 0;
 batchBridgeCalls = 0;
 scalarBridgeCalls = 0;
 
-const batchSearch = JSON.parse(pyodide.runPython("import json\nmods = []\nfor index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']):\n for variant in range(3):\n  mod = {'game_id': f'batch-{index}-{variant}', 'slot': slot, 'level': 15, 'set_name': 'Potency', 'primary_stat': 'Health', 'primary_value': 100 + variant, 'secondary_1_stat': 'Speed', 'secondary_1_value': 5 + variant, 'secondary_2_stat': 'Potency %', 'secondary_2_value': 0.1, 'secondary_3_stat': 'Tenacity %', 'secondary_3_value': 0.1, 'secondary_4_stat': 'Critical Damage %', 'secondary_4_value': 0.1}\n  mods.append(mod)\nresult = optimizer.optimize_kyber(mods, base_stats=json.loads(base_json), base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}, kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4)\njson.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})\n"));
+const batchSearch = JSON.parse(pyodide.runPython(`import json
+slots = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross']
+primaries = {
+ 'Square': (41, 4000000000),
+ 'Arrow': (5, 3000000000),
+ 'Diamond': (42, 4000000000),
+ 'Triangle': (16, 30000000),
+ 'Circle': (55, 5880000),
+ 'Cross': (17, 10000000),
+}
+secondary_ids = {
+ 'Square': [(5, 400000000), (1, 83500000000), (17, 1982000), (18, 2818000)],
+ 'Arrow': [(1, 83500000000), (28, 71700000000), (48, 5000000), (18, 2818000)],
+ 'Diamond': [(5, 400000000), (48, 5000000), (17, 1982000), (18, 2818000)],
+ 'Triangle': [(5, 400000000), (48, 5000000), (17, 1982000), (18, 2818000)],
+ 'Circle': [(5, 400000000), (28, 71700000000), (48, 5000000), (17, 1982000)],
+ 'Cross': [(5, 400000000), (48, 5000000), (1, 83500000000), (18, 2818000)],
+}
+mods = []
+for slot in slots:
+ for variant in range(3):
+  primary_id, primary_value = primaries[slot]
+  secondaries = [
+   {'unitStatId': stat_id, 'unscaledDecimalValue': raw + (variant * 1000 if stat_id in (5, 48) else 0)}
+   for stat_id, raw in secondary_ids[slot]
+  ]
+  mods.append({
+   'game_id': f'batch-{slot}-{variant}', 'slot': slot, 'level': 15,
+   'pips': 5, 'rarity': 5, 'set_name': 'Potency',
+   'primary_stat': {'unitStatId': primary_id, 'unscaledDecimalValue': primary_value},
+   'secondary_stats': secondaries
+  })
+result = optimizer.optimize_kyber(
+ mods, base_stats=json.loads(base_json),
+ base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13},
+ kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4
+)
+json.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})
+`));
 assert.equal(batchSearch.count, 1);
 assert.equal(batchSearch.mods, 6);
 assert.equal(batchProjectedBuilds, 60);
@@ -461,14 +499,14 @@ const secondaryPool = [
   { id: 34, key: 'specialAccuracy', raw: 6_000_000 },
   { id: 35, key: 'physicalCriticalAvoidance', raw: 10_000_000 },
   { id: 36, key: 'specialCriticalAvoidance', raw: 10_000_000 },
-  { id: 48, key: 'offensePercent', raw: 5_000_000 },
-  { id: 49, key: 'defensePercent', raw: 2_371_000 },
+  { id: 48, key: 'offense', raw: 5_000_000 },
+  { id: 49, key: 'defense', raw: 2_371_000 },
   { id: 52, key: 'accuracy', raw: 12_000_000 },
   { id: 53, key: 'criticalChance', raw: 3_167_000 },
   { id: 54, key: 'criticalAvoidance', raw: 10_000_000 },
-  { id: 55, key: 'healthPercent', raw: 718_000 },
-  { id: 56, key: 'protectionPercent', raw: 2_140_000 },
-  { id: 57, key: 'speedPercent', raw: 10_000_000 }
+  { id: 55, key: 'health', raw: 718_000 },
+  { id: 56, key: 'protection', raw: 2_140_000 },
+  { id: 57, key: 'speed', raw: 10_000_000 }
 ];
 const percentStatIds = [16, 17, 18, 21, 22, 23, 24, 25, 26, 33, 34, 35, 36, 48, 49, 52, 53, 54, 55, 56, 57];
 const setNames = ['Speed', 'Speed', 'Health', 'Offense', 'Defense', 'Potency', 'Tenacity', 'Critical Damage', 'Critical Chance'];
