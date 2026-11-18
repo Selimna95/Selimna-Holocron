@@ -15,7 +15,10 @@ vm.createContext(statKeySandbox);
 vm.runInContext(js.slice(statKeyStart,statKeyEnd)+'\nthis.statKey=statKey;',statKeySandbox);
 const actualStatKey=statKeySandbox.statKey;
 assert.equal(actualStatKey('Offense','Cross',true),actualStatKey('Offense %','Cross',false),'SWGOH.GG Cross primary shorthand maps Offense to Offense %');
-assert.notEqual(actualStatKey('Offense','Square',true),actualStatKey('Offense %','Square',false),'Fixed Square Offense remains flat');
+assert.equal(actualStatKey('Offense','Square',true),actualStatKey('Offense %','Square',false),'SWGOH.GG fixed Square shorthand maps Offense to Offense %');
+assert.equal(actualStatKey('Defense','Diamond',true),actualStatKey('Defense %','Diamond',false),'SWGOH.GG fixed Diamond shorthand maps Defense to Defense %');
+assert.notEqual(actualStatKey('Offense','Square',false),actualStatKey('Offense %','Square',false),'Actual flat Offense remains distinct from Offense %');
+assert.notEqual(actualStatKey('Defense','Diamond',false),actualStatKey('Defense %','Diamond',false),'Actual flat Defense remains distinct from Defense %');
 const kyberPrimaryLabels=[
   ['Arrow','Accuracy',true],['Arrow','Critical Avoidance',true],['Arrow','Defense',true],['Arrow','Health',true],['Arrow','Offense',true],['Arrow','Protection',true],['Arrow','Speed',false],
   ['Triangle','Critical Damage',true],['Triangle','Defense',true],['Triangle','Health',true],['Triangle','Offense',true],['Triangle','Protection',true],
@@ -214,7 +217,11 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
   makeMod('wrong-primary-square','Square','Speed',20,'Offense %',5),
   makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
 ],mismatchedPrimaryProfile,'primaries',[],['Square']);
-assert.equal(mismatchedPrimarySearch.proposals.length,0,'An Offense % primary must not satisfy a Kyber reference for flat Offense');
+assert.ok(mismatchedPrimarySearch.proposals.length>0,'SWGOH.GG fixed Square Offense shorthand must match an equipped Offense % primary');
+const fixedDiamondSearch=await runSearch(normalTarget,[],[
+  makeMod('correct-defense-diamond','Diamond','Speed',20,'Defense %',5)
+],{specific_sets:kyber.specific_sets,slots:{Diamond:{primaries:{Defense:1}}}},'primaries',[],['Diamond']);
+assert.ok(fixedDiamondSearch.proposals.length>0,'SWGOH.GG fixed Diamond Defense shorthand must match an equipped Defense % primary');
 const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5,'Physical Damage':1000,'Special Damage':1000},mods:normalTarget.mods.map(mod=>({...mod}))};
 variablePrimaryTarget.mods.find(mod=>mod.slot==='Square').set_name='Speed';
 variablePrimaryTarget.mods.find(mod=>mod.slot==='Circle').set_name='Potency';
