@@ -367,12 +367,12 @@ class OptimizerNormalizationTests(unittest.TestCase):
                              projected_stats=None, mod_metadata=None, scoring_context=None):
             return 1 if projected_stats["Speed"] >= 160 else 100
 
-        with mock.patch.object(optimizer_module, "final_stats_many", side_effect=controlled_projections), \\
-             mock.patch.object(optimizer_module, "build_score", side_effect=controlled_score):
-            builds = optimize_kyber(
-                mods, base_stats=TEST_BASE_PROFILE["base_stats"], base_profile=TEST_BASE_PROFILE,
-                kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=40, minimum_speed=160,
-            )
+        with mock.patch.object(optimizer_module, "final_stats_many", side_effect=controlled_projections):
+            with mock.patch.object(optimizer_module, "build_score", side_effect=controlled_score):
+                builds = optimize_kyber(
+                    mods, base_stats=TEST_BASE_PROFILE["base_stats"], base_profile=TEST_BASE_PROFILE,
+                    kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=40, minimum_speed=160,
+                )
 
         self.assertTrue(builds)
         self.assertEqual(builds[0]["stats"]["Speed"], 170)
