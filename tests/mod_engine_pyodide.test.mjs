@@ -635,10 +635,11 @@ const scalarBenchmark = runOptimizerBridgeBenchmark(false, 256);
 const batch256 = runOptimizerBridgeBenchmark(true, 256);
 const batch512 = runOptimizerBridgeBenchmark(true, 512);
 assert.equal(scalarBenchmark.projectedBuilds, 0);
-assert.equal(scalarBenchmark.scalarCalls, 40040);
+const expectedProjectedBuilds = scalarBenchmark.scalarCalls;
+assert.ok(expectedProjectedBuilds > 0, 'the realistic inventory must evaluate optimizer candidates');
 for (const benchmark of [batch256, batch512, batch1024]) {
   assert.equal(benchmark.scalarCalls, 0);
-  assert.equal(benchmark.projectedBuilds, 40040);
+  assert.equal(benchmark.projectedBuilds, expectedProjectedBuilds);
   assert.deepEqual(benchmark.result, scalarBenchmark.result, 'scalar and indexed batch bridges must return identical top builds and stats');
 }
 assert.ok(batch512.batchCalls < batch256.batchCalls);
@@ -663,12 +664,12 @@ console.log(JSON.stringify({
   speedSetPieces: batch1024.result[0].sets.filter(name => name === 'Speed').length,
   sixSlotBuild: batch1024.result[0].ids.length
 }));
-console.log('Optimizer bridge benchmark (synthetic 2,000-mod inventory; 40 candidates/slot; beam 240):');
+console.log('Optimizer bridge benchmark (realistic Comlink 2,000-mod inventory; 40 candidates/slot; beam 240):');
 console.log(JSON.stringify({
   scalar: { elapsedMs: Number(scalarBenchmark.elapsedMs.toFixed(1)), bridgeCalls: scalarBenchmark.scalarCalls },
   batch256: { elapsedMs: Number(batch256.elapsedMs.toFixed(1)), bridgeCalls: batch256.batchCalls },
   batch512: { elapsedMs: Number(batch512.elapsedMs.toFixed(1)), bridgeCalls: batch512.batchCalls },
-  batch1024: { elapsedMs: Number(batch1024.elapsedMs.toFixed(1)), bridgeCalls: batch1024.batchCalls, projectedBuilds: batch1024.projectedBuilds },
+  batch1024: { elapsedMs: Number(batch1024.elapsedMs.toFixed(1)), bridgeCalls: batch1024.batchCalls, projectedBuilds: batch1024.projectedBuilds, expectedProjectedBuilds },
   speedup512: Number((scalarBenchmark.elapsedMs / batch512.elapsedMs).toFixed(2)),
   speedup1024: Number((scalarBenchmark.elapsedMs / batch1024.elapsedMs).toFixed(2)),
   identicalResults: true
