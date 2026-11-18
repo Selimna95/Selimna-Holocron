@@ -555,6 +555,10 @@ const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
   };
   return mod;
 });
+seenSecondaryIds.clear();
+for (const mod of benchmarkMods) {
+  for (const stat of mod.secondary_stats) seenSecondaryIds.add(stat.unitStatId);
+}
 assert.equal(benchmarkMods.length, 2000);
 for (const mod of benchmarkMods) {
   assert.ok(allowedPrimaryBySlot[mod.slot].some(item => item.id === mod.primary_stat.unitStatId),
@@ -565,13 +569,18 @@ assert.ok(percentStatIds.every(id => seenPrimaryIds.has(id) || seenSecondaryIds.
 assert.ok(benchmarkMods.filter(mod => mod.set_name === 'Speed').length >= 4,
   'the inventory must contain enough Speed-set mods for a six-slot build');
 const realisticProfile = { base_stats: base, level: 85, gear_level: 13 };
-const individuallyCalculated = benchmarkMods.reduce((count, mod) =>
-  count + (engine.calculateFinalStats(realisticProfile, [mod], 85).complete ? 1 : 0), 0);
+const individualStartedAt = performance.now();
+const individualProjections = benchmarkMods.map(mod =>
+  engine.calculateFinalStats(realisticProfile, [mod], 85));
+const individualCalculationMs = performance.now() - individualStartedAt;
+const individuallyCalculated = individualProjections.filter(result => result.complete).length;
 const individuallyCalculableRatio = individuallyCalculated / benchmarkMods.length;
 assert.ok(individuallyCalculableRatio >= 0.90,
   `only ${individuallyCalculated}/${benchmarkMods.length} mods are individually calculable`);
-assert.equal(engine.calculateFinalStats(realisticProfile, [benchmarkMods[0]], 85).complete, false,
+assert.equal(individualProjections[0].complete, false,
   'an explicitly unsupported percentage stat must be rejected, not normalized away');
+assert.ok(individualProjections[0].missing.includes('stat:armorPenetration:unsupported'));
+assert.ok(individualProjections[1].missing.includes('stat:resistancePenetration:unsupported'));
 
 pyodide.globals.set('benchmark_mods_json', JSON.stringify(benchmarkMods));
 
@@ -628,6 +637,20 @@ for (const benchmark of [batch256, batch512, batch1024]) {
 }
 assert.ok(batch512.batchCalls < batch256.batchCalls);
 assert.ok(batch1024.batchCalls < batch512.batchCalls);
+assert.ok(batch1024.result.length >= 1, 'the realistic 2,000-mod inventory must produce at least one optimizer result');
+assert.equal(batch1024.result[0].ids.length, 6, 'the optimizer result must contain a complete six-slot build');
+assert.ok(batch1024.elapsedMs <= 18000,
+  `realistic 2,000-mod optimization exceeded 18,000 ms: ${batch1024.elapsedMs.toFixed(1)} ms`);
+console.log('End-to-end realistic Comlink inventory:');
+console.log(JSON.stringify({
+  mods: benchmarkMods.length,
+  individuallyCalculable: individuallyCalculated,
+  individuallyCalculablePercent: Number((individuallyCalculableRatio * 100).toFixed(2)),
+  individualCalculationMs: Number(individualCalculationMs.toFixed(1)),
+  optimizerResults: batch1024.result.length,
+  optimizerElapsedMs: Number(batch1024.elapsedMs.toFixed(1)),
+  sixSlotBuild: batch1024.result[0].ids.length
+}));
 console.log('Optimizer bridge benchmark (synthetic 2,000-mod inventory; 40 candidates/slot; beam 240):');
 console.log(JSON.stringify({
   scalar: { elapsedMs: Number(scalarBenchmark.elapsedMs.toFixed(1)), bridgeCalls: scalarBenchmark.scalarCalls },
