@@ -1,3 +1,9 @@
+## V4.1.80 — faisceau de recherche respectant le plancher de vitesse
+
+- Le filtre de vitesse du Seigneur Sith est appliqué avant la réduction finale du faisceau : les builds qui perdent de la vitesse ne peuvent plus évincer les builds sûrs.
+- Ajout d'un test de régression où les builds non sûrs ont volontairement un score supérieur, afin de vérifier que les configurations respectant le plancher restent trouvables.
+- Le diagnostic conserve la meilleure vitesse examinée lorsqu'aucune configuration sûre n'existe.
+
 ## V4.1.57 — compatibilité des snapshots GAC
 
 - Les snapshots GAC historiques sans ventilation par format conservent désormais leur provenance et leur statut de fraîcheur.
