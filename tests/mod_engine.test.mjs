@@ -387,7 +387,7 @@ assert.equal(healthRounding.stats.Health, 1159,
 const protectionRounding = engine.calculateFinalStats(roundingProfile, [
   { level: 15, set_name: 'Health', primary_stat: 'Protection %', primary_value: 5.88, ...zeroSecondaries }
 ]);
-assert.equal(protectionRounding.complete, true);
+assert.equal(protectionRounding.complete, true, JSON.stringify(protectionRounding));
 assert.equal(protectionRounding.stats.Protection, 1059,
   'Protection % must floor its base-derived bonus to an integer');
 const offenseRounding = engine.calculateFinalStats(roundingProfile, [
