@@ -350,6 +350,37 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertTrue(all(item["stats"]["Speed"] >= 160 for item in builds))
         self.assertTrue(all(item["set_plan"] == {} for item in builds))
 
+    def test_seigneur_speed_safe_build_is_not_pruned_by_higher_scoring_unsafe_builds(self):
+        slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
+        mods = []
+        for slot in slots:
+            mods.append(_realistic_mod(slot, "Health", game_id=f"unsafe-{slot}", speed=2))
+            mods.append(_realistic_mod(slot, "Speed", game_id=f"safe-{slot}", speed=10))
+
+        def controlled_projections(builds, base_stats, base_profile, required_stats=None):
+            return [
+                {"Speed": 170 if all(str(mod.get("game_id", "")).startswith("safe-") for mod in build) else 150}
+                for build in builds
+            ]
+
+        def controlled_score(build, kyber, weights, base_stats, base_profile,
+                             projected_stats=None, mod_metadata=None, scoring_context=None):
+            return 1 if projected_stats["Speed"] >= 160 else 100
+
+        with mock.patch.object(optimizer_module, "final_stats_many", side_effect=controlled_projections), \\
+             mock.patch.object(optimizer_module, "build_score", side_effect=controlled_score):
+            builds = optimize_kyber(
+                mods, base_stats=TEST_BASE_PROFILE["base_stats"], base_profile=TEST_BASE_PROFILE,
+                kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=40, minimum_speed=160,
+            )
+
+        self.assertTrue(builds)
+        self.assertEqual(builds[0]["stats"]["Speed"], 170)
+        self.assertTrue(all(
+            str(mod.get("game_id", "")).startswith("safe-")
+            for mod in builds[0]["build"]
+        ))
+
     def test_seigneur_speed_floor_reports_when_no_safe_build_exists(self):
         slots = ("Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross")
         mods = [_realistic_mod(slot, "Health", game_id=slot, speed=2) for slot in slots]
