@@ -68,6 +68,15 @@ class ModOwnerIntegrityTests(unittest.TestCase):
         self.assertIn("priorityGap", self.seigneur_impact)
         self.assertIn("BILAN GLOBAL DU TRANSFERT", self.seigneur_impact)
 
+    def test_galactic_legend_registry_is_defined_once_and_shared(self):
+        self.assertEqual(self.core.count("const HOLOCRON_GALACTIC_LEGENDS = new Set(["), 1)
+        self.assertIn("window.HOLOCRON_GALACTIC_LEGENDS=HOLOCRON_GALACTIC_LEGENDS", self.core)
+        self.assertIn("const KNOWN_GALACTIC_LEGEND_IDS=window.HOLOCRON_GALACTIC_LEGENDS;", self.seigneur)
+        self.assertNotIn("new Set([", self.seigneur)
+        core_script = self.index.index('src="modules/core.js')
+        seigneur_script = self.index.index('src="modules/seigneur.js')
+        self.assertLess(core_script, seigneur_script)
+
     def test_speed_set_bonus_is_counted_when_base_speed_is_known(self):
         self.assertIn("beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet", self.seigneur)
         self.assertIn("afterProjection.total+1e-9>=beforeProjection.total", self.seigneur)
