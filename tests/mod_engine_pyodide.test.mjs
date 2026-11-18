@@ -66,7 +66,13 @@ pyodide.globals.set('holocron_mod_engine_bridge', engineBridge);
 pyodide.globals.set('holocron_mod_normalize_bridge', normalizeBridge);
 pyodide.globals.set('holocron_mod_engine_batch_bridge', batchBridge);
 pyodide.globals.set('holocron_mod_engine_speed_bridge', speedBridge);
-pyodide.runPython("import sys\\nsys.path.insert(0, '/home/pyodide')\\nimport optimizer\\noptimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)\\nimport python.optimizer as package_optimizer\\npackage_optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)\\n");
+pyodide.runPython(`import sys
+sys.path.insert(0, '/home/pyodide')
+import optimizer
+optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)
+import python.optimizer as package_optimizer
+package_optimizer.set_mod_engine_bridge(holocron_mod_engine_bridge, holocron_mod_normalize_bridge, holocron_mod_engine_batch_bridge, speed_bridge=holocron_mod_engine_speed_bridge)
+`);
 
 const profileValidation = pyodide.runPython(`
 profile = {"level":85,"rarity":7,"gear_level":13,"relic_tier":8,"base_stats":{"Speed":153}}
