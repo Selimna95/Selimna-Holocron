@@ -375,6 +375,21 @@ const roundingProfile = {
     'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
   }
 };
+const completeSetMods = (setName, count) => Array.from({ length: count }, () => ({
+  level: 15, set_name: setName, primary_stat: 'Health', primary_value: 0, ...zeroSecondaries
+}));
+const healthSetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Health', 2));
+assert.equal(healthSetProjection.stats.Health, 1101, 'Health set bonus must reach Health');
+const criticalChanceSetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Critical Chance', 2));
+assert.equal(criticalChanceSetProjection.stats['Physical Critical Chance'], 48);
+assert.equal(criticalChanceSetProjection.stats['Special Critical Chance'], 38);
+const tenacitySetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Tenacity', 2));
+assert.equal(tenacitySetProjection.stats.Tenacity, 0.4);
+const potencySetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Potency', 2));
+assert.equal(potencySetProjection.stats.Potency, 0.25);
+const criticalDamageSetProjection = engine.calculateFinalStats(roundingProfile, completeSetMods('Critical Damage', 4));
+assert.equal(criticalDamageSetProjection.stats['Critical Damage'], 1.8);
+
 const healthRoundingMods = [
   { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries },
   { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0, ...zeroSecondaries },
