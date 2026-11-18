@@ -29,7 +29,7 @@ for(const [slot,name,isPercent] of kyberPrimaryLabels){
   const expected=actualStatKey(isPercent?name+' %':name,slot,false);
   assert.equal(actualStatKey(name,slot,true),expected,'Kyber primary shorthand: '+slot+' / '+name);
 }
-assert.equal(actualStatKey('Defense','Diamond',true),actualStatKey('Defense','Diamond',false),'Fixed Diamond Defense remains flat');
+assert.equal(actualStatKey('Defense','Diamond',true),actualStatKey('Defense %','Diamond',false),'Fixed Diamond Kyber shorthand resolves to Defense %');
 assert.ok(js.includes('function exchangeFinalStats'),'Full stat projection must exist');
 assert.ok(js.includes('function exchangeScenarioScore'),'Strategic scoring must exist');
 assert.ok(js.includes("const isFree=!ownerKey"),'Free inventory mods must be included');
