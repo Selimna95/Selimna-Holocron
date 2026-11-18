@@ -381,7 +381,7 @@ const healthRoundingMods = [
   { level: 15, set_name: 'Health', primary_stat: 'Health %', primary_value: 5.88, ...zeroSecondaries }
 ];
 const healthRounding = engine.calculateFinalStats(roundingProfile, healthRoundingMods);
-assert.equal(healthRounding.complete, true);
+assert.equal(healthRounding.complete, true, JSON.stringify(healthRounding));
 assert.equal(healthRounding.stats.Health, 1159,
   'Health set + Health % must floor the combined 15.88% base-derived bonus once');
 const protectionRounding = engine.calculateFinalStats(roundingProfile, [
