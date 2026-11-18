@@ -218,7 +218,7 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
   makeMod('wrong-primary-square','Square','Speed',20,'Offense %',5),
   makeMod('wrong-primary-circle','Circle','Speed',20,'Offense %',5)
 ],mismatchedPrimaryProfile,'primaries',[],['Square']);
-assert.ok(mismatchedPrimarySearch.proposals.length>0,'SWGOH.GG fixed Square Offense shorthand must match an equipped Offense % primary');
+assert.ok(mismatchedPrimarySearch.proposals.length>0,'SWGOH.GG fixed Square Offense shorthand must match an equipped Offense % primary: '+JSON.stringify(mismatchedPrimarySearch));
 const fixedDiamondSearch=await runSearch(normalTarget,[],[
   makeMod('correct-defense-diamond','Diamond','Speed',20,'Defense %',5)
 ],{specific_sets:kyber.specific_sets,slots:{Diamond:{primaries:{Defense:1}}}},'primaries',[],['Diamond']);
