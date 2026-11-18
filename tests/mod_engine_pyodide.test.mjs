@@ -521,7 +521,9 @@ const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
   const secondaryKeys = new Set([primary.key]);
   // Keep Speed as a common, realistic secondary unless it is already the primary.
   if (primary.key !== 'speed') {
-    const speedStat = { ...secondaryPool[0], raw: 500_000_000 + ((index * 7) % 11) * 100_000_000 };
+    const speedStat = index % 2 === 0
+      ? { ...secondaryPool[0], raw: 500_000_000 + ((index * 7) % 11) * 100_000_000 }
+      : { ...secondaryPool.find(stat => stat.id === 57), raw: 5_000_000 };
     secondaries.push(speedStat);
     secondaryKeys.add(speedStat.key);
     seenSecondaryIds.add(speedStat.id);
@@ -565,7 +567,7 @@ for (const mod of benchmarkMods) {
     `illegal primary ${mod.primary_stat.unitStatId} on ${mod.slot}`);
 }
 assert.ok(percentStatIds.every(id => seenPrimaryIds.has(id) || seenSecondaryIds.has(id)),
-  'the inventory must cover every percentage stat family');
+  'the inventory must cover every percentage stat family; missing: ' + percentStatIds.filter(id => !seenPrimaryIds.has(id) && !seenSecondaryIds.has(id)).join(', '));
 assert.ok(benchmarkMods.filter(mod => mod.set_name === 'Speed').length >= 4,
   'the inventory must contain enough Speed-set mods for a six-slot build');
 const realisticProfile = { base_stats: base, level: 85, gear_level: 13 };
