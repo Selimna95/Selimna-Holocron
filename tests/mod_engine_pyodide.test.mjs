@@ -100,12 +100,13 @@ else:
 assert.match(pyodide.runPython('missing_profile_metadata_error'), /relique/);
 
 const base = {
-  Health: 1000, Protection: 2000, Speed: 100,
+  Health: 10000, Protection: 8000, Speed: 100,
   'Physical Damage': 500, 'Special Damage': 700,
   Armor: 50, Resistance: 40, Potency: 0.1, Tenacity: 0.2,
-  'Critical Damage': 1.5,
+  'Critical Damage': 1.5, 'Critical Chance': 40, 'Critical Avoidance': 0,
   'Physical Critical Chance': 40, 'Special Critical Chance': 30,
-  'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
+  'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0,
+  'Physical Accuracy': 0, 'Special Accuracy': 0, Accuracy: 0.1
 };
 pyodide.globals.set('base_json', JSON.stringify(base));
 const zeroSecondaries = { secondary_1_stat:'Protection', secondary_1_value:0, secondary_2_stat:'Potency %', secondary_2_value:0, secondary_3_stat:'Tenacity %', secondary_3_value:0, secondary_4_stat:'Critical Damage %', secondary_4_value:0 };
@@ -404,26 +405,136 @@ if not result.wasSuccessful():
 `);
 console.log('Python optimizer unittest suite executed through the shared JavaScript engine.');
 
+// A 2,000-mod inventory in Comlink's real stat-id/unscaled-value shape.
+// Every primary is legal for its slot; all percentage stat IDs occur in the
+// inventory. Armor/resistance penetration are deliberately present on two
+// mods because the shared engine currently reports those two as unsupported.
+const slotNames = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'];
+const allowedPrimaryBySlot = {
+  Square: [{ id: 41, key: 'offense', raw: 4_000_000_000 }],
+  Arrow: [
+    { id: 5, key: 'speed', raw: 3_000_000_000 },
+    { id: 55, key: 'health', raw: 5_880_000 },
+    { id: 56, key: 'protection', raw: 5_880_000 },
+    { id: 48, key: 'offense', raw: 5_880_000 },
+    { id: 49, key: 'defense', raw: 5_880_000 },
+    { id: 53, key: 'criticalChance', raw: 5_880_000 },
+    { id: 54, key: 'criticalAvoidance', raw: 5_880_000 },
+    { id: 52, key: 'accuracy', raw: 5_880_000 },
+    { id: 17, key: 'potency', raw: 10_000_000 },
+    { id: 18, key: 'tenacity', raw: 10_000_000 }
+  ],
+  Diamond: [{ id: 42, key: 'defense', raw: 4_000_000_000 }],
+  Triangle: [
+    { id: 16, key: 'criticalDamage', raw: 30_000_000 },
+    { id: 53, key: 'criticalChance', raw: 5_880_000 },
+    { id: 48, key: 'offense', raw: 5_880_000 },
+    { id: 55, key: 'health', raw: 5_880_000 },
+    { id: 56, key: 'protection', raw: 5_880_000 },
+    { id: 49, key: 'defense', raw: 5_880_000 }
+  ],
+  Circle: [
+    { id: 55, key: 'health', raw: 5_880_000 },
+    { id: 56, key: 'protection', raw: 5_880_000 }
+  ],
+  Cross: [
+    { id: 17, key: 'potency', raw: 10_000_000 },
+    { id: 18, key: 'tenacity', raw: 10_000_000 },
+    { id: 48, key: 'offense', raw: 5_880_000 },
+    { id: 49, key: 'defense', raw: 5_880_000 }
+  ]
+};
+const secondaryPool = [
+  { id: 5, key: 'speed', raw: 400_000_000 },
+  { id: 1, key: 'health', raw: 83_500_000_000 },
+  { id: 28, key: 'protection', raw: 71_700_000_000 },
+  { id: 41, key: 'offense', raw: 2_100_000_000 },
+  { id: 42, key: 'defense', raw: 500_000_000 },
+  { id: 16, key: 'criticalDamage', raw: 3_000_000 },
+  { id: 17, key: 'potency', raw: 1_982_000 },
+  { id: 18, key: 'tenacity', raw: 2_818_000 },
+  { id: 21, key: 'physicalCriticalChance', raw: 12_000_000 },
+  { id: 22, key: 'specialCriticalChance', raw: 12_000_000 },
+  { id: 23, key: 'armor', raw: 10_000_000 },
+  { id: 24, key: 'resistance', raw: 20_000_000 },
+  { id: 33, key: 'physicalAccuracy', raw: 12_000_000 },
+  { id: 34, key: 'specialAccuracy', raw: 6_000_000 },
+  { id: 35, key: 'physicalCriticalAvoidance', raw: 10_000_000 },
+  { id: 36, key: 'specialCriticalAvoidance', raw: 10_000_000 },
+  { id: 48, key: 'offensePercent', raw: 5_000_000 },
+  { id: 49, key: 'defensePercent', raw: 2_371_000 },
+  { id: 52, key: 'accuracy', raw: 12_000_000 },
+  { id: 53, key: 'criticalChance', raw: 3_167_000 },
+  { id: 54, key: 'criticalAvoidance', raw: 10_000_000 },
+  { id: 55, key: 'healthPercent', raw: 718_000 },
+  { id: 56, key: 'protectionPercent', raw: 2_140_000 },
+  { id: 57, key: 'speedPercent', raw: 10_000_000 }
+];
+const percentStatIds = [16, 17, 18, 21, 22, 23, 24, 25, 26, 33, 34, 35, 36, 48, 49, 52, 53, 54, 55, 56, 57];
+const setNames = ['Speed', 'Speed', 'Health', 'Offense', 'Defense', 'Potency', 'Tenacity', 'Critical Damage', 'Critical Chance'];
+const seenPrimaryIds = new Set();
+const seenSecondaryIds = new Set();
 const benchmarkMods = Array.from({ length: 2000 }, (_, index) => {
-  const slot = ['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle', 'Cross'][index % 6];
-  const speed = 1 + ((index * 7) % 20);
-  return {
-    game_id: `bench-${index}`,
+  const slot = slotNames[index % slotNames.length];
+  const primaryOptions = allowedPrimaryBySlot[slot];
+  const primary = primaryOptions[Math.floor(index / slotNames.length) % primaryOptions.length];
+  seenPrimaryIds.add(primary.id);
+  const secondaries = [];
+  const secondaryKeys = new Set([primary.key]);
+  // Keep Speed as a common, realistic secondary unless it is already the primary.
+  if (primary.key !== 'speed') {
+    const speedStat = secondaryPool[0];
+    secondaries.push(speedStat);
+    secondaryKeys.add(speedStat.key);
+    seenSecondaryIds.add(speedStat.id);
+  }
+  for (let step = 0; secondaries.length < 4 && step < secondaryPool.length * 2; step++) {
+    const candidate = secondaryPool[(Math.floor(index / 6) * 3 + step) % secondaryPool.length];
+    if (secondaryKeys.has(candidate.key)) continue;
+    secondaries.push(candidate);
+    secondaryKeys.add(candidate.key);
+    seenSecondaryIds.add(candidate.id);
+  }
+  // Two real-but-not-yet-supported percentage stats stay visible as rejected
+  // inputs rather than being rewritten into a supported stat to force success.
+  if (index === 0 || index === 1) {
+    const unsupported = { id: index === 0 ? 25 : 26, raw: 10_000_000 };
+    secondaries[3] = unsupported;
+    seenSecondaryIds.add(unsupported.id);
+  }
+  const mod = {
+    game_id: `comlink-realistic-${index}`,
     slot,
     level: 15,
-    set_name: ['Tenacity', 'Potency', 'Speed', 'Critical Damage'][index % 4],
-    primary_stat: slot === 'Arrow' ? 'Speed' : 'Health',
-    primary_value: slot === 'Arrow' ? 30 : 100,
-    secondary_1_stat: 'Speed',
-    secondary_1_value: speed,
-    secondary_2_stat: 'Offense',
-    secondary_2_value: 1 + (index % 5),
-    secondary_3_stat: 'Potency %',
-    secondary_3_value: 1,
-    secondary_4_stat: 'Tenacity %',
-    secondary_4_value: 1
+    pips: 5,
+    rarity: 5,
+    set_name: setNames[Math.floor(index / 6) % setNames.length],
+    primary_stat: { unitStatId: primary.id, unscaledDecimalValue: primary.raw },
+    secondary_stats: secondaries.map(stat => ({
+      unitStatId: stat.id,
+      unscaledDecimalValue: stat.raw
+    }))
   };
+  return mod;
 });
+assert.equal(benchmarkMods.length, 2000);
+for (const mod of benchmarkMods) {
+  assert.ok(allowedPrimaryBySlot[mod.slot].some(item => item.id === mod.primary_stat.unitStatId),
+    `illegal primary ${mod.primary_stat.unitStatId} on ${mod.slot}`);
+}
+assert.ok(percentStatIds.every(id => seenPrimaryIds.has(id) || seenSecondaryIds.has(id)),
+  'the inventory must cover every percentage stat family');
+assert.ok(benchmarkMods.filter(mod => mod.set_name === 'Speed').length >= 4,
+  'the inventory must contain enough Speed-set mods for a six-slot build');
+const realisticProfile = { base_stats: base, level: 85, gear_level: 13 };
+const individuallyCalculated = benchmarkMods.reduce((count, mod) =>
+  count + (engine.calculateFinalStats(realisticProfile, [mod], 85).complete ? 1 : 0), 0);
+const individuallyCalculableRatio = individuallyCalculated / benchmarkMods.length;
+assert.ok(individuallyCalculableRatio >= 0.90,
+  `only ${individuallyCalculated}/${benchmarkMods.length} mods are individually calculable`);
+assert.equal(engine.calculateFinalStats(realisticProfile, [benchmarkMods[0]], 85).complete, false,
+  'an explicitly unsupported percentage stat must be rejected, not normalized away');
+
 pyodide.globals.set('benchmark_mods_json', JSON.stringify(benchmarkMods));
 
 function runOptimizerBridgeBenchmark(useBatch, batchSize) {
