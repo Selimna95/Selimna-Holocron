@@ -118,6 +118,7 @@ try {
         return new Response("upstream unavailable", { status: 502, headers: { "X-Upstream-Status": "502" } });
       };
       const cached = await fetchKyberProfile({ name: "Cache Probe", baseId: "CACHEPROBE" });
+      const cacheStatus = window.__kyberReferenceStatuses.cacheprobe?.status;
       const requestsAfterCacheHit = requests;
       const cache = JSON.parse(localStorage.getItem("holocron-kyber-profile-cache-v3-full-distributions") || "{}");
       cache.cacheprobe.savedAt = Date.now() - 13 * 60 * 60 * 1000;
@@ -126,7 +127,7 @@ try {
       const stale = await fetchKyberProfile({ name: "Cache Probe", baseId: "CACHEPROBE" }, { forceRefresh: true });
       return {
         cacheHit: cached === profile,
-        cacheStatus: window.__kyberReferenceStatuses.cacheprobe?.status,
+        cacheStatus,
         requestsAfterCacheHit,
         staleFallback: stale === profile,
         staleStatus: window.__kyberReferenceStatuses.cacheprobe?.status,
@@ -285,7 +286,6 @@ try {
   assert.match(visionnaireSearchMessage, /donneur|GAC/i);
 
   // Verify the loaded local JavaScript and CSS assets are actually served.
-  const loadedAssetFailures = await page.evaluate(() => window.__failedHolocronAssets || []);
   await page.evaluate(() => {
     const saved = window.__visionnaireSmokeRestore;
     if (!saved) return;
