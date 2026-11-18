@@ -106,7 +106,7 @@ const base = {
   'Critical Damage': 1.5, 'Critical Chance': 40, 'Critical Avoidance': 0,
   'Physical Critical Chance': 40, 'Special Critical Chance': 30,
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0,
-  'Physical Accuracy': 0, 'Special Accuracy': 0, Accuracy: 0.1
+  'Physical Accuracy': 0, 'Special Accuracy': 0, Accuracy: 0
 };
 pyodide.globals.set('base_json', JSON.stringify(base));
 const zeroSecondaries = { secondary_1_stat:'Protection', secondary_1_value:0, secondary_2_stat:'Potency %', secondary_2_value:0, secondary_3_stat:'Tenacity %', secondary_3_value:0, secondary_4_stat:'Critical Damage %', secondary_4_value:0 };
