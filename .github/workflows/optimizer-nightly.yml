@@ -1,6 +1,9 @@
 name: Optimizer nightly E2E
 
 on:
+  push:
+    branches:
+      - 'test/nightly-e2e-g12-1200'
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
