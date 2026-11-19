@@ -1,3 +1,10 @@
+## V4.1.85 — fiabilisation du moteur de mods et de l’Optimizer
+
+- Le moteur partagé v0.3.33 normalise les 12 secondaires par rapport à leur plafond théorique selon la rareté, tout en conservant l'échelle historique de priorité de la Vitesse.
+- Les projections Défense % utilisent la composante de base vérifiée ; au palier G13, la contribution d'équipement est nulle. Sous G13, une séparation base/équipement non vérifiée reste explicitement non calculée.
+- L'Optimizer Python délègue la normalisation et la projection au moteur JavaScript partagé. Le plancher de vitesse est conservé pendant la recherche et les statistiques manquantes sont exposées dans les résultats du Seigneur Sith.
+- Les tests de régression couvrent les plafonds des 12 secondaires, l'équivalence des rolls 5/6 points, la priorité Vitesse, Défense % et l'intégration Pyodide.
+
 ## V4.1.80 — faisceau de recherche respectant le plancher de vitesse
 
 - Le filtre de vitesse du Seigneur Sith est appliqué avant la réduction finale du faisceau : les builds qui perdent de la vitesse ne peuvent plus évincer les builds sûrs.
