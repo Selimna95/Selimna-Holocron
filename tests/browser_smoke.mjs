@@ -469,10 +469,15 @@ try {
     const equipped = [make("a","Speed",5),make("b","Speed",5),make("c","Speed",5),make("d","Speed",5),make("e","Health",0),make("f","Health",0)];
     const before = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},equipped);
     const after = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},[...equipped.slice(1),make("replacement","Health",5)]);
-    const replacement=make("replacement","Health",5);\n    const build=[...equipped.slice(1),replacement];\n    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total,beforeSet:before.hasFourPieceSpeedSet,afterSet:after.hasFourPieceSpeedSet,beforeBonus:before.setBonus,afterBonus:after.setBonus,candidateAccepted:forgeCandidatePreservesSpeed(character,{base_stats:{Speed:300}},equipped,equipped[0],replacement),buildAccepted:forgeBuildPreservesSpeed(character,{base_stats:{Speed:300}},equipped,build),unchangedBuildAccepted:forgeBuildPreservesSpeed(character,{base_stats:{Speed:300}},equipped,equipped)};
+    const replacement=make("replacement","Health",5);
+    const build=[...equipped.slice(1),replacement];
+    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total,beforeSet:before.hasFourPieceSpeedSet,afterSet:after.hasFourPieceSpeedSet,beforeBonus:before.setBonus,afterBonus:after.setBonus,candidateAccepted:forgeCandidatePreservesSpeed(character,{base_stats:{Speed:300}},equipped,equipped[0],replacement),buildAccepted:forgeBuildPreservesSpeed(character,{base_stats:{Speed:300}},equipped,build),unchangedBuildAccepted:forgeBuildPreservesSpeed(character,{base_stats:{Speed:300}},equipped,equipped)};
   });
   assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus: "+JSON.stringify(speedGuard));
-  assert.equal(speedGuard.candidateAccepted, false, "Seigneur must reject an individual mod exchange that removes the 4-piece Speed set.");\n  assert.equal(speedGuard.buildAccepted, false, "Seigneur must reject a six-mod build that reduces the projected speed.");\n  assert.equal(speedGuard.unchangedBuildAccepted, true, "A six-mod build preserving the current speed must remain eligible.");\n
+  assert.equal(speedGuard.candidateAccepted, false, "Seigneur must reject an individual mod exchange that removes the 4-piece Speed set.");
+  assert.equal(speedGuard.buildAccepted, false, "Seigneur must reject a six-mod build that reduces the projected speed.");
+  assert.equal(speedGuard.unchangedBuildAccepted, true, "A six-mod build preserving the current speed must remain eligible.");
+
   // Mod P0 regressions: keep arithmetic numeric and preserve stat identity.
   const modMath = await page.evaluate(() => ({
     localized: numericValue("1 234,5"),
