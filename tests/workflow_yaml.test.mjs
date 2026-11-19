@@ -40,6 +40,7 @@ assert.match(deployJob.if, /head_repository\.full_name\s*==\s*github\.repository
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697'));
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa'));
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e'));
+assert.ok(deployJob.steps.some(step => step.uses === 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262'));
 
 const optimizerNightly = workflows.get('optimizer-nightly.yml');
 assert.ok(optimizerNightly, 'A scheduled optimizer E2E workflow must exist');
@@ -57,9 +58,21 @@ assert.equal(optimizerNightly.permissions?.contents, 'read', 'Optimizer benchmar
 for (const name of ['refresh-gac-catalog.yml', 'refresh-gac-official.yml', 'refresh-gac-defense-catalog.yml']) {
   const workflow = workflows.get(name);
   assert.equal(workflow.permissions?.contents, 'read', name + ' must default to read-only repository permissions');
-  const job = Object.values(workflow.jobs || {})[0];
-  assert.equal(job?.if, "github.ref == 'refs/heads/main'", name + ' must refuse non-main refs');
-  assert.equal(job?.permissions?.contents, 'write', name + ' must scope write access to the publishing job');
+  const jobs = Object.values(workflow.jobs || {});
+  assert.equal(jobs.length, 2, name + ' must separate collection and publication jobs');
+  const collection = jobs.find(job => job.permissions?.contents === 'read');
+  const publication = jobs.find(job => job.permissions?.contents === 'write');
+  assert.ok(collection, name + ' collection job must be read-only');
+  assert.ok(publication, name + ' publication job must have the only write permission');
+  assert.equal(collection.if, "github.ref == 'refs/heads/main'", name + ' collection must refuse non-main refs');
+  assert.equal(publication.if, "github.ref == 'refs/heads/main'", name + ' publication must refuse non-main refs');
+  assert.ok(publication.needs, name + ' publication must wait for collection');
+  const collectUses = collection.steps.map(step => step.uses || '');
+  const publishUses = publication.steps.map(step => step.uses || '');
+  assert.ok(collectUses.some(use => use.startsWith('actions/upload-artifact@')), name + ' collection must upload generated data');
+  assert.ok(publishUses.some(use => use.startsWith('actions/download-artifact@')), name + ' publication must download generated data');
+  const collectionCheckout = collection.steps.find(step => step.uses?.startsWith('actions/checkout@'));
+  assert.equal(collectionCheckout?.with?.persist-credentials, false, name + ' collection checkout must not persist a token');
 }
 for (const name of files) {
   const source = fs.readFileSync(new URL(name, workflowDir), 'utf8');
