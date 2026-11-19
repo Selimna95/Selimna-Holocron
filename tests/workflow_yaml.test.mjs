@@ -16,14 +16,19 @@ for (const name of files) {
 
 const quality = workflows.get('quality.yml');
 const reviewGate = workflows.get('review-gate.yml');
-assert.ok(reviewGate, 'A tool-review gate workflow must exist');
-assert.equal(reviewGate.on.pull_request, undefined, 'The review gate must not fail before a review can exist');
-assert.deepEqual(reviewGate.on.pull_request_review.types, ['submitted', 'edited', 'dismissed']);
+assert.ok(reviewGate, 'A PR policy gate workflow must exist');
+assert.deepEqual(reviewGate.on.pull_request.types, ['opened', 'synchronize', 'reopened', 'ready_for_review']);
+assert.equal(reviewGate.on.pull_request_review, undefined, 'The PR gate must not depend on a human review event');
+assert.equal(reviewGate.permissions['pull-requests'], 'read');
 const reviewGateScript = reviewGate.jobs?.['review-gate']?.steps?.find(step => step.uses === 'actions/github-script@v7')?.with?.script || '';
-assert.match(reviewGateScript, /review\.user\.login\s*!==\s*pr\.user\?\.login/, 'The PR author must not approve their own pull request');
-assert.match(reviewGateScript, /review\.commit_id\s*===\s*pr\.head\.sha/, 'Approval must apply to the current PR head');
-assert.match(reviewGateScript, /review\.state\s*===\s*"APPROVED"/, 'A comment must not count as approval');
-assert.doesNotMatch(reviewGateScript, /Relecture automatisée du diff complet effectuée\./, 'A self-authored marker must not satisfy the review gate');
+assert.match(reviewGateScript, /pr\.base\.ref\s*!==?\s*"main"|pr\.base\.ref\s*!==\s*"main"/, 'The gate must verify that the PR targets main');
+assert.match(reviewGateScript, /pr\.head\.ref\s*===\s*"main"/, 'The gate must reject main as the source branch');
+assert.match(reviewGateScript, /pr\.title/, 'The gate must require a PR title');
+assert.match(reviewGateScript, /pr\.body/, 'The gate must require a PR description');
+assert.match(reviewGateScript, /pulls\.listFiles/, 'The gate must inspect changed files');
+assert.match(reviewGateScript, /space|espace final/i, 'The gate must report trailing whitespace');
+assert.match(reviewGateScript, /marqueur de conflit Git ajouté/, 'The gate must reject added Git conflict markers');
+assert.doesNotMatch(reviewGateScript, /APPROVED|independentApproval|approbation humaine/i, 'The gate must not require a human approval');
 const deploy = workflows.get('deploy-pages-after-quality.yml');
 assert.ok(quality, 'Quality workflow must exist');
 assert.ok(deploy, 'Quality-gated Pages workflow must exist');
