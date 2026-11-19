@@ -428,6 +428,9 @@
         const id=exchangeModId(mod);if(selectedIds.has(id))continue;
         diverse.push(mod);selectedIds.add(id);if(diverse.length>=24)break;
       }
+      // Preserve the GAC-prioritized candidate pool, then explore its fastest
+      // combinations first. This changes search order, not donor eligibility.
+      diverse.sort((a,b)=>modTotalSpeed(b)-modTotalSpeed(a)||visionnaireCandidatePriority(a,b));
       optionsBySlot.set(slot,diverse);
       truncatedBySlot[LABELS[slot]]=Math.max(0,eligibleBySlot[LABELS[slot]]-diverse.length);
     }
@@ -454,7 +457,7 @@
     const diagnostics={limit:15000,sourceCount:source.length,beforeSpeed:beforeProjectionSummary.total,
       retainedSpeed,candidateSpeedCeiling,searchSpace,fullCandidateSearchSpace,candidatePoolCoverage,
       fullSearchCoverage:0,candidatePoolTruncated,eligibleBySlot,truncatedBySlot,
-      searchMethod:'Échantillonnage équilibré de tous les slots avec filtre vitesse préalable et plafond de 24 options par slot',
+      searchMethod:'Recherche best-first des combinaisons par vitesse potentielle, avec filtre vitesse préalable et plafond de 24 options par slot',
       primaryFilteredBySlot,optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),
       bestCandidateSpeedBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed))])),
       rejected:{},examples:[],rejectedCandidates:[]};
@@ -543,25 +546,73 @@
         if(proposals.length>30){proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||(a.afterSetDistance??99)-(b.afterSetDistance??99));proposals.length=30;}
         return;
     };
-    // Keep the pairwise-balanced sample across every slot, but do not spend
-    // the expensive evaluation budget on combinations that cannot preserve speed.
-    const seed=Array.from(String(targetKey||'visionnaire')).reduce((hash,char)=>(Math.imul(hash^char.charCodeAt(0),16777619)>>>0),2166136261);
-    const seen=new Set();
-    const attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000);
-    for(let sample=0;sample<attemptLimit&&tested<diagnostics.limit&&seen.size<searchSpace;sample++){
-      const combo=slots.map((slot,index)=>{
-        const options=optionsBySlot.get(slot)||[];
-        return options[visionnaireSampleIndex(sample,index,options.length,seed)];
-      });
-      const signature=combo.map(exchangeModId).join('|');
-      if(seen.has(signature))continue;
-      seen.add(signature);sampled++;
-      const theoreticalMaximum=baseSpeed+retainedSpeed+combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+maximumSpeedSetBonus;
+    // Best-first traversal of the Cartesian product. Each slot's candidates
+    // are ordered by mod speed; a max-heap then visits complete combinations
+    // in descending total secondary speed. This avoids spending most of the
+    // 15,000 expensive evaluations on randomly sampled combinations that
+    // cannot preserve the target's speed floor.
+    const searchHeap=[];
+    const queued=new Set();
+    const maxSamples=Math.min(searchSpace,1000000);
+    const nodeKey=indices=>indices.join(',');
+    const makeNode=indices=>({
+      indices,
+      key:nodeKey(indices),
+      speed:indices.reduce((sum,index,slotIndex)=>sum+modTotalSpeed(optionsBySlot.get(slots[slotIndex])[index]),0)
+    });
+    const higherPriority=(a,b)=>a.speed>b.speed+1e-9||
+      (Math.abs(a.speed-b.speed)<=1e-9&&a.key.localeCompare(b.key)<0);
+    const heapPush=node=>{
+      searchHeap.push(node);
+      let index=searchHeap.length-1;
+      while(index>0){
+        const parent=Math.floor((index-1)/2);
+        if(!higherPriority(searchHeap[index],searchHeap[parent]))break;
+        [searchHeap[index],searchHeap[parent]]=[searchHeap[parent],searchHeap[index]];
+        index=parent;
+      }
+    };
+    const heapPop=()=>{
+      const first=searchHeap[0],last=searchHeap.pop();
+      if(searchHeap.length){
+        searchHeap[0]=last;
+        let index=0;
+        while(true){
+          const left=index*2+1,right=left+1;
+          let best=index;
+          if(left<searchHeap.length&&higherPriority(searchHeap[left],searchHeap[best]))best=left;
+          if(right<searchHeap.length&&higherPriority(searchHeap[right],searchHeap[best]))best=right;
+          if(best===index)break;
+          [searchHeap[index],searchHeap[best]]=[searchHeap[best],searchHeap[index]];
+          index=best;
+        }
+      }
+      return first;
+    };
+    const firstNode=makeNode(slots.map(()=>0));
+    heapPush(firstNode);queued.add(firstNode.key);
+    while(searchHeap.length&&tested<diagnostics.limit&&sampled<maxSamples){
+      const node=heapPop();
+      sampled++;
+      const combo=node.indices.map((index,slotIndex)=>optionsBySlot.get(slots[slotIndex])[index]);
+      const theoreticalMaximum=baseSpeed+retainedSpeed+node.speed+maximumSpeedSetBonus;
       if(theoreticalMaximum+1e-9<beforeSpeed)speedPruned++;
       else{
         tested++;chosen=combo;
         if(tested%50===0){state.searchProgress={tested,limit:diagnostics.limit,sampled};render();}
         await evaluateCombination(combo);
+      }
+      // Every unvisited neighbor is no faster than this node. The max-heap
+      // therefore preserves descending-speed order without materializing the
+      // full Cartesian product.
+      for(let slotIndex=0;slotIndex<node.indices.length;slotIndex++){
+        const nextIndex=node.indices[slotIndex]+1;
+        if(nextIndex>=(optionsBySlot.get(slots[slotIndex])||[]).length)continue;
+        const nextIndices=node.indices.slice();nextIndices[slotIndex]=nextIndex;
+        const keyValue=nodeKey(nextIndices);
+        if(queued.has(keyValue))continue;
+        queued.add(keyValue);
+        heapPush(makeNode(nextIndices));
       }
       if(sampled%1000===0){
         state.searchProgress={tested,limit:diagnostics.limit,sampled};
@@ -571,7 +622,7 @@
     }
     state.searchProgress={tested,limit:diagnostics.limit,sampled};
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||(a.afterSetDistance??99)-(b.afterSetDistance??99));
-    diagnostics.tested=tested;diagnostics.sampled=sampled;diagnostics.accepted=acceptedCount;diagnostics.retainedProposals=proposals.length;diagnostics.speedPruned=speedPruned;diagnostics.searchCoverage=searchSpace?Math.min(1,sampled/searchSpace):1;diagnostics.fullSearchCoverage=fullCandidateSearchSpace?Math.min(1,sampled/fullCandidateSearchSpace):1;diagnostics.hitLimit=tested>=diagnostics.limit||(sampled<searchSpace&&sampled>=attemptLimit);diagnostics.attemptLimit=attemptLimit;
+    diagnostics.tested=tested;diagnostics.sampled=sampled;diagnostics.accepted=acceptedCount;diagnostics.retainedProposals=proposals.length;diagnostics.speedPruned=speedPruned;diagnostics.searchCoverage=searchSpace?Math.min(1,sampled/searchSpace):1;diagnostics.fullSearchCoverage=fullCandidateSearchSpace?Math.min(1,sampled/fullCandidateSearchSpace):1;diagnostics.hitLimit=tested>=diagnostics.limit||(sampled<searchSpace&&sampled>=maxSamples);diagnostics.maxSamples=maxSamples;
     const noSourceReason=exchangeGacSourceDiagnostic()||'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs.';
     const reason=proposals.length?'':!source.length?noSourceReason:diagnostics.hitLimit?'La recherche a atteint sa limite de sécurité sans scénario validé.':diagnostics.candidatePoolTruncated?'Aucun scénario validé dans le vivier réduit ; des mods éligibles ont été écartés par le plafond de 24 options par slot. Le résultat ne permet pas de conclure sur tous les mods éligibles.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.';
     return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,diagnostics,reason};
