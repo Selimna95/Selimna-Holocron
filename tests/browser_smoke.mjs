@@ -87,6 +87,19 @@ try {
   assert.equal(await page.locator("#visionnaire").getAttribute("aria-hidden"), "false");
   assert.equal(await page.locator("#visionnaireRoot").count(), 1);
 
+  // Scout Trooper is an Imperial unit, not a Scoundrel or an Ewok.
+  // Ewok Scout must remain in the Ewok faction after removing the broad token.
+  const scoutFactionAudit = await page.evaluate(() => ({
+    scoutTrooper: factionsForCharacter({ baseId: "SCOUTTROOPER", name: "Scout Trooper" }),
+    ewokScout: factionsForCharacter({ baseId: "EWOKSCOUT", name: "Ewok Scout" }),
+  }));
+  assert.ok(scoutFactionAudit.scoutTrooper.includes("Empire"));
+  assert.ok(scoutFactionAudit.scoutTrooper.includes("Imperial Trooper"));
+  assert.ok(!scoutFactionAudit.scoutTrooper.includes("Scoundrel"));
+  assert.ok(!scoutFactionAudit.scoutTrooper.includes("Ewok"));
+  assert.ok(scoutFactionAudit.ewokScout.includes("Ewok"));
+  assert.ok(!scoutFactionAudit.ewokScout.includes("Scoundrel"));
+
   // Visionnaire: exercise the actual audit, mode filters, faction filter,
   // explicit slot selection, unavailable-reference handling and donor guards.
   const kyberCacheBehavior = await page.evaluate(async () => {
