@@ -51,7 +51,7 @@ Les scripts navigateur restent pour le moment des scripts classiques car ils par
 
 ## Qualité
 
-La CI vérifie les tests Python, la syntaxe JavaScript, la cohérence des ressources versionnées du service worker et un smoke test navigateur Playwright (navigation et invariant des six emplacements de mods). Le test navigateur utilise un stub Pyodide : il valide le shell et les interactions locales, pas l'exécution complète du moteur d’optimisation ni l’accès au relais.
+La CI vérifie les tests Python, la syntaxe JavaScript, la cohérence des ressources versionnées du service worker et un smoke test navigateur Playwright. Celui-ci couvre notamment la navigation, le cache Kyber, le parcours Visionnaire, la synchronisation d’un profil simulé, les six mods importés et le parcours du Sanctuaire bleu. Le test navigateur utilise un stub Pyodide et un relais simulé : il ne valide ni l’exécution complète du moteur d’optimisation ni le service relais réel.
 
 Tests Python :
 
