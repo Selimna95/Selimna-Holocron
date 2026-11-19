@@ -420,7 +420,9 @@ try {
       { baseId: "RECIPIENT", characterId: "UNIT-RECIPIENT", name: "Recipient", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } },
       { baseId: "WEAKDONOR", characterId: "UNIT-WEAK", name: "Weak Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } },
       { baseId: "JEDIMASTERKENOBI", characterId: "UNIT-GL", name: "Galactic Legend Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } },
-      { baseId: "HEALTHYDONOR", characterId: "UNIT-HEALTHY", name: "Healthy Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } }
+      { baseId: "HEALTHYDONOR", characterId: "UNIT-HEALTHY", name: "Healthy Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } },
+      { baseId: "INCOMPLETEDONOR", characterId: "UNIT-INCOMPLETE", name: "Incomplete Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } },
+      { baseId: "LOWDONOR", characterId: "UNIT-LOW", name: "Low Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } }
     ];
     const slots = ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"];
     const make = (owner, slot, speed, id) => ({
@@ -436,7 +438,9 @@ try {
       ["UNIT-RECIPIENT", [5, 13, 13, 13, 13, 13]],
       ["UNIT-WEAK", [10, 0, 0, 0, 0, 0]],
       ["UNIT-GL", [0, 0, 0, 0, 0, 0]],
-      ["UNIT-HEALTHY", [20, 12, 12, 12, 12, 12]]
+      ["UNIT-HEALTHY", [20, 12, 12, 12, 12, 12]],
+      ["UNIT-INCOMPLETE", [11]],
+      ["UNIT-LOW", [10, 5, 5, 5, 5, 5]]
     ]) {
       speeds.forEach((speed, i) => sourceMods.push(make(owner, slots[i], speed, owner + "-" + slots[i])));
     }
@@ -446,7 +450,7 @@ try {
       const proposals = holocronTopChangeCandidates();
       return {
         statuses: roster.map(character => v176ModStatus(getCharacterMods(character)).status),
-        donorIds: [...new Set(proposals.map(item => item.donor.baseId))],
+        donorIds: [...new Set(proposals.map(item => item.donor.baseId))].sort(),
         proposals: proposals.length
       };
     } finally {
@@ -454,10 +458,10 @@ try {
       mods = savedMods;
     }
   });
-  assert.deepEqual(acolyteDonorEligibility.statuses, ["BONS", "TRÈS FAIBLES", "TRÈS FAIBLES", "BONS"]);
+  assert.deepEqual(acolyteDonorEligibility.statuses, ["BONS", "TRÈS FAIBLES", "TRÈS FAIBLES", "BONS", "INCOMPLETS", "FAIBLES"]);
   assert.ok(acolyteDonorEligibility.proposals > 0,
     "The fixture must produce a real exchange so donor eligibility is tested through the Acolyte engine.");
-  assert.deepEqual(acolyteDonorEligibility.donorIds, ["WEAKDONOR"],
+  assert.deepEqual(acolyteDonorEligibility.donorIds, ["INCOMPLETEDONOR", "LOWDONOR", "WEAKDONOR"],
     "Acolyte must exclude Galactic Legends and healthy characters from the donor pool.");
 
 
