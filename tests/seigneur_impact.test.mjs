@@ -62,10 +62,28 @@ const context=vm.createContext({
 });
 vm.runInContext([
   extractFunction(seigneur,'forgeProjectedModSpeed'),
+  extractFunction(seigneur,'seigneurMissingStatLabel'),
+  extractFunction(seigneur,'seigneurMissingStatsMarkup'),
   extractFunction(impact,'forgeBuildPreservesSpeed'),
   extractFunction(impact,'forgeBuildGlobalImpact'),
   extractFunction(impact,'forgeBuildGlobalImpactMarkup')
 ].join('\n'),context);
+
+const missingStatsMarkup=context.seigneurMissingStatsMarkup([
+  'health:gear_component_required',
+  'defense:gear_component_required',
+  'mod:secondary_incomplete',
+  'stat:unknown'
+]);
+assert.match(missingStatsMarkup,/STATISTIQUES NON CALCULÉES POUR CE BUILD/);
+assert.match(missingStatsMarkup,/Santé % : séparation base \/ équipement indisponible/);
+assert.match(missingStatsMarkup,/Défense % : séparation base \/ équipement indisponible/);
+assert.equal(context.seigneurMissingStatLabel('potency:gear_component_required'),
+  'Précision % : séparation base / équipement indisponible');
+assert.match(missingStatsMarkup,/Secondaires de mod incomplètes/);
+assert.match(missingStatsMarkup,/Type de statistique inconnu/);
+assert.equal(context.seigneurMissingStatsMarkup([]),'',
+  'A complete projection must not display a missing-stat warning');
 
 const current=equipped.TARGET;
 const safeBuild=[...current.slice(0,5),{id:'d-Cross',game_id:'d-Cross',character:'DONOR',slot:'Cross',set_name:'Offense',level:15,speed:15,primary_stat:'Health',primary_value:100,secondary_1_stat:'Speed',secondary_1_value:15,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0}];
