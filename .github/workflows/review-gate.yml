@@ -34,18 +34,18 @@ jobs:
               pull_number: pullNumber
             });
 
-            const marker = "Relecture automatisée du diff complet effectuée.";
-            const hasCurrentHeadReview = reviews.some(review =>
+            const hasIndependentApproval = reviews.some(review =>
+              review.user?.login &&
+              review.user.login !== pr.user?.login &&
               review.commit_id === pr.head.sha &&
-              ["COMMENTED", "APPROVED"].includes(review.state) &&
-              String(review.body || "").includes(marker)
+              review.state === "APPROVED"
             );
 
-            if (!hasCurrentHeadReview) {
+            if (!hasIndependentApproval) {
               core.setFailed(
-                "Une revue de l'outil doit être publiée sur le SHA actuel de la PR. " +
-                "Le commentaire doit contenir le marqueur : " + marker
+                "Une approbation humaine indépendante est obligatoire sur le SHA actuel " +
+                "de la PR. L'auteur de la PR ne peut pas approuver sa propre modification."
               );
             } else {
-              core.info("Revue de l'outil trouvée sur le SHA actuel : " + pr.head.sha);
+              core.info("Approbation indépendante trouvée sur le SHA actuel : " + pr.head.sha);
             }
