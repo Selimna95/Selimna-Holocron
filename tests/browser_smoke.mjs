@@ -325,6 +325,142 @@ try {
   });
   assert.equal(ambiguousSlotCount, 5, "Two distinct mods claiming the same equipped slot must not be resolved by arbitrary first-row selection.");
 
+  // Ownership, donor eligibility and speed guards are exercised against the
+  // real browser-loaded modules, not by searching their source text.
+  const ownerBehavior = await page.evaluate(() => {
+    const savedRoster = rosterCharacters, savedMods = mods;
+    const roster = [
+      { baseId: "OWNER_A", characterId: "UNIT-A", name: "Alias A", combat_type: 1 },
+      { baseId: "OWNER_B", characterId: "UNIT-B", name: "OWNER_A", combat_type: 1 },
+      { baseId: "OWNER_C", characterId: "UNIT-C", name: "Duplicate", combat_type: 1 },
+      { baseId: "OWNER_D", characterId: "UNIT-D", name: "Duplicate", combat_type: 1 }
+    ];
+    const make = (id, slot, fields) => ({
+      game_id: id, slot, set_name: "Speed", level: 15, rarity: 5,
+      primary_stat: "Offense", primary_value: 5,
+      secondary_1_stat: "Speed", secondary_1_value: 10,
+      secondary_2_stat: "Protection", secondary_2_value: 0,
+      secondary_3_stat: "Potency %", secondary_3_value: 0,
+      secondary_4_stat: "Tenacity %", secondary_4_value: 0,
+      ...fields
+    });
+    try {
+      rosterCharacters = roster;
+      mods = [
+        make("owner-a-square", "Square", { characterId: "UNIT-A" }),
+        make("owner-a-arrow", "Arrow", { characterId: "OWNER_A" }),
+        make("contradictory-owner", "Diamond", { characterId: "UNIT-A", characterName: "UNIT-B" }),
+        make("ambiguous-name", "Triangle", { characterName: "Duplicate" }),
+        make("partial-name", "Circle", { characterName: "Alias A extended" })
+      ];
+      const resolver = buildRosterOwnerResolver(rosterCharacters);
+      const firstIndex = getCharacterModsIndex();
+      const secondIndex = getCharacterModsIndex();
+      return {
+        canonicalBaseIdWinsAliasCollision: resolver.resolve("OWNER_A") === "OWNER_A",
+        duplicateDisplayNameIsAmbiguous: resolver.resolve("Duplicate") === "",
+        exactCharacterIdResolves: resolveModOwnerKey({ characterId: "UNIT-A" }, resolver) === "OWNER_A",
+        partialNameDoesNotResolve: resolveModOwnerKey({ characterName: "Alias A extended" }, resolver) === "",
+        canonicalOwnerMods: getCharacterMods(roster[0]).map(mod => mod.game_id).sort(),
+        collidingAliasOwnerMods: getCharacterMods(roster[1]).map(mod => mod.game_id),
+        indexIsReusedForUnchangedInputs: firstIndex === secondIndex
+      };
+    } finally {
+      rosterCharacters = savedRoster;
+      mods = savedMods;
+    }
+  });
+  assert.equal(ownerBehavior.canonicalBaseIdWinsAliasCollision, true);
+  assert.equal(ownerBehavior.duplicateDisplayNameIsAmbiguous, true);
+  assert.equal(ownerBehavior.exactCharacterIdResolves, true);
+  assert.equal(ownerBehavior.partialNameDoesNotResolve, true);
+  assert.deepEqual(ownerBehavior.canonicalOwnerMods, ["owner-a-arrow", "owner-a-square"]);
+  assert.deepEqual(ownerBehavior.collidingAliasOwnerMods, []);
+  assert.equal(ownerBehavior.indexIsReusedForUnchangedInputs, true,
+    "The owner index should be reused while both roster and mod-array identities remain unchanged.");
+
+  const transferGuards = await page.evaluate(() => {
+    const make = (id, speed) => ({
+      game_id: id, slot: "Square", set_name: "Health", level: 15, rarity: 5,
+      primary_stat: "Offense", primary_value: 5,
+      secondary_1_stat: "Speed", secondary_1_value: speed,
+      secondary_2_stat: "Protection", secondary_2_value: 0,
+      secondary_3_stat: "Potency %", secondary_3_value: 0,
+      secondary_4_stat: "Tenacity %", secondary_4_value: 0
+    });
+    const selected = make("selected", 5);
+    const rows = [
+      { speed: 4, value: 99, mod: { ...make("slower", 4), secondary_1_stat: "Potency %", secondary_1_value: 99 } },
+      { speed: 5, value: 4, mod: { ...make("equal", 5), secondary_1_stat: "Potency %", secondary_1_value: 4 } },
+      { speed: 8, value: 7, mod: { ...make("faster", 8), secondary_1_stat: "Potency %", secondary_1_value: 7 } }
+    ];
+    const safe = discipleSpeedSafeCandidates(selected, rows, "Potency %");
+    return {
+      acolyteAcceptsSpeedGain: holocronAcolyteTransferPreservesSpeed(selected, make("better", 10), [selected]),
+      acolyteRejectsSpeedLoss: holocronAcolyteTransferPreservesSpeed(selected, make("worse", 4), [selected]),
+      discipleCandidates: safe.map(row => ({ id: row.mod.game_id, speed: row.speed, value: row.value })),
+      sharedLegendRegistry: window.HOLOCRON_GALACTIC_LEGENDS instanceof Set,
+      knownLegendRecognized: isGalacticLegendCharacter({ baseId: "JEDIMASTERKENOBI" }),
+      similarNonLegendRejected: !isGalacticLegendCharacter({ baseId: "JEDIKNIGHTKENOBI", name: "Jedi Master Kenobi" })
+    };
+  });
+  assert.equal(transferGuards.acolyteAcceptsSpeedGain, true);
+  assert.equal(transferGuards.acolyteRejectsSpeedLoss, false);
+  assert.deepEqual(transferGuards.discipleCandidates, [
+    { id: "faster", speed: 8, value: 7 },
+    { id: "equal", speed: 5, value: 4 }
+  ], "Disciple must reject any donor mod below the selected mod's speed and rank safe matches by the requested secondary.");
+  assert.equal(transferGuards.sharedLegendRegistry, true);
+  assert.equal(transferGuards.knownLegendRecognized, true);
+  assert.equal(transferGuards.similarNonLegendRejected, true);
+
+  const acolyteDonorEligibility = await page.evaluate(() => {
+    const savedRoster = rosterCharacters, savedMods = mods;
+    const roster = [
+      { baseId: "RECIPIENT", characterId: "UNIT-RECIPIENT", name: "Recipient", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } },
+      { baseId: "WEAKDONOR", characterId: "UNIT-WEAK", name: "Weak Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } },
+      { baseId: "JEDIMASTERKENOBI", characterId: "UNIT-GL", name: "Galactic Legend Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } },
+      { baseId: "HEALTHYDONOR", characterId: "UNIT-HEALTHY", name: "Healthy Donor", combat_type: 1, gear_level: 13, base_stats: { Speed: 300 } }
+    ];
+    const slots = ["Square", "Arrow", "Diamond", "Triangle", "Circle", "Cross"];
+    const make = (owner, slot, speed, id) => ({
+      game_id: id, characterId: owner, slot, set_name: "Speed", level: 15, rarity: 5,
+      primary_stat: "Offense", primary_value: 5,
+      secondary_1_stat: "Speed", secondary_1_value: speed,
+      secondary_2_stat: "Protection", secondary_2_value: 0,
+      secondary_3_stat: "Potency %", secondary_3_value: 0,
+      secondary_4_stat: "Tenacity %", secondary_4_value: 0
+    });
+    const sourceMods = [];
+    for (const [owner, speeds] of [
+      ["UNIT-RECIPIENT", [5, 13, 13, 13, 13, 13]],
+      ["UNIT-WEAK", [10, 0, 0, 0, 0, 0]],
+      ["UNIT-GL", [0, 0, 0, 0, 0, 0]],
+      ["UNIT-HEALTHY", [20, 12, 12, 12, 12, 12]]
+    ]) {
+      speeds.forEach((speed, i) => sourceMods.push(make(owner, slots[i], speed, owner + "-" + slots[i])));
+    }
+    try {
+      rosterCharacters = roster;
+      mods = sourceMods;
+      const proposals = holocronTopChangeCandidates();
+      return {
+        statuses: roster.map(character => v176ModStatus(getCharacterMods(character)).status),
+        donorIds: [...new Set(proposals.map(item => item.donor.baseId))],
+        proposals: proposals.length
+      };
+    } finally {
+      rosterCharacters = savedRoster;
+      mods = savedMods;
+    }
+  });
+  assert.deepEqual(acolyteDonorEligibility.statuses, ["BONS", "TRÈS FAIBLES", "TRÈS FAIBLES", "BONS"]);
+  assert.ok(acolyteDonorEligibility.proposals > 0,
+    "The fixture must produce a real exchange so donor eligibility is tested through the Acolyte engine.");
+  assert.deepEqual(acolyteDonorEligibility.donorIds, ["WEAKDONOR"],
+    "Acolyte must exclude Galactic Legends and healthy characters from the donor pool.");
+
+
   // Seigneur regression: never trade away a complete Speed-set bonus, even
   // when the incoming mod has the same individual speed as the equipped mod.
   const speedGuard = await page.evaluate(() => {
@@ -333,10 +469,10 @@ try {
     const equipped = [make("a","Speed",5),make("b","Speed",5),make("c","Speed",5),make("d","Speed",5),make("e","Health",0),make("f","Health",0)];
     const before = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},equipped);
     const after = forgeProjectedModSpeed(character,{base_stats:{Speed:300}},[...equipped.slice(1),make("replacement","Health",5)]);
-    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total,beforeSet:before.hasFourPieceSpeedSet,afterSet:after.hasFourPieceSpeedSet,beforeBonus:before.setBonus,afterBonus:after.setBonus};
+    const replacement=make("replacement","Health",5);\n    const build=[...equipped.slice(1),replacement];\n    return {before:before.total,after:after.total,accepted:after.total+1e-9>=before.total,beforeSet:before.hasFourPieceSpeedSet,afterSet:after.hasFourPieceSpeedSet,beforeBonus:before.setBonus,afterBonus:after.setBonus,candidateAccepted:forgeCandidatePreservesSpeed(character,{base_stats:{Speed:300}},equipped,equipped[0],replacement),buildAccepted:forgeBuildPreservesSpeed(character,{base_stats:{Speed:300}},equipped,build),unchangedBuildAccepted:forgeBuildPreservesSpeed(character,{base_stats:{Speed:300}},equipped,equipped)};
   });
   assert.equal(speedGuard.accepted, false, "A replacement must not remove the 4-piece Speed-set bonus: "+JSON.stringify(speedGuard));
-
+  assert.equal(speedGuard.candidateAccepted, false, "Seigneur must reject an individual mod exchange that removes the 4-piece Speed set.");\n  assert.equal(speedGuard.buildAccepted, false, "Seigneur must reject a six-mod build that reduces the projected speed.");\n  assert.equal(speedGuard.unchangedBuildAccepted, true, "A six-mod build preserving the current speed must remain eligible.");\n
   // Mod P0 regressions: keep arithmetic numeric and preserve stat identity.
   const modMath = await page.evaluate(() => ({
     localized: numericValue("1 234,5"),
