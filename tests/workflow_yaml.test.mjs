@@ -17,7 +17,7 @@ for (const name of files) {
 const quality = workflows.get('quality.yml');
 const reviewGate = workflows.get('review-gate.yml');
 assert.ok(reviewGate, 'A tool-review gate workflow must exist');
-assert.deepEqual(reviewGate.on.pull_request.types, ['opened', 'synchronize', 'reopened', 'ready_for_review']);
+assert.equal(reviewGate.on.pull_request, undefined, 'The review gate must not fail before a review can exist');
 assert.deepEqual(reviewGate.on.pull_request_review.types, ['submitted', 'edited', 'dismissed']);
 const reviewGateScript = reviewGate.jobs?.['review-gate']?.steps?.find(step => step.uses === 'actions/github-script@v7')?.with?.script || '';
 assert.match(reviewGateScript, /Relecture automatisée du diff complet effectuée\./);
