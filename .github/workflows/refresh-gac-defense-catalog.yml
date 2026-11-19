@@ -76,7 +76,7 @@ jobs:
           PY
           cp gac-artifacts/gac-catalog.json blue-gac/gac-catalog.json
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add blue-gac/gac-catalog.json
           if git diff --cached --quiet -- blue-gac/gac-catalog.json; then
             echo "GAC defensive catalogue is already up to date."
