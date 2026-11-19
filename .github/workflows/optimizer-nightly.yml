@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - 'test/nightly-e2e-g12-1200'
-    - 'perf/beam-width-comparison'
+      - 'perf/beam-width-comparison'
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
