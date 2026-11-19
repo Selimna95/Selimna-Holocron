@@ -592,10 +592,6 @@ async function fetchKyberProfile(character,options={}){
     for(const candidate of candidates){
       const result=await tryCandidate(candidate);
       if(result.profile){
-        if(result.stale){
-          profiles[cached.slug]=result.profile;
-          return result.profile;
-        }
         profiles[candidate]=result.profile;
         const checkedAt=Date.now();
         window.__kyberReferenceStatuses[requestKey]={status:'fresh',label:'Référence Kyber actualisée',checkedAt};
@@ -1044,8 +1040,6 @@ function modAssetName(m){
   const safeSet=assetSet.replace(/\s+/g,'-');
   return `Mod-${safeSet}-${shape}-${tier}.png`;
 }
-function modIconUrl(m){ return ''; }
-function modDotsUrl(m){ return ''; }
 function modIconHtml(m, size='56'){
   const name=esc(`${m?.set_name||'Mod'} · ${m?.slot||''}`.trim());
   const dots=modDots(m);
