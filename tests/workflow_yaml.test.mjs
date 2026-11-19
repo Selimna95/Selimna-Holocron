@@ -72,7 +72,7 @@ for (const name of ['refresh-gac-catalog.yml', 'refresh-gac-official.yml', 'refr
   assert.ok(collectUses.some(use => use.startsWith('actions/upload-artifact@')), name + ' collection must upload generated data');
   assert.ok(publishUses.some(use => use.startsWith('actions/download-artifact@')), name + ' publication must download generated data');
   const collectionCheckout = collection.steps.find(step => step.uses?.startsWith('actions/checkout@'));
-  assert.equal(collectionCheckout?.with?.persist-credentials, false, name + ' collection checkout must not persist a token');
+  assert.equal(collectionCheckout?.with?.['persist-credentials'], false, name + ' collection checkout must not persist a token');
 }
 for (const name of files) {
   const source = fs.readFileSync(new URL(name, workflowDir), 'utf8');
