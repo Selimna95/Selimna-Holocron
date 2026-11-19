@@ -1,8 +1,8 @@
 # Selimna’s Holocron — SWGOH Optimizer Web
 
-**Version : 4.1.4** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
+**Versions affichées : interface principale V4.1.85 · Sanctuaire bleu V4.1.4** · Application web statique en français pour analyser un inventaire de mods de *Star Wars: Galaxy of Heroes*.
 
-## Direction artistique et expérience v3.2.0
+## Direction artistique
 - Identité visuelle obsidienne, rouge Sith et accents braise, harmonisée entre les vues.
 - Hiérarchie renforcée pour la navigation, les panneaux et les actions.
 - Thème appliqué directement aux règles existantes pour éviter une feuille de surcouche dédiée.
@@ -10,13 +10,13 @@
 ## Fonctionnalités
 - Import et synchronisation du profil public SWGOH.GG via l’API JSON prioritaire (roster, mods et puissance galactique), avec les pages HTML comme secours.
 - Analyse et optimisation des mods avec un moteur Python exécuté dans Web Worker via Pyodide.
-- Analyse de roster, comparaison aux références Kyber et outils Holocron/Sith’ari.
+- Analyse de roster, comparaison aux références Kyber et outils Holocron, dont le Visionnaire.
 - Interface responsive, installation PWA et prise en charge de `prefers-reduced-motion`.
 - Parcours UX clarifié : états vides explicites, descriptions des modules, navigation accessible et Codex ouvert depuis le Sanctuaire.
 - Synchronisation avec délai maximal de 20 secondes par requête et message d'erreur compréhensible en cas de délai dépassé.
 
 ## Démarrage local
-Les modules navigateur et le Web Worker utilisent `fetch`, les modules ES et les chemins relatifs. Ouvrir `index.html` directement avec `file://` peut bloquer les requêtes. Utilisez un serveur HTTP local depuis la racine du dépôt, par exemple :
+Les scripts navigateur sont chargés comme scripts classiques depuis `index.html` et partagent encore un contrat de variables globales. Le Worker d’optimisation est un module ES ; les ressources utilisent `fetch` et des chemins relatifs. Ouvrir `index.html` directement avec `file://` peut bloquer les requêtes. Utilisez un serveur HTTP local depuis la racine du dépôt, par exemple :
 
 ```bash
 python -m http.server 8000
@@ -32,15 +32,20 @@ Le relais par défaut est `https://swgoh-optimizer-relay.lorg75017.workers.dev`.
 ## Architecture
 - `index.html` : structure et gabarits de l’interface.
 - `app.css` : styles globaux et thème principal.
-- `sithari.css` : styles spécifiques à Sith’ari.
-- `modules/core.js` : import, données communes, roster, mods et références.
+- `visionnaire.css` : styles spécifiques au Visionnaire.
+- `holocron-system.css` : tokens et composants visuels partagés.
+- `modules/core.js` : import, données communes, roster, mods, références Kyber et fonctions partagées.
 - `modules/acolyte.js` : recommandations de changements prioritaires.
-- `modules/disciple.js` : réaffectation de mods.
-- `modules/seigneur.js` : forge personnage.
-- `modules/sithari.js` : analyse d’équipe et comparaison de statistiques.
+- `modules/disciple.js` : audit de vitesse et réaffectation de mods.
+- `modules/seigneur.js` : forge personnage et optimisation ciblée.
+- `modules/seigneur-gac.js` : pont vers les données d'utilisation GAC.
+- `modules/seigneur-impact.js` : évaluation de l'impact des échanges.
+- `modules/visionnaire.js` : audit Kyber et recherche d'échanges de mods.
 - `modules/runtime.js` : navigation et branchement des événements.
+- `gac-usage.js` : données d'utilisation GAC partagées.
+- `blue-gac/` : Sanctuaire bleu et parcours de préparation GAC.
 - `interface-adapter.js` : indicateurs du tableau de bord et gate de connexion.
-- `optimizer-worker.mjs` + `python/optimizer.py` : moteur d’optimisation et données Kyber.
+- `optimizer-worker.mjs` + `python/optimizer.py` : recherche combinatoire Python et pont vers le moteur JavaScript partagé.
 
 Les scripts navigateur restent pour le moment des scripts classiques car ils partagent un contrat historique de variables globales. Une migration ES modules doit se faire par étapes avec des tests de non-régression, pas par renommage mécanique des fichiers.
 
