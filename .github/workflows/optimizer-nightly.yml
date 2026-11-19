@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'test/nightly-e2e-g12-1200'
+      - 'perf/beam-width-comparison'
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
@@ -14,7 +15,7 @@ permissions:
 jobs:
   optimizer-nightly:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

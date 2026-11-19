@@ -753,6 +753,82 @@ if (process.env.HOLOCRON_NIGHTLY_E2E === '1') {
     missingStats: best.missing_stats
   }));
 
+  // Compare beam widths against two real, matching G13 character profiles and
+  // their bundled SWGOH.GG Kyber references. No hard-coded set plan is added:
+  // the optimizer must rank from the actual set, primary and average-stat data.
+  const kyberProfiles = JSON.parse(read('../python/kyber_profiles.json'));
+  const standardKyberCases = [
+    { key: 'glleia', profile: optimizerProfiles.GLLEIA, kyber: kyberProfiles.glleia },
+    { key: 'glrey', profile: optimizerProfiles.GLREY, kyber: kyberProfiles.glrey }
+  ];
+  const beamWidthMeasurements = [];
+  for (const scenario of standardKyberCases) {
+    assert.ok(scenario.profile && scenario.kyber);
+    assert.equal(scenario.profile.base_id, scenario.kyber.base_id);
+    assert.equal(scenario.profile.gear_level, 13);
+    assert.equal(scenario.kyber.specific_sets, undefined,
+      'The standard Kyber benchmark must use the observed distributions, not a fabricated hard set plan');
+    const measurements = [];
+    for (const beamWidth of [1200, 900, 600]) {
+      scalarBridgeCalls = 0;
+      batchBridgeCalls = 0;
+      batchProjectedBuilds = 0;
+      optimizerBridgeReset(true);
+      pyodide.globals.set('standard_profile_json', JSON.stringify(scenario.profile));
+      pyodide.globals.set('standard_kyber_json', JSON.stringify(scenario.kyber));
+      pyodide.globals.set('standard_beam_width', beamWidth);
+      const startedAt = performance.now();
+      const results = JSON.parse(pyodide.runPython([
+        'import json',
+        'profile = json.loads(standard_profile_json)',
+        'kyber = json.loads(standard_kyber_json)',
+        'mods = json.loads(benchmark_mods_json)',
+        'result = optimizer.optimize_kyber(',
+        '    mods, base_stats=profile["base_stats"], base_profile=profile,',
+        '    kyber=kyber, number_of_builds=10, limit_per_slot=80,',
+        '    beam_width=standard_beam_width, projection_batch_size=512',
+        ')',
+        'json.dumps([{"ids": [m.get("game_id") for m in item["build"]], "sets": [m.get("set_name") for m in item["build"]], "score": item["score"], "stats": item["stats"], "missing_stats": item.get("missing_stats", [])} for item in result])'
+      ].join('\n')));
+      const elapsedMs = performance.now() - startedAt;
+      assert.ok(results.length >= 1, 'The standard Kyber search must return at least one build');
+      assert.equal(results[0].ids.length, 6);
+      assert.ok(results[0].stats.Speed > 0);
+      assert.equal(scalarBridgeCalls, 0, 'The standard Kyber comparison must use the batch bridge');
+      assert.ok(batchBridgeCalls > 0);
+      assert.ok(batchProjectedBuilds > 0);
+      assert.ok(!results[0].missing_stats.some(code => code.endsWith(':gear_component_required')),
+        'The matching G13 profile must calculate the required percentage components');
+      measurements.push({
+        beamWidth,
+        elapsedMs,
+        results,
+        bridgeCalls: batchBridgeCalls,
+        projectedBuilds: batchProjectedBuilds
+      });
+    }
+    const reference = JSON.stringify(measurements[0].results);
+    for (const measurement of measurements) {
+      measurement.sameTop10As1200 = JSON.stringify(measurement.results) === reference;
+    }
+    const summary = {
+      character: scenario.kyber.character,
+      baseId: scenario.profile.base_id,
+      gearLevel: scenario.profile.gear_level,
+      kyberSource: scenario.kyber.source,
+      comparisons: measurements.map(item => ({
+        beamWidth: item.beamWidth,
+        elapsedMs: Number(item.elapsedMs.toFixed(1)),
+        bridgeCalls: item.bridgeCalls,
+        projectedBuilds: item.projectedBuilds,
+        sameTop10As1200: item.sameTop10As1200
+      }))
+    };
+    beamWidthMeasurements.push(summary);
+    console.log('Nightly real-Kyber beam-width comparison:');
+    console.log(JSON.stringify(summary));
+  }
+
   const scoreCacheBenchmark = JSON.parse(pyodide.runPython([
     'import json, time',
     'mods = json.loads(benchmark_mods_json)',
