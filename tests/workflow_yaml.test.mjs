@@ -41,4 +41,14 @@ assert.ok(deployJob.steps.some(step => step.uses === 'actions/jekyll-build-pages
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/upload-pages-artifact@v3'));
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/deploy-pages@v4'));
 
+const optimizerNightly = workflows.get('optimizer-nightly.yml');
+assert.ok(optimizerNightly, 'A scheduled optimizer E2E workflow must exist');
+assert.ok(optimizerNightly.on?.schedule?.some(item => item.cron === '17 3 * * *'));
+assert.deepEqual(optimizerNightly.on?.push?.branches, ['test/nightly-e2e-g12-1200']);
+assert.ok(Object.hasOwn(optimizerNightly.on || {}, 'workflow_dispatch'), 'The nightly optimizer E2E must also be manually runnable');
+const nightlyStep = optimizerNightly.jobs?.['optimizer-nightly']?.steps?.find(step => step.run?.includes('tests/mod_engine_pyodide.test.mjs'));
+assert.ok(nightlyStep, 'The nightly workflow must run the shared Pyodide integration test');
+assert.equal(nightlyStep.env?.HOLOCRON_NIGHTLY_E2E, '1');
+assert.equal(optimizerNightly.jobs?.['optimizer-nightly']?.['timeout-minutes'], 30);
+
 console.log('GitHub Actions workflow YAML and quality-gated Pages deployment: OK');

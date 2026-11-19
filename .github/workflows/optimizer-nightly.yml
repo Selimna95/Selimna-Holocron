@@ -1,0 +1,27 @@
+name: Optimizer nightly E2E
+
+on:
+  push:
+    branches:
+      - 'test/nightly-e2e-g12-1200'
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  optimizer-nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock pyodide@0.27.7
+      - name: Run G12 Comlink inventory E2E (2,000 mods, beam 1,200)
+        run: node tests/mod_engine_pyodide.test.mjs
+        env:
+          HOLOCRON_NIGHTLY_E2E: '1'
