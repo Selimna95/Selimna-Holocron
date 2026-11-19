@@ -1,8 +1,8 @@
 # Architecture — moteur unique des mods
 
-- Statut : moteur unifié intégré à `main` ; correction du plancher de vitesse Seigneur, de l'arrondi Speed et de l'acceptation des projections partielles en cours sur `fix/optimizer-speed-floor-partial-projections`
-- Moteur de référence : `modules/mod-engine.js` v0.3.27
-- Base de travail : `main@f2c66705f28bdd060f0e99e37235bfdc76360eca`
+- Statut : moteur unifié intégré à `main`. Les corrections du plancher de vitesse Seigneur, de l'arrondi Speed et de l'acceptation des projections partielles sont intégrées dans le snapshot décrit ci-dessous. La comparaison de performances des faisceaux est suivie séparément dans la PR #47.
+- Moteur de référence : `modules/mod-engine.js` v0.3.33
+- Base de travail : `main@8a373382faf71dcd2358dda0651ab6fd9233ee28` (19/11/2026)
 - Portée : Acolyte, Disciple, Seigneur Sith, Visionnaire et Optimizer Python.
 - Publication : aucune modification de `main` ni de GitHub Pages pendant cet audit.
 
@@ -22,7 +22,7 @@ Les modules métier gardent leurs critères de décision (Kyber, GAC, sélection
 | Zone | Responsabilité |
 |---|---|
 | `modules/mod-engine.js` | Normalisation canonique, règles de jeu, calculs communs, complétude des résultats |
-| `modules/core.js` v4.2.41 | Import des données, wrappers historiques temporaires et présentation |
+| `modules/core.js` v4.2.44 | Import des données, wrappers historiques temporaires et présentation |
 | Acolyte | Priorisation GAC et choix des changements ; score générique délégué ; mods incomplets exclus des échanges |
 | Disciple | Filtres de réallocation et choix des donneurs ; identité stat/set/slot et vitesse projetée déléguées |
 | Seigneur Sith | Objectifs Kyber/GAC et recherche de mods ; calculs de vitesse et identité délégués |
@@ -58,7 +58,7 @@ Une unité inconnue ou une formule non implémentée rend le calcul incomplet. A
 | Visionnaire | Projection finale déléguée ; identité stat/set/slot déléguée ; scoring de scénario conservé |
 | Optimizer Python | Normalisation et projections déléguées au moteur JavaScript ; recherche Python n'accepte un build que si Speed, Health et Protection (statistiques de score) sont calculables ; les autres statistiques absentes sont signalées dans `missing_stats` |
 | Worker Pyodide | Runtime Python chargé une seule fois dans le Worker ; aucun runtime Pyodide principal inutilisé ; pont de normalisation et de projection initialisé |
-| Cache/version | Références index, service worker et Worker réalignées pour cette branche |
+| Cache/version | Les ressources du moteur et du Worker sont versionnées ; les tests de qualité contrôlent la cohérence des assets et du service worker |
 | Propriétaires de mods | Index global construit une fois par snapshot roster/inventaire ; résolution exacte des alias et slots ambigus conservée |
 | Légendes galactiques | Une liste canonique partagée entre Core, Seigneur Sith et Visionnaire ; Hondo GL et Mando/Grogu GL protégés |
 
