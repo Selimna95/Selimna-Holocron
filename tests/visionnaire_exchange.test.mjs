@@ -39,8 +39,10 @@ assert.ok(js.includes('b.score.score-a.score.score'),'Scenarios must rank by str
 assert.ok(js.includes('isGalacticLegendCharacter(owner)'),'GL donors must be excluded');
 assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bonuses must be preserved');
 assert.ok(js.includes('diverse.length>=24'), 'Candidate selection must preserve set and primary diversity');
-assert.ok(js.includes('Échantillonnage équilibré de tous les slots avec filtre vitesse préalable et plafond de 24 options par slot'), 'Search must sample across all slots, prefilter speed-invalid combinations and disclose its candidate cap');
-assert.ok(js.includes('attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000)'), 'Search must continue sampling beyond the old 15,000-combination cap');
+assert.ok(js.includes('Recherche best-first des combinaisons par vitesse potentielle, avec filtre vitesse préalable et plafond de 24 options par slot'), 'Search must prioritize speed-preserving combinations and disclose its candidate cap');
+assert.ok(js.includes('const maxSamples=Math.min(searchSpace,1000000)'), 'Best-first search must have an explicit upper bound on visited combinations');
+assert.ok(js.includes('const higherPriority=(a,b)=>a.speed>b.speed+1e-9'), 'Search heap must visit higher-speed combinations before lower-speed combinations');
+assert.ok(js.includes('heapPush(makeNode(nextIndices))'), 'Search must lazily traverse the Cartesian product without materializing it');
 assert.ok(js.includes('speedPruned++'), 'Search must count combinations rejected by the speed prefilter');
 assert.ok(js.includes('searchSpace'), 'Search diagnostics must expose the complete candidate space');
 assert.ok(js.includes('acceptedCount++'), 'The engine must count every valid scenario in the explored sample');
@@ -58,7 +60,7 @@ assert.ok(priority({_sourceOwnerKey:null,speed:0},{_sourceOwnerKey:'DONOR',_sour
 assert.ok(priority({_sourceOwnerKey:'RARE',_sourceUsage:3,speed:0},{_sourceOwnerKey:'COMMON',_sourceUsage:40,speed:100})<0,'Lower GAC usage must beat a much faster but frequently used donor');
 assert.ok(priority({_sourceOwnerKey:'DONOR',_sourceUsage:8,speed:25},{_sourceOwnerKey:'DONOR2',_sourceUsage:8,speed:10})<0,'Speed is a tie-breaker when GAC usage is equal');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
-assert.ok(js.includes('baseSpeed+retainedSpeed+combo.reduce'), 'Theoretical speed ceiling must include the character base speed');
+assert.ok(js.includes('baseSpeed+retainedSpeed+node.speed+maximumSpeedSetBonus'), 'Theoretical speed ceiling must include base speed and the best-first combination speed');
 assert.ok(js.includes('if(!beforeProjection.complete||!afterProjection.complete)'), 'Target speed projections must fail closed when incomplete');
 assert.ok(js.includes('if(!donorBeforeSpeed.complete||!donorAfterSpeed.complete)'), 'Donor speed projections must fail closed when incomplete');
 assert.ok(js.includes('async function buildExchangeProposals'), 'Six-slot search must run asynchronously');
