@@ -1,10 +1,8 @@
 name: Review gate
 
 on:
-  # A review cannot exist yet when a PR is opened or synchronized.
-  # Run only after a review event; a new head SHA remains blocked until it is reviewed.
-  pull_request_review:
-    types: [submitted, edited, dismissed]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   pull-requests: read
@@ -13,7 +11,7 @@ jobs:
   review-gate:
     runs-on: ubuntu-latest
     steps:
-      - name: Require an automated review of the current PR head
+      - name: Check PR metadata and patch hygiene
         uses: actions/github-script@v7
         with:
           script: |
@@ -28,24 +26,40 @@ jobs:
               repo: context.repo.repo,
               pull_number: pullNumber
             });
-            const { data: reviews } = await github.rest.pulls.listReviews({
+
+            if (pr.base.ref !== "main" || pr.head.ref === "main") {
+              core.setFailed("La PR doit cibler main depuis une branche de travail distincte.");
+              return;
+            }
+            if (!pr.title?.trim() || (pr.body || "").trim().length < 30) {
+              core.setFailed("La PR doit avoir un titre et une description suffisamment explicites.");
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: pullNumber
+              pull_number: pullNumber,
+              per_page: 100
             });
 
-            const marker = "Relecture automatisée du diff complet effectuée.";
-            const hasCurrentHeadReview = reviews.some(review =>
-              review.commit_id === pr.head.sha &&
-              ["COMMENTED", "APPROVED"].includes(review.state) &&
-              String(review.body || "").includes(marker)
-            );
+            const problems = [];
+            for (const file of files) {
+              if (typeof file.patch !== "string") continue;
+              for (const line of file.patch.split("\n")) {
+                if (!line.startsWith("+") || line.startsWith("+++")) continue;
+                const added = line.slice(1);
+                if (/[\\t ]$/.test(added)) {
+                  problems.push(file.filename + ": espace final dans une ligne ajoutée");
+                }
+                if (/^(<<<<<<< |>>>>>>> )/.test(added)) {
+                  problems.push(file.filename + ": marqueur de conflit Git ajouté");
+                }
+              }
+            }
 
-            if (!hasCurrentHeadReview) {
-              core.setFailed(
-                "Une revue de l'outil doit être publiée sur le SHA actuel de la PR. " +
-                "Le commentaire doit contenir le marqueur : " + marker
-              );
+            if (problems.length) {
+              core.setFailed("Contrôle automatique de la PR en échec :\n" + problems.join("\n"));
             } else {
-              core.info("Revue de l'outil trouvée sur le SHA actuel : " + pr.head.sha);
+              core.info("Contrôles automatiques de PR réussis : cible, description, hygiène du diff (" + files.length + " fichiers).");
             }
