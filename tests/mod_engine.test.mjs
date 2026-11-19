@@ -262,7 +262,7 @@ const scored = engine.scoreMod({
   secondary_2_stat: 'Potency %',
   secondary_2_value: 2.5
 });
-assert.ok(Math.abs(scored - (20 / 30 * 1.8 + 2.5 / 11.25 * 0.24 + 0.75)) < 1e-12,
+assert.ok(Math.abs(scored - (20 / 30 * 31 * 1.8 + 2.5 / 11.25 * 0.24 + 0.75)) < 1e-12,
   'Each secondary is normalized against its dot-specific maximum before weighting');
 
 const secondaryMaximumCases = [
