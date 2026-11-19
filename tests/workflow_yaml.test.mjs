@@ -19,7 +19,7 @@ const reviewGate = workflows.get('review-gate.yml');
 assert.ok(reviewGate, 'A tool-review gate workflow must exist');
 assert.equal(reviewGate.on.pull_request, undefined, 'The review gate must not fail before a review can exist');
 assert.deepEqual(reviewGate.on.pull_request_review.types, ['submitted', 'edited', 'dismissed']);
-const reviewGateScript = reviewGate.jobs?.['review-gate']?.steps?.find(step => step.uses === 'actions/github-script@v7')?.with?.script || '';
+const reviewGateScript = reviewGate.jobs?.['review-gate']?.steps?.find(step => step.uses === 'actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b')?.with?.script || '';
 assert.match(reviewGateScript, /Relecture automatisée du diff complet effectuée\./);
 assert.match(reviewGateScript, /review\.commit_id\s*===\s*pr\.head\.sha/);
 const deploy = workflows.get('deploy-pages-after-quality.yml');
@@ -37,9 +37,9 @@ assert.match(deployJob.if, /conclusion\s*==\s*'success'/);
 assert.match(deployJob.if, /event\s*==\s*'push'/);
 assert.match(deployJob.if, /head_branch\s*==\s*'main'/);
 assert.match(deployJob.if, /head_repository\.full_name\s*==\s*github\.repository/);
-assert.ok(deployJob.steps.some(step => step.uses === 'actions/jekyll-build-pages@v1'));
-assert.ok(deployJob.steps.some(step => step.uses === 'actions/upload-pages-artifact@v3'));
-assert.ok(deployJob.steps.some(step => step.uses === 'actions/deploy-pages@v4'));
+assert.ok(deployJob.steps.some(step => step.uses === 'actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697'));
+assert.ok(deployJob.steps.some(step => step.uses === 'actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa'));
+assert.ok(deployJob.steps.some(step => step.uses === 'actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e'));
 
 const optimizerNightly = workflows.get('optimizer-nightly.yml');
 assert.ok(optimizerNightly, 'A scheduled optimizer E2E workflow must exist');
@@ -50,5 +50,20 @@ const nightlyStep = optimizerNightly.jobs?.['optimizer-nightly']?.steps?.find(st
 assert.ok(nightlyStep, 'The nightly workflow must run the shared Pyodide integration test');
 assert.equal(nightlyStep.env?.HOLOCRON_NIGHTLY_E2E, '1');
 assert.equal(optimizerNightly.jobs?.['optimizer-nightly']?.['timeout-minutes'], 30);
+
+
+assert.equal(quality.permissions?.contents, 'read', 'Quality checks must have read-only repository permissions');
+assert.equal(optimizerNightly.permissions?.contents, 'read', 'Optimizer benchmark must have read-only repository permissions');
+for (const name of ['refresh-gac-catalog.yml', 'refresh-gac-official.yml', 'refresh-gac-defense-catalog.yml']) {
+  const workflow = workflows.get(name);
+  assert.equal(workflow.permissions?.contents, 'read', name + ' must default to read-only repository permissions');
+  const job = Object.values(workflow.jobs || {})[0];
+  assert.equal(job?.if, "github.ref == 'refs/heads/main'", name + ' must refuse non-main refs');
+  assert.equal(job?.permissions?.contents, 'write', name + ' must scope write access to the publishing job');
+}
+for (const name of files) {
+  const source = fs.readFileSync(new URL(name, workflowDir), 'utf8');
+  assert.doesNotMatch(source, /uses:\s*[^\s@]+@v\d+\b/, name + ' must pin external actions to immutable commit SHAs');
+}
 
 console.log('GitHub Actions workflow YAML and quality-gated Pages deployment: OK');
