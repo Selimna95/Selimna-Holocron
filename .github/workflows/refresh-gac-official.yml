@@ -83,7 +83,7 @@ jobs:
           cp gac-artifacts/gac-official-leaderboards.json gac-official-leaderboards.json
           cp gac-artifacts/gac-official-leaderboards.js gac-official-leaderboards.js
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add gac-official-leaderboards.json gac-official-leaderboards.js
           if git diff --cached --quiet -- gac-official-leaderboards.json gac-official-leaderboards.js; then
             echo "Official leaderboard snapshot is unchanged."
