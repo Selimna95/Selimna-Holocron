@@ -14,7 +14,7 @@ const zeroSecondaries = {
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 };
 
-assert.equal(engine.version, '0.3.30');
+assert.equal(engine.version, '0.3.33');
 
 assert.equal(engine.canonicalSet(1), 'health');
 assert.equal(engine.canonicalSet('Critical Damage'), 'criticalDamage');
@@ -253,6 +253,7 @@ assert.equal(unknown.unit, 'unknown');
 assert.equal(unknown.complete, false);
 
 const scored = engine.scoreMod({
+  pips: 5,
   level: 15,
   primary_stat: 'Offense %',
   primary_value: 5.88,
@@ -261,7 +262,67 @@ const scored = engine.scoreMod({
   secondary_2_stat: 'Potency %',
   secondary_2_value: 2.5
 });
-assert.equal(scored, 37.35);
+assert.ok(Math.abs(scored - (20 / 30 * 31 * 1.8 + 2.5 / 11.25 * 0.24 + 0.75)) < 1e-12,
+  'Each secondary is normalized against its dot-specific maximum before weighting');
+
+const secondaryMaximumCases = [
+  ['Critical Chance %', [5, 6.25, 7.5, 10, 11.25, 11.75]],
+  ['Defense', [20, 25, 30, 40, 49, 80]],
+  ['Defense %', [5, 5.5, 6.5, 7.5, 8.5, 20]],
+  ['Health', [995, 1180, 1500, 1735, 2143, 2700]],
+  ['Health %', [2.5, 3.13, 3.75, 5, 5.625, 10]],
+  ['Offense', [80, 100, 140, 180, 228, 251]],
+  ['Offense %', [1.25, 1.565, 1.875, 2.5, 2.815, 8.5]],
+  ['Potency %', [5, 6.25, 7.5, 10, 11.25, 15]],
+  ['Protection', [995, 1545, 2415, 3195, 4153, 4600]],
+  ['Protection %', [5, 6.25, 7.5, 10, 11.25, 15]],
+  ['Speed', [10, 15, 20, 25, 30, 31]],
+  ['Tenacity %', [5, 6.25, 7.5, 10, 11.25, 15]]
+];
+for (const [name, maxima] of secondaryMaximumCases) {
+  const unit = name.endsWith('%') ? 'percentagePoints' : 'flat';
+  const key = engine.normalizeStat(name, 1).key;
+  const stat = { key, unit };
+  for (let pips = 1; pips <= 6; pips++) {
+    assert.equal(engine.maxSecondaryValue(stat, pips), maxima[pips - 1],
+      name + ' ' + pips + '-dot maximum');
+  }
+}
+assert.equal(engine.maxSecondaryValue(engine.normalizeStat('Offense %', 1), null), 8.5,
+  'Unknown dot count uses the conservative 6-dot ceiling');
+
+const maxOffenseSixDot = engine.scoreMod({
+  pips: 6, level: 15, secondary_1_stat: 'Offense %', secondary_1_value: 8.5
+});
+const maxHealthSixDot = engine.scoreMod({
+  pips: 6, level: 15, secondary_1_stat: 'Health', secondary_1_value: 2700
+});
+assert.ok(maxOffenseSixDot > maxHealthSixDot,
+  'A maxed Offense % secondary ranks above maxed flat Health under the configured priorities');
+
+const maxOffenseFiveDot = engine.scoreMod({
+  pips: 5, level: 15, secondary_1_stat: 'Offense %', secondary_1_value: 2.815
+});
+assert.ok(Math.abs(maxOffenseFiveDot - maxOffenseSixDot) < 1e-12,
+  'Equivalent 5-dot and 6-dot secondary quality must receive the same normalized score');
+
+const speedFiveDot = engine.scoreMod({
+  pips: 5, level: 15, secondary_1_stat: 'Speed', secondary_1_value: 15
+});
+const speedSixDot = engine.scoreMod({
+  pips: 6, level: 15, secondary_1_stat: 'Speed', secondary_1_value: 15.5
+});
+assert.ok(Math.abs(speedFiveDot - speedSixDot) < 1e-12,
+  'Equivalent 5-dot and 6-dot Speed secondary quality must receive the same normalized score');
+
+const maxSpeedPrimaryScore = engine.scoreMod({
+  pips: 6, level: 15, primary_stat: 'Speed', primary_value: 30
+});
+const maxSpeedSecondaryScore = engine.scoreMod({
+  pips: 6, level: 15, secondary_1_stat: 'Speed', secondary_1_value: 31
+});
+assert.ok(Math.abs((maxSpeedSecondaryScore - maxSpeedPrimaryScore) - 1.8) < 1e-12,
+  'A max Speed secondary keeps its historical score scale relative to a Speed primary');
 
 
 const projectionBase = {
@@ -282,6 +343,37 @@ assert.equal(critRatingProjection.stats['Physical Critical Chance'], 41);
 assert.equal(critRatingProjection.stats['Special Critical Chance'], 32);
 assert.equal(critRatingProjection.stats['Physical Critical Chance'] - projectionBase['Physical Critical Chance'], 1);
 assert.equal(critRatingProjection.stats['Special Critical Chance'] - projectionBase['Special Critical Chance'], 2);
+
+// Below G13, Defense % applies to the verified base Defense component only,
+// not to the total Armor/Resistance-derived rating that already includes gear.
+const defenseLevelEffect = 85 * 7.5;
+const defenseTotalRating = 100;
+const defenseBasePercent = defenseTotalRating / (defenseLevelEffect + defenseTotalRating) * 100;
+const splitDefenseProfile = {
+  gear_level: 12,
+  base_stats: {
+    Defense: defenseTotalRating,
+    Armor: defenseBasePercent,
+    Resistance: defenseBasePercent
+  },
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Defense: 80 },
+    gear: { Defense: 20 }
+  }
+};
+const splitDefenseProjection = engine.calculateFinalStats(splitDefenseProfile, [{
+  level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10
+}], 85);
+const expectedBaseOnlyDefensePercent = 108 / (defenseLevelEffect + 108) * 100;
+const incorrectlyGearInclusiveDefensePercent = 110 / (defenseLevelEffect + 110) * 100;
+assert.equal(splitDefenseProjection.complete, true);
+assert.ok(Math.abs(splitDefenseProjection.stats.Armor - expectedBaseOnlyDefensePercent) < 1e-10,
+  'Armor Defense % bonus must use 10% of base Defense 80, not total Defense 100');
+assert.ok(Math.abs(splitDefenseProjection.stats.Resistance - expectedBaseOnlyDefensePercent) < 1e-10,
+  'Resistance Defense % bonus must use the same base Defense component');
+assert.ok(Math.abs(splitDefenseProjection.stats.Armor - incorrectlyGearInclusiveDefensePercent) > 0.02,
+  'The old gear-inclusive calculation must be observably different');
 
 const critAvoidanceProjection = engine.calculateFinalStats({
   'Physical Critical Avoidance': 10, 'Special Critical Avoidance': 5

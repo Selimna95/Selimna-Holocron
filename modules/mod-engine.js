@@ -399,8 +399,12 @@
           const ratio = displayPercent / 100;
           if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
           const baseRating = ratio * levelEffect / (1 - ratio);
+          // Use the base Defense component for the percentage bonus. The
+          // armor/resistance-derived baseRating already includes gear Defense;
+          // multiplying it would incorrectly apply Defense % to gear secondaries.
+          const defensePercentBase = defenseComponents?.base ?? baseRating;
           const defensePercentBonus = defenseRatio && canProjectDefensePercent
-            ? floorGameStatBonus(baseRating * defenseRatio) : 0;
+            ? floorGameStatBonus(defensePercentBase * defenseRatio) : 0;
           const finalRating = baseRating + defenseFlat + defensePercentBonus;
           const finalPercent = finalRating / (levelEffect + finalRating) * 100;
           setResult(key, finalPercent);
@@ -598,6 +602,40 @@
     return (stat.key + suffix).toUpperCase();
   }
 
+  // Maximum possible values for one secondary stat on a fully upgraded mod.
+  // 1–4 dot values are five maximum rolls multiplied by the per-roll caps;
+  // 5 and 6 dot caps are the published max-stat values from SWGOH.wiki's Mods table.
+  // Unknown dot count uses the 6-dot ceiling so incomplete metadata never inflates a score.
+  const MAX_SECONDARY_VALUES = Object.freeze({
+    'criticalChance:percentagePoints': [5, 6.25, 7.5, 10, 11.25, 11.75],
+    'defense:flat': [20, 25, 30, 40, 49, 80],
+    'defense:percentagePoints': [5, 5.5, 6.5, 7.5, 8.5, 20],
+    'health:flat': [995, 1180, 1500, 1735, 2143, 2700],
+    'health:percentagePoints': [2.5, 3.13, 3.75, 5, 5.625, 10],
+    'offense:flat': [80, 100, 140, 180, 228, 251],
+    'offense:percentagePoints': [1.25, 1.565, 1.875, 2.5, 2.815, 8.5],
+    'potency:percentagePoints': [5, 6.25, 7.5, 10, 11.25, 15],
+    'protection:flat': [995, 1545, 2415, 3195, 4153, 4600],
+    'protection:percentagePoints': [5, 6.25, 7.5, 10, 11.25, 15],
+    'speed:flat': [10, 15, 20, 25, 30, 31],
+    'tenacity:percentagePoints': [5, 6.25, 7.5, 10, 11.25, 15]
+  });
+
+  function maxSecondaryValue(stat, pips) {
+    const values = MAX_SECONDARY_VALUES[stat?.key + ':' + stat?.unit];
+    if (!values) return null;
+    const dots = numeric(pips);
+    const index = Number.isInteger(dots) && dots >= 1 && dots <= 6 ? dots - 1 : 5;
+    return values[index];
+  }
+
+  function normalizedSecondaryValue(stat, pips) {
+    if (stat?.value == null || !Number.isFinite(stat.value)) return null;
+    const maximum = maxSecondaryValue(stat, pips);
+    if (!(maximum > 0)) return null;
+    return Math.max(0, Math.min(1, stat.value / maximum));
+  }
+
   function scoreMod(mod) {
     const normalized = isNormalizedMod(mod) ? mod : normalizeMod(mod);
     if (!normalized) return 0;
@@ -606,16 +644,22 @@
       'health:flat': 0.12, 'health:percentagePoints': 0.22,
       'protection:flat': 0.10, 'protection:percentagePoints': 0.18,
       'potency:percentagePoints': 0.24, 'tenacity:percentagePoints': 0.20,
-      'criticalChance:percentagePoints': 0.20, 'criticalDamage:percentagePoints': 0.22,
-      'criticalAvoidance:percentagePoints': 0.18
+      'criticalChance:percentagePoints': 0.20
     };
-    const primarySpeed = normalized.primary?.key === 'speed' ? (normalized.primary.value || 0) : 0;
-    const secondarySpeed = (normalized.secondaries || [])
-      .filter(stat => stat.key === 'speed').reduce((sum, stat) => sum + (stat.value || 0), 0);
-    let score = (primarySpeed + secondarySpeed) * 1.8;
+    const primarySpeed = normalized.primary?.key === 'speed' && normalized.primary?.unit === 'flat'
+      ? (normalized.primary.value || 0) : 0;
+    let score = primarySpeed * 1.8;
     for (const stat of normalized.secondaries || []) {
+      if (stat.value == null || !Number.isFinite(stat.value)) continue;
+      const normalizedValue = stat.normalizedValue ?? normalizedSecondaryValue(stat, normalized.pips);
+      if (!(normalizedValue >= 0)) continue;
+      if (stat.key === 'speed' && stat.unit === 'flat') {
+        const referenceMaximum = stat.scoreReferenceValue ?? maxSecondaryValue(stat, 6) ?? 1;
+        score += normalizedValue * referenceMaximum * 1.8;
+        continue;
+      }
       const weight = weights[stat.key + ':' + stat.unit];
-      if (weight != null && stat.value != null) score += stat.value * weight;
+      if (weight != null) score += normalizedValue * weight;
     }
     const level = numeric(normalized.level) ?? 0;
     return score + Math.max(0, level - 12) * 0.25;
@@ -650,6 +694,14 @@
       .map(numeric).find(value => Number.isInteger(value) && value >= 1 && value <= 6) ?? null;
     const slot = slotFromDefinitionId(mod.definitionId) ||
       canonicalSlot(mod.slot ?? mod.slot_id ?? mod.slotId ?? mod.mod_slot ?? mod.modSlot);
+    const scoredSecondaries = secondaries.map(stat => Object.freeze({
+      ...stat,
+      normalizedValue: normalizedSecondaryValue(stat, pips),
+      // Keep the canonical 6-dot ceiling available to downstream scorers.
+      // This preserves the Speed priority while comparing equal quality across rarities.
+      scoreReferenceValue: stat.key === 'speed' && stat.unit === 'flat'
+        ? maxSecondaryValue(stat, 6) : null
+    }));
     const normalized = Object.freeze({
       id: String(mod.game_id ?? mod.id ?? mod.modId ?? mod.uid ?? ''),
       level,
@@ -658,7 +710,7 @@
       slot,
       pips,
       primary,
-      secondaries: Object.freeze(secondaries),
+      secondaries: Object.freeze(scoredSecondaries),
       expectedSecondaries,
       complete: !!set && validLevel && !!primary.key && primary.complete && secondaries.length >= expectedSecondaries && secondaries.every(stat => stat.complete)
     });
@@ -668,7 +720,7 @@
   }
 
   const api = Object.freeze({
-    version: '0.3.30',
+    version: '0.3.33',
     statDefinitions: STAT_DEFINITIONS,
     setDefinitions: SET_DEFINITIONS,
     canonicalSet,
@@ -678,6 +730,7 @@
     calculateSetBonuses,
     calculateFinalStats,
     scoreMod,
+    maxSecondaryValue,
     speedMetrics,
     calculateSpeed,
     canonicalStatKey,

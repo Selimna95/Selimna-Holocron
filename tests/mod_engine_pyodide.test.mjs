@@ -125,6 +125,39 @@ const defense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.fi
 assert.ok(Math.abs(defense.Armor - 51.5209) < 0.001);
 assert.ok(Math.abs(defense.Resistance - 42.1769) < 0.001);
 
+const defenseLevelEffect = 85 * 7.5;
+const defenseTotalRating = 100;
+const defenseBasePercent = defenseTotalRating / (defenseLevelEffect + defenseTotalRating) * 100;
+const splitDefenseProfile = {
+  gear_level: 12,
+  level: 85,
+  base_stats: { Defense: defenseTotalRating, Armor: defenseBasePercent, Resistance: defenseBasePercent },
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Defense: 80 },
+    gear: { Defense: 20 }
+  }
+};
+const splitDefenseMods = [{
+  level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10
+}];
+const sharedDefense = engine.calculateFinalStats(splitDefenseProfile, splitDefenseMods, 85);
+assert.equal(sharedDefense.complete, true);
+pyodide.globals.set('split_defense_profile_json', JSON.stringify(splitDefenseProfile));
+pyodide.globals.set('split_defense_mods_json', JSON.stringify(splitDefenseMods));
+const pythonSplitDefense = JSON.parse(pyodide.runPython(`
+import json
+json.dumps(optimizer.final_stats(
+    json.loads(split_defense_mods_json),
+    json.loads(split_defense_profile_json)["base_stats"],
+    json.loads(split_defense_profile_json)
+))
+`));
+const expectedBaseOnlyDefense = 108 / (defenseLevelEffect + 108) * 100;
+assert.ok(Math.abs(pythonSplitDefense.Armor - expectedBaseOnlyDefense) < 1e-10,
+  'Python optimizer must receive the shared base-only Defense % projection');
+assert.ok(Math.abs(pythonSplitDefense.Resistance - expectedBaseOnlyDefense) < 1e-10);
+
 pyodide.runPython("try:\n optimizer.final_stats([{'level': 15, 'set_name': 'Health', 'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json))\nexcept RuntimeError as error:\n missing_level_error = str(error)\nelse:\n missing_level_error = ''\n");
 const missingLevel = pyodide.runPython('missing_level_error');
 assert.match(missingLevel, /level/);
