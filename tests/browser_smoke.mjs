@@ -357,9 +357,9 @@ try {
       const firstIndex = getCharacterModsIndex();
       const secondIndex = getCharacterModsIndex();
       return {
-        canonicalBaseIdWinsAliasCollision: resolver.resolve("OWNER_A") === "OWNER_A",
+        canonicalBaseIdWinsAliasCollision: resolver.resolve("OWNER_A") === "OWNERA",
         duplicateDisplayNameIsAmbiguous: resolver.resolve("Duplicate") === "",
-        exactCharacterIdResolves: resolveModOwnerKey({ characterId: "UNIT-A" }, resolver) === "OWNER_A",
+        exactCharacterIdResolves: resolveModOwnerKey({ characterId: "UNIT-A" }, resolver) === "OWNERA",
         partialNameDoesNotResolve: resolveModOwnerKey({ characterName: "Alias A extended" }, resolver) === "",
         canonicalOwnerMods: getCharacterMods(roster[0]).map(mod => mod.game_id).sort(),
         collidingAliasOwnerMods: getCharacterMods(roster[1]).map(mod => mod.game_id),
