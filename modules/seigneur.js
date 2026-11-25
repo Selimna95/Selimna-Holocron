@@ -28,7 +28,8 @@ async function loadOptimizerReferenceData(){
       const coverage=await coverageResponse.json();
       const ranks=(coverage.supportedG13RelicRanks||[]).map(rank=>`R${rank}`).join(', ');
       log(`Couverture actuelle : ${coverage.profileCount||0} profils, ${coverage.g13SnapshotCount||0} G13, ${coverage.missingG13VariantCount||0}/${coverage.targetG13VariantCount||0} variantes G13 manquantes. Références Crinolo : ${ranks||'indisponibles'}.`);
-      if((coverage.unsupportedG13RelicRanks||[]).length)log('Certains paliers de relique ne sont pas présents dans les données Crinolo ; aucun profil proche ne sera utilisé.');
+      const unsupported=(coverage.unsupportedG13RelicRanks||[]).map(rank=>`R${rank}`).join(', ');
+      if(unsupported)log(`Paliers non couverts par les données Crinolo : ${unsupported}. Aucun profil proche ne sera utilisé.`);
     }
   }catch(e){}
   // Kyber est une référence facultative : SWGOH.GG sera interrogé au besoin,
