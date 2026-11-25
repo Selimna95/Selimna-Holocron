@@ -22,6 +22,16 @@ async function loadOptimizerReferenceData(){
     optimizerProfiles={};
     log('Profils Optimizer UI non chargés : le Worker chargera les variantes exactes générées par Crinolo.');
   }
+  try{
+    const coverageResponse=await fetch(new URL('./statCalcData/optimizer_profile_coverage.json',document.baseURI).href+'?v=4.1.90-exact-progression',{cache:'force-cache'});
+    if(coverageResponse.ok){
+      const coverage=await coverageResponse.json();
+      const ranks=(coverage.supportedRelicRanks||[]).map(rank=>`R${rank}`).join(', ');
+      const missing=(coverage.unsupportedRelicRanks||[]).map(rank=>`R${rank}`).join(', ');
+      log(`Couverture exacte : ${coverage.g13Characters||0}/${coverage.characters||0} personnages G13, ${coverage.variants||0} variantes. Paliers Crinolo disponibles : ${ranks||'aucun'}.`);
+      if(missing)log(`Paliers non couverts par les données Crinolo publiées : ${missing}. Aucun profil approximatif ne sera utilisé.`);
+    }
+  }catch(e){}
   // Kyber est une référence facultative : SWGOH.GG sera interrogé au besoin,
   // puis le profil local du Worker sert de secours.
   const kyberCandidates=[
