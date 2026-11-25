@@ -9,6 +9,8 @@ function record(value, label) {
 }
 
 function availableRelicRanks(unit) {
+  const gear = unit?.gearLvl?.[13]?.gear;
+  if (!Array.isArray(gear) || gear.length !== 6 || gear.some(id => !id)) return [];
   const tiers = Object.keys(unit?.relic || {}).map(Number)
     .filter(tier => Number.isInteger(tier) && tier >= 3 && tier <= 12)
     .map(tier => tier - 2);
@@ -60,13 +62,14 @@ export function buildOptimizerProfileCoverage(profiles, gameData) {
       covered_g13_relic_ranks: covered,
       missing_g13_relic_ranks: ranks.filter(rank => !covered.includes(rank)),
       crinolo_unit_available: !!unit,
+      crinolo_g13_available: ranks.length > 0,
     });
   }
 
   const commonRanks = rankSets.length
     ? [...rankSets[0]].filter(rank => rankSets.every(set => set.has(rank))).sort((a, b) => a - b)
     : [];
-  const unavailableCharacters = characters.filter(item => !item.crinolo_unit_available);
+  const unavailableCharacters = characters.filter(item => !item.crinolo_g13_available);
   const missingG13VariantCount = targetG13VariantCount - coveredG13VariantCount;
 
   return {
