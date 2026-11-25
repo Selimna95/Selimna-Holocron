@@ -23,7 +23,7 @@ function getPyodide() {
   if (!pyodideReadyPromise) pyodideReadyPromise = (async () => {
   const { loadPyodide } = await import("https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs");
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
-  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.19-pr59-donor-heuristic", import.meta.url), { cache: "force-cache" });
+  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.20-profile-coverage", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
   const optimizerSource = await optimizerResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer.py", optimizerSource);
@@ -172,7 +172,7 @@ elif isinstance(base_stats, dict) and base_stats:
     base_profile = {'base_stats': base_stats, **(character_metadata if isinstance(character_metadata, dict) else {})}
 else:
     # Static snapshots remain a strict fallback, never a substitute for another tier.
-    base_profile = optimizer.resolve_character_profile(_optimizer_profiles, character_base_id, character_name)
+    base_profile = optimizer.resolve_character_profile(_optimizer_profiles, character_base_id, character_name, character_metadata)
     if isinstance(base_profile, dict) and base_profile:
         optimizer.validate_profile_compatibility(base_profile, character_metadata)
         base_profile = dict(base_profile)
