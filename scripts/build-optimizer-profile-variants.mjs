@@ -119,11 +119,16 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
         is_obtained: true,
         base_id,
       }));
+      const level = Number(original.level);
+      const rarity = Number(original.rarity);
+      if (!Number.isInteger(level) || !Number.isInteger(rarity)) {
+        throw new Error(`Niveau ou rareté de référence absent pour ${baseId}.`);
+      }
       const source = {
         data: {
           base_id: baseId,
-          level: 85,
-          rarity: 7,
+          level,
+          rarity,
           gear_level: 13,
           relic_tier: relicTier,
           gear,
