@@ -41,6 +41,8 @@ assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bo
 assert.ok(!js.includes('visionnaireCandidatePriority'), 'The old donor/speed candidate comparator must be removed');
 assert.ok(!js.includes('diverse.length>=24')&&!js.includes('truncatedBySlot')&&!js.includes('candidatePoolTruncated'), 'The old diversity cap and truncation path must be removed');
 assert.ok(js.includes('setCandidateCanImprove')&&js.includes('setFilteredBySlot'), 'Exact Kyber set compositions must prefilter candidates before search');
+assert.ok(js.includes('const setEligible=ordered.filter(setCandidateCanImprove);'), 'Set filtering must run in every Visionnaire mode, including primary-only issue selection');
+assert.ok(js.includes('const eligible=!reference.length?setEligible:'), 'Primary filtering must always follow set filtering whenever Kyber primary data exists');
 assert.ok(js.includes('Recherche progressive : filtres Kyber sets puis primaires, puis échanges à un slot, paires et groupes plus larges ; aucun plafond par slot'), 'Search must disclose the new Kyber-first candidate pipeline');
 assert.ok(js.includes('attemptLimit=Math.min(Math.max(searchSpace*2,30000),1000000)'), 'Progressive search must have a bounded global sampling budget');
 assert.ok(js.includes('speedPruned++'), 'Search must count combinations rejected by the speed prefilter');
@@ -56,8 +58,9 @@ assert.ok(setFilterPosition>=0&&primaryFilterPosition>setFilterPosition&&speedPr
   'Kyber sets must be filtered first, primaries second, and speed projected only afterward');
 const evaluateStart=js.indexOf('const evaluateCombination=async combo=>');
 const combinationSetPosition=js.indexOf('const afterSetDistance=exchangeSetDistance(finalTarget,profile)',evaluateStart);
-const combinationPrimaryPosition=js.indexOf("if(state.mode==='both'&&!targetPrimarySafe(chosen))",evaluateStart);
+const combinationPrimaryPosition=js.indexOf('if(!targetPrimarySafe(chosen))',evaluateStart);
 const combinationSpeedPosition=js.indexOf('const beforeProjection=forgeProjectedModSpeed',evaluateStart);
+assert.ok(js.includes('if(beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>=beforeSetDistance)'), 'Set composition must be revalidated in every mode before primary and speed checks');
 assert.ok(combinationSetPosition>evaluateStart&&combinationPrimaryPosition>combinationSetPosition&&combinationSpeedPosition>combinationPrimaryPosition,
   'Each full combination must pass its Kyber set and primary checks before speed projection');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
