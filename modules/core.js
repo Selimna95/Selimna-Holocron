@@ -248,11 +248,10 @@ function optimizerValidatedProfileForCharacter(character) {
   }
   return optimizerProfileMatchesRoster(profile,metadata) ? profile : null;
 }
-function baseStatsForCharacter(character) {
-  const validated=optimizerValidatedProfileForCharacter(character);
-  // Only a progression-exact Crinolo profile or exact v2 variant may enter the optimizer.
-  // Raw/current roster stats are not a substitute for a missing base-stat reference.
-  return validated?.base_stats || {};
+function baseStatsForCharacter() {
+  // The Worker resolves the complete exact profile itself, including stat_components.
+  // Passing only base_stats here would discard the Crinolo gear component payload.
+  return {};
 }
 
 function profileForCharacter(character) {
