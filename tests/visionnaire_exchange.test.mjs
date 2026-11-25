@@ -60,7 +60,7 @@ const evaluateStart=js.indexOf('const evaluateCombination=async combo=>');
 const combinationSetPosition=js.indexOf('const afterSetDistance=exchangeSetDistance(finalTarget,profile)',evaluateStart);
 const combinationPrimaryPosition=js.indexOf('if(!targetPrimarySafe(chosen))',evaluateStart);
 const combinationSpeedPosition=js.indexOf('const beforeProjection=forgeProjectedModSpeed',evaluateStart);
-assert.ok(js.includes('if(beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>=beforeSetDistance)'), 'Set composition must be revalidated in every mode before primary and speed checks');
+assert.ok(js.includes("if(beforeSetDistance!==null&&afterSetDistance!==null&&(state.mode==='primaries'?afterSetDistance>beforeSetDistance:afterSetDistance>=beforeSetDistance))"), 'Set composition must be revalidated in every mode before primary and speed checks, without forcing an improvement in primary-only mode');
 assert.ok(combinationSetPosition>evaluateStart&&combinationPrimaryPosition>combinationSetPosition&&combinationSpeedPosition>combinationPrimaryPosition,
   'Each full combination must pass its Kyber set and primary checks before speed projection');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
