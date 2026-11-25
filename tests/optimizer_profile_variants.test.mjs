@@ -43,6 +43,8 @@ const original = {
   gear_level: 13,
   relic_tier: 3,
   base_stats: exact.profile.base_stats,
+  current_stats: { Health: 1234 },
+  mod_stat_diffs: { Health: 234 },
 };
 const built = buildOptimizerProfileVariants({ TEST_UNIT: original }, gameData, calculator);
 assert.equal(built.dataset.schemaVersion, 2);
@@ -55,6 +57,8 @@ assert.deepEqual(built.coverage.supportedRelicRanks, [0,1,2,3,4,5,6,7,8,9,10]);
 assert.deepEqual(built.coverage.unsupportedRelicRanks, [11,12]);
 assert.equal(built.coverage.g13Characters, 1);
 assert.equal(built.coverage.originalSnapshotsPreserved, 1);
+assert.deepEqual(built.dataset.profiles.TEST_UNIT.current_stats, original.current_stats);
+assert.deepEqual(built.dataset.profiles.TEST_UNIT.mod_stat_diffs, original.mod_stat_diffs);
 
 assert.throws(
   () => buildOptimizerProfileVariants({
