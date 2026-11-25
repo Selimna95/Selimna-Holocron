@@ -48,6 +48,7 @@ const context=vm.createContext({
   rosterCharacters:roster,
   getCharacterMods:c=>equipped[c.baseId]||[],
   optimizerProfileForCharacter:c=>({base_stats:c.base_stats||{}}),
+  optimizerValidatedProfileForCharacter:c=>({base_stats:c.base_stats||{},gear_level:13}),
   v176ModStatus:list=>({status:list.some(m=>!sharedEngine.normalizeMod(m)?.complete)?'DONNÉES INCOMPLÈTES':list.length===6?'FAIBLES':list.length?'INCOMPLETS':'SANS MODS'}),
   seigneurDonorPriority:c=>({known:true,uses:c.baseId==='TARGET'?100:10}),
   seigneurLatestGacUsageSeason:()=>({evidenceType:'defense-composition',sourceStatus:'partial'}),
