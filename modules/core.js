@@ -228,16 +228,20 @@ function optimizerValidatedProfileForCharacter(character) {
       dynamic?.stat_components?.source==='Crinolo.stats.base+stats.gear' &&
       optimizerProfileMatchesRoster(dynamic,metadata)) return dynamic;
   const profile=optimizerProfileForCharacter(character);
-  return optimizerProfileMatchesRoster(profile,metadata) ? profile : null;
+  if (profile && !optimizerProfileMatchesRoster(profile,metadata)) {
+    const key=`${metadata.gear_level??"?"}:${metadata.relic_tier??"?"}`;
+    character.optimizer_profile_error=`profile_progression_uncovered:${key}`;
+    return null;
+  }
+  if (optimizerProfileMatchesRoster(profile,metadata)) {
+    delete character.optimizer_profile_error;
+    return profile;
+  }
+  return null;
 }
-function baseStatsForCharacter(character) {
-  const dynamic=character?.optimizer_base_profile;
-  if (dynamic?.profile_source==='Crinolo' &&
-      optimizerProfileMatchesRoster(dynamic,optimizerRosterMetadata(character))) return dynamic.base_stats;
-  const direct=character?.base_stats || character?.baseStats;
-  if (direct && typeof direct === 'object' && Object.keys(direct).length) return direct;
-  // Static snapshots are resolved and checked in the Worker against the live roster metadata.
-  // Current/equipped stats are never substituted for base stats.
+function baseStatsForCharacter() {
+  // Let the Worker resolve the complete exact profile, including Crinolo stat_components.
+  // Raw/current roster stats must never bypass the exact progression check.
   return {};
 }
 
