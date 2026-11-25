@@ -23,7 +23,7 @@ function getPyodide() {
   if (!pyodideReadyPromise) pyodideReadyPromise = (async () => {
   const { loadPyodide } = await import("https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs");
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
-  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.19-pr59-donor-heuristic", import.meta.url), { cache: "force-cache" });
+  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.20-exact-profile-variants", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
   const optimizerSource = await optimizerResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer.py", optimizerSource);
