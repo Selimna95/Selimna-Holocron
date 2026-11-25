@@ -27,7 +27,6 @@ export function buildOptimizerProfileCoverage(profiles, gameData) {
   let exactSnapshotCount = 0;
   let targetG13VariantCount = 0;
   let coveredG13VariantCount = 0;
-  const supportedRanks = null;
   const rankSets = [];
 
   for (const [profileId, profile] of Object.entries(profiles)) {
