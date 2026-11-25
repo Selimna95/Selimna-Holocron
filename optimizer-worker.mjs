@@ -138,7 +138,9 @@ dynamic_profile = json.loads(dynamic_profile_json)
 dynamic_profile_error = dynamic_profile_error or ""
 if isinstance(dynamic_profile, dict) and dynamic_profile.get('base_stats'):
     # Exact live progression calculated from the roster's equipped gear and relic.
+    # Keep the Python compatibility gate: it now validates the freshly calculated profile.
     base_profile = dynamic_profile
+    optimizer.validate_profile_compatibility(base_profile, character_metadata)
     base_stats = base_profile['base_stats']
 elif isinstance(base_stats, dict) and base_stats:
     # Explicit base stats supplied with the live character take precedence.
