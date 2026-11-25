@@ -388,24 +388,37 @@
       if (!Number.isFinite(characterLevel) || characterLevel <= 0) missing.push('level');
       else {
         const levelEffect = characterLevel * 7.5;
-        // Defense % applies to the base Defense rating before equipped-gear
-        // secondaries. G13 has no equipped gear; lower tiers need Crinolo's split.
-        const defenseComponents = defenseRatio ? percentBase('Defense', get('defense')) : null;
-        const canProjectDefensePercent = !defenseRatio || numeric(gearLevel) === 13 || !!defenseComponents;
+        // Crinolo exposes the base/gear split independently for Armor and
+        // Resistance. Prefer those exact components; retain the older generic
+        // Defense component for profiles created before this split was exposed.
+        const armorComponents = defenseRatio ? percentBase('Armor', get('armor')) : null;
+        const resistanceComponents = defenseRatio ? percentBase('Resistance', get('resistance')) : null;
+        const legacyDefenseComponents = defenseRatio && !armorComponents && !resistanceComponents
+          ? percentBase('Defense', get('defense')) : null;
+        const hasPerStatDefenseSplit = !!armorComponents && !!resistanceComponents;
+        const canProjectDefensePercent = !defenseRatio || numeric(gearLevel) === 13 ||
+          hasPerStatDefenseSplit || !!legacyDefenseComponents;
         if (defenseRatio && !canProjectDefensePercent) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
           const displayPercent = get(key) > 1 ? get(key) : get(key) * 100;
           const ratio = displayPercent / 100;
           if (ratio < 0 || ratio >= 1) { missing.push(key + ':invalid-base'); continue; }
-          const baseRating = ratio * levelEffect / (1 - ratio);
-          // Use the base Defense component for the percentage bonus. The
-          // armor/resistance-derived baseRating already includes gear Defense;
-          // multiplying it would incorrectly apply Defense % to gear secondaries.
-          const defensePercentBase = defenseComponents?.base ?? baseRating;
+          const currentRating = ratio * levelEffect / (1 - ratio);
+          const components = key === 'armor' ? armorComponents : resistanceComponents;
+          const baseComponent = components?.base;
+          const baseRatio = Number.isFinite(baseComponent)
+            ? (baseComponent > 1 ? baseComponent / 100 : baseComponent)
+            : null;
+          const perStatBaseRating = baseRatio != null && baseRatio >= 0 && baseRatio < 1
+            ? baseRatio * levelEffect / (1 - baseRatio) : null;
+          // Legacy profiles expose a generic Defense rating; dynamic Crinolo
+          // profiles expose the separate base Armor/Resistance percentages.
+          const defensePercentBase = perStatBaseRating ??
+            legacyDefenseComponents?.base ?? currentRating;
           const defensePercentBonus = defenseRatio && canProjectDefensePercent
             ? floorGameStatBonus(defensePercentBase * defenseRatio) : 0;
-          const finalRating = baseRating + defenseFlat + defensePercentBonus;
+          const finalRating = currentRating + defenseFlat + defensePercentBonus;
           const finalPercent = finalRating / (levelEffect + finalRating) * 100;
           setResult(key, finalPercent);
         }
