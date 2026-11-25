@@ -131,24 +131,25 @@ export function calculateCrinoloProfile(source, calculator, gameData) {
   try {
     calculator.setGameData(gameData);
     const calculated = calculator.calcCharStats(unit, { withoutModCalc: true, gameStyle: true });
-    if (!isRecord(calculated?.base)) {
-      return { profile: null, error: "Crinolo n'a pas retourné de statistiques de base." };
+    if (!isRecord(calculated?.final)) {
+      return { profile: null, error: "Crinolo n'a pas retourné de statistiques finales." };
     }
     const base = {};
     const gear = {};
     const baseStats = {};
     for (const [statId, name] of Object.entries(OPTIMIZER_STATS)) {
-      const baseValue = numeric(calculated.base[statId]);
+      const totalValue = numeric(calculated.final[statId] ?? 0);
       const gearValue = numeric(calculated.gear?.[statId] ?? 0);
-      if (baseValue === null || gearValue === null) {
+      if (totalValue === null || gearValue === null) {
         return { profile: null, error: `Statistique Crinolo incomplète : ${name}.` };
       }
-      // Crinolo gameStyle returns Armor/Resistance as decimal ratios; the
-      // shared Holocron engine and existing profiles use percentage points.
+      // Crinolo gameStyle returns final and gear (not base). With mod
+      // calculation disabled, base is exactly final minus gear. Armor and
+      // Resistance are decimal ratios here; Holocron uses percentage points.
       const displayScale = statId === "8" || statId === "9" ? 100 : 1;
-      base[name] = baseValue * displayScale;
+      base[name] = (totalValue - gearValue) * displayScale;
       gear[name] = gearValue * displayScale;
-      baseStats[name] = (baseValue + gearValue) * displayScale;
+      baseStats[name] = totalValue * displayScale;
     }
     return {
       profile: {
