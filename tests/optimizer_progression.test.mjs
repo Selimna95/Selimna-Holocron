@@ -31,7 +31,7 @@ const g13Gear = gear.map(item => ({ ...item, is_obtained: true }));
 const g13 = normalizeCrinoloRosterUnit({ data: { base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 13, relic_tier: 0, gear: g13Gear } });
 assert.equal(g13.error, null);
 assert.equal(g13.unit.relic.currentTier, 2);
-assert.equal(g13.unit.gear, 12);
+assert.equal(g13.unit.gear, 13);
 assert.equal(g13.unit.equipped.length, 6);
 
 const statIds = { 1: 1000, 5: 120, 6: 200, 7: 150, 8: 0.2, 9: 0.25, 17: 0.1, 18: 0.2, 28: 500 };
