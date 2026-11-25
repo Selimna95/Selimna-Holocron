@@ -429,11 +429,11 @@
       // 1. Filter sets against every exact Kyber composition, retaining any
       // candidate that can still participate in an improvement with the other
       // selected slots. Missing set references remain unknown, never invalid.
-      const setEligible=state.mode==='primaries'?ordered:ordered.filter(setCandidateCanImprove);
+      const setEligible=ordered.filter(setCandidateCanImprove);
       setFilteredBySlot[LABELS[slot]]=ordered.length-setEligible.length;
       // 2. Filter primaries for the target slot only when that criterion is active.
       const reference=primaryDistribution(profile,slot);
-      const eligible=state.mode==='sets'||!reference.length?setEligible:
+      const eligible=!reference.length?setEligible:
         setEligible.filter(mod=>reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false)));
       primaryFilteredBySlot[LABELS[slot]]=setEligible.length-eligible.length;
       eligibleBySlot[LABELS[slot]]=eligible.length;
@@ -498,11 +498,10 @@
         // Revalidate the complete Kyber set composition and selected primaries
         // before invoking any speed projection for this combination.
         const afterSetDistance=exchangeSetDistance(finalTarget,profile);
-        if(state.mode!=='primaries'&&beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>=beforeSetDistance){
+        if(beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>=beforeSetDistance){
           reject('reference_sets','La composition de sets ne se rapproche pas de Kyber');return;
         }
-        if(state.mode==='both'&&!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
-        if(state.mode==='primaries'&&!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
+        if(!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
         const beforeProjection=forgeProjectedModSpeed(character,profile,current);
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
         if(!beforeProjection.complete||!afterProjection.complete){reject('vitesse_cible_inconnue','Vitesse cible non calculable : données de base ou mods incomplets');return;}
