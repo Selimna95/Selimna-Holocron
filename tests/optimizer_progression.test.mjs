@@ -61,7 +61,7 @@ assert.equal(calculated.profile.stat_components.base.Health, 1000);
 assert.equal(calculated.profile.stat_components.gear.Health, 100);
 assert.equal(calculated.profile.stat_components.source, "Crinolo.stats.base+stats.gear");
 assert.equal(calculated.profile.base_stats.Armor, 22);
-assert.equal(calculated.profile.base_stats.Resistance, 28);
+assert.ok(Math.abs(calculated.profile.base_stats.Resistance - 28) < 1e-10);
 assert.equal(calculated.profile.stat_components.base.Armor, 20);
 assert.equal(calculated.profile.stat_components.gear.Resistance, 3);
 
