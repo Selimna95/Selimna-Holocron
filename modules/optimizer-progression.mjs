@@ -117,7 +117,7 @@ export function calculateCrinoloProfile(source, calculator, gameData) {
 
   try {
     calculator.setGameData(gameData);
-    const calculated = calculator.calcCharStats(unit, { withoutModCalc: true });
+    const calculated = calculator.calcCharStats(unit, { withoutModCalc: true, gameStyle: true });
     if (!isRecord(calculated?.base)) {
       return { profile: null, error: "Crinolo n'a pas retourné de statistiques de base." };
     }
@@ -130,9 +130,12 @@ export function calculateCrinoloProfile(source, calculator, gameData) {
       if (baseValue === null || gearValue === null) {
         return { profile: null, error: `Statistique Crinolo incomplète : ${name}.` };
       }
-      base[name] = baseValue;
-      gear[name] = gearValue;
-      baseStats[name] = baseValue + gearValue;
+      // Crinolo gameStyle returns Armor/Resistance as decimal ratios; the
+      // shared Holocron engine and existing profiles use percentage points.
+      const displayScale = statId === "8" || statId === "9" ? 100 : 1;
+      base[name] = baseValue * displayScale;
+      gear[name] = gearValue * displayScale;
+      baseStats[name] = (baseValue + gearValue) * displayScale;
     }
     return {
       profile: {
