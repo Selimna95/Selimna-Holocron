@@ -20,7 +20,7 @@ async function loadOptimizerReferenceData(){
     log(`Profils Optimizer UI chargés depuis la source JSON unique : ${Object.keys(optimizerProfiles.profiles||optimizerProfiles).length}.`);
   }else{
     optimizerProfiles={};
-    log('Profils Optimizer UI non chargés : le Worker tentera de lire python/optimizer_profiles.json.');
+    log('Profils Optimizer UI non chargés : le Worker chargera les variantes exactes générées par Crinolo.');
   }
   // Kyber est une référence facultative : SWGOH.GG sera interrogé au besoin,
   // puis le profil local du Worker sert de secours.
