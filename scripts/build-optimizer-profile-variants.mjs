@@ -66,6 +66,7 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
     originalSnapshotsPreserved: 0,
   };
   const supportedTiers = new Set([RELIC_TIER_MIN]);
+  let supportedRanks = Array.from({ length: RELIC_TIER_MAX - RELIC_TIER_MIN + 1 }, (_, index) => index);
 
   for (const [profileId, original] of Object.entries(sourceProfiles)) {
     assertRecord(original, `profil ${profileId}`);
@@ -92,7 +93,19 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
 
     const relicKeys = Object.keys(unit.relic || {}).map(Number)
       .filter(value => Number.isInteger(value) && value >= 3 && value <= RELIC_TIER_MAX);
+    const missingRanks = Array.from({ length: RELIC_TIER_MAX - RELIC_TIER_MIN }, (_, index) => index + 1)
+      .filter(rank => !relicKeys.includes(rank + 2));
+    supportedRanks = supportedRanks.filter(rank => rank === 0 || relicKeys.includes(rank + 2));
     for (const tier of relicKeys) supportedTiers.add(tier);
+    if (missingRanks.length) {
+      coverage.uncoveredCharacters.push({
+        base_id: baseId,
+        reason: "relic_progression_unavailable",
+        missing_relic_ranks: missingRanks,
+      });
+      outputProfiles[baseId] = { name: original.name || baseId, base_id: baseId, variants };
+      continue;
+    }
     const tiers = [...new Set([RELIC_TIER_MIN, ...relicKeys])].sort((a, b) => a - b);
 
     for (const relicTier of tiers) {
@@ -134,7 +147,10 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
   }
 
   coverage.supportedRelicTiers = [...supportedTiers].sort((a, b) => a - b);
-  coverage.supportedRelicRanks = coverage.supportedRelicTiers.map(tier => tier - 2);
+  coverage.supportedRelicRanks = supportedRanks;
+  if (coverage.supportedRelicRanks.length !== RELIC_TIER_MAX - RELIC_TIER_MIN + 1) {
+    throw new Error("La couverture des reliques Crinolo est incomplète pour tous les personnages.");
+  }
   const requiredCharacters = Object.keys(sourceProfiles).length;
   if (Object.keys(outputProfiles).length !== requiredCharacters) {
     throw new Error(
