@@ -1,0 +1,65 @@
+import assert from "node:assert/strict";
+import { calculateCrinoloProfile, normalizeCrinoloRosterUnit } from "../modules/optimizer-progression.js";
+
+const gear = [
+  { slot: 1, is_obtained: true, base_id: "GEAR_A" },
+  { slot: 2, is_obtained: false, base_id: "GEAR_B" },
+  { slot: 3, is_obtained: true, base_id: "GEAR_C" },
+  { slot: 4, is_obtained: false, base_id: "GEAR_D" },
+  { slot: 5, is_obtained: false, base_id: "GEAR_E" },
+  { slot: 6, is_obtained: false, base_id: "GEAR_F" },
+];
+const source = { data: {
+  base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 12, relic_tier: 2, gear,
+} };
+const normalized = normalizeCrinoloRosterUnit(source);
+assert.equal(normalized.error, null);
+assert.deepEqual(normalized.unit.equipped, [{ equipmentId: "GEAR_A" }, { equipmentId: "GEAR_C" }]);
+assert.deepEqual(normalized.metadata, { level: 85, rarity: 7, gear_level: 12, relic_tier: 2 });
+
+const missingGear = normalizeCrinoloRosterUnit({ data: { ...source.data, gear: gear.slice(0, 5) } });
+assert.match(missingGear.error, /six emplacements/);
+const ambiguousGear = normalizeCrinoloRosterUnit({ data: { ...source.data, gear: gear.map((item, i) => i ? item : { ...item, is_obtained: "true" }) } });
+assert.match(ambiguousGear.error, /sans ambiguïté/);
+const missingG13Relic = normalizeCrinoloRosterUnit({ data: { base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 13 } });
+assert.match(missingG13Relic.error, /relique absent/);
+const g13 = normalizeCrinoloRosterUnit({ data: { base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 13, relic_tier: 0 } });
+assert.equal(g13.error, null);
+assert.equal(g13.unit.relic.currentTier, 2);
+assert.deepEqual(g13.unit.equipped, []);
+
+const statIds = { 1: 1000, 5: 120, 6: 200, 7: 150, 8: 20, 9: 25, 17: 0.1, 18: 0.2, 28: 500 };
+const gearIds = { 1: 100, 5: 5, 6: 10, 7: 0, 8: 2, 9: 3, 17: 0, 18: 0, 28: 50 };
+let receivedUnit = null;
+const calculator = {
+  setGameData() {},
+  calcCharStats(unit, options) {
+    receivedUnit = unit;
+    assert.deepEqual(options, { withoutModCalc: true });
+    return { base: statIds, gear: gearIds };
+  },
+};
+const gameData = {
+  unitData: { TEST_UNIT: {
+    gearLvl: { 12: {}, 13: {} },
+    growthModifiers: { 7: {} },
+    relic: { 8: "RELIC_8", 10: "RELIC_10" },
+  } },
+  gearData: { GEAR_A: {}, GEAR_C: {} },
+  relicData: { RELIC_8: {}, RELIC_10: {} },
+};
+const calculated = calculateCrinoloProfile(source, calculator, gameData);
+assert.equal(calculated.error, null);
+assert.deepEqual(receivedUnit.equipped, [{ equipmentId: "GEAR_A" }, { equipmentId: "GEAR_C" }]);
+assert.equal(calculated.profile.base_stats.Health, 1100);
+assert.equal(calculated.profile.base_stats.Speed, 125);
+assert.equal(calculated.profile.stat_components.base.Health, 1000);
+assert.equal(calculated.profile.stat_components.gear.Health, 100);
+assert.equal(calculated.profile.stat_components.source, "Crinolo.stats.base+stats.gear");
+
+const unknownPiece = calculateCrinoloProfile({ data: { ...source.data, gear: gear.map((item, i) => i === 0 ? { ...item, base_id: "UNKNOWN" } : item) } }, calculator, gameData);
+assert.match(unknownPiece.error, /Pièce de gear inconnue/);
+const unsupportedRelic = calculateCrinoloProfile({ data: { base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 13, relic_tier: 11 } }, calculator, gameData);
+assert.match(unsupportedRelic.error, /palier de relique/);
+
+console.log("Optimizer Crinolo progression tests passed.");
