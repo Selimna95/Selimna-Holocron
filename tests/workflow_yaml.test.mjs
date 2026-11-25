@@ -38,6 +38,10 @@ assert.match(deployJob.if, /event\s*==\s*'push'/);
 assert.match(deployJob.if, /head_branch\s*==\s*'main'/);
 assert.match(deployJob.if, /head_repository\.full_name\s*==\s*github\.repository/);
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/jekyll-build-pages@v1'));
+const profileVariantStep = deployJob.steps.findIndex(step => step.run?.includes('build-optimizer-profile-variants.mjs'));
+const gameDataStep = deployJob.steps.findIndex(step => step.run?.includes('build-crinolo-gamedata.mjs'));
+const artifactStep = deployJob.steps.findIndex(step => step.uses === 'actions/upload-pages-artifact@v3');
+assert.ok(profileVariantStep > gameDataStep && profileVariantStep < artifactStep, 'Exact Optimizer profiles must be generated from Crinolo before Pages artifact upload');
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/upload-pages-artifact@v3'));
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/deploy-pages@v4'));
 
