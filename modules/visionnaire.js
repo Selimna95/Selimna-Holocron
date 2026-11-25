@@ -566,14 +566,13 @@
     let subsetOrdinal=0,remainingSubsets=slotSubsetGroups.reduce((sum,group)=>sum+group.subsets.length,0);
     let stopSearch=false;
     for(const group of slotSubsetGroups){
-      const stage={size:group.size,subsets:group.subsets.length,space:0,sampled:0,tested:0,accepted:0,exhaustive:true};
+      const stage={size:group.size,subsets:group.subsets.length,space:group.subsets.reduce((sum,subset)=>sum+subsetProduct(subset),0),sampled:0,tested:0,accepted:0,exhaustive:true};
       for(const subset of group.subsets){
         if(tested>=diagnostics.limit||sampled>=attemptLimit){stopSearch=true;stage.exhaustive=false;break;}
         activeSlots=subset;
         const optionLists=subset.map(slot=>optionsBySlot.get(slot)||[]);
         const lengths=optionLists.map(options=>options.length);
         const combinationSpace=lengths.reduce((product,count)=>product*count,1);
-        stage.space+=combinationSpace;
         const remainingAttempts=attemptLimit-sampled;
         const subsetBudget=Math.min(combinationSpace,Math.max(1,Math.floor(remainingAttempts/Math.max(1,remainingSubsets))));
         const exhaustive=combinationSpace<=subsetBudget;
@@ -626,6 +625,13 @@
       diagnostics.searchStages.push(stage);
       if(stopSearch)break;
     }
+    const completedSizes=new Set(diagnostics.searchStages.map(stage=>stage.size));
+    for(const group of slotSubsetGroups)if(!completedSizes.has(group.size))diagnostics.searchStages.push({
+      size:group.size,subsets:group.subsets.length,
+      space:group.subsets.reduce((sum,subset)=>sum+subsetProduct(subset),0),
+      sampled:0,tested:0,accepted:0,exhaustive:false,notStarted:true
+    });
+    diagnostics.searchStages.sort((a,b)=>a.size-b.size);
     state.searchProgress={tested,limit:diagnostics.limit,sampled};
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||(a.afterSetDistance??99)-(b.afterSetDistance??99));
     diagnostics.tested=tested;diagnostics.sampled=sampled;diagnostics.accepted=acceptedCount;diagnostics.retainedProposals=proposals.length;diagnostics.speedPruned=speedPruned;diagnostics.searchCoverage=searchSpace?Math.min(1,sampled/searchSpace):1;diagnostics.fullSearchCoverage=fullCandidateSearchSpace?Math.min(1,sampled/fullCandidateSearchSpace):1;diagnostics.hitLimit=tested>=diagnostics.limit||(sampled<searchSpace&&sampled>=attemptLimit);diagnostics.attemptLimit=attemptLimit;diagnostics.completedStages=diagnostics.searchStages.filter(stage=>stage.exhaustive).length;
@@ -641,7 +647,7 @@
     return '<details class="visionnaire-search-diagnostics" open><summary>DIAGNOSTIC DE RECHERCHE · '+diagnostics.tested.toLocaleString('fr-FR')+' combinaisons testées · '+diagnostics.sourceCount+' mods sources</summary>'+
       '<p>Mods éligibles avant plafond : '+Object.entries(diagnostics.eligibleBySlot||{}).map(([slot,count])=>esc(slot)+' '+formatSpace(count)).join(' · ')+' · options retenues : '+Object.entries(diagnostics.optionsBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+' · écartés par plafond/diversité : '+Object.entries(diagnostics.truncatedBySlot||{}).map(([slot,count])=>esc(slot)+' '+formatSpace(count)).join(' · ')+'</p>'+
       '<p>'+esc(diagnostics.searchMethod||'')+' · '+Number(diagnostics.tested||0).toLocaleString('fr-FR')+' combinaisons compatibles avec le plafond de vitesse évaluées · '+Number(diagnostics.speedPruned||0).toLocaleString('fr-FR')+' écartées avant calcul car la vitesse était insuffisante · '+Number(diagnostics.sampled||0).toLocaleString('fr-FR')+' combinaisons distinctes parcourues · '+Number(diagnostics.accepted||0).toLocaleString('fr-FR')+' scénarios valides · '+Number((Number(diagnostics.searchCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'% de la recherche progressive</p>'+
-      '<p>Étapes : '+(diagnostics.searchStages||[]).map(stage=>stage.size+' slot(s) '+Number(stage.sampled||0).toLocaleString('fr-FR')+'/'+formatSpace(stage.space)+(stage.exhaustive?' · exhaustif':' · partiel')+' · '+Number(stage.accepted||0)+' scénario(s)').join(' ; ')+'</p>'+
+      '<p>Étapes : '+(diagnostics.searchStages||[]).map(stage=>stage.size+' slot(s) '+Number(stage.sampled||0).toLocaleString('fr-FR')+'/'+formatSpace(stage.space)+(stage.exhaustive?' · exhaustif':stage.sampled?' · partiel':' · non lancé')+' · '+Number(stage.accepted||0)+' scénario(s)').join(' ; ')+'</p>'+
       '<p>Espace total des mods éligibles : '+formatSpace(diagnostics.fullCandidateSearchSpace)+' combinaisons · vivier retenu : '+Number((Number(diagnostics.candidatePoolCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'% · couverture du total éligible : '+Number((Number(diagnostics.fullSearchCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'%</p>'+
       '<p>Primaires non conformes éliminées avant recherche : '+Object.entries(diagnostics.primaryFilteredBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
       '<p>Vitesse actuelle cible : '+Number(diagnostics.beforeSpeed||0).toFixed(1)+' · plafond des candidats (hors bonus de set) : '+Number(diagnostics.candidateSpeedCeiling||0).toFixed(1)+'</p>'+
