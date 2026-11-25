@@ -1,3 +1,12 @@
+# Changelog
+
+## V4.1.90 — Profils exacts par progression
+
+- Génération au déploiement de variantes G13 exactes par palier Crinolo, avec composantes de base et d’équipement.
+- Résolution stricte par gear et palier de relique dans l’interface, le Worker et l’Optimizer Python.
+- Publication d’un manifeste de couverture ; les paliers absents des données source restent explicitement non couverts.
+- La génération échoue si une progression G13 ou une comparaison de parité avec un profil existant n’est pas vérifiable.
+
 ## V4.1.86 — publication des corrections PR #59 et invalidation du cache
 
 - Corrige le double comptage de la vitesse absolue dans les résultats du Seigneur Sith.
