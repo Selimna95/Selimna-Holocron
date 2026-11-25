@@ -401,6 +401,9 @@
       if(!exactSetConfigurations.length||beforeSetDistance===null)return true;
       const candidateSet=labelSet(mod?.set_name??mod?.set??'');
       if(!candidateSet)return true;
+      // With one selected slot there is no later candidate to complete a
+      // singleton set, so compare the exact six-mod result immediately.
+      if(slots.length===1)return exchangeSetDistance(fixedTargetMods.concat(mod),profile)<beforeSetDistance;
       const minimumUnavoidableDistance=Math.min(...exactSetConfigurations.map(config=>{
         const names=new Set([...Object.keys(config.counts||{}),...Object.keys(fixedTargetSetCounts),candidateSet]);
         let excess=0;
