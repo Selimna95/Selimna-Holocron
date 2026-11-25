@@ -992,6 +992,17 @@ async function loadRemotePlayer(){
     renderGalacticPower();
     updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderVisionnaire();
     currentData={allyCode,name:title,characters:chars,ships,mods,galacticPower:accountGalacticPower};
+    try {
+      const profileSummary = await precomputeCrinoloProfiles(chars);
+      log(`Profils Crinolo validés : ${profileSummary.applied}/${profileSummary.total} personnages.`);
+      if (profileSummary.mismatches) log(`${profileSummary.mismatches} profil(s) refusé(s) : métadonnées différentes du roster.`);
+      if (profileSummary.errors.length) {
+        const examples = profileSummary.errors.slice(0, 3).map(item => `${item.base_id || 'ID absent'} : ${item.error}`).join(' · ');
+        log(`${profileSummary.errors.length} personnage(s) sans profil Crinolo calculable. Aucun palier approximatif ne sera utilisé. ${examples}`);
+      }
+    } catch (profileError) {
+      log(`Pré-calcul Crinolo indisponible : ${profileError.message}. Les profils statiques restent soumis à la validation exacte.`);
+    }
     $('dataInfo').textContent=`Source: ${apiChars.length?'SWGOH.GG API JSON':'SWGOH.GG HTML'}${relay?' via Cloudflare Worker':''}${!apiMods.length?' · mods HTML secours':''}\nJoueur: ${title}\nAlly Code: ${fmt}\nPersonnages: ${chars.length}\nVaisseaux: ${ships.length}\nUnités totales: ${chars.length+ships.length}\nMods: ${mods.length}\nProfils Kyber disponibles dans cette version: ${Object.keys(profiles).length}`;
     log(`TERMINÉ : ${chars.length} personnages, ${ships.length} vaisseaux, ${mods.length} mods exploitables.`);
     if(!mods.length)log('Aucun mod lisible : vérifier la disponibilité de l’API mods.');
@@ -1195,11 +1206,69 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.6.1-crinolo-built-game-data', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.6.2-crinolo-roster-batch', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
   return optimizerWorker;
+}
+
+function precomputeCrinoloProfiles(characters) {
+  const list = Array.isArray(characters) ? characters : [];
+  if (!list.length) return Promise.resolve({ applied: 0, total: 0, errors: [] });
+  const worker = getOptimizerWorker();
+  const id = ++optimizerRequestId;
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      worker.removeEventListener('message', onMessage);
+      worker.removeEventListener('error', onError);
+    };
+    const onError = event => {
+      cleanup();
+      reject(new Error(event.message || 'Erreur du Worker pendant le calcul des profils Crinolo.'));
+    };
+    const onMessage = event => {
+      const data = event.data || {};
+      if (data.id !== id) return;
+      if (data.type === 'status') {
+        log(data.message || 'Calcul des profils Crinolo…');
+        return;
+      }
+      cleanup();
+      if (data.type !== 'profiles-done') {
+        reject(new Error(data.error || 'Le calcul des profils Crinolo a échoué.'));
+        return;
+      }
+      const byBaseId = new Map((data.profiles || []).map(profile => [
+        String(profile?.base_id || '').toUpperCase(), profile
+      ]));
+      let applied = 0;
+      let mismatches = 0;
+      for (const character of list) {
+        const baseId = String(character?.baseId || character?.base_id || '').toUpperCase();
+        const profile = byBaseId.get(baseId);
+        if (profile && optimizerProfileMatchesRoster(profile, optimizerRosterMetadata(character))) {
+          character.optimizer_base_profile = profile;
+          applied++;
+        } else if (profile) {
+          mismatches++;
+        }
+      }
+      resolve({
+        applied,
+        total: list.length,
+        mismatches,
+        errors: Array.isArray(data.errors) ? data.errors : []
+      });
+    };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', onError, { once: true });
+    worker.postMessage({
+      id,
+      type: 'profile-batch',
+      characters: list.map(character => character?.raw || character)
+    });
+  });
 }
 
 function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context, scopedMods, currentTargetMods=[]) {
