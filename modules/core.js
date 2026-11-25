@@ -190,9 +190,14 @@ function optimizerRosterMetadata(character) {
     return null;
   };
   const readBoth = keys => read(raw, keys) ?? read(character, keys);
-  const relicObject = read(raw, ['relic']);
-  const relicValue = read(raw, ['relic_tier','relicTier','relic_level','relicLevel']) ??
-    read(relicObject, ['currentTier','tier','relicTier']);
+  const rawRelicObject = read(raw, ['relic']);
+  const characterRelicObject = read(character, ['relic']);
+  const rawRelicValue = read(raw, ['relic_tier','relicTier','relic_level','relicLevel']) ??
+    read(rawRelicObject, ['currentTier','tier','relicTier']);
+  const characterRelicValue = read(character, ['relic_tier','relicTier','relic_level','relicLevel']) ??
+    read(characterRelicObject, ['currentTier','tier','relicTier']);
+  const explicitCharacterRelic = numericValue(characterRelicValue, null);
+  const relicValue = rawRelicValue ?? (explicitCharacterRelic != null && explicitCharacterRelic > 0 ? characterRelicValue : null);
   const gearLevel = numericValue(readBoth(['gear_level','gearLevel','gear','currentTier']), null);
   let relicTier = numericValue(relicValue, null);
   // Before G13 a unit cannot have an unlocked relic; use Crinolo's locked tier.
