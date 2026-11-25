@@ -3,7 +3,7 @@ import "./modules/mod-engine.js?v=0.3.33";
 
 let pyodideReadyPromise = (async () => {
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
-  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.18-speed-normalized-ranking", import.meta.url), { cache: "force-cache" });
+  const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.19-pr59-donor-heuristic", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
   const optimizerSource = await optimizerResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer.py", optimizerSource);
