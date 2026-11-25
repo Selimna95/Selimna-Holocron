@@ -26,7 +26,13 @@ async function fetchCollection(name) {
 async function fetchCompressedCollection(name) {
   const response = await fetchResponse(`${name}.json.br`);
   const compressed = Buffer.from(await response.arrayBuffer());
-  const decoded = brotliDecompressSync(compressed).toString("utf8");
+  let decoded;
+  try {
+    decoded = brotliDecompressSync(compressed).toString("utf8");
+  } catch {
+    // Some HTTP stacks transparently decode Content-Encoding: br.
+    decoded = compressed.toString("utf8");
+  }
   return collectionRows(JSON.parse(decoded), name);
 }
 
@@ -349,8 +355,9 @@ async function main() {
   if (!output) throw new Error("Usage: node scripts/build-crinolo-gamedata.mjs <output.json>");
   const gameData = await buildCrinoloGameData();
   await mkdir(path.dirname(output), { recursive: true });
-  await writeFile(output, JSON.stringify(gameData), "utf8");
-  const size = Buffer.byteLength(JSON.stringify(gameData));
+  const serialized = JSON.stringify(gameData);
+  await writeFile(output, serialized, "utf8");
+  const size = Buffer.byteLength(serialized);
   console.log(`Crinolo gameData prêt : ${Object.keys(gameData.unitData).length} unités, ${Object.keys(gameData.gearData).length} pièces, ${Object.keys(gameData.relicData).length} reliques, ${size} octets; source ${GAMEDATA_COMMIT}.`);
 }
 
