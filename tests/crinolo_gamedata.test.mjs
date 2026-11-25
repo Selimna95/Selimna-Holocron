@@ -57,4 +57,42 @@ for (const profile of Object.values(profiles)) {
 }
 assert.deepEqual(failures, [], `Profils non calculables par Crinolo :\n${failures.join("\n")}`);
 assert.equal(calculatedCount, Object.keys(profiles).length);
-console.log(`Crinolo gameData: ${calculatedCount} profils statiques vérifiés à leur gear/relique exacts.`);
+
+// Prove the same character can be calculated across every gear tier and
+// every relic tier in the source data, not only at its static snapshot tier.
+const referenceProfile = Object.values(profiles).find(profile => Number(profile.gear_level) === 13);
+assert.ok(referenceProfile, "A G13 reference profile is required for the progression sweep");
+const referenceUnit = gameData.unitData[referenceProfile.base_id];
+for (let gearLevel = 1; gearLevel <= 13; gearLevel++) {
+  const expected = referenceUnit.gearLvl[gearLevel]?.gear;
+  assert.ok(Array.isArray(expected) && expected.length === 6, `${referenceProfile.base_id}: gear ${gearLevel} missing`);
+  const gear = expected.map((base_id, index) => ({
+    slot: index + 1,
+    is_obtained: gearLevel === 13 || index < 5,
+    base_id,
+  }));
+  const result = calculateCrinoloProfile({ data: {
+    base_id: referenceProfile.base_id,
+    level: referenceProfile.level,
+    rarity: referenceProfile.rarity,
+    gear_level: gearLevel,
+    relic_tier: 2,
+    gear,
+  } }, crinoloStatCalc, gameData);
+  assert.ok(result.profile, `${referenceProfile.base_id}: gear ${gearLevel}: ${result.error}`);
+}
+for (const relicTier of Object.keys(referenceUnit.relic || {}).map(Number).sort((a, b) => a - b)) {
+  const gear = referenceUnit.gearLvl[13].gear.map((base_id, index) => ({
+    slot: index + 1, is_obtained: true, base_id,
+  }));
+  const result = calculateCrinoloProfile({ data: {
+    base_id: referenceProfile.base_id,
+    level: referenceProfile.level,
+    rarity: referenceProfile.rarity,
+    gear_level: 13,
+    relic_tier: relicTier,
+    gear,
+  } }, crinoloStatCalc, gameData);
+  assert.ok(result.profile, `${referenceProfile.base_id}: relic ${relicTier}: ${result.error}`);
+}
+console.log(`Crinolo gameData: ${calculatedCount} profils statiques vérifiés, plus les gears 1–13 et tous les paliers de relique du personnage témoin.`);
