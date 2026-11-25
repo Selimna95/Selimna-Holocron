@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.126-crinolo-dynamic-progression';
+const CACHE_NAME = 'holocron-static-v4.4.127-crinolo-built-game-data';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -27,6 +27,7 @@ const STATIC_ASSETS = [
   './modules/optimizer-progression.mjs?v=1.0.0-crinolo-dynamic',
   './vendor/crinolo-stat-calc.mjs?v=1.0.0-crinolo-maintained',
   './vendor/CRINOLO-LICENSE.txt',
+  './statCalcData/gameData.json',
   './modules/core.js?v=4.2.46-crinolo-dynamic-progression',
   './modules/acolyte.js?v=3.4.9-weak-donor-recipient',
   './modules/disciple.js?v=3.5.10-validated-gear-speed',
@@ -34,7 +35,7 @@ const STATIC_ASSETS = [
   './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
   './modules/visionnaire.js?v=4.1.87-pr59-donor-heuristic',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
-  './optimizer-worker.mjs?v=3.6.0-crinolo-dynamic-progression',
+  './optimizer-worker.mjs?v=3.6.1-crinolo-built-game-data',
   './python/optimizer.py?v=3.5.19-pr59-donor-heuristic',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/optimizer_profiles.json?v=3.4.4-cache-sync',
