@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { calculateCrinoloProfile, normalizeCrinoloRosterUnit } from "../modules/optimizer-progression.js";
+import { calculateCrinoloProfile, normalizeCrinoloRosterUnit } from "../modules/optimizer-progression.mjs";
 
 const gear = [
   { slot: 1, is_obtained: true, base_id: "GEAR_A" },
