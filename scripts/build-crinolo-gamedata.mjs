@@ -92,12 +92,12 @@ function buildTableData(tableList, xpTableList, statEnum) {
         break;
       case "crew_rating_per_gear_piece_at_tier":
         data.cr.gearPieceCR = {};
-        for (const row of table.row) data.cr.gearPieceCR[row.key.match(/TIER_0?(\\d+)/)[1]] = Number(row.value);
+        for (const row of table.row) data.cr.gearPieceCR[row.key.match(/TIER_0?(\d+)/)[1]] = Number(row.value);
         break;
       case "galactic_power_per_complete_gear_tier_table":
         data.gp.gearLevelGP = { 1: 0 };
         for (const row of table.row) {
-          const match = row.key.match(/TIER_0?(\\d+)/);
+          const match = row.key.match(/TIER_0?(\d+)/);
           if (match) data.gp.gearLevelGP[Number(match[1]) + 1] = Number(row.value);
         }
         data.cr.gearLevelCR = data.gp.gearLevelGP;
