@@ -169,16 +169,28 @@ function updateRosterCounts(characters, ships) {
 }
 function optimizerProfileForCharacter(character) {
   if (!character || !optimizerProfiles || typeof optimizerProfiles !== 'object') return null;
+  const collection=optimizerProfiles.schemaVersion===2?optimizerProfiles.profiles:optimizerProfiles;
+  if (!collection || typeof collection !== 'object') return null;
   const base=String(character?.baseId||character?.base_id||'').toUpperCase();
   const name=slug(character?.name||character?.character||'');
   if (base) {
-    if (optimizerProfiles[base]) return optimizerProfiles[base];
-    const exact=Object.values(optimizerProfiles).filter(p=>String(p?.base_id||'').toUpperCase()===base);
+    if (collection[base]) return collection[base];
+    const exact=Object.values(collection).filter(p=>String(p?.base_id||'').toUpperCase()===base);
     return exact.length===1?exact[0]:null;
   }
   if (!name) return null;
-  const matches=Object.values(optimizerProfiles).filter(p=>slug(p?.name||p?.character)===name);
+  const matches=Object.values(collection).filter(p=>slug(p?.name||p?.character)===name);
   return matches.length===1?matches[0]:null;
+}
+function optimizerResolveProfileVariant(profile,metadata) {
+  if (!profile || typeof profile !== 'object') return null;
+  if (!profile.variants || typeof profile.variants !== 'object') return profile;
+  const gear=Number(metadata?.gear_level),relic=Number(metadata?.relic_tier);
+  if (!Number.isInteger(gear)||!Number.isInteger(relic)) return null;
+  const key=`${gear}:${relic}`;
+  const variant=profile.variants[key];
+  if (!variant || typeof variant !== 'object') return null;
+  return {...profile,...variant,variants:undefined};
 }
 function optimizerRosterMetadata(character) {
   const raw=character?.raw?.data && typeof character.raw.data === 'object'
@@ -227,10 +239,18 @@ function optimizerValidatedProfileForCharacter(character) {
   if (dynamic?.profile_source==='Crinolo' &&
       dynamic?.stat_components?.source==='Crinolo.stats.base+stats.gear' &&
       optimizerProfileMatchesRoster(dynamic,metadata)) return dynamic;
-  const profile=optimizerProfileForCharacter(character);
+  const sourceProfile=optimizerProfileForCharacter(character);
+  const profile=optimizerResolveProfileVariant(sourceProfile,metadata);
+  if (sourceProfile?.variants && !profile) {
+    const key=`${metadata.gear_level??"?"}:${metadata.relic_tier??"?"}`;
+    character.optimizer_profile_error=`profile_progression_uncovered:${key}`;
+    return null;
+  }
   return optimizerProfileMatchesRoster(profile,metadata) ? profile : null;
 }
 function baseStatsForCharacter(character) {
+  const validated=optimizerValidatedProfileForCharacter(character);
+  if (validated?.base_stats) return validated.base_stats;
   const dynamic=character?.optimizer_base_profile;
   if (dynamic?.profile_source==='Crinolo' &&
       optimizerProfileMatchesRoster(dynamic,optimizerRosterMetadata(character))) return dynamic.base_stats;
