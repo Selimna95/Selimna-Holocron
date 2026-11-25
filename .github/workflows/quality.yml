@@ -25,6 +25,10 @@ jobs:
       - run: npm install --no-save --no-package-lock pyodide@0.27.7 yaml@2
       - run: node --check tests/workflow_yaml.test.mjs
       - run: node tests/workflow_yaml.test.mjs
+      - run: node --check modules/optimizer-progression.js
+      - run: node --check vendor/crinolo-stat-calc.js
+      - run: node --check tests/optimizer_progression.test.mjs
+      - run: node tests/optimizer_progression.test.mjs
       - run: node --check modules/mod-engine.js
       - run: node --check tests/mod_engine.test.mjs
       - run: node tests/mod_engine.test.mjs
