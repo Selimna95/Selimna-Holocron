@@ -507,11 +507,9 @@ function forgeProjectedModSpeed(character,profile,modList){
   const list=Array.isArray(modList)?modList:[];
   const localProfile=typeof optimizerValidatedProfileForCharacter==='function'?(optimizerValidatedProfileForCharacter(character)||{}):{};
   const metadata=typeof optimizerRosterMetadata==='function'?(optimizerRosterMetadata(character)||{}):{};
-  const explicitBase=character?.base_stats||character?.baseStats||character?.raw?.base_stats||
-    character?.raw?.baseStats||character?.data?.base_stats||localProfile.base_stats||{};
-  const baseSpeed=numericValue(localProfile.base_stats?.Speed??localProfile.base_stats?.speed??explicitBase.Speed??explicitBase.speed,null);
+  const baseSpeed=numericValue(localProfile.base_stats?.Speed??localProfile.base_stats?.speed,null);
   const gearLevel=localProfile.gear_level??metadata.gear_level??character?.gear_level??character?.gear;
-  const statComponents=localProfile.stat_components??character?.stat_components??character?.raw?.stat_components??character?.data?.stat_components??null;
+  const statComponents=localProfile.stat_components??null;
   const projection=window.HolocronModEngine.calculateSpeed(baseSpeed,list,gearLevel,statComponents);
   return {
     complete:projection.complete===true&&projection.total!=null,
@@ -519,7 +517,8 @@ function forgeProjectedModSpeed(character,profile,modList){
     modSpeed:projection.modSpeed,
     setBonus:projection.setBonus,
     hasFourPieceSpeedSet:projection.hasFourPieceSpeedSet,
-    baseSpeed
+    baseSpeed,
+    reason:character?.optimizer_profile_error||null
   };
 }
 function forgeCandidatePreservesSpeed(character,profile,equipped,current,candidate){

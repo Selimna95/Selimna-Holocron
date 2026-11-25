@@ -733,10 +733,19 @@ assert.deepEqual(Array.from(scoped,x=>x.id).sort(),['free-mod','incomplete-mod',
 const forgeContext = vm.createContext({
   window: { HolocronModEngine: sharedEngine },
   numericValue, modTotalSpeed: speed, optimizerSlotKey: (v) => String(v ?? ''),
-  optimizerProfileForCharacter: () => ({})
+  optimizerProfileForCharacter: () => ({}),
+  optimizerValidatedProfileForCharacter: character => character.optimizer_base_profile || {}
 });
 load(seigneur, ['forgeProjectedModSpeed', 'forgeCandidatePreservesSpeed'], forgeContext);
-const baseSpeedCharacter = { gear_level: 13, base_stats: { Speed: 100 }, stat_components: { source: 'Crinolo.stats.base+stats.gear', base: { Speed: 100 }, gear: { Speed: 0 } } };
+const baseSpeedCharacter = {
+  gear_level: 13,
+  optimizer_base_profile: {
+    profile_source: 'Crinolo',
+    gear_level: 13,
+    base_stats: { Speed: 100 },
+    stat_components: { source: 'Crinolo.stats.base+stats.gear', base: { Speed: 100 }, gear: { Speed: 0 } }
+  }
+};
 const makeSpeedMod = (id, slot, set_name, speedValue) => ({
   id, slot, set_name, level: 1, speed: speedValue,
   primary_stat: 'Health', primary_value: 0,

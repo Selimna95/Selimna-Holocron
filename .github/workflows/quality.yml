@@ -47,6 +47,8 @@ jobs:
       - run: node --check modules/acolyte.js
       - run: node --check modules/disciple.js
       - run: node --check modules/seigneur.js
+      - run: node --check tests/seigneur_profile_guard.test.mjs
+      - run: node tests/seigneur_profile_guard.test.mjs
       - run: node --check modules/seigneur-gac.js
       - run: node --check modules/seigneur-impact.js
       - run: node --check tests/seigneur_impact.test.mjs
