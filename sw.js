@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.131-exact-profile-speed';
+const CACHE_NAME = 'holocron-static-v4.4.132-visionnaire-speed-prefilter';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -32,7 +32,7 @@ const STATIC_ASSETS = [
   './modules/disciple.js?v=3.5.10-validated-gear-speed',
   './modules/seigneur.js?v=3.9.20-exact-profile-speed',
   './modules/seigneur-impact.js?v=1.0.2-partial-impact-status',
-  './modules/visionnaire.js?v=4.1.87-pr59-donor-heuristic',
+  './modules/visionnaire.js?v=4.1.93-exact-speed-prefilter',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
   './optimizer-worker.mjs?v=3.6.3-profile-coverage',
   './python/optimizer.py?v=3.5.20-profile-coverage',
