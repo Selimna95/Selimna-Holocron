@@ -1,5 +1,5 @@
 import { brotliDecompressSync } from "node:zlib";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -69,6 +69,126 @@ function buildModSetData(list) {
     };
   }
   return data;
+}
+
+function buildTableData(tableList, xpTableList, statEnum) {
+  const data = { cr: {}, gp: {} };
+  const rarityEnum = {
+    ONE_STAR: 1, TWO_STAR: 2, THREE_STAR: 3, FOUR_STAR: 4,
+    FIVE_STAR: 5, SIX_STAR: 6, SEVEN_STAR: 7,
+  };
+
+  for (const table of tableList) {
+    let c, g;
+    switch (table.id) {
+      case "galactic_power_modifier_per_ship_crew_size_table":
+        data.gp.crewSizeFactor = {};
+        for (const row of table.row) data.gp.crewSizeFactor[row.key] = Number(row.value);
+        break;
+      case "crew_rating_per_unit_rarity":
+        data.cr.crewRarityCR = {};
+        for (const row of table.row) data.cr.crewRarityCR[rarityEnum[row.key]] = Number(row.value);
+        data.gp.unitRarityGP = data.cr.crewRarityCR;
+        break;
+      case "crew_rating_per_gear_piece_at_tier":
+        data.cr.gearPieceCR = {};
+        for (const row of table.row) data.cr.gearPieceCR[row.key.match(/TIER_0?(\\d+)/)[1]] = Number(row.value);
+        break;
+      case "galactic_power_per_complete_gear_tier_table":
+        data.gp.gearLevelGP = { 1: 0 };
+        for (const row of table.row) data.gp.gearLevelGP[++row.key.match(/TIER_0?(\\d+)/)[1]] = Number(row.value);
+        data.cr.gearLevelCR = data.gp.gearLevelGP;
+        break;
+      case "galactic_power_per_tier_slot_table":
+        g = data.gp.gearPieceGP = {};
+        for (const row of table.row) {
+          const [tier, slot] = row.key.split(":");
+          g[tier] ||= {};
+          g[tier][Number(slot) - 1] = Number(row.value);
+        }
+        break;
+      case "crew_contribution_multiplier_per_rarity":
+        data.cr.shipRarityFactor = {};
+        for (const row of table.row) data.cr.shipRarityFactor[rarityEnum[row.key]] = Number(row.value);
+        data.gp.shipRarityFactor = data.cr.shipRarityFactor;
+        break;
+      case "galactic_power_per_tagged_ability_level_table":
+        g = data.gp.abilitySpecialGP = {};
+        for (const row of table.row) g[row.key] = Number(row.value);
+        break;
+      case "crew_rating_per_mod_rarity_level_tier":
+        c = data.cr.modRarityLevelCR = {};
+        g = data.gp.modRarityLevelTierGP = {};
+        for (const row of table.row) {
+          if (String(row.key).slice(-1) !== "0") continue;
+          const [pips, level, tier] = row.key.split(":");
+          if (Number(tier) === 1) {
+            c[pips] ||= {};
+            c[pips][level] = Number(row.value);
+          }
+          g[pips] ||= {};
+          g[pips][level] ||= {};
+          g[pips][level][tier] = Number(row.value);
+        }
+        break;
+      case "crew_rating_modifier_per_relic_tier":
+        data.cr.relicTierLevelFactor = {};
+        for (const row of table.row) data.cr.relicTierLevelFactor[Number(row.key) + 2] = Number(row.value);
+        break;
+      case "crew_rating_per_relic_tier":
+        data.cr.relicTierCR = {};
+        for (const row of table.row) data.cr.relicTierCR[Number(row.key) + 2] = Number(row.value);
+        break;
+      case "galactic_power_modifier_per_relic_tier":
+        data.gp.relicTierLevelFactor = {};
+        for (const row of table.row) data.gp.relicTierLevelFactor[Number(row.key) + 2] = Number(row.value);
+        break;
+      case "galactic_power_per_relic_tier":
+        data.gp.relicTierGP = {};
+        for (const row of table.row) data.gp.relicTierGP[Number(row.key) + 2] = Number(row.value);
+        break;
+      case "crew_rating_modifier_per_ability_crewless_ships":
+        data.cr.crewlessAbilityFactor = {};
+        for (const row of table.row) data.cr.crewlessAbilityFactor[row.key] = Number(row.value);
+        break;
+      case "galactic_power_modifier_per_ability_crewless_ships":
+        data.gp.crewlessAbilityFactor = {};
+        for (const row of table.row) data.gp.crewlessAbilityFactor[row.key] = Number(row.value);
+        break;
+      default:
+        if (/_mastery$/.test(String(table.id))) {
+          data.cr[table.id] = {};
+          for (const row of table.row) {
+            const statId = statEnum[row.key];
+            if (statId != null) data.cr[table.id][statId] = Number(row.value);
+          }
+        }
+    }
+  }
+
+  for (const table of xpTableList) {
+    if (!/^(crew_rating|galactic_power)/.test(String(table.id))) continue;
+    const tempTable = {};
+    for (const row of table.row) tempTable[Number(row.index) + 1] = Number(row.xp);
+    switch (table.id) {
+      case "crew_rating_per_unit_level":
+        data.cr.unitLevelCR = tempTable;
+        data.gp.unitLevelGP = tempTable;
+        break;
+      case "crew_rating_per_ability_level":
+        data.cr.abilityLevelCR = tempTable;
+        data.gp.abilityLevelGP = tempTable;
+        break;
+      case "galactic_power_per_ship_level_table":
+        data.gp.shipLevelGP = tempTable;
+        break;
+      case "galactic_power_per_ship_ability_level_table":
+        data.gp.shipAbilityLevelGP = tempTable;
+        break;
+    }
+  }
+
+  return { crTables: data.cr, gpTables: data.gp };
 }
 
 function buildRelicData(list, statTables) {
@@ -177,27 +297,35 @@ function buildUnitData(units, skillList, statTables) {
 }
 
 export async function buildCrinoloGameData() {
-  const [equipment, relicTiers, skills, statProgression, units, modSets, versions] = await Promise.all([
+  const [equipment, relicTiers, skills, statProgression, units, modSets, tables, xpTables, versions, statEnumMap] = await Promise.all([
     fetchCollection("equipment"),
     fetchCollection("relicTierDefinition"),
     fetchCollection("skill"),
     fetchCollection("statProgression"),
     fetchCompressedCollection("units"),
     fetchCollection("statModSet"),
+    fetchCollection("table"),
+    fetchCollection("xpTable"),
     (async () => {
       const response = await fetchResponse("allVersions.json");
       return response.json();
     })(),
+    (async () => JSON.parse(await readFile(new URL("./statEnumMap.json", import.meta.url), "utf8")))(),
   ]);
 
   const statTables = buildStatProgressionList(statProgression);
+  const statEnum = {};
+  for (const [key, value] of Object.entries(statEnumMap)) {
+    if (value.tableKey) statEnum[value.tableKey] = key;
+  }
+  const tableData = buildTableData(tables, xpTables, statEnum);
   const gameData = {
     gearData: buildGearData(equipment),
     modSetData: buildModSetData(modSets),
     relicData: buildRelicData(relicTiers, statTables),
     unitData: buildUnitData(units, skills, statTables),
-    crTables: {},
-    gpTables: {},
+    crTables: tableData.crTables,
+    gpTables: tableData.gpTables,
     source: {
       repository: "swgoh-utils/gamedata",
       commit: GAMEDATA_COMMIT,
