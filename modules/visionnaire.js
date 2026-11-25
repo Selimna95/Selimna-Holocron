@@ -438,7 +438,8 @@
     const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
     if(!beforeProjectionSummary.complete)return {proposals:[],reason:'La vitesse actuelle de la cible est non calculable : données de base ou mods incomplets.'};
     const beforeSpeed=beforeProjectionSummary.total;
-    const targetPrimarySafe=chosen=>slots.every(slot=>{
+    let activeSlots=slots.slice();
+    const targetPrimarySafe=chosen=>activeSlots.every(slot=>{
       const mod=chosen.find(x=>slotOf(x)===slot),reference=primaryDistribution(profile,slot);
       // Missing Kyber data is unknown, not evidence that a primary is invalid.
       return !reference.length||reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false));
@@ -448,13 +449,27 @@
     const maximumSpeedSetBonus=baseSpeed>0?baseSpeed*.1:0;
     const retainedSpeed=current.filter(mod=>!slots.includes(slotOf(mod))).reduce((sum,mod)=>sum+modTotalSpeed(mod),0);
     const candidateSpeedCeiling=baseSpeed+retainedSpeed+slots.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0)+maximumSpeedSetBonus;
-    const searchSpace=slots.reduce((product,slot)=>product*(optionsBySlot.get(slot)||[]).length,1);
-    const fullCandidateSearchSpace=slots.reduce((product,slot)=>product*(eligibleBySlot[LABELS[slot]]||0),1);
+    const buildSlotSubsets=(size,start=0,prefix=[],out=[])=>{
+      if(prefix.length===size){out.push(prefix.slice());return out;}
+      for(let index=start;index<=slots.length-(size-prefix.length);index++){
+        prefix.push(slots[index]);buildSlotSubsets(size,index+1,prefix,out);prefix.pop();
+      }
+      return out;
+    };
+    const slotSubsetGroups=Array.from({length:slots.length},(_,index)=>({
+      size:index+1,subsets:buildSlotSubsets(index+1)
+    }));
+    const subsetProduct=(subset,useEligible=false)=>subset.reduce((product,slot)=>{
+      const count=useEligible?(eligibleBySlot[LABELS[slot]]||0):(optionsBySlot.get(slot)||[]).length;
+      return product*count;
+    },1);
+    const searchSpace=slotSubsetGroups.reduce((sum,group)=>sum+group.subsets.reduce((part,subset)=>part+subsetProduct(subset),0),0);
+    const fullCandidateSearchSpace=slotSubsetGroups.reduce((sum,group)=>sum+group.subsets.reduce((part,subset)=>part+subsetProduct(subset,true),0),0);
     const candidatePoolCoverage=fullCandidateSearchSpace?Math.min(1,searchSpace/fullCandidateSearchSpace):1;
     const diagnostics={limit:15000,sourceCount:source.length,beforeSpeed:beforeProjectionSummary.total,
       retainedSpeed,candidateSpeedCeiling,searchSpace,fullCandidateSearchSpace,candidatePoolCoverage,
       fullSearchCoverage:0,candidatePoolTruncated,eligibleBySlot,truncatedBySlot,
-      searchMethod:'Échantillonnage équilibré de tous les slots avec filtre vitesse préalable et plafond de 24 options par slot',
+      searchMethod:'Recherche progressive : échanges à un slot, puis paires, puis groupes plus larges ; vivier plafonné à 24 mods par slot',searchStages:[],
       primaryFilteredBySlot,optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),
       bestCandidateSpeedBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed))])),
       rejected:{},examples:[],rejectedCandidates:[]};
@@ -468,7 +483,7 @@
     const evaluateCombination=async combo=>{
       chosen=combo;
 
-        const finalTarget=current.filter(mod=>!slots.includes(slotOf(mod))).concat(chosen);
+        const finalTarget=current.filter(mod=>!activeSlots.includes(slotOf(mod))).concat(chosen);
         const beforeProjection=forgeProjectedModSpeed(character,profile,current);
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
         if(!beforeProjection.complete||!afterProjection.complete){reject('vitesse_cible_inconnue','Vitesse cible non calculable : données de base ou mods incomplets');return;}
@@ -520,7 +535,7 @@
         const targetStatsBefore=exchangeFinalStats(character,current),targetStatsAfter=exchangeFinalStats(character,finalTarget);
         if(!targetStatsBefore||!targetStatsAfter){reject('stats_cible_incompletes','Calcul des statistiques de la cible incomplet : données de base ou formule non disponible');return;}
         const targetStatDeltas=exchangeStatsDelta(targetStatsBefore,targetStatsAfter);
-        const primaryShares=slots.map(slot=>{
+        const primaryShares=activeSlots.map(slot=>{
           const mod=chosen.find(item=>slotOf(item)===slot);
           return primaryDistribution(profile,slot).find(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false))?.weight??null;
         });
@@ -543,35 +558,77 @@
         if(proposals.length>30){proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||(a.afterSetDistance??99)-(b.afterSetDistance??99));proposals.length=30;}
         return;
     };
-    // Keep the pairwise-balanced sample across every slot, but do not spend
-    // the expensive evaluation budget on combinations that cannot preserve speed.
+    // Explore partial exchanges first. Each slot subset is evaluated with
+    // every unselected target mod left untouched; this avoids forcing six
+    // simultaneous changes when a one- or two-slot correction is sufficient.
     const seed=Array.from(String(targetKey||'visionnaire')).reduce((hash,char)=>(Math.imul(hash^char.charCodeAt(0),16777619)>>>0),2166136261);
-    const seen=new Set();
-    const attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000);
-    for(let sample=0;sample<attemptLimit&&tested<diagnostics.limit&&seen.size<searchSpace;sample++){
-      const combo=slots.map((slot,index)=>{
-        const options=optionsBySlot.get(slot)||[];
-        return options[visionnaireSampleIndex(sample,index,options.length,seed)];
-      });
-      const signature=combo.map(exchangeModId).join('|');
-      if(seen.has(signature))continue;
-      seen.add(signature);sampled++;
-      const theoreticalMaximum=baseSpeed+retainedSpeed+combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+maximumSpeedSetBonus;
-      if(theoreticalMaximum+1e-9<beforeSpeed)speedPruned++;
-      else{
-        tested++;chosen=combo;
-        if(tested%50===0){state.searchProgress={tested,limit:diagnostics.limit,sampled};render();}
-        await evaluateCombination(combo);
+    const attemptLimit=Math.min(Math.max(searchSpace*2,30000),1000000);
+    let subsetOrdinal=0,remainingSubsets=slotSubsetGroups.reduce((sum,group)=>sum+group.subsets.length,0);
+    let stopSearch=false;
+    for(const group of slotSubsetGroups){
+      const stage={size:group.size,subsets:group.subsets.length,space:0,sampled:0,tested:0,accepted:0,exhaustive:true};
+      for(const subset of group.subsets){
+        if(tested>=diagnostics.limit||sampled>=attemptLimit){stopSearch=true;stage.exhaustive=false;break;}
+        activeSlots=subset;
+        const optionLists=subset.map(slot=>optionsBySlot.get(slot)||[]);
+        const lengths=optionLists.map(options=>options.length);
+        const combinationSpace=lengths.reduce((product,count)=>product*count,1);
+        stage.space+=combinationSpace;
+        const remainingAttempts=attemptLimit-sampled;
+        const subsetBudget=Math.min(combinationSpace,Math.max(1,Math.floor(remainingAttempts/Math.max(1,remainingSubsets))));
+        const exhaustive=combinationSpace<=subsetBudget;
+        const targetCount=exhaustive?combinationSpace:subsetBudget;
+        const localAttemptLimit=exhaustive?combinationSpace:Math.min(combinationSpace*32,Math.max(targetCount*32,30000));
+        const localSeen=new Set();
+        let localSample=0;
+        while(localSeen.size<targetCount&&localSample<localAttemptLimit&&tested<diagnostics.limit&&sampled<attemptLimit){
+          let indexes;
+          if(exhaustive){
+            let remainder=localSample;
+            indexes=new Array(lengths.length);
+            for(let index=lengths.length-1;index>=0;index--){
+              indexes[index]=remainder%lengths[index];
+              remainder=Math.floor(remainder/lengths[index]);
+            }
+          }else{
+            indexes=lengths.map((count,index)=>visionnaireSampleIndex(
+              localSample,index,count,seed^Math.imul(subsetOrdinal+1,0x9e3779b1)
+            ));
+          }
+          localSample++;
+          const combo=indexes.map((index,position)=>optionLists[position][index]);
+          const signature=combo.map(exchangeModId).join('|');
+          if(localSeen.has(signature))continue;
+          localSeen.add(signature);sampled++;stage.sampled++;
+          const retainedForSubset=current.filter(mod=>!activeSlots.includes(slotOf(mod)))
+            .reduce((sum,mod)=>sum+modTotalSpeed(mod),0);
+          const theoreticalMaximum=baseSpeed+retainedForSubset+
+            combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+maximumSpeedSetBonus;
+          if(theoreticalMaximum+1e-9<beforeSpeed)speedPruned++;
+          else{
+            tested++;stage.tested++;chosen=combo;
+            const acceptedBefore=acceptedCount;
+            if(tested%50===0){state.searchProgress={tested,limit:diagnostics.limit,sampled};render();}
+            await evaluateCombination(combo);
+            if(acceptedCount>acceptedBefore)stage.accepted++;
+          }
+          if(sampled%500===0){
+            state.searchProgress={tested,limit:diagnostics.limit,sampled};
+            render();
+            await new Promise(resolve=>setTimeout(resolve,0));
+          }
+        }
+        if(localSeen.size<combinationSpace)stage.exhaustive=false;
+        if(localSeen.size<targetCount)stage.exhaustive=false;
+        subsetOrdinal++;remainingSubsets--;
+        if(tested>=diagnostics.limit||sampled>=attemptLimit){stopSearch=true;stage.exhaustive=false;break;}
       }
-      if(sampled%1000===0){
-        state.searchProgress={tested,limit:diagnostics.limit,sampled};
-        render();
-        await new Promise(resolve=>setTimeout(resolve,0));
-      }
+      diagnostics.searchStages.push(stage);
+      if(stopSearch)break;
     }
     state.searchProgress={tested,limit:diagnostics.limit,sampled};
     proposals.sort((a,b)=>b.score.score-a.score.score||a.usage-b.usage||(a.afterSetDistance??99)-(b.afterSetDistance??99));
-    diagnostics.tested=tested;diagnostics.sampled=sampled;diagnostics.accepted=acceptedCount;diagnostics.retainedProposals=proposals.length;diagnostics.speedPruned=speedPruned;diagnostics.searchCoverage=searchSpace?Math.min(1,sampled/searchSpace):1;diagnostics.fullSearchCoverage=fullCandidateSearchSpace?Math.min(1,sampled/fullCandidateSearchSpace):1;diagnostics.hitLimit=tested>=diagnostics.limit||(sampled<searchSpace&&sampled>=attemptLimit);diagnostics.attemptLimit=attemptLimit;
+    diagnostics.tested=tested;diagnostics.sampled=sampled;diagnostics.accepted=acceptedCount;diagnostics.retainedProposals=proposals.length;diagnostics.speedPruned=speedPruned;diagnostics.searchCoverage=searchSpace?Math.min(1,sampled/searchSpace):1;diagnostics.fullSearchCoverage=fullCandidateSearchSpace?Math.min(1,sampled/fullCandidateSearchSpace):1;diagnostics.hitLimit=tested>=diagnostics.limit||(sampled<searchSpace&&sampled>=attemptLimit);diagnostics.attemptLimit=attemptLimit;diagnostics.completedStages=diagnostics.searchStages.filter(stage=>stage.exhaustive).length;
     const noSourceReason=exchangeGacSourceDiagnostic()||'Aucun mod source éligible : aucun mod libre et aucune utilisation GAC vérifiée pour classer les donneurs.';
     const reason=proposals.length?'':!source.length?noSourceReason:diagnostics.hitLimit?'La recherche a atteint sa limite de sécurité sans scénario validé.':diagnostics.candidatePoolTruncated?'Aucun scénario validé dans le vivier réduit ; des mods éligibles ont été écartés par le plafond de 24 options par slot. Le résultat ne permet pas de conclure sur tous les mods éligibles.':'Aucun scénario ne respecte simultanément la vitesse cible, les références Kyber et les bonus de sets des donneurs.';
     return {proposals:proposals.slice(0,5),tested,sourceCount:source.length,diagnostics,reason};
@@ -583,7 +640,8 @@
     const rejected=Object.entries(diagnostics.rejected||{}).sort((a,b)=>b[1]-a[1]);
     return '<details class="visionnaire-search-diagnostics" open><summary>DIAGNOSTIC DE RECHERCHE · '+diagnostics.tested.toLocaleString('fr-FR')+' combinaisons testées · '+diagnostics.sourceCount+' mods sources</summary>'+
       '<p>Mods éligibles avant plafond : '+Object.entries(diagnostics.eligibleBySlot||{}).map(([slot,count])=>esc(slot)+' '+formatSpace(count)).join(' · ')+' · options retenues : '+Object.entries(diagnostics.optionsBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+' · écartés par plafond/diversité : '+Object.entries(diagnostics.truncatedBySlot||{}).map(([slot,count])=>esc(slot)+' '+formatSpace(count)).join(' · ')+'</p>'+
-      '<p>'+esc(diagnostics.searchMethod||'')+' · '+Number(diagnostics.tested||0).toLocaleString('fr-FR')+' combinaisons compatibles avec le plafond de vitesse évaluées · '+Number(diagnostics.speedPruned||0).toLocaleString('fr-FR')+' écartées avant calcul car la vitesse était insuffisante · '+Number(diagnostics.sampled||0).toLocaleString('fr-FR')+' combinaisons distinctes échantillonnées · '+Number(diagnostics.accepted||0).toLocaleString('fr-FR')+' scénarios valides · '+Number((Number(diagnostics.searchCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'% du vivier réduit</p>'+
+      '<p>'+esc(diagnostics.searchMethod||'')+' · '+Number(diagnostics.tested||0).toLocaleString('fr-FR')+' combinaisons compatibles avec le plafond de vitesse évaluées · '+Number(diagnostics.speedPruned||0).toLocaleString('fr-FR')+' écartées avant calcul car la vitesse était insuffisante · '+Number(diagnostics.sampled||0).toLocaleString('fr-FR')+' combinaisons distinctes parcourues · '+Number(diagnostics.accepted||0).toLocaleString('fr-FR')+' scénarios valides · '+Number((Number(diagnostics.searchCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'% de la recherche progressive</p>'+
+      '<p>Étapes : '+(diagnostics.searchStages||[]).map(stage=>stage.size+' slot(s) '+Number(stage.sampled||0).toLocaleString('fr-FR')+'/'+formatSpace(stage.space)+(stage.exhaustive?' · exhaustif':' · partiel')+' · '+Number(stage.accepted||0)+' scénario(s)').join(' ; ')+'</p>'+
       '<p>Espace total des mods éligibles : '+formatSpace(diagnostics.fullCandidateSearchSpace)+' combinaisons · vivier retenu : '+Number((Number(diagnostics.candidatePoolCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'% · couverture du total éligible : '+Number((Number(diagnostics.fullSearchCoverage||0)*100).toFixed(3)).toLocaleString('fr-FR')+'%</p>'+
       '<p>Primaires non conformes éliminées avant recherche : '+Object.entries(diagnostics.primaryFilteredBySlot||{}).map(([slot,count])=>esc(slot)+' '+count).join(' · ')+'</p>'+
       '<p>Vitesse actuelle cible : '+Number(diagnostics.beforeSpeed||0).toFixed(1)+' · plafond des candidats (hors bonus de set) : '+Number(diagnostics.candidateSpeedCeiling||0).toFixed(1)+'</p>'+
@@ -595,7 +653,7 @@
       (diagnostics.candidatePoolTruncated?'<p class="visionnaire-search-limit">Vivier tronqué : le moteur retient au maximum 24 mods par slot après filtrage et diversité. Les mods éligibles écartés ne sont pas testés ; même si le vivier réduit est entièrement parcouru, la recherche n’est pas exhaustive sur tous les mods éligibles.</p>':'')+'</details>';
   }
   function renderExchangeProposals(){
-    if(state.searching)return '<div class="visionnaire-empty">Recherche des scénarios coordonnés en cours… '+Number(state.searchProgress.tested||0).toLocaleString('fr-FR')+' / '+Number(state.searchProgress.limit||15000).toLocaleString('fr-FR')+' combinaisons compatibles vitesse évaluées · '+Number(state.searchProgress.sampled||0).toLocaleString('fr-FR')+' combinaisons distinctes parcourues. Tu peux laisser cette page ouverte : le navigateur reste disponible pendant le calcul.</div>';
+    if(state.searching)return '<div class="visionnaire-empty">Recherche progressive des échanges en cours… '+Number(state.searchProgress.tested||0).toLocaleString('fr-FR')+' / '+Number(state.searchProgress.limit||15000).toLocaleString('fr-FR')+' combinaisons compatibles vitesse évaluées · '+Number(state.searchProgress.sampled||0).toLocaleString('fr-FR')+' combinaisons distinctes parcourues. Tu peux laisser cette page ouverte : le navigateur reste disponible pendant le calcul.</div>';
     if(!state.proposals.length)return (state.searchError?'<div class="visionnaire-empty">'+esc(state.searchError)+'</div>':'')+renderExchangeDiagnostics(state.diagnostics);
     return '<div class="visionnaire-proposals">'+renderExchangeDiagnostics(state.diagnostics)+'<div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR QUALITÉ STRATÉGIQUE</div>'+
       state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+' · '+proposal.score.verdict+'</b><span class="visionnaire-score">'+proposal.score.score+'/100</span></header>'+
