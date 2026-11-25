@@ -42,7 +42,8 @@ const calculator = {
   calcCharStats(unit, options) {
     receivedUnit = unit;
     assert.deepEqual(options, { withoutModCalc: true, gameStyle: true });
-    return { base: statIds, gear: gearIds };
+    const final = Object.fromEntries(Object.keys(statIds).map(id => [id, statIds[id] + gearIds[id]]));
+    return { final, gear: gearIds };
   },
 };
 const gameData = {
