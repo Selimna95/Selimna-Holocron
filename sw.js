@@ -35,7 +35,7 @@ const STATIC_ASSETS = [
   './modules/visionnaire.js?v=4.1.87-pr59-donor-heuristic',
   './modules/runtime.js?v=3.7.1-visionnaire-page',
   './optimizer-worker.mjs?v=3.6.3-exact-profile-variants',
-  './python/optimizer.py?v=3.5.19-pr59-donor-heuristic',
+  './python/optimizer.py?v=3.5.20-exact-profile-variants',
   './python/kyber_data.py?v=3.4.4-cache-sync',
   './python/kyber_profiles.json?v=3.4.4-cache-sync',
   './assets/backgrounds/holocron-gate.jpg',
