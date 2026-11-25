@@ -1,3 +1,9 @@
+## V4.1.93 — Préfiltre exact du bonus de set Vitesse
+
+- Le préfiltre du Visionnaire ne crédite le bonus de 10 % de Vitesse que si le build final conserve au moins quatre mods Vitesse.
+- Les échanges qui perdent ce bonus sont écartés avant l'évaluation complète, sans relâcher le plancher de vitesse.
+- Ajoute un test de non-régression et invalide le cache PWA.
+
 ## V4.1.92 — Vitesse fondée sur un profil validé
 
 - Le calcul de vitesse du Seigneur Sith n'utilise plus les statistiques brutes du personnage si le profil exact est absent ou incompatible.
