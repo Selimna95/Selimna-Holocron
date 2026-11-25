@@ -329,6 +329,11 @@
     return {balance:rows.reduce((sum,row)=>sum+row.relative,0)/rows.length,rows,losses:[...losses,...coreLosses],coreLosses};
   }
   const exchangeClamp = value => Math.max(0,Math.min(100,Number(value)||0));
+  const DONOR_USAGE_LOG_REFERENCE=800000;
+  const exchangeDonorUsagePreference=uses=>{
+    const count=Math.max(0,Number(uses)||0);
+    return 100/(1+Math.log1p(count)/Math.log1p(DONOR_USAGE_LOG_REFERENCE));
+  };
   function exchangeScenarioScore({mode,beforeSetDistance,afterSetDistance,primaryShare,secondaryFocus,targetBalance,donors}){
     const hasSet=Number.isFinite(beforeSetDistance)&&Number.isFinite(afterSetDistance);
     const setFit=hasSet?exchangeClamp(50+50*(beforeSetDistance-afterSetDistance)/Math.max(1,beforeSetDistance)):null;
@@ -342,14 +347,14 @@
     const availableParts=parts.filter(part=>part.value!==null);
     const reference=availableParts.length?availableParts.reduce((sum,part)=>sum+part.value*part.weight,0)/availableParts.reduce((sum,part)=>sum+part.weight,0):50;
     const targetStats=targetBalance===null?50:exchangeClamp(50+targetBalance*100);
-    const donorUsage=donors.length?donors.reduce((sum,d)=>sum+100/(1+Math.max(0,Number(d.uses)||0)/50),0)/donors.length:100;
+    const donorUsage=donors.length?donors.reduce((sum,d)=>sum+exchangeDonorUsagePreference(d.uses),0)/donors.length:100;
     const donorStats=donors.length?donors.reduce((sum,d)=>sum+(d.statBalance===null?50:exchangeClamp(50+d.statBalance*250)),0)/donors.length:100;
     const donorStatus=donors.length?100-donors.filter(d=>d.statusWorsened).length/donors.length*100:100;
     const donorCost=donorUsage*.45+donorStats*.35+donorStatus*.20;
     const score=Math.round(reference*.45+targetStats*.25+donorCost*.30);
     const complete=targetBalance!==null&&donors.every(d=>d.statBalance!==null);
     const statusSafe=donors.every(d=>!d.statusWorsened);
-    const verdict=score>=75&&complete&&statusSafe?'RECOMMANDÉ':score>=55?'À EXAMINER':'PRUDENCE';
+    const verdict=score>=75&&complete&&statusSafe?'MEILLEUR COMPROMIS TROUVÉ':score>=55?'À EXAMINER':'PRUDENCE';
     return {score,verdict,reference:Math.round(reference),secondaryFocus:secondaryFit===null?null:Math.round(secondaryFit),targetStats:Math.round(targetStats),donorCost:Math.round(donorCost),complete};
   }
   const exchangeFormatStat = value => Number(value).toLocaleString('fr-FR',{maximumFractionDigits:1});
@@ -677,10 +682,10 @@
   function renderExchangeProposals(){
     if(state.searching)return '<div class="visionnaire-empty">Recherche progressive des échanges en cours… '+Number(state.searchProgress.tested||0).toLocaleString('fr-FR')+' / '+Number(state.searchProgress.limit||15000).toLocaleString('fr-FR')+' combinaisons compatibles vitesse évaluées · '+Number(state.searchProgress.sampled||0).toLocaleString('fr-FR')+' combinaisons distinctes parcourues. Tu peux laisser cette page ouverte : le navigateur reste disponible pendant le calcul.</div>';
     if(!state.proposals.length)return (state.searchError?'<div class="visionnaire-empty">'+esc(state.searchError)+'</div>':'')+renderExchangeDiagnostics(state.diagnostics);
-    return '<div class="visionnaire-proposals">'+renderExchangeDiagnostics(state.diagnostics)+'<div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR QUALITÉ STRATÉGIQUE</div>'+
-      state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+' · '+proposal.score.verdict+'</b><span class="visionnaire-score">'+proposal.score.score+'/100</span></header>'+
+    return '<div class="visionnaire-proposals">'+renderExchangeDiagnostics(state.diagnostics)+'<div class="visionnaire-section-kicker">ÉTAPE 4 · SCÉNARIOS CLASSÉS PAR INDICE HEURISTIQUE</div>'+
+      state.proposals.map((proposal,index)=>'<article class="visionnaire-proposal"><header><b>SCÉNARIO '+(index+1)+' · '+proposal.score.verdict+'</b><span class="visionnaire-score"><small>INDICE HEURISTIQUE</small> '+proposal.score.score+'/100</span></header>'+
       '<div class="visionnaire-score-breakdown"><span>Référence sets / primaires <b>'+proposal.score.reference+'/100</b></span><span>Secondaires Kyber <b>'+(proposal.score.secondaryFocus===null?'ND':proposal.score.secondaryFocus+'/100')+'</b></span><span>Stats cible <b>'+proposal.score.targetStats+'/100</b></span><span>Coût donneurs <b>'+proposal.score.donorCost+'/100</b></span></div>'+
-      '<p class="visionnaire-score-method">Pondération : 45% référence Kyber ('+(state.mode==='primaries'?'primaires 70% · secondaires 30%':state.mode==='both'?'sets 45% · primaires 25% · secondaires 30%':'sets 60% · primaires 15% · secondaires 25%')+') · 25% équilibre statistique cible · 30% coût donneurs (usage GAC 45% · statistiques 35% · statut 20%). La vitesse reste un garde-fou, pas un bonus de score.</p>'+
+      '<p class="visionnaire-score-method">Indice heuristique de classement : ce score n’est ni une probabilité ni une garantie d’optimalité. Pondération : 45% référence Kyber ('+(state.mode==='primaries'?'primaires 70% · secondaires 30%':state.mode==='both'?'sets 45% · primaires 25% · secondaires 30%':'sets 60% · primaires 15% · secondaires 25%')+') · 25% équilibre statistique cible · 30% coût donneurs (usage GAC 45% · statistiques 35% · statut 20%). La vitesse reste un garde-fou, pas un bonus de score.</p>'+
       '<div class="visionnaire-proposal-speed"><span>VITESSE CIBLE · PLANCHER RESPECTÉ</span><b>'+proposal.beforeSpeed.toFixed(1)+' → '+proposal.afterSpeed.toFixed(1)+' ('+(proposal.speedGain>=0?'+':'')+proposal.speedGain.toFixed(1)+')</b></div>'+
       '<div class="visionnaire-stat-section"><b>IMPACT COMPLET · PERSONNAGE CIBLE</b>'+exchangeStatsMarkup(proposal.targetStatsBefore,proposal.targetStatsAfter)+'</div>'+
       '<p class="visionnaire-focus-note">'+(proposal.targetFocusImpact?'Garde-fou : aucune secondaire Kyber prioritaire ne perd plus de 25%, ni aucune statistique majeure (santé, protection, offense, défense) plus de 35%.':'Référence sans secondaires prioritaires exploitables : score statistique incomplet.')+'</p>'+
