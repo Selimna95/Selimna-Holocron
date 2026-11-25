@@ -28,14 +28,14 @@ assert.equal(g13.error, null);
 assert.equal(g13.unit.relic.currentTier, 2);
 assert.deepEqual(g13.unit.equipped, []);
 
-const statIds = { 1: 1000, 5: 120, 6: 200, 7: 150, 8: 20, 9: 25, 17: 0.1, 18: 0.2, 28: 500 };
-const gearIds = { 1: 100, 5: 5, 6: 10, 7: 0, 8: 2, 9: 3, 17: 0, 18: 0, 28: 50 };
+const statIds = { 1: 1000, 5: 120, 6: 200, 7: 150, 8: 0.2, 9: 0.25, 17: 0.1, 18: 0.2, 28: 500 };
+const gearIds = { 1: 100, 5: 5, 6: 10, 7: 0, 8: 0.02, 9: 0.03, 17: 0, 18: 0, 28: 50 };
 let receivedUnit = null;
 const calculator = {
   setGameData() {},
   calcCharStats(unit, options) {
     receivedUnit = unit;
-    assert.deepEqual(options, { withoutModCalc: true });
+    assert.deepEqual(options, { withoutModCalc: true, gameStyle: true });
     return { base: statIds, gear: gearIds };
   },
 };
@@ -56,6 +56,10 @@ assert.equal(calculated.profile.base_stats.Speed, 125);
 assert.equal(calculated.profile.stat_components.base.Health, 1000);
 assert.equal(calculated.profile.stat_components.gear.Health, 100);
 assert.equal(calculated.profile.stat_components.source, "Crinolo.stats.base+stats.gear");
+assert.equal(calculated.profile.base_stats.Armor, 22);
+assert.equal(calculated.profile.base_stats.Resistance, 28);
+assert.equal(calculated.profile.stat_components.base.Armor, 20);
+assert.equal(calculated.profile.stat_components.gear.Resistance, 3);
 
 const unknownPiece = calculateCrinoloProfile({ data: { ...source.data, gear: gear.map((item, i) => i === 0 ? { ...item, base_id: "UNKNOWN" } : item) } }, calculator, gameData);
 assert.match(unknownPiece.error, /Pièce de gear inconnue/);
