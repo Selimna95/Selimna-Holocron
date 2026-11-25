@@ -384,7 +384,7 @@ json.dumps({
 })
 `));
 assert.equal(secondaryDefenseSearch.count, 1, 'Uncalculable Defense must not reject a build when the score stats are complete');
-assert.ok(!secondaryDefenseSearch.missing.includes('defense:gear_component_required'), 'G13 Defense % must be calculated with zero gear contribution');
+assert.ok(!secondaryDefenseSearch.missing.includes('defense:gear_component_required'), 'G13 Defense % must be calculated with verified Crinolo gear components');
 
 
 const realComlinkDefenseSearch = JSON.parse(pyodide.runPython(`import json
@@ -402,7 +402,7 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
             {'name': 'Tenacity', 'stat_id': 18, 'value': 281.8, 'display_value': '2.82%', 'unscaled_roll_values': [1778, 1159, 1761]}
         ]
     })
-score_profile = {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}
+score_profile = json.loads(g13_profile_json)
 result = optimizer.optimize_kyber(
     comlink_mods, base_stats=json.loads(base_json), base_profile=score_profile,
     kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
