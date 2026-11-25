@@ -66,9 +66,9 @@ assert.ok(js.includes('speedLoss:beforeSpeed-afterSpeed'), 'Rejected speed excha
 assert.ok(js.includes('afterSpeed+1e-9<beforeSpeed'),'Target speed must never decrease');
 assert.ok(js.includes('RECOMMANDÉ'),'Scenario verdict must be explicit');
 assert.ok(js.includes('const diagnostics={limit:15000'),'Search diagnostics must expose the safety limit and candidate counts');
-assert.ok(js.includes('eligibleBySlot')&&js.includes('truncatedBySlot'),'Search diagnostics must disclose eligible and capped-out mods per slot');
-assert.ok(js.includes('fullCandidateSearchSpace')&&js.includes('fullSearchCoverage')&&js.includes('candidatePoolCoverage'),'Search coverage must distinguish the reduced pool from all eligible candidates');
-assert.ok(js.includes('Vivier tronqué'),'A capped candidate pool must be explained in the result UI');
+assert.ok(js.includes('eligibleBySlot')&&js.includes('setFilteredBySlot')&&js.includes('primaryFilteredBySlot'),'Search diagnostics must disclose the successive Kyber candidate filters');
+assert.ok(js.includes('fullCandidateSearchSpace')&&js.includes('fullSearchCoverage')&&js.includes('candidatePoolCoverage'),'Search coverage must describe the complete post-Kyber candidate pool');
+assert.ok(!js.includes('Vivier tronqué'),'The UI must no longer describe an artificial per-slot candidate cap');
 
 assert.ok(js.includes('perte_stat_cible'),'Search must count target-stat rejections');
 assert.ok(js.includes('bonus_sets_donneur'),'Search must count donor set-bonus rejections');
