@@ -79,3 +79,15 @@ jobs:
       - name: Serve the static app
         run: python -m http.server 8765 --bind 127.0.0.1 > /tmp/holocron-http.log 2>&1 & echo $! > /tmp/holocron-http.pid
       - run: node tests/browser_smoke.mjs
+
+  optimizer-profile-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build pinned Crinolo game data
+        run: node scripts/build-crinolo-gamedata.mjs /tmp/optimizer-game-data.json
+      - name: Generate and verify all exact G13 profile variants
+        run: node scripts/build-optimizer-profile-variants.mjs python/optimizer_profiles.json /tmp/optimizer-game-data.json /tmp/optimizer_profiles.v2.json /tmp/optimizer_profile_coverage.json
