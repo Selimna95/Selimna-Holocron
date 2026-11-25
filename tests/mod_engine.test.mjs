@@ -395,6 +395,23 @@ const dynamicCrinoloDefenseProfile = {
     gear: { Armor: 5, Resistance: 5 }
   }
 };
+const dynamicCrinoloHealthProfile = {
+  gear_level: 12,
+  level: 85,
+  base_stats: { Health: 1100 },
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Health: 1000 },
+    gear: { Health: 100 }
+  }
+};
+const dynamicCrinoloHealthProjection = engine.calculateFinalStats(dynamicCrinoloHealthProfile, [{
+  level: 1, set_name: 'Health', primary_stat: 'Health %', primary_value: 10
+}], 85);
+assert.equal(dynamicCrinoloHealthProjection.complete, true);
+assert.equal(dynamicCrinoloHealthProjection.stats.Health, 1200,
+  'G12 Health % must apply to the Crinolo base component and then add equipped gear exactly');
+
 const dynamicCrinoloDefenseProjection = engine.calculateFinalStats(dynamicCrinoloDefenseProfile, [{
   level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10
 }], 85);
