@@ -26,19 +26,25 @@ export function normalizeCrinoloRosterUnit(source) {
   const raw = isRecord(source?.data) ? source.data : source;
   if (!isRecord(raw)) return fail("Données brutes du personnage absentes.");
 
-  const baseId = String(firstValue(raw.base_id, raw.baseId, raw.definitionId, "")).split(":")[0].trim();
-  const level = numeric(firstValue(raw.level, raw.currentLevel));
-  const rarity = numeric(firstValue(raw.rarity, raw.currentRarity, raw.starLevel, raw.stars));
-  const gearLevel = numeric(firstValue(raw.gear_level, raw.gearLevel, raw.currentTier));
+  const baseId = String(firstValue(raw.base_id, raw.baseId, raw.definitionId, source?.base_id, source?.baseId, "")).split(":")[0].trim();
+  const level = numeric(firstValue(raw.level, raw.currentLevel, source?.level, source?.currentLevel));
+  const rarity = numeric(firstValue(raw.rarity, raw.currentRarity, raw.starLevel, raw.stars, source?.rarity, source?.stars));
+  const gearLevel = numeric(firstValue(raw.gear_level, raw.gearLevel, raw.currentTier, source?.gear_level, source?.gearLevel, source?.gear));
   if (!baseId || !Number.isInteger(level) || level < 1 || level > 90 ||
       !Number.isInteger(rarity) || rarity < 1 || rarity > 7 ||
       !Number.isInteger(gearLevel) || gearLevel < 1 || gearLevel > 13) {
     return fail("Identité ou progression du personnage incomplète (base_id, niveau, rareté ou gear).");
   }
 
+  const explicitSourceRelic = firstValue(
+    source?.relic_tier, source?.relicTier, source?.relic_level, source?.relicLevel,
+    source?.relic?.currentTier, source?.relic?.tier
+  );
+  const sourceRelicNumber = numeric(explicitSourceRelic);
   const rawRelicTier = firstValue(
     raw.relic_tier, raw.relicTier, raw.relic_level, raw.relicLevel,
-    raw.relic?.currentTier, raw.relic?.tier
+    raw.relic?.currentTier, raw.relic?.tier,
+    sourceRelicNumber !== null && sourceRelicNumber > 0 ? explicitSourceRelic : undefined
   );
   if (gearLevel === 13 && rawRelicTier === undefined) {
     return fail("Palier de relique absent pour un personnage G13 : calcul exact impossible.");
@@ -51,7 +57,7 @@ export function normalizeCrinoloRosterUnit(source) {
     return fail("Palier de relique invalide ou incohérent avec le gear.");
   }
 
-  const gear = firstValue(raw.gear, raw.equipment);
+  const gear = [raw.gear, raw.equipment, source?.gear, source?.equipment].find(Array.isArray);
   if (!Array.isArray(gear) || gear.length !== 6) {
     return fail("Les six emplacements de gear courant ne sont pas fournis : calcul Crinolo refusé.");
   }
