@@ -1,3 +1,9 @@
+/*
+ * Data mapping adapted from swgoh-utils/swgoh-stats/src/dataBuilder.js
+ * (MIT; see licenses/SWGOH-STATS-MIT.txt).
+ * Source collections are pinned to swgoh-utils/gamedata
+ * (GPL-3.0; see licenses/SWGOH-GAMEDATA-GPL-3.0.txt).
+ */
 import { brotliDecompressSync } from "node:zlib";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
