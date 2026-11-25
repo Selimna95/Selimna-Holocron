@@ -407,7 +407,7 @@
       if(!compatibleConfigurations.length)return false;
       // With one selected slot there is no later candidate to complete a
       // singleton set, so compare the exact six-mod result immediately.
-      if(slots.length===1)return exchangeSetDistance(fixedTargetMods.concat(mod),profile)<beforeSetDistance;
+      if(slots.length===1){const distance=exchangeSetDistance(fixedTargetMods.concat(mod),profile);return state.mode==='primaries'?distance<=beforeSetDistance:distance<beforeSetDistance;}
       const minimumUnavoidableDistance=Math.min(...compatibleConfigurations.map(config=>{
         const names=new Set([...Object.keys(config.counts||{}),...Object.keys(fixedTargetSetCounts),candidateSet]);
         let excess=0;
@@ -419,7 +419,7 @@
         }
         return excess;
       }));
-      return minimumUnavoidableDistance<beforeSetDistance;
+      return state.mode==='primaries'?minimumUnavoidableDistance<=beforeSetDistance:minimumUnavoidableDistance<beforeSetDistance;
     };
     for(const slot of slots){
       const ordered=[...new Map(source.filter(mod=>slotOf(mod)===slot&&exchangeModId(mod)!==exchangeModId(currentBySlot.get(slot)))
@@ -503,7 +503,7 @@
         // Revalidate the complete Kyber set composition and selected primaries
         // before invoking any speed projection for this combination.
         const afterSetDistance=exchangeSetDistance(finalTarget,profile);
-        if(beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>=beforeSetDistance){
+        if(beforeSetDistance!==null&&afterSetDistance!==null&&(state.mode==='primaries'?afterSetDistance>beforeSetDistance:afterSetDistance>=beforeSetDistance)){
           reject('reference_sets','La composition de sets ne se rapproche pas de Kyber');return;
         }
         if(!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
