@@ -96,7 +96,10 @@ function buildTableData(tableList, xpTableList, statEnum) {
         break;
       case "galactic_power_per_complete_gear_tier_table":
         data.gp.gearLevelGP = { 1: 0 };
-        for (const row of table.row) data.gp.gearLevelGP[++row.key.match(/TIER_0?(\\d+)/)[1]] = Number(row.value);
+        for (const row of table.row) {
+          const match = row.key.match(/TIER_0?(\\d+)/);
+          if (match) data.gp.gearLevelGP[Number(match[1]) + 1] = Number(row.value);
+        }
         data.cr.gearLevelCR = data.gp.gearLevelGP;
         break;
       case "galactic_power_per_tier_slot_table":
