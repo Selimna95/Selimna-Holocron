@@ -9,6 +9,7 @@ assert.equal(response.ok, true, `Crinolo gameData HTTP ${response.status}`);
 const gameData = await response.json();
 const profiles = JSON.parse(fs.readFileSync(new URL("../python/optimizer_profiles.json", import.meta.url), "utf8"));
 console.log("Crinolo gameData keys:", Object.keys(gameData));
+console.log("Crinolo data array:", Array.isArray(gameData.data), gameData.data?.length, Object.keys(gameData.data?.[0] || {}), JSON.stringify(gameData.data?.[0] || {}).slice(0, 1800));
 console.log("Crinolo unitData count:", Object.keys(gameData.unitData || {}).length);
 console.log("Crinolo unitData sample:", Object.keys(gameData.unitData || {}).slice(0, 20));
 console.log("Crinolo MOFFGIDEON keys:", Object.keys(gameData.unitData?.MOFFGIDEONS3 || {}));
