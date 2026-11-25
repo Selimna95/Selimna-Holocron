@@ -27,7 +27,6 @@ const STATIC_ASSETS = [
   './modules/optimizer-progression.mjs?v=1.0.0-crinolo-dynamic',
   './vendor/crinolo-stat-calc.mjs?v=1.0.0-crinolo-maintained',
   './vendor/CRINOLO-LICENSE.txt',
-  './statCalcData/gameData.json',
   './modules/core.js?v=4.2.47-crinolo-built-game-data',
   './modules/acolyte.js?v=3.4.9-weak-donor-recipient',
   './modules/disciple.js?v=3.5.10-validated-gear-speed',
