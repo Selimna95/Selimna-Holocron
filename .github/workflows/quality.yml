@@ -29,6 +29,8 @@ jobs:
       - run: node --check vendor/crinolo-stat-calc.mjs
       - run: node --check tests/optimizer_progression.test.mjs
       - run: node tests/optimizer_progression.test.mjs
+      - run: node --check tests/crinolo_gamedata.test.mjs
+      - run: node tests/crinolo_gamedata.test.mjs
       - run: node --check modules/mod-engine.js
       - run: node --check tests/mod_engine.test.mjs
       - run: node tests/mod_engine.test.mjs
