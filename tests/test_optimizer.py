@@ -389,6 +389,19 @@ class OptimizerNormalizationTests(unittest.TestCase):
         self.assertEqual(len(builds), 1)
         self.assertEqual(builds[0]["set_plan"], {"Speed": 6})
 
+    def test_realistic_high_gac_usage_counts_keep_distinct_logarithmic_ranks(self):
+        counts = (34_000, 100_000, 800_000)
+        preferences = [optimizer_module._donor_usage_preference(value) for value in counts]
+        self.assertGreater(preferences[0], preferences[1])
+        self.assertGreater(preferences[1], preferences[2])
+        self.assertEqual(len(set(round(value, 6) for value in preferences)), 3)
+
+        mods = [_realistic_mod("Square", "Speed", game_id=str(value),
+                               speed=10, source_usage=value) for value in counts]
+        scores = [_mod_score(mod, {}, {"Speed": 1.0}) for mod in mods]
+        self.assertGreater(scores[0], scores[1])
+        self.assertGreater(scores[1], scores[2])
+
     def test_lower_gac_usage_donor_is_preferred_after_mod_fit(self):
         low_use = _realistic_mod("Square", "Speed", game_id="low-use", speed=10, source_usage=5)
         high_use = _realistic_mod("Square", "Speed", game_id="high-use", speed=10, source_usage=900)
