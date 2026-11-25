@@ -11,4 +11,4 @@ Le moteur ne doit plus dépendre d'un instantané unique par personnage.
 Dépendances épinglées :
 
 - Calculateur Crinolo maintenu par swgoh-utils : `swgoh-utils/swgoh-stat-calc@e42bf44898c92276143e766e7bb82be9790c4eec` (MIT, attribution dans `vendor/CRINOLO-LICENSE.txt`).
-- Données de jeu : `swgoh-utils/gamedata@e96f00d4bcddb41d9bb93428a00ab7b4bb6fcdef/gameData.json`, chargées depuis GitHub Raw au démarrage du Worker. Aucun serveur payant n'est ajouté.
+- Données de jeu : `https://swgoh-stat-calc.glitch.me/gameData.json`, le fichier de référence au format Crinolo indiqué par la documentation du calculateur. Il est chargé au démarrage du Worker et mis en cache par le navigateur. Aucun serveur payant n'est ajouté.
