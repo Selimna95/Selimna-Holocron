@@ -13,17 +13,16 @@ let calculatedCount = 0;
 const failures = [];
 for (const profile of Object.values(profiles)) {
   const unit = gameData.unitData?.[profile.base_id];
-  if (!unit?.gearLvl?.[profile.gear_level] || !unit.growthModifiers?.[profile.rarity]) {
+  const crinoloGearLevel = Math.min(Number(profile.gear_level), 12);
+  if (!unit?.gearLvl?.[crinoloGearLevel] || !unit.growthModifiers?.[profile.rarity]) {
     failures.push(`${profile.base_id}: référence unité/gear/rareté absente`);
     continue;
   }
-  const gear = profile.gear_level === 13
-    ? undefined
-    : (unit.gearLvl[profile.gear_level].gear || []).map((base_id, index) => ({
-        slot: index + 1,
-        is_obtained: true,
-        base_id,
-      }));
+  const gear = (unit.gearLvl[crinoloGearLevel].gear || []).map((base_id, index) => ({
+    slot: index + 1,
+    is_obtained: true,
+    base_id,
+  }));
   const source = { data: {
     base_id: profile.base_id,
     level: profile.level,
