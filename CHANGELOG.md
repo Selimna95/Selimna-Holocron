@@ -1,3 +1,9 @@
+## V4.1.92 — Vitesse fondée sur un profil validé
+
+- Le calcul de vitesse du Seigneur Sith n'utilise plus les statistiques brutes du personnage si le profil exact est absent ou incompatible.
+- Le diagnostic `profile_progression_uncovered` est propagé dans le résultat de projection.
+- Ajoute un test de non-régression et invalide le cache PWA.
+
 ## V4.1.91 — Manifeste de couverture des profils
 
 - Publie un manifeste exact des instantanés de profils disponibles et des variantes G13 manquantes.
