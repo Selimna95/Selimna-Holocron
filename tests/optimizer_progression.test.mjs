@@ -47,7 +47,10 @@ const calculator = {
 };
 const gameData = {
   unitData: { TEST_UNIT: {
-    gearLvl: { 12: {}, 13: {} },
+    gearLvl: {
+      12: { gear: ["GEAR_A", "GEAR_B", "GEAR_C", "GEAR_D", "GEAR_E", "GEAR_F"] },
+      13: { gear: ["GEAR_A", "GEAR_B", "GEAR_C", "GEAR_D", "GEAR_E", "GEAR_F"] },
+    },
     growthModifiers: { 7: {} },
     relic: { 8: "RELIC_8", 10: "RELIC_10" },
   } },
