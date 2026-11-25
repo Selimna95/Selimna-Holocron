@@ -58,7 +58,7 @@ assert.ok(priority({_sourceOwnerKey:null,speed:0},{_sourceOwnerKey:'DONOR',_sour
 assert.ok(priority({_sourceOwnerKey:'RARE',_sourceUsage:3,speed:0},{_sourceOwnerKey:'COMMON',_sourceUsage:40,speed:100})<0,'Lower GAC usage must beat a much faster but frequently used donor');
 assert.ok(priority({_sourceOwnerKey:'DONOR',_sourceUsage:8,speed:25},{_sourceOwnerKey:'DONOR2',_sourceUsage:8,speed:10})<0,'Speed is a tie-breaker when GAC usage is equal');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
-assert.ok(js.includes('baseSpeed+retainedSpeed+combo.reduce'), 'Theoretical speed ceiling must include the character base speed');
+assert.ok(js.includes('baseSpeed+retainedForSubset+'), 'Each partial exchange must include the speed of untouched target mods');
 assert.ok(js.includes('if(!beforeProjection.complete||!afterProjection.complete)'), 'Target speed projections must fail closed when incomplete');
 assert.ok(js.includes('if(!donorBeforeSpeed.complete||!donorAfterSpeed.complete)'), 'Donor speed projections must fail closed when incomplete');
 assert.ok(js.includes('async function buildExchangeProposals'), 'Six-slot search must run asynchronously');
