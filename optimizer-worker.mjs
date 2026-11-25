@@ -35,7 +35,7 @@ function getPyodide() {
 
   // The optimizer reference data is loaded by the Worker itself.
   // This removes the fragile dependency on a browser-side script tag.
-  const profilesResponse = await fetch(new URL("./python/optimizer_profiles.json?v=3.4.4-cache-sync", import.meta.url), { cache: "force-cache" });
+  const profilesResponse = await fetch(new URL("./statCalcData/optimizer_profiles.v2.json?v=4.1.90-exact-progression", import.meta.url), { cache: "force-cache" });
   if (!profilesResponse.ok) throw new Error(`Impossible de charger optimizer_profiles.json (HTTP ${profilesResponse.status})`);
   const profilesText = await profilesResponse.text();
   pyodide.FS.writeFile("/home/pyodide/optimizer_profiles.json", profilesText);
@@ -172,7 +172,7 @@ elif isinstance(base_stats, dict) and base_stats:
     base_profile = {'base_stats': base_stats, **(character_metadata if isinstance(character_metadata, dict) else {})}
 else:
     # Static snapshots remain a strict fallback, never a substitute for another tier.
-    base_profile = optimizer.resolve_character_profile(_optimizer_profiles, character_base_id, character_name)
+    base_profile = optimizer.resolve_character_profile(_optimizer_profiles, character_base_id, character_name, character_metadata)
     if isinstance(base_profile, dict) and base_profile:
         optimizer.validate_profile_compatibility(base_profile, character_metadata)
         base_profile = dict(base_profile)
