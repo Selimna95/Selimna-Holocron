@@ -32,6 +32,11 @@ assert.deepEqual(deploy.on.workflow_run.branches, ['main']);
 assert.deepEqual(deploy.on.workflow_run.types, ['completed']);
 
 const deployJob = deploy.jobs?.deploy;
+const profileBuild = quality.jobs?.['optimizer-profile-build'];
+assert.ok(profileBuild, 'The real Crinolo profile generation must run before a PR can pass quality checks');
+assert.ok(profileBuild.steps.some(step => step.run?.includes('build-crinolo-gamedata.mjs')));
+assert.ok(profileBuild.steps.some(step => step.run?.includes('build-optimizer-profile-variants.mjs')));
+
 assert.ok(deployJob, 'A deploy job must exist');
 assert.match(deployJob.if, /conclusion\s*==\s*'success'/);
 assert.match(deployJob.if, /event\s*==\s*'push'/);
