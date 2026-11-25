@@ -190,14 +190,20 @@ function optimizerRosterMetadata(character) {
     return null;
   };
   const readBoth = keys => read(raw, keys) ?? read(character, keys);
-  const relicObject = read(raw, ['relic']) ?? read(character, ['relic']);
-  const relicValue = readBoth(['relic_tier','relicTier','relic_level','relicLevel']) ??
+  const relicObject = read(raw, ['relic']);
+  const relicValue = read(raw, ['relic_tier','relicTier','relic_level','relicLevel']) ??
     read(relicObject, ['currentTier','tier','relicTier']);
+  const gearLevel = numericValue(readBoth(['gear_level','gearLevel','gear','currentTier']), null);
+  let relicTier = numericValue(relicValue, null);
+  // Before G13 a unit cannot have an unlocked relic; use Crinolo's locked tier.
+  // At G13, only an explicit SWGOH.GG relic field can distinguish R0 from higher relics.
+  if (relicTier == null && gearLevel != null && gearLevel < 13) relicTier = 1;
+  if (relicTier === 0 && gearLevel != null) relicTier = gearLevel === 13 ? 2 : 1;
   return {
     level: numericValue(readBoth(['level','currentLevel']), null),
     rarity: numericValue(readBoth(['rarity','starLevel','stars','currentRarity']), null),
-    gear_level: numericValue(readBoth(['gear_level','gearLevel','gear','currentTier']), null),
-    relic_tier: numericValue(relicValue, null)
+    gear_level: gearLevel,
+    relic_tier: relicTier
   };
 }
 function optimizerProfileMatchesRoster(profile,metadata) {
