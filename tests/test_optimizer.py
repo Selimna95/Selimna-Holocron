@@ -401,6 +401,14 @@ class OptimizerNormalizationTests(unittest.TestCase):
         scores = [_mod_score(mod, {}, {"Speed": 1.0}) for mod in mods]
         self.assertGreater(scores[0], scores[1])
         self.assertGreater(scores[1], scores[2])
+        base_stats = TEST_BASE_PROFILE["base_stats"]
+        build_scores = [
+            build_score([mod], {}, {"Speed": 1.0}, base_stats, TEST_BASE_PROFILE,
+                        projected_stats=final_stats([mod], base_stats, TEST_BASE_PROFILE))
+            for mod in mods
+        ]
+        self.assertGreater(build_scores[0], build_scores[1])
+        self.assertGreater(build_scores[1], build_scores[2])
 
     def test_lower_gac_usage_donor_is_preferred_after_mod_fit(self):
         low_use = _realistic_mod("Square", "Speed", game_id="low-use", speed=10, source_usage=5)
