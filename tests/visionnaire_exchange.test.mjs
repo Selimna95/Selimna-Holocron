@@ -203,6 +203,23 @@ const rejected=await runSearch(speedTarget,[],slowFree,primaryProfile,'primaries
 assert.equal(rejected.proposals.length,0,'No scenario may lower the target total speed');
 assert.equal(rejected.tested,0,'Impossible low-speed combinations must be pruned before full evaluation');
 assert.equal(rejected.diagnostics.speedPruned,rejected.diagnostics.searchSpace,'Every impossible combination must be pruned by the speed prefilter');
+// Losing a four-piece Speed set also loses its 10% base-Speed bonus.
+// The prefilter must account for the final set count instead of granting that
+// bonus unconditionally and spending an evaluation slot on an impossible trade.
+const fourSpeedSetTarget={...speedTarget,baseId:'FOURSPEEDSET',name:'Cible avec quatre sets Vitesse',mods:[
+  makeMod('fs-square','Square','Speed',10),makeMod('fs-arrow','Arrow','Speed',10),
+  makeMod('fs-diamond','Diamond','Speed',10),makeMod('fs-triangle','Triangle','Speed',10),
+  makeMod('fs-circle','Circle','Health',10),makeMod('fs-cross','Cross','Health',10)
+]};
+const loseSpeedSet=await runSearch(fourSpeedSetTarget,[],[
+  makeMod('replace-speed-square','Square','Health',10),
+  makeMod('replace-speed-arrow','Arrow','Health',10)
+],{slots:{Square:{primaries:{Speed:1}},Arrow:{primaries:{Speed:1}}}},'primaries',[],['Square','Arrow']);
+assert.equal(loseSpeedSet.proposals.length,0,'A trade that breaks the four-piece Speed set must not lower target speed');
+assert.equal(loseSpeedSet.tested,0,'A combination that cannot retain the current Speed-set bonus must be pruned before full evaluation');
+assert.equal(loseSpeedSet.diagnostics.speedPruned,loseSpeedSet.diagnostics.searchSpace,
+  'The speed prefilter must not count a lost four-piece Speed bonus as available');
+
 const missingBaseTarget={...normalTarget,base_stats:{Health:1000,Offense:500}};
 const missingBaseSearch=await runSearch(missingBaseTarget,[],freeChoices,kyber);
 assert.equal(missingBaseSearch.proposals.length,0,'Visionnaire must not recommend an exchange when target base speed is unknown');

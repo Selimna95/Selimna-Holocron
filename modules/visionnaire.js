@@ -623,8 +623,15 @@
           localSeen.add(signature);sampled++;stage.sampled++;
           const retainedForSubset=current.filter(mod=>!activeSlots.includes(slotOf(mod)))
             .reduce((sum,mod)=>sum+modTotalSpeed(mod),0);
+          // The 10% Speed-set bonus is only available when the final six-mod
+          // build still contains at least four Speed pieces. Treating it as
+          // unconditional made impossible exchanges pass this prefilter and
+          // consume the 15,000-combination evaluation budget before the real
+          // speed projection rejected them.
+          const projectedSetCounts=exchangeSetCounts(current.filter(mod=>!activeSlots.includes(slotOf(mod))).concat(combo));
+          const availableSpeedSetBonus=(projectedSetCounts[labelSet('Speed')]||0)>=4?maximumSpeedSetBonus:0;
           const theoreticalMaximum=baseSpeed+retainedForSubset+
-            combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+maximumSpeedSetBonus;
+            combo.reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+availableSpeedSetBonus;
           if(theoreticalMaximum+1e-9<beforeSpeed)speedPruned++;
           else{
             tested++;stage.tested++;chosen=combo;
