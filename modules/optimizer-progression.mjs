@@ -82,7 +82,7 @@ export function normalizeCrinoloRosterUnit(source) {
       rarity,
       level,
       // Crinolo models G13 as gear tier 12 with all six current-tier pieces equipped.
-      gear: Math.min(gearLevel, 12),
+      gear: gearLevel,
       equipped,
       relic: { currentTier: relicTier },
     },
