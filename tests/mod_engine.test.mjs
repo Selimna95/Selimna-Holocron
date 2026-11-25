@@ -602,7 +602,7 @@ const gear12Profile = { gear_level: 12, base_stats: projectionBase };
 const gear12OffenseProjection = engine.calculateFinalStats(gear12Profile, offenseMods, 85);
 assert.equal(gear12OffenseProjection.complete, false);
 assert.ok(gear12OffenseProjection.missing.includes('offense:gear_component_required'));
-const gear13OffenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
+const gear13OffenseProjection = engine.calculateFinalStats(g13ProjectionProfile, offenseMods, 85);
 assert.equal(gear13OffenseProjection.complete, true, 'G13 Offense % is calculable with the supplied split');
 const directDamagePercentMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Physical Damage %', primary_value: 10 },
