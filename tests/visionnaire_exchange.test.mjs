@@ -231,6 +231,18 @@ const fixedDiamondSearch=await runSearch(normalTarget,[],[
 ],{specific_sets:kyber.specific_sets,slots:{Diamond:{primaries:{Defense:1}}}},'primaries',[],['Diamond']);
 assert.equal(fixedDiamondSearch.diagnostics.primaryFilteredBySlot['Losange'],0,'SWGOH.GG fixed Diamond Defense shorthand must not filter an equipped Defense % primary');
 assert.equal(fixedDiamondSearch.diagnostics.eligibleBySlot['Losange'],1,'The fixed Diamond Defense % candidate must remain eligible');
+const incompatibleSetInPrimaryMode=await runSearch(normalTarget,[],[
+  makeMod('bad-set-primary-square','Square','Tenacity',20,'Offense %',5)
+ ],{specific_sets:kyber.specific_sets,slots:{Square:{primaries:{Offense:1}}}},'primaries',[],['Square']);
+assert.equal(incompatibleSetInPrimaryMode.diagnostics.setFilteredBySlot['Carré'],1,'The set prefilter must also run in primary-only mode');
+assert.equal(incompatibleSetInPrimaryMode.diagnostics.eligibleBySlot['Carré'],0,'A set absent from every exact Kyber composition must not reach primary/speed evaluation');
+const incompatiblePrimaryInSetMode=await runSearch(normalTarget,[],[
+  makeMod('bad-primary-set-square','Square','Speed',20,'Health %',5)
+ ],{specific_sets:kyber.specific_sets,slots:{Square:{primaries:{Offense:1}}}},'sets',[],['Square']);
+assert.equal(incompatiblePrimaryInSetMode.diagnostics.setFilteredBySlot['Carré'],0,'A Kyber-compatible set must pass the first filter in set-only mode');
+assert.equal(incompatiblePrimaryInSetMode.diagnostics.primaryFilteredBySlot['Carré'],1,'The primary prefilter must still run in set-only mode');
+assert.equal(incompatiblePrimaryInSetMode.diagnostics.eligibleBySlot['Carré'],0,'A wrong primary must not reach speed evaluation in set-only mode');
+
 const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5,'Physical Damage':1000,'Special Damage':1000},mods:normalTarget.mods.map(mod=>({...mod}))};
 variablePrimaryTarget.mods.find(mod=>mod.slot==='Square').set_name='Speed';
 variablePrimaryTarget.mods.find(mod=>mod.slot==='Circle').set_name='Potency';
