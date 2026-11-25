@@ -375,6 +375,34 @@ assert.ok(Math.abs(splitDefenseProjection.stats.Resistance - expectedBaseOnlyDef
 assert.ok(Math.abs(splitDefenseProjection.stats.Armor - incorrectlyGearInclusiveDefensePercent) > 0.02,
   'The old gear-inclusive calculation must be observably different');
 
+const dynamicCrinoloDefenseProfile = {
+  level: 85,
+  gear_level: 12,
+  base_stats: { Armor: 50, Resistance: 40 },
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Armor: 45, Resistance: 35 },
+    gear: { Armor: 5, Resistance: 5 }
+  }
+};
+const dynamicCrinoloDefenseProjection = engine.calculateFinalStats(dynamicCrinoloDefenseProfile, [{
+  level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10
+}], 85);
+const baseArmorRating = 0.45 * defenseLevelEffect / (1 - 0.45);
+const baseResistanceRating = 0.35 * defenseLevelEffect / (1 - 0.35);
+const currentArmorRating = 0.50 * defenseLevelEffect / (1 - 0.50);
+const currentResistanceRating = 0.40 * defenseLevelEffect / (1 - 0.40);
+const expectedDynamicArmor = (currentArmorRating + Math.floor(baseArmorRating * 0.10)) /
+  (defenseLevelEffect + currentArmorRating + Math.floor(baseArmorRating * 0.10)) * 100;
+const expectedDynamicResistance = (currentResistanceRating + Math.floor(baseResistanceRating * 0.10)) /
+  (defenseLevelEffect + currentResistanceRating + Math.floor(baseResistanceRating * 0.10)) * 100;
+assert.equal(dynamicCrinoloDefenseProjection.complete, true);
+assert.ok(Math.abs(dynamicCrinoloDefenseProjection.stats.Armor - expectedDynamicArmor) < 1e-10,
+  'Dynamic Crinolo Armor % uses the base Armor component, excluding current gear contribution');
+assert.ok(Math.abs(dynamicCrinoloDefenseProjection.stats.Resistance - expectedDynamicResistance) < 1e-10,
+  'Dynamic Crinolo Resistance % uses the base Resistance component, excluding current gear contribution');
+
+
 const critAvoidanceProjection = engine.calculateFinalStats({
   'Physical Critical Avoidance': 10, 'Special Critical Avoidance': 5
 }, [
