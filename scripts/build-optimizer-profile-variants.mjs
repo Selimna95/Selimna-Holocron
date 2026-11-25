@@ -20,7 +20,11 @@ function compareOriginalProfile(original, generated, baseId) {
   assertRecord(oldStats, `base_stats existantes pour ${baseId}`);
   assertRecord(newStats, `base_stats Crinolo pour ${baseId}`);
   const keys = Object.keys(oldStats);
+  const generatedKeys = Object.keys(newStats);
   if (!keys.length) throw new Error(`Aucune statistique de référence pour ${baseId}.`);
+  if (keys.length !== generatedKeys.length || keys.some(key => !Object.hasOwn(newStats, key))) {
+    throw new Error(`Parité Crinolo refusée pour ${baseId} : les statistiques de référence ne sont pas identiques.`);
+  }
   for (const key of keys) {
     const oldValue = Number(oldStats[key]);
     const newValue = Number(newStats[key]);
@@ -139,7 +143,9 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
     }
 
     coverage.g13Characters++;
+    const { variants: _legacyVariants, ...originalMetadata } = original;
     outputProfiles[baseId] = {
+      ...originalMetadata,
       name: original.name || baseId,
       base_id: baseId,
       variants,
