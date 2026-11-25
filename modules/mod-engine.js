@@ -251,7 +251,7 @@
     // Percentage projections at every gear tier require an exact, reconciled
     // Crinolo split; a static total cannot reveal which stats came from gear.
     const percentBase = (statName, total) => verifiedStatComponents(
-      profile?.stat_components, statName, total, gearLevel
+      profile?.stat_components, statName, total
     );
     // Gear level is part of the projection contract and therefore part of the cache key.
     const cacheKey = JSON.stringify([expandedBase, Array.isArray(mods) ? mods : [], level, gearLevel, profile?.stat_components ?? null]);
