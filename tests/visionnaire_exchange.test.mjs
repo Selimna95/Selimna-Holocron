@@ -270,7 +270,6 @@ assert.equal(cappedSearch.diagnostics.truncatedBySlot['Carré'],6);
 assert.equal(cappedSearch.diagnostics.truncatedBySlot['Cercle'],6);
 assert.equal(cappedSearch.diagnostics.searchSpace,624,'Progressive space includes each single slot and the pair');
 assert.equal(cappedSearch.diagnostics.fullCandidateSearchSpace,960,'Full candidate space includes each single slot and the pair');
-assert.equal(cappedSearch.diagnostics.searchSpace,576);
 assert.equal(cappedSearch.diagnostics.candidatePoolCoverage,0.65);
 assert.equal(cappedSearch.diagnostics.fullSearchCoverage,0.65,
   'A fully explored reduced pool must not be reported as exhaustive over all eligible mods');
