@@ -23,7 +23,7 @@ const STATIC_ASSETS = [
   './interface-adapter.js?v=4.0.47-crawl-restart-v2',
   './gac-usage.js?v=3.6.0-gac-freshness',
   './modules/seigneur-gac.js?v=1.1.0-history-fallback',
-  './modules/mod-engine.js?v=0.3.33',
+  './modules/mod-engine.js?v=0.3.34-crinolo-defense-components',
   './modules/optimizer-progression.mjs?v=1.0.0-crinolo-dynamic',
   './vendor/crinolo-stat-calc.mjs?v=1.0.0-crinolo-maintained',
   './vendor/CRINOLO-LICENSE.txt',
