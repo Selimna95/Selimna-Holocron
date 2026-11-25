@@ -1231,7 +1231,7 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.6.2-crinolo-roster-batch', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.6.3-exact-profile-variants', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
