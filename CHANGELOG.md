@@ -1,3 +1,10 @@
+## V4.1.86 — publication des corrections PR #59 et invalidation du cache
+
+- Corrige le double comptage de la vitesse absolue dans les résultats du Seigneur Sith.
+- Étend l'échelle logarithmique des usages GAC pour distinguer les donneurs réellement peu utilisés.
+- Clarifie l'indice du Visionnaire : il s'agit d'un classement heuristique, pas d'une probabilité ni d'une garantie d'optimalité.
+- Incrémente les URL des scripts modifiés et l'identifiant du cache PWA afin que les navigateurs installés récupèrent bien ces corrections.
+
 ## V4.1.80 — faisceau de recherche respectant le plancher de vitesse
 
 - Le filtre de vitesse du Seigneur Sith est appliqué avant la réduction finale du faisceau : les builds qui perdent de la vitesse ne peuvent plus évincer les builds sûrs.
