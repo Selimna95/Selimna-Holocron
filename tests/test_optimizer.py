@@ -200,7 +200,11 @@ class OptimizerScoringCalibrationTests(unittest.TestCase):
             "_source_usage": 1000,
         }
         score = _mod_score(mod, {"sets": {"Speed": 1.0}}, {})
-        self.assertEqual(score, optimizer_module.KYBER_MOD_SET_SHARE_WEIGHT)
+        self.assertAlmostEqual(
+            score,
+            optimizer_module.KYBER_MOD_SET_SHARE_WEIGHT
+            + optimizer_module._donor_usage_preference(1000) * 0.15,
+        )
 
     def test_dominant_set_missing_mod_penalty_uses_named_constant(self):
         build = [
@@ -211,8 +215,11 @@ class OptimizerScoringCalibrationTests(unittest.TestCase):
         ]
         kyber = {"sets": {"Speed": 0.8}}
         score = build_score(build, kyber, {}, {}, projected_stats={})
-        expected = -6 * 0.8 * optimizer_module.KYBER_BUILD_DOMINANT_SET_MISSING_MOD_PENALTY
-        self.assertEqual(score, expected)
+        expected = (
+            -6 * 0.8 * optimizer_module.KYBER_BUILD_DOMINANT_SET_MISSING_MOD_PENALTY
+            + 6 * optimizer_module._donor_usage_preference(1000) * 0.15
+        )
+        self.assertAlmostEqual(score, expected)
 
     def test_primary_mismatch_penalty_uses_named_constant(self):
         build = [{
@@ -222,7 +229,11 @@ class OptimizerScoringCalibrationTests(unittest.TestCase):
         }]
         kyber = {"slots": {"Arrow": {"primaries": {"Speed": 0.8, "Offense": 0.2}}}}
         score = build_score(build, kyber, {}, {}, projected_stats={})
-        self.assertEqual(score, -0.8 * optimizer_module.KYBER_BUILD_PRIMARY_MISMATCH_PENALTY)
+        self.assertAlmostEqual(
+            score,
+            -0.8 * optimizer_module.KYBER_BUILD_PRIMARY_MISMATCH_PENALTY
+            + optimizer_module._donor_usage_preference(1000) * 0.15,
+        )
 
 
 class OptimizerProfileResolutionTests(unittest.TestCase):
