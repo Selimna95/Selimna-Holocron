@@ -114,11 +114,11 @@ export function calculateCrinoloProfile(source, calculator, gameData) {
   for (const item of normalized.gearSlots) {
     if (!item.is_obtained) continue;
     const equipmentId = String(firstValue(item.base_id, item.baseId, item.equipmentId, item.equipment_id, "")).trim();
-    if (equipmentId !== String(expectedGear[Number(item.slot) - 1])) {
-      return { profile: null, error: `La pièce ${equipmentId} ne correspond pas au slot ${item.slot} de ${unit.defId} à ce gear.` };
-    }
     if (!gameData.gearData?.[equipmentId]) {
       return { profile: null, error: `Pièce de gear inconnue dans les données Crinolo : ${equipmentId}.` };
+    }
+    if (equipmentId !== String(expectedGear[Number(item.slot) - 1])) {
+      return { profile: null, error: `La pièce ${equipmentId} ne correspond pas au slot ${item.slot} de ${unit.defId} à ce gear.` };
     }
   }
   if (unit.relic.currentTier > 2) {
