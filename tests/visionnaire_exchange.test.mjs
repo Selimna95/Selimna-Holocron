@@ -52,7 +52,7 @@ assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not te
 assert.ok(js.includes('return !reference.length||reference.some'), 'Missing primary reference data must not reject every candidate');
 assert.ok(!js.includes('.sort(visionnaireCandidatePriority'),'Candidate lists must not use the old usage/speed ranking');
 const setFilterPosition=js.indexOf('const setEligible=');
-const primaryFilterPosition=js.indexOf('const eligible=state.mode===\'sets\'||!reference.length?setEligible');
+const primaryFilterPosition=js.indexOf('const eligible=!reference.length?setEligible:');
 const speedProjectionPosition=js.indexOf('const beforeProjectionSummary=forgeProjectedModSpeed');
 assert.ok(setFilterPosition>=0&&primaryFilterPosition>setFilterPosition&&speedProjectionPosition>primaryFilterPosition,
   'Kyber sets must be filtered first, primaries second, and speed projected only afterward');
