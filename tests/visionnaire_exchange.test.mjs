@@ -41,6 +41,8 @@ assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bo
 assert.ok(!js.includes('visionnaireCandidatePriority'), 'The old donor/speed candidate comparator must be removed');
 assert.ok(!js.includes('diverse.length>=24')&&!js.includes('truncatedBySlot')&&!js.includes('candidatePoolTruncated'), 'The old diversity cap and truncation path must be removed');
 assert.ok(js.includes('setCandidateCanImprove')&&js.includes('setFilteredBySlot'), 'Exact Kyber set compositions must prefilter candidates before search');
+assert.ok(js.includes('const setEligible=ordered.filter(setCandidateCanImprove);'), 'Set filtering must run in every Visionnaire mode, including primary-only issue selection');
+assert.ok(js.includes('const eligible=!reference.length?setEligible:'), 'Primary filtering must always follow set filtering whenever Kyber primary data exists');
 assert.ok(js.includes('Recherche progressive : filtres Kyber sets puis primaires, puis échanges à un slot, paires et groupes plus larges ; aucun plafond par slot'), 'Search must disclose the new Kyber-first candidate pipeline');
 assert.ok(js.includes('attemptLimit=Math.min(Math.max(searchSpace*2,30000),1000000)'), 'Progressive search must have a bounded global sampling budget');
 assert.ok(js.includes('speedPruned++'), 'Search must count combinations rejected by the speed prefilter');
@@ -50,14 +52,15 @@ assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not te
 assert.ok(js.includes('return !reference.length||reference.some'), 'Missing primary reference data must not reject every candidate');
 assert.ok(!js.includes('.sort(visionnaireCandidatePriority'),'Candidate lists must not use the old usage/speed ranking');
 const setFilterPosition=js.indexOf('const setEligible=');
-const primaryFilterPosition=js.indexOf('const eligible=state.mode===\'sets\'||!reference.length?setEligible');
+const primaryFilterPosition=js.indexOf('const eligible=!reference.length?setEligible:');
 const speedProjectionPosition=js.indexOf('const beforeProjectionSummary=forgeProjectedModSpeed');
 assert.ok(setFilterPosition>=0&&primaryFilterPosition>setFilterPosition&&speedProjectionPosition>primaryFilterPosition,
   'Kyber sets must be filtered first, primaries second, and speed projected only afterward');
 const evaluateStart=js.indexOf('const evaluateCombination=async combo=>');
 const combinationSetPosition=js.indexOf('const afterSetDistance=exchangeSetDistance(finalTarget,profile)',evaluateStart);
-const combinationPrimaryPosition=js.indexOf("if(state.mode==='both'&&!targetPrimarySafe(chosen))",evaluateStart);
+const combinationPrimaryPosition=js.indexOf('if(!targetPrimarySafe(chosen))',evaluateStart);
 const combinationSpeedPosition=js.indexOf('const beforeProjection=forgeProjectedModSpeed',evaluateStart);
+assert.ok(js.includes("if(beforeSetDistance!==null&&afterSetDistance!==null&&(state.mode==='primaries'?afterSetDistance>beforeSetDistance:afterSetDistance>=beforeSetDistance))"), 'Set composition must be revalidated in every mode before primary and speed checks, without forcing an improvement in primary-only mode');
 assert.ok(combinationSetPosition>evaluateStart&&combinationPrimaryPosition>combinationSetPosition&&combinationSpeedPosition>combinationPrimaryPosition,
   'Each full combination must pass its Kyber set and primary checks before speed projection');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
@@ -224,10 +227,22 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
 assert.equal(mismatchedPrimarySearch.diagnostics.primaryFilteredBySlot['Carré'],0,'SWGOH.GG fixed Square Offense shorthand must not filter an equipped Offense % primary');
 assert.equal(mismatchedPrimarySearch.diagnostics.eligibleBySlot['Carré'],1,'The fixed Square Offense % candidate must remain eligible');
 const fixedDiamondSearch=await runSearch(normalTarget,[],[
-  makeMod('correct-defense-diamond','Diamond','Speed',20,'Defense %',5)
+  makeMod('correct-defense-diamond','Diamond','Potency',20,'Defense %',5)
 ],{specific_sets:kyber.specific_sets,slots:{Diamond:{primaries:{Defense:1}}}},'primaries',[],['Diamond']);
 assert.equal(fixedDiamondSearch.diagnostics.primaryFilteredBySlot['Losange'],0,'SWGOH.GG fixed Diamond Defense shorthand must not filter an equipped Defense % primary');
 assert.equal(fixedDiamondSearch.diagnostics.eligibleBySlot['Losange'],1,'The fixed Diamond Defense % candidate must remain eligible');
+const incompatibleSetInPrimaryMode=await runSearch(normalTarget,[],[
+  makeMod('bad-set-primary-square','Square','Tenacity',20,'Offense %',5)
+ ],{specific_sets:kyber.specific_sets,slots:{Square:{primaries:{Offense:1}}}},'primaries',[],['Square']);
+assert.equal(incompatibleSetInPrimaryMode.diagnostics.setFilteredBySlot['Carré'],1,'The set prefilter must also run in primary-only mode');
+assert.equal(incompatibleSetInPrimaryMode.diagnostics.eligibleBySlot['Carré'],0,'A set absent from every exact Kyber composition must not reach primary/speed evaluation');
+const incompatiblePrimaryInSetMode=await runSearch(normalTarget,[],[
+  makeMod('bad-primary-set-square','Square','Speed',20,'Health %',5)
+ ],{specific_sets:kyber.specific_sets,slots:{Square:{primaries:{Offense:1}}}},'sets',[],['Square']);
+assert.equal(incompatiblePrimaryInSetMode.diagnostics.setFilteredBySlot['Carré'],0,'A Kyber-compatible set must pass the first filter in set-only mode');
+assert.equal(incompatiblePrimaryInSetMode.diagnostics.primaryFilteredBySlot['Carré'],1,'The primary prefilter must still run in set-only mode');
+assert.equal(incompatiblePrimaryInSetMode.diagnostics.eligibleBySlot['Carré'],0,'A wrong primary must not reach speed evaluation in set-only mode');
+
 const variablePrimaryTarget={...normalTarget,base_stats:{Speed:100,Health:1000,Protection:1000,Offense:500,Potency:0.1,Tenacity:0.2,'Critical Damage':1.5,'Physical Damage':1000,'Special Damage':1000},mods:normalTarget.mods.map(mod=>({...mod}))};
 variablePrimaryTarget.mods.find(mod=>mod.slot==='Square').set_name='Speed';
 variablePrimaryTarget.mods.find(mod=>mod.slot==='Circle').set_name='Potency';

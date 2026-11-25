@@ -407,7 +407,7 @@
       if(!compatibleConfigurations.length)return false;
       // With one selected slot there is no later candidate to complete a
       // singleton set, so compare the exact six-mod result immediately.
-      if(slots.length===1)return exchangeSetDistance(fixedTargetMods.concat(mod),profile)<beforeSetDistance;
+      if(slots.length===1){const distance=exchangeSetDistance(fixedTargetMods.concat(mod),profile);return state.mode==='primaries'?distance<=beforeSetDistance:distance<beforeSetDistance;}
       const minimumUnavoidableDistance=Math.min(...compatibleConfigurations.map(config=>{
         const names=new Set([...Object.keys(config.counts||{}),...Object.keys(fixedTargetSetCounts),candidateSet]);
         let excess=0;
@@ -419,21 +419,21 @@
         }
         return excess;
       }));
-      return minimumUnavoidableDistance<beforeSetDistance;
+      return state.mode==='primaries'?minimumUnavoidableDistance<=beforeSetDistance:minimumUnavoidableDistance<beforeSetDistance;
     };
     for(const slot of slots){
       const ordered=[...new Map(source.filter(mod=>slotOf(mod)===slot&&exchangeModId(mod)!==exchangeModId(currentBySlot.get(slot)))
         .map(mod=>({...mod,_visionnaireDonor:mod._sourceOwnerKey?rosterCharacters.find(c=>characterKey(c)===mod._sourceOwnerKey):null}))
         .filter(mod=>!mod._sourceOwnerKey||mod._visionnaireDonor)
         .map(mod=>[exchangeModId(mod),mod])).values()];
-      // 1. Filter sets against every exact Kyber composition, retaining any
-      // candidate that can still participate in an improvement with the other
-      // selected slots. Missing set references remain unknown, never invalid.
-      const setEligible=state.mode==='primaries'?ordered:ordered.filter(setCandidateCanImprove);
+      // 1. Filter sets against every exact Kyber composition. Set-focused modes
+      // require improvement; primary-only mode may preserve an already-correct
+      // composition but may never worsen it. Missing references remain unknown.
+      const setEligible=ordered.filter(setCandidateCanImprove);
       setFilteredBySlot[LABELS[slot]]=ordered.length-setEligible.length;
-      // 2. Filter primaries for the target slot only when that criterion is active.
+      // 2. Filter primaries after sets in every mode whenever Kyber data exists.
       const reference=primaryDistribution(profile,slot);
-      const eligible=state.mode==='sets'||!reference.length?setEligible:
+      const eligible=!reference.length?setEligible:
         setEligible.filter(mod=>reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false)));
       primaryFilteredBySlot[LABELS[slot]]=setEligible.length-eligible.length;
       eligibleBySlot[LABELS[slot]]=eligible.length;
@@ -442,7 +442,12 @@
       optionsBySlot.set(slot,eligible);
     }
     const empty=slots.filter(slot=>!(optionsBySlot.get(slot)||[]).length);
-    if(empty.length)return {proposals:[],reason:exchangeGacSourceDiagnostic()||('Aucun donneur vérifié compatible avec les filtres Kyber pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.')};
+    if(empty.length)return {proposals:[],diagnostics:{
+      sourceCount:source.length,eligibleBySlot,setFilteredBySlot,primaryFilteredBySlot,
+      optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),
+      searchSpace:0,fullCandidateSearchSpace:0,tested:0,sampled:0,accepted:0,
+      searchStages:[],rejected:{},examples:[],rejectedCandidates:[]
+    },reason:exchangeGacSourceDiagnostic()||('Aucun donneur vérifié compatible avec les filtres Kyber pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.')};
     const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
     if(!beforeProjectionSummary.complete)return {proposals:[],reason:'La vitesse actuelle de la cible est non calculable : données de base ou mods incomplets.'};
     const beforeSpeed=beforeProjectionSummary.total;
@@ -498,11 +503,10 @@
         // Revalidate the complete Kyber set composition and selected primaries
         // before invoking any speed projection for this combination.
         const afterSetDistance=exchangeSetDistance(finalTarget,profile);
-        if(state.mode!=='primaries'&&beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>=beforeSetDistance){
+        if(beforeSetDistance!==null&&afterSetDistance!==null&&(state.mode==='primaries'?afterSetDistance>beforeSetDistance:afterSetDistance>=beforeSetDistance)){
           reject('reference_sets','La composition de sets ne se rapproche pas de Kyber');return;
         }
-        if(state.mode==='both'&&!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
-        if(state.mode==='primaries'&&!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
+        if(!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
         const beforeProjection=forgeProjectedModSpeed(character,profile,current);
         const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
         if(!beforeProjection.complete||!afterProjection.complete){reject('vitesse_cible_inconnue','Vitesse cible non calculable : données de base ou mods incomplets');return;}
