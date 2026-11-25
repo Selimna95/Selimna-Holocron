@@ -8,8 +8,8 @@ const profiles = {
 const gameData = {
   source: { repository: "swgoh-utils/gamedata", commit: "test" },
   unitData: {
-    UNIT_A: { relic: { 3: "A1", 4: "A2", 5: "A3" } },
-    UNIT_B: { relic: { 3: "B1", 4: "B2", 5: "B3" } },
+    UNIT_A: { gearLvl: { 13: { gear: ["G1","G2","G3","G4","G5","G6"] } }, relic: { 3: "A1", 4: "A2", 5: "A3" } },
+    UNIT_B: { gearLvl: { 13: { gear: ["G1","G2","G3","G4","G5","G6"] } }, relic: { 3: "B1", 4: "B2", 5: "B3" } },
   },
 };
 const manifest = buildOptimizerProfileCoverage(profiles, gameData);
