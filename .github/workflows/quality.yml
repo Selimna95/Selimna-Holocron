@@ -26,6 +26,9 @@ jobs:
       - run: node --check tests/workflow_yaml.test.mjs
       - run: node tests/workflow_yaml.test.mjs
       - run: node --check scripts/build-crinolo-gamedata.mjs
+      - run: node --check scripts/build-optimizer-profile-variants.mjs
+      - run: node --check tests/optimizer_profile_variants.test.mjs
+      - run: node tests/optimizer_profile_variants.test.mjs
       - run: node --check modules/optimizer-progression.mjs
       - run: node --check vendor/crinolo-stat-calc.mjs
       - run: node --check tests/optimizer_progression.test.mjs
