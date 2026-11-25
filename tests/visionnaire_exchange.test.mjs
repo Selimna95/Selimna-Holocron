@@ -246,7 +246,7 @@ const manyChoices=Array.from({length:6},(_,i)=>[
 ]).flat();
 const broadSearch=await runSearch(normalTarget,[],manyChoices,kyber);
 assert.equal(broadSearch.tested,broadSearch.diagnostics.searchSpace,'The complete small progressive search space must be evaluated');
-assert.deepEqual(broadSearch.diagnostics.searchStages.map(stage=>stage.size),[1,2],'Two selected slots must be searched individually before their pair');
+assert.deepEqual(Array.from(broadSearch.diagnostics.searchStages,stage=>stage.size),[1,2],'Two selected slots must be searched individually before their pair');
 assert.ok(broadSearch.diagnostics.searchStages[0].accepted>0,'Single-slot corrections must be retained as valid scenarios when they improve the Kyber fit');
 assert.ok(broadSearch.diagnostics.accepted>30,'The fixture must produce more than 30 valid scenarios');
 assert.equal(broadSearch.diagnostics.retainedProposals,30,'Only the top 30 scenarios are retained after full evaluation');
