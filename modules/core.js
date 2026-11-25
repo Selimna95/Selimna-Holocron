@@ -1254,6 +1254,14 @@ function precomputeCrinoloProfiles(characters) {
           mismatches++;
         }
       }
+      if (applied) {
+        window.dispatchEvent(new CustomEvent('holocron:crinolo-profiles-ready', {
+          detail: { applied, total: list.length }
+        }));
+        window.dispatchEvent(new CustomEvent('holocron:data-updated'));
+        renderHolocronVerdict(holocronTopChangeCandidates().slice(0, 10));
+        renderVisionnaire();
+      }
       resolve({
         applied,
         total: list.length,
