@@ -26,6 +26,9 @@ jobs:
       - run: node --check tests/workflow_yaml.test.mjs
       - run: node tests/workflow_yaml.test.mjs
       - run: node --check scripts/build-crinolo-gamedata.mjs
+      - run: node --check scripts/build-optimizer-profile-coverage.mjs
+      - run: node --check tests/optimizer_profile_coverage.test.mjs
+      - run: node tests/optimizer_profile_coverage.test.mjs
       - run: node --check modules/optimizer-progression.mjs
       - run: node --check vendor/crinolo-stat-calc.mjs
       - run: node --check tests/optimizer_progression.test.mjs
@@ -76,3 +79,15 @@ jobs:
       - name: Serve the static app
         run: python -m http.server 8765 --bind 127.0.0.1 > /tmp/holocron-http.log 2>&1 & echo $! > /tmp/holocron-http.pid
       - run: node tests/browser_smoke.mjs
+
+  optimizer-profile-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build pinned Crinolo game data
+        run: node scripts/build-crinolo-gamedata.mjs /tmp/optimizer-game-data.json
+      - name: Publishable profile coverage manifest
+        run: node scripts/build-optimizer-profile-coverage.mjs python/optimizer_profiles.json /tmp/optimizer-game-data.json /tmp/optimizer_profile_coverage.json
