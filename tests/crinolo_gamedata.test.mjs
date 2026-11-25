@@ -3,17 +3,11 @@ import fs from "node:fs";
 import crinoloStatCalc from "../vendor/crinolo-stat-calc.mjs";
 import { calculateCrinoloProfile } from "../modules/optimizer-progression.mjs";
 
-const gameDataUrl = "https://raw.githubusercontent.com/swgoh-utils/gamedata/e96f00d4bcddb41d9bb93428a00ab7b4bb6fcdef/gameData.json";
+const gameDataUrl = "https://swgoh-stat-calc.glitch.me/gameData.json";
 const response = await fetch(gameDataUrl);
 assert.equal(response.ok, true, `Crinolo gameData HTTP ${response.status}`);
 const gameData = await response.json();
 const profiles = JSON.parse(fs.readFileSync(new URL("../python/optimizer_profiles.json", import.meta.url), "utf8"));
-console.log("Crinolo gameData keys:", Object.keys(gameData));
-console.log("Crinolo data type/sample:", typeof gameData.data, JSON.stringify(gameData.data).slice(0, 3000));
-console.log("Crinolo unitData count:", Object.keys(gameData.unitData || {}).length);
-console.log("Crinolo unitData sample:", Object.keys(gameData.unitData || {}).slice(0, 20));
-console.log("Crinolo MOFFGIDEON keys:", Object.keys(gameData.unitData?.MOFFGIDEONS3 || {}));
-console.log("Crinolo MOFFGIDEON aliases:", Object.keys(gameData.unitData || {}).filter(key => key.includes("MOFFGIDEON")));
 
 let calculatedCount = 0;
 const failures = [];
@@ -21,7 +15,7 @@ for (const profile of Object.values(profiles)) {
   const unit = gameData.unitData?.[profile.base_id];
   const crinoloGearLevel = Math.min(Number(profile.gear_level), 12);
   if (!unit?.gearLvl?.[crinoloGearLevel] || !unit.growthModifiers?.[profile.rarity]) {
-    failures.push(`${profile.base_id}: référence unité/gear/rareté absente (unit=${!!unit}, gearKeys=${Object.keys(unit?.gearLvl || {}).join(",")}, growthKeys=${Object.keys(unit?.growthModifiers || {}).join(",")}, crinoloGear=${crinoloGearLevel})`);
+    failures.push(`${profile.base_id}: référence unité/gear/rareté absente`);
     continue;
   }
   const gear = (unit.gearLvl[crinoloGearLevel].gear || []).map((base_id, index) => ({
