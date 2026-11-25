@@ -38,25 +38,22 @@ assert.ok(js.includes('beforeStats,afterStats,statDeltas'),'Donor full stat impa
 assert.ok(js.includes('b.score.score-a.score.score'),'Scenarios must rank by strategic score');
 assert.ok(js.includes('isGalacticLegendCharacter(owner)'),'GL donors must be excluded');
 assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bonuses must be preserved');
-assert.ok(js.includes('diverse.length>=24'), 'Candidate selection must preserve set and primary diversity');
-assert.ok(js.includes('Recherche progressive : échanges à un slot, puis paires, puis groupes plus larges ; vivier plafonné à 24 mods par slot'), 'Search must progress from single-slot exchanges to pairs and wider groups while disclosing its candidate cap');
+assert.ok(!js.includes('visionnaireCandidatePriority'), 'The old donor/speed candidate comparator must be removed');
+assert.ok(!js.includes('diverse.length>=24')&&!js.includes('truncatedBySlot')&&!js.includes('candidatePoolTruncated'), 'The old diversity cap and truncation path must be removed');
+assert.ok(js.includes('setCandidateCanImprove')&&js.includes('setFilteredBySlot'), 'Exact Kyber set compositions must prefilter candidates before search');
+assert.ok(js.includes('Recherche progressive : filtres Kyber sets puis primaires, puis échanges à un slot, paires et groupes plus larges ; aucun plafond par slot'), 'Search must disclose the new Kyber-first candidate pipeline');
 assert.ok(js.includes('attemptLimit=Math.min(Math.max(searchSpace*2,30000),1000000)'), 'Progressive search must have a bounded global sampling budget');
 assert.ok(js.includes('speedPruned++'), 'Search must count combinations rejected by the speed prefilter');
 assert.ok(js.includes('searchSpace'), 'Search diagnostics must expose the complete candidate space');
 assert.ok(js.includes('acceptedCount++'), 'The engine must count every valid scenario in the explored sample');
 assert.ok(!js.includes('proposals.length<30'), 'Finding 30 scenarios must not terminate the search before the sample is exhausted');
 assert.ok(js.includes('return !reference.length||reference.some'), 'Missing primary reference data must not reject every candidate');
-assert.ok(js.includes('.sort(visionnaireCandidatePriority)'), 'Candidate search must rank free mods and lowest-GAC-use donors before speed');
-const priorityStart=js.indexOf('  function visionnaireCandidatePriority(');
-const priorityEnd=js.indexOf('  const exchangeModSummary',priorityStart);
-assert.ok(priorityStart>=0&&priorityEnd>priorityStart,'Visionnaire donor-priority comparator must exist');
-const prioritySandbox={modTotalSpeed:mod=>Number(mod?.speed||0)};
-vm.createContext(prioritySandbox);
-vm.runInContext(js.slice(priorityStart,priorityEnd)+'\nthis.priority=visionnaireCandidatePriority;',prioritySandbox);
-const priority=prioritySandbox.priority;
-assert.ok(priority({_sourceOwnerKey:null,speed:0},{_sourceOwnerKey:'DONOR',_sourceUsage:0,speed:100})<0,'Free inventory must precede donor-owned mods');
-assert.ok(priority({_sourceOwnerKey:'RARE',_sourceUsage:3,speed:0},{_sourceOwnerKey:'COMMON',_sourceUsage:40,speed:100})<0,'Lower GAC usage must beat a much faster but frequently used donor');
-assert.ok(priority({_sourceOwnerKey:'DONOR',_sourceUsage:8,speed:25},{_sourceOwnerKey:'DONOR2',_sourceUsage:8,speed:10})<0,'Speed is a tie-breaker when GAC usage is equal');
+assert.ok(!js.includes('.sort(visionnaireCandidatePriority'),'Candidate lists must not use the old usage/speed ranking');
+const setFilterPosition=js.indexOf('const setEligible=');
+const primaryFilterPosition=js.indexOf('const eligible=state.mode===\'sets\'||!reference.length?setEligible');
+const speedProjectionPosition=js.indexOf('const beforeProjectionSummary=forgeProjectedModSpeed');
+assert.ok(setFilterPosition>=0&&primaryFilterPosition>setFilterPosition&&speedProjectionPosition>primaryFilterPosition,
+  'Kyber sets must be filtered first, primaries second, and speed projected only afterward');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
 assert.ok(js.includes('baseSpeed+retainedForSubset+'), 'Each partial exchange must include the speed of untouched target mods');
 assert.ok(js.includes('if(!beforeProjection.complete||!afterProjection.complete)'), 'Target speed projections must fail closed when incomplete');
@@ -257,23 +254,52 @@ assert.equal(singleSlotSearch.diagnostics.searchStages.length,1);
 assert.equal(singleSlotSearch.diagnostics.searchStages[0].size,1);
 assert.ok(singleSlotSearch.proposals.every(proposal=>proposal.transfers.length===1),'A one-slot result must not modify unselected target mods');
 
-const cappedChoices=[
-  ...Array.from({length:30},(_,i)=>makeMod('cap-square-'+i,'Square','Speed',10,'Speed',10)),
-  ...Array.from({length:30},(_,i)=>makeMod('cap-circle-'+i,'Circle','Speed',10,'Speed',10))
+const uncappedChoices=[
+  ...Array.from({length:30},(_,i)=>makeMod('all-square-'+i,'Square','Speed',10,'Speed',10)),
+  ...Array.from({length:30},(_,i)=>makeMod('all-circle-'+i,'Circle','Speed',10,'Speed',10))
 ];
-const cappedSearch=await runSearch(normalTarget,[],cappedChoices,kyber);
-assert.equal(cappedSearch.diagnostics.eligibleBySlot['Carré'],30);
-assert.equal(cappedSearch.diagnostics.eligibleBySlot['Cercle'],30);
-assert.equal(cappedSearch.diagnostics.optionsBySlot['Carré'],24);
-assert.equal(cappedSearch.diagnostics.optionsBySlot['Cercle'],24);
-assert.equal(cappedSearch.diagnostics.truncatedBySlot['Carré'],6);
-assert.equal(cappedSearch.diagnostics.truncatedBySlot['Cercle'],6);
-assert.equal(cappedSearch.diagnostics.searchSpace,624,'Progressive space includes each single slot and the pair');
-assert.equal(cappedSearch.diagnostics.fullCandidateSearchSpace,960,'Full candidate space includes each single slot and the pair');
-assert.equal(cappedSearch.diagnostics.candidatePoolCoverage,0.65);
-assert.equal(cappedSearch.diagnostics.fullSearchCoverage,0.65,
-  'A fully explored reduced pool must not be reported as exhaustive over all eligible mods');
-assert.equal(cappedSearch.diagnostics.candidatePoolTruncated,true);
+const uncappedSearch=await runSearch(normalTarget,[],uncappedChoices,kyber);
+assert.equal(uncappedSearch.diagnostics.eligibleBySlot['Carré'],30);
+assert.equal(uncappedSearch.diagnostics.eligibleBySlot['Cercle'],30);
+assert.equal(uncappedSearch.diagnostics.optionsBySlot['Carré'],30,'All Kyber-compatible Square mods must enter the search');
+assert.equal(uncappedSearch.diagnostics.optionsBySlot['Cercle'],30,'All Kyber-compatible Circle mods must enter the search');
+assert.equal(uncappedSearch.diagnostics.searchSpace,960,'Progressive space must include all 30 candidates per selected slot');
+assert.equal(uncappedSearch.diagnostics.fullCandidateSearchSpace,960,'No candidates may be hidden behind an artificial diversity cap');
+assert.equal(uncappedSearch.diagnostics.candidatePoolCoverage,1);
+assert.equal(uncappedSearch.diagnostics.fullSearchCoverage,1,
+  'An exhaustive search must cover every candidate that passed the Kyber filters');
+assert.equal(uncappedSearch.diagnostics.truncatedBySlot,undefined);
+assert.equal(uncappedSearch.diagnostics.candidatePoolTruncated,undefined);
+
+// Set prefiltering must consider every exact Kyber composition, not only the most popular one.
+const multiSetProfile={specific_sets:[
+  {name:'4 Speed + 2 Potency',counts:{Speed:4,Potency:2},weight:.6},
+  {name:'2 Speed + 4 Potency',counts:{Speed:2,Potency:4},weight:.4}
+]};
+const secondConfigurationChoice=await runSearch(normalTarget,[],[
+  makeMod('second-config-potency','Square','Potency',20,'Speed',10)
+],multiSetProfile,'sets',[],['Square']);
+assert.equal(secondConfigurationChoice.diagnostics.setFilteredBySlot['Carré'],0,
+  'A candidate compatible with a less frequent exact Kyber composition must not be filtered out');
+assert.ok(secondConfigurationChoice.proposals.length>0,
+  'A candidate matching the second exact Kyber composition must remain searchable');
+
+// A candidate that cannot improve any exact Kyber composition is removed before primary/speed work.
+const incompatibleSetSearch=await runSearch(normalTarget,[],[
+  makeMod('compatible-speed','Square','Speed',20,'Speed',10),
+  makeMod('incompatible-potency','Square','Potency',20,'Speed',10)
+],kyber,'sets',[],['Square']);
+assert.equal(incompatibleSetSearch.diagnostics.setFilteredBySlot['Carré'],1,
+  'A third Potency mod cannot improve the only 4 Speed + 2 Potency composition');
+assert.equal(incompatibleSetSearch.diagnostics.eligibleBySlot['Carré'],1);
+assert.ok(incompatibleSetSearch.proposals.length>0);
+
+// Missing set references are unknown and must not reject candidates.
+const unknownSetSearch=await runSearch(normalTarget,[],[
+  makeMod('unknown-set-reference','Square','Health',20,'Speed',10)
+],{slots:{}},'sets',[],['Square']);
+assert.equal(unknownSetSearch.diagnostics.setFilteredBySlot['Carré'],0);
+assert.ok(unknownSetSearch.proposals.length>0);
 
 const noSources=await runSearch(glTarget,[],[],kyber);
 assert.equal(noSources.proposals.length,0);
