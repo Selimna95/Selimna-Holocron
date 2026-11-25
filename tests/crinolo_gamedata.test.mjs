@@ -3,10 +3,14 @@ import fs from "node:fs";
 import crinoloStatCalc from "../vendor/crinolo-stat-calc.mjs";
 import { calculateCrinoloProfile } from "../modules/optimizer-progression.mjs";
 
-const gameDataUrl = "https://swgoh-stat-calc.glitch.me/gameData.json";
+const gameDataUrl = "https://raw.githubusercontent.com/swgoh-utils/gamedata/e96f00d4bcddb41d9bb93428a00ab7b4bb6fcdef/gameData.json";
 const response = await fetch(gameDataUrl);
 assert.equal(response.ok, true, `Crinolo gameData HTTP ${response.status}`);
-const gameData = await response.json();
+const downloaded = await response.json();
+console.log("download keys", Object.keys(downloaded));
+console.log("download data type", typeof downloaded.data, "data keys", Object.keys(downloaded.data || {}).slice(0, 30));
+console.log("download data sample", JSON.stringify(downloaded.data || {}).slice(0, 2500));
+const gameData = downloaded.data?.unitData ? downloaded.data : downloaded;
 const profiles = JSON.parse(fs.readFileSync(new URL("../python/optimizer_profiles.json", import.meta.url), "utf8"));
 
 let calculatedCount = 0;
