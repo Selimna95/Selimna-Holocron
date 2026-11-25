@@ -231,8 +231,8 @@ assert.deepEqual(
   JSON.parse(JSON.stringify(rosterMetadataContext.optimizerRosterMetadata({
     raw: { currentLevel: 85, currentRarity: 7, currentTier: 12, relic: { currentTier: 0 } }
   }))),
-  { level: 85, rarity: 7, gear_level: 12, relic_tier: 0 },
-  'Direct Comlink raw payloads must preserve zero relic tier'
+  { level: 85, rarity: 7, gear_level: 12, relic_tier: 1 },
+  'A zero relic sentinel below G13 must map to Crinolo locked tier 1'
 );
 
 // Missing mod metadata must remain unknown rather than being fabricated.
