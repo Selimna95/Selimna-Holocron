@@ -250,15 +250,9 @@ function optimizerValidatedProfileForCharacter(character) {
 }
 function baseStatsForCharacter(character) {
   const validated=optimizerValidatedProfileForCharacter(character);
-  if (validated?.base_stats) return validated.base_stats;
-  const dynamic=character?.optimizer_base_profile;
-  if (dynamic?.profile_source==='Crinolo' &&
-      optimizerProfileMatchesRoster(dynamic,optimizerRosterMetadata(character))) return dynamic.base_stats;
-  const direct=character?.base_stats || character?.baseStats;
-  if (direct && typeof direct === 'object' && Object.keys(direct).length) return direct;
-  // Static snapshots are resolved and checked in the Worker against the live roster metadata.
-  // Current/equipped stats are never substituted for base stats.
-  return {};
+  // Only a progression-exact Crinolo profile or exact v2 variant may enter the optimizer.
+  // Raw/current roster stats are not a substitute for a missing base-stat reference.
+  return validated?.base_stats || {};
 }
 
 function profileForCharacter(character) {
