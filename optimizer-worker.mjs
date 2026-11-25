@@ -1,5 +1,5 @@
 import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs";
-import "./modules/mod-engine.js?v=0.3.33";
+import "./modules/mod-engine.js?v=0.3.34-crinolo-defense-components";
 import crinoloStatCalc from "./vendor/crinolo-stat-calc.mjs?v=1.0.0-crinolo-maintained";
 import { calculateCrinoloProfile } from "./modules/optimizer-progression.mjs?v=1.0.0-crinolo-dynamic";
 
