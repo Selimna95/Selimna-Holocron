@@ -39,8 +39,8 @@ assert.ok(js.includes('b.score.score-a.score.score'),'Scenarios must rank by str
 assert.ok(js.includes('isGalacticLegendCharacter(owner)'),'GL donors must be excluded');
 assert.ok(js.includes('exchangeSetBonusesPreserved(before,after)'),'Donor set bonuses must be preserved');
 assert.ok(js.includes('diverse.length>=24'), 'Candidate selection must preserve set and primary diversity');
-assert.ok(js.includes('Échantillonnage équilibré de tous les slots avec filtre vitesse préalable et plafond de 24 options par slot'), 'Search must sample across all slots, prefilter speed-invalid combinations and disclose its candidate cap');
-assert.ok(js.includes('attemptLimit=Math.min(Math.max(searchSpace*32,30000),1000000)'), 'Search must continue sampling beyond the old 15,000-combination cap');
+assert.ok(js.includes('Recherche progressive : échanges à un slot, puis paires, puis groupes plus larges ; vivier plafonné à 24 mods par slot'), 'Search must progress from single-slot exchanges to pairs and wider groups while disclosing its candidate cap');
+assert.ok(js.includes('attemptLimit=Math.min(Math.max(searchSpace*2,30000),1000000)'), 'Progressive search must have a bounded global sampling budget');
 assert.ok(js.includes('speedPruned++'), 'Search must count combinations rejected by the speed prefilter');
 assert.ok(js.includes('searchSpace'), 'Search diagnostics must expose the complete candidate space');
 assert.ok(js.includes('acceptedCount++'), 'The engine must count every valid scenario in the explored sample');
@@ -245,9 +245,17 @@ const manyChoices=Array.from({length:6},(_,i)=>[
   makeMod('wide-c-'+i,'Circle','Speed',10,'Speed',10)
 ]).flat();
 const broadSearch=await runSearch(normalTarget,[],manyChoices,kyber);
-assert.equal(broadSearch.tested,broadSearch.diagnostics.searchSpace,'The complete small candidate space must be evaluated');
+assert.equal(broadSearch.tested,broadSearch.diagnostics.searchSpace,'The complete small progressive search space must be evaluated');
+assert.deepEqual(broadSearch.diagnostics.searchStages.map(stage=>stage.size),[1,2],'Two selected slots must be searched individually before their pair');
+assert.ok(broadSearch.diagnostics.searchStages[0].accepted>0,'Single-slot corrections must be retained as valid scenarios when they improve the Kyber fit');
 assert.ok(broadSearch.diagnostics.accepted>30,'The fixture must produce more than 30 valid scenarios');
 assert.equal(broadSearch.diagnostics.retainedProposals,30,'Only the top 30 scenarios are retained after full evaluation');
+
+const singleSlotSearch=await runSearch(normalTarget,[],manyChoices.filter(mod=>mod.slot==='Square'),kyber,'sets',[],['Square']);
+assert.equal(singleSlotSearch.diagnostics.searchSpace,6,'A single selected slot must search its own candidate list');
+assert.equal(singleSlotSearch.diagnostics.searchStages.length,1);
+assert.equal(singleSlotSearch.diagnostics.searchStages[0].size,1);
+assert.ok(singleSlotSearch.proposals.every(proposal=>proposal.transfers.length===1),'A one-slot result must not modify unselected target mods');
 
 const cappedChoices=[
   ...Array.from({length:30},(_,i)=>makeMod('cap-square-'+i,'Square','Speed',10,'Speed',10)),
@@ -260,10 +268,11 @@ assert.equal(cappedSearch.diagnostics.optionsBySlot['Carré'],24);
 assert.equal(cappedSearch.diagnostics.optionsBySlot['Cercle'],24);
 assert.equal(cappedSearch.diagnostics.truncatedBySlot['Carré'],6);
 assert.equal(cappedSearch.diagnostics.truncatedBySlot['Cercle'],6);
-assert.equal(cappedSearch.diagnostics.fullCandidateSearchSpace,900);
+assert.equal(cappedSearch.diagnostics.searchSpace,624,'Progressive space includes each single slot and the pair');
+assert.equal(cappedSearch.diagnostics.fullCandidateSearchSpace,960,'Full candidate space includes each single slot and the pair');
 assert.equal(cappedSearch.diagnostics.searchSpace,576);
-assert.equal(cappedSearch.diagnostics.candidatePoolCoverage,0.64);
-assert.equal(cappedSearch.diagnostics.fullSearchCoverage,0.64,
+assert.equal(cappedSearch.diagnostics.candidatePoolCoverage,0.65);
+assert.equal(cappedSearch.diagnostics.fullSearchCoverage,0.65,
   'A fully explored reduced pool must not be reported as exhaustive over all eligible mods');
 assert.equal(cappedSearch.diagnostics.candidatePoolTruncated,true);
 
