@@ -825,9 +825,11 @@ function renderResults(data,profileOverride=null){
     const currentMods=getCharacterMods(character);
     const beforeSpeed=forgeProjectedModSpeed(character,profile,currentMods);
     const afterSpeed=forgeProjectedModSpeed(character,profile,build);
-    const beforeCharacterSpeed=beforeSpeed.baseSpeed+beforeSpeed.total;
-    const afterCharacterSpeed=afterSpeed.baseSpeed+afterSpeed.total;
-    const totalSpeedDelta=afterCharacterSpeed-beforeCharacterSpeed;
+    const beforeCharacterSpeed=beforeSpeed.complete?beforeSpeed.total:null;
+    const afterCharacterSpeed=afterSpeed.complete?afterSpeed.total:null;
+    const totalSpeedDelta=beforeCharacterSpeed!=null&&afterCharacterSpeed!=null
+      ?afterCharacterSpeed-beforeCharacterSpeed
+      :null;
     const signedSpeed=value=>`${value>0?'+':''}${num(value,1)}`;
     const modComparisonLine=m=>{
       if(!m)return 'Aucun mod équipé';
@@ -851,8 +853,8 @@ function renderResults(data,profileOverride=null){
       </div>`;
     }).join('');
     const speedComparisonMarkup=`<section class="forge-speed-comparison">
-      <div><span>VITESSE TOTALE ESTIMÉE</span><strong>${beforeSpeed.baseSpeed>0?`${num(beforeCharacterSpeed,1)} → ${num(afterCharacterSpeed,1)}`:'Base Speed indisponible'}</strong></div>
-      <b class="${totalSpeedDelta>=0?'gain':'loss'}">${signedSpeed(totalSpeedDelta)} V</b>
+      <div><span>VITESSE TOTALE ESTIMÉE</span><strong>${beforeCharacterSpeed!=null&&afterCharacterSpeed!=null?`${num(beforeCharacterSpeed,1)} → ${num(afterCharacterSpeed,1)}`:'Calcul incomplet · vitesse non affichée'}</strong></div>
+      <b class="${totalSpeedDelta==null?'neutral':totalSpeedDelta>=0?'gain':'loss'}">${totalSpeedDelta==null?'—':signedSpeed(totalSpeedDelta)+' V'}</b>
       <small>Bonus du set Speed inclus · aucune baisse autorisée</small>
     </section>
     <section class="forge-slot-comparison">
