@@ -227,7 +227,7 @@ const mismatchedPrimarySearch=await runSearch(normalTarget,[],[
 assert.equal(mismatchedPrimarySearch.diagnostics.primaryFilteredBySlot['Carré'],0,'SWGOH.GG fixed Square Offense shorthand must not filter an equipped Offense % primary');
 assert.equal(mismatchedPrimarySearch.diagnostics.eligibleBySlot['Carré'],1,'The fixed Square Offense % candidate must remain eligible');
 const fixedDiamondSearch=await runSearch(normalTarget,[],[
-  makeMod('correct-defense-diamond','Diamond','Speed',20,'Defense %',5)
+  makeMod('correct-defense-diamond','Diamond','Potency',20,'Defense %',5)
 ],{specific_sets:kyber.specific_sets,slots:{Diamond:{primaries:{Defense:1}}}},'primaries',[],['Diamond']);
 assert.equal(fixedDiamondSearch.diagnostics.primaryFilteredBySlot['Losange'],0,'SWGOH.GG fixed Diamond Defense shorthand must not filter an equipped Defense % primary');
 assert.equal(fixedDiamondSearch.diagnostics.eligibleBySlot['Losange'],1,'The fixed Diamond Defense % candidate must remain eligible');
