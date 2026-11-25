@@ -200,19 +200,29 @@ function optimizerRosterMetadata(character) {
     relic_tier: numericValue(relicValue, null)
   };
 }
-function optimizerValidatedProfileForCharacter(character) {
-  const profile=optimizerProfileForCharacter(character);
-  if (!profile || !profile.base_stats || typeof profile.base_stats !== 'object' || !Object.keys(profile.base_stats).length) return null;
-  const metadata=optimizerRosterMetadata(character);
+function optimizerProfileMatchesRoster(profile,metadata) {
+  if (!profile || !profile.base_stats || typeof profile.base_stats !== 'object' || !Object.keys(profile.base_stats).length) return false;
   for (const field of ['level','rarity','gear_level','relic_tier']) {
-    if (profile[field] == null) return null;
+    if (profile[field] == null) return false;
     const expected=Number(profile[field]);
     const actual=metadata[field];
-    if (actual == null || !Number.isFinite(expected) || expected !== Number(actual)) return null;
+    if (actual == null || !Number.isFinite(expected) || expected !== Number(actual)) return false;
   }
-  return profile;
+  return true;
+}
+function optimizerValidatedProfileForCharacter(character) {
+  const metadata=optimizerRosterMetadata(character);
+  const dynamic=character?.optimizer_base_profile;
+  if (dynamic?.profile_source==='Crinolo' &&
+      dynamic?.stat_components?.source==='Crinolo.stats.base+stats.gear' &&
+      optimizerProfileMatchesRoster(dynamic,metadata)) return dynamic;
+  const profile=optimizerProfileForCharacter(character);
+  return optimizerProfileMatchesRoster(profile,metadata) ? profile : null;
 }
 function baseStatsForCharacter(character) {
+  const dynamic=character?.optimizer_base_profile;
+  if (dynamic?.profile_source==='Crinolo' &&
+      optimizerProfileMatchesRoster(dynamic,optimizerRosterMetadata(character))) return dynamic.base_stats;
   const direct=character?.base_stats || character?.baseStats;
   if (direct && typeof direct === 'object' && Object.keys(direct).length) return direct;
   // Static snapshots are resolved and checked in the Worker against the live roster metadata.
@@ -1179,7 +1189,7 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.22-pr59-donor-heuristic', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.6.0-crinolo-dynamic-progression', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
@@ -1200,6 +1210,9 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
       }
       worker.removeEventListener('message', onMessage);
       if (data.type === 'done') {
+        if (data.base_profile?.profile_source === 'Crinolo') {
+          character.optimizer_base_profile = data.base_profile;
+        }
         resolve(JSON.parse(data.result));
       } else {
         reject(new Error(data.error || 'Erreur inconnue du Worker Python.'));
@@ -1207,7 +1220,7 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
     };
     worker.addEventListener('message', onMessage);
     const characterMetadata = optimizerRosterMetadata(character);
-    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_metadata: characterMetadata, character_level: characterMetadata.level, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
+    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_source: character.raw || character, character_metadata: characterMetadata, character_level: characterMetadata.level, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
   });
 }
 
