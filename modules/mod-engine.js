@@ -161,20 +161,8 @@
     return NAME_ALIASES[compact(name)] || null;
   }
 
-  function verifiedStatComponents(statComponents, statName, totalValue, gearLevel = null) {
+  function verifiedStatComponents(statComponents, statName, totalValue) {
     const total = numeric(totalValue);
-    // At G13 the character has no equipped gear pieces. Crinolo's stats.gear
-    // is derived only from char.equipped, so the equipment contribution is exactly zero.
-    if (numeric(gearLevel) === 13) {
-      if (total == null) return null;
-      if (statComponents?.source === 'Crinolo.stats.base+stats.gear') {
-        const reportedBase = numeric(statComponents.base?.[statName]);
-        const reportedGear = numeric(statComponents.gear?.[statName]);
-        if (reportedBase == null || reportedGear == null ||
-            Math.abs(reportedBase - total) > 1e-6 || Math.abs(reportedGear) > 1e-6) return null;
-      }
-      return { base: total, gear: 0 };
-    }
     if (statComponents?.source !== 'Crinolo.stats.base+stats.gear') return null;
     const base = numeric(statComponents.base?.[statName]);
     const gear = numeric(statComponents.gear?.[statName]);
@@ -206,7 +194,7 @@
     if (base == null) missing.push('base_speed');
     missing.push(...(setBonuses.missing || []));
     const components = (setBonusPercent || speedPercent)
-      ? verifiedStatComponents(statComponents, 'Speed', base, gearLevel)
+      ? verifiedStatComponents(statComponents, 'Speed', base)
       : null;
     if ((setBonusPercent || speedPercent) && !components) {
       missing.push('speed:gear_component_required');
@@ -260,9 +248,8 @@
     }
     level = numeric(level);
     const gearLevel = numeric(profile?.gear_level ?? profile?.gearLevel);
-    // Crinolo's stats.gear is derived only from char.equipped. At G13 there are
-    // no equipped gear pieces, so the gear component is known to be zero. Below
-    // G13, percentage projections require an exact, reconciled Crinolo split.
+    // Percentage projections at every gear tier require an exact, reconciled
+    // Crinolo split; a static total cannot reveal which stats came from gear.
     const percentBase = (statName, total) => verifiedStatComponents(
       profile?.stat_components, statName, total, gearLevel
     );
@@ -388,16 +375,14 @@
       if (!Number.isFinite(characterLevel) || characterLevel <= 0) missing.push('level');
       else {
         const levelEffect = characterLevel * 7.5;
-        // Crinolo exposes the base/gear split independently for Armor and
-        // Resistance. Prefer those exact components; retain the older generic
-        // Defense component for profiles created before this split was exposed.
+        // Every gear tier, including SWGOH G13, has equipped gear contributions.
+        // Crinolo exposes the base/gear split independently for Armor and Resistance.
         const armorComponents = defenseRatio ? percentBase('Armor', get('armor')) : null;
         const resistanceComponents = defenseRatio ? percentBase('Resistance', get('resistance')) : null;
         const legacyDefenseComponents = defenseRatio && !armorComponents && !resistanceComponents
           ? percentBase('Defense', get('defense')) : null;
         const hasPerStatDefenseSplit = !!armorComponents && !!resistanceComponents;
-        const canProjectDefensePercent = !defenseRatio || numeric(gearLevel) === 13 ||
-          hasPerStatDefenseSplit || !!legacyDefenseComponents;
+        const canProjectDefensePercent = !defenseRatio || hasPerStatDefenseSplit || !!legacyDefenseComponents;
         if (defenseRatio && !canProjectDefensePercent) missing.push('defense:gear_component_required');
         for (const key of ['armor', 'resistance']) {
           if (!has(key)) { missing.push(key); continue; }
