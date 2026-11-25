@@ -37,6 +37,11 @@ jobs:
           source: ./
           destination: ./_site
 
+      # Jekyll's container leaves _site owned by root. Pre-create the generated
+      # data directory for the runner so the Node builder can write into it.
+      - name: Prepare writable Crinolo data directory
+        run: sudo install -d -m 755 -o "$(id -u)" -g "$(id -g)" ./_site/statCalcData
+
       - name: Build Crinolo game data
         run: node scripts/build-crinolo-gamedata.mjs ./_site/statCalcData/gameData.json
 

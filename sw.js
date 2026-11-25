@@ -4,7 +4,7 @@
 // Previous Visionnaire cache: holocron-static-v4.4.42-visionnaire-diagnostics
 // Previous cache: holocron-static-v4.4.82-acolyte-weak-donor-recipient
 // Previous cache: holocron-static-v4.4.98-batched-mod-engine
-const CACHE_NAME = 'holocron-static-v4.4.128-crinolo-roster-batch';
+const CACHE_NAME = 'holocron-static-v4.4.129-crinolo-pages-permissions';
 const STATIC_ASSETS = [
   './',
   './index.html',
