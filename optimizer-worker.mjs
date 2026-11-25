@@ -19,7 +19,9 @@ const crinoloGameDataPromise = (async () => {
   }
 })();
 
-let pyodideReadyPromise = (async () => {
+let pyodideReadyPromise = null;
+function getPyodide() {
+  if (!pyodideReadyPromise) pyodideReadyPromise = (async () => {
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
   const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.19-pr59-donor-heuristic", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
@@ -91,14 +93,37 @@ with open('/home/pyodide/optimizer_profiles.json', encoding='utf-8') as _f:
     _optimizer_profiles = json.load(_f)
 `);
   return pyodide;
-})();
+  })();
+  return pyodideReadyPromise;
+}
 
 self.onmessage = async (event) => {
   const data = event.data || {};
   const id = data.id;
   try {
+    if (data.type === "profile-batch") {
+      self.postMessage({ id, type: "status", message: "Calcul des profils Crinolo du roster…" });
+      const crinoloData = await crinoloGameDataPromise;
+      if (!crinoloData.gameData) {
+        throw new Error(`Données de jeu Crinolo indisponibles (${crinoloData.error || "erreur inconnue"}).`);
+      }
+      const profiles = [];
+      const errors = [];
+      const characters = Array.isArray(data.characters) ? data.characters : [];
+      for (const source of characters) {
+        const resolved = calculateCrinoloProfile(source || {}, crinoloStatCalc, crinoloData.gameData);
+        if (resolved.profile) profiles.push(resolved.profile);
+        else errors.push({
+          base_id: source?.data?.base_id || source?.base_id || source?.baseId || "",
+          error: resolved.error || "Profil Crinolo non calculable.",
+        });
+      }
+      self.postMessage({ id, type: "profiles-done", profiles, errors, total: characters.length });
+      return;
+    }
+
     self.postMessage({ id, type: "status", message: "Chargement du moteur Optimizer…" });
-    const pyodide = await pyodideReadyPromise;
+    const pyodide = await getPyodide();
 
     pyodide.globals.set("mods_json", JSON.stringify(data.mods || []));
     pyodide.globals.set("profile_json", JSON.stringify(data.profile || {}));
