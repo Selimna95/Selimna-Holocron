@@ -194,7 +194,7 @@ if not isinstance(base_stats, dict) or not base_stats:
         "Profil de statistiques de base introuvable pour "
         f"{character_name or 'personnage inconnu'} "
         f"(base_id={character_base_id or 'absent'}). "
-        f"Aucun profil exploitable parmi {len(_optimizer_profiles)} références ; "
+        f"Aucun profil exploitable parmi {len(_optimizer_profiles.get('profiles', _optimizer_profiles))} références ; "
         "aucune statistique courante ou inventée ne sera utilisée."
         + detail
     )
