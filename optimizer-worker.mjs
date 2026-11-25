@@ -3,7 +3,7 @@ import "./modules/mod-engine.js?v=0.3.34-crinolo-defense-components";
 import crinoloStatCalc from "./vendor/crinolo-stat-calc.mjs?v=1.0.0-crinolo-maintained";
 import { calculateCrinoloProfile } from "./modules/optimizer-progression.mjs?v=1.0.0-crinolo-dynamic";
 
-const CRINOLO_GAME_DATA_URL = "https://raw.githubusercontent.com/swgoh-utils/gamedata/e96f00d4bcddb41d9bb93428a00ab7b4bb6fcdef/gameData.json";
+const CRINOLO_GAME_DATA_URL = "https://swgoh-stat-calc.glitch.me/gameData.json";
 const crinoloGameDataPromise = (async () => {
   try {
     const response = await fetch(CRINOLO_GAME_DATA_URL, { cache: "force-cache" });
