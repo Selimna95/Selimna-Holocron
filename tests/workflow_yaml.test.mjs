@@ -47,6 +47,11 @@ assert.match(deployJob.if, /head_branch\s*==\s*'main'/);
 assert.match(deployJob.if, /head_repository\.full_name\s*==\s*github\.repository/);
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/jekyll-build-pages@v1'));
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/upload-pages-artifact@v3'));
+const waitArtifactStep = deployJob.steps.findIndex(step => step.name === 'Wait for Pages artifact metadata');
+const deployStep = deployJob.steps.findIndex(step => step.uses === 'actions/deploy-pages@v4');
+assert.ok(waitArtifactStep > artifactStep && waitArtifactStep < deployStep, 'Pages deployment must wait until the uploaded artifact is visible through the Actions API');
+assert.match(deployJob.steps[waitArtifactStep].run, /actions\/runs\/\$GITHUB_RUN_ID\/artifacts/);
+assert.ok(deploy.permissions?.actions === 'read', 'Pages deploy must be allowed to inspect Actions artifact metadata');
 assert.ok(deployJob.steps.some(step => step.uses === 'actions/deploy-pages@v4'));
 
 const optimizerNightly = workflows.get('optimizer-nightly.yml');
