@@ -120,7 +120,6 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
       const key = `13:${relicTier}`;
       if (original.gear_level === 13 && Number(original.relic_tier) === relicTier) {
         compareOriginalProfile(original, resolved.profile, baseId);
-        coverage.originalSnapshotsPreserved++;
       }
       variants[key] = resolved.profile;
       coverage.variants++;
@@ -135,6 +134,7 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
   }
 
   coverage.supportedRelicTiers = [...supportedTiers].sort((a, b) => a - b);
+  coverage.supportedRelicRanks = coverage.supportedRelicTiers.map(tier => tier - 2);
   const requiredCharacters = Object.keys(sourceProfiles).length;
   if (Object.keys(outputProfiles).length !== requiredCharacters) {
     throw new Error(
