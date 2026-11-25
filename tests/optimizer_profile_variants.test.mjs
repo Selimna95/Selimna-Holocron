@@ -16,11 +16,11 @@ const gameData = {
       combatType: 1,
       gearLvl: { 13: { gear: gearIds } },
       growthModifiers: { 7: {} },
-      relic: { 3: "RELIC_1" },
+      relic: Object.fromEntries(Array.from({ length: 10 }, (_, index) => [index + 3, `RELIC_${index + 1}`])),
     },
   },
   gearData: Object.fromEntries(gearIds.map(id => [id, {}])),
-  relicData: { RELIC_1: {} },
+  relicData: Object.fromEntries(Array.from({ length: 10 }, (_, index) => [`RELIC_${index + 1}`, {}])),
 };
 const rosterSource = {
   data: {
@@ -46,9 +46,13 @@ const original = {
 };
 const built = buildOptimizerProfileVariants({ TEST_UNIT: original }, gameData, calculator);
 assert.equal(built.dataset.schemaVersion, 2);
-assert.deepEqual(Object.keys(built.dataset.profiles.TEST_UNIT.variants).sort(), ["13:2", "13:3"]);
+assert.equal(Object.keys(built.dataset.profiles.TEST_UNIT.variants).length, 11);
+assert.ok(built.dataset.profiles.TEST_UNIT.variants["13:2"]);
+assert.ok(built.dataset.profiles.TEST_UNIT.variants["13:12"]);
 assert.equal(built.dataset.profiles.TEST_UNIT.variants["13:3"].base_stats.Speed, exact.profile.base_stats.Speed);
 assert.equal(built.dataset.profiles.TEST_UNIT.variants["13:3"].stat_components.source, "Crinolo.stats.base+stats.gear");
+assert.deepEqual(built.coverage.supportedRelicRanks, [0,1,2,3,4,5,6,7,8,9,10]);
+assert.deepEqual(built.coverage.unsupportedRelicRanks, [11,12]);
 assert.equal(built.coverage.g13Characters, 1);
 assert.equal(built.coverage.originalSnapshotsPreserved, 1);
 
