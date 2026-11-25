@@ -1,4 +1,3 @@
-import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs";
 import "./modules/mod-engine.js?v=0.3.34-crinolo-defense-components";
 import crinoloStatCalc from "./vendor/crinolo-stat-calc.mjs?v=1.0.0-crinolo-maintained";
 import { calculateCrinoloProfile } from "./modules/optimizer-progression.mjs?v=1.0.0-crinolo-dynamic";
@@ -22,6 +21,7 @@ const crinoloGameDataPromise = (async () => {
 let pyodideReadyPromise = null;
 function getPyodide() {
   if (!pyodideReadyPromise) pyodideReadyPromise = (async () => {
+  const { loadPyodide } = await import("https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs");
   const pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" });
   const optimizerResponse = await fetch(new URL("./python/optimizer.py?v=3.5.19-pr59-donor-heuristic", import.meta.url), { cache: "force-cache" });
   if (!optimizerResponse.ok) throw new Error(`Impossible de charger optimizer.py (HTTP ${optimizerResponse.status})`);
