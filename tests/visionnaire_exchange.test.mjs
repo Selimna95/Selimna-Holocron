@@ -287,12 +287,23 @@ assert.ok(secondConfigurationChoice.proposals.length>0,
 // A candidate that cannot improve any exact Kyber composition is removed before primary/speed work.
 const incompatibleSetSearch=await runSearch(normalTarget,[],[
   makeMod('compatible-speed','Square','Speed',20,'Speed',10),
-  makeMod('incompatible-potency','Square','Potency',20,'Speed',10)
+  makeMod('incompatible-potency','Square','Potency',20,'Speed',10),
+  makeMod('non-kyber-health','Square','Health',20,'Speed',10)
 ],kyber,'sets',[],['Square']);
-assert.equal(incompatibleSetSearch.diagnostics.setFilteredBySlot['Carré'],1,
-  'A third Potency mod cannot improve the only 4 Speed + 2 Potency composition');
+assert.equal(incompatibleSetSearch.diagnostics.setFilteredBySlot['Carré'],2,
+  'A third Potency mod and a set absent from every Kyber composition must be eliminated');
 assert.equal(incompatibleSetSearch.diagnostics.eligibleBySlot['Carré'],1);
 assert.ok(incompatibleSetSearch.proposals.length>0);
+
+// Even when all six slots are selected, sets absent from Kyber must be removed before speed work.
+const allSlots=['Square','Arrow','Diamond','Triangle','Circle','Cross'];
+const allSlotChoices=allSlots.flatMap(slot=>[
+  makeMod('all-valid-'+slot,slot,'Speed',20,'Speed',10),
+  makeMod('all-invalid-'+slot,slot,'Health',20,'Speed',10)
+]);
+const allSlotSetFilterSearch=await runSearch(normalTarget,[],allSlotChoices,kyber,'sets',[],allSlots);
+assert.equal(allSlotSetFilterSearch.diagnostics.setFilteredBySlot['Carré'],1);
+assert.equal(allSlotSetFilterSearch.diagnostics.eligibleBySlot['Carré'],1);
 
 // Missing set references are unknown and must not reject candidates.
 const unknownSetSearch=await runSearch(normalTarget,[],[
