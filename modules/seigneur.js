@@ -803,7 +803,7 @@ function renderResults(data,profileOverride=null){
   const refSecondaries=rec.secondaries.slice(0,4).map(x=>x.name).join(' · ')||'Secondaires Kyber non détaillées';
   const warningCodes=[...new Set(data.flatMap(row=>Array.isArray(row.warnings)?row.warnings:[]))];
   const warningMarkup=warningCodes.includes('gear_percent_unavailable')
-    ? '<div class="forge-result-warning"><strong>BONUS MULTIPLICATEURS EN % NON ÉVALUÉS</strong><span>Certains bonus % (Offense, Défense, Santé, Protection, Vitesse ou dégâts physiques/spéciaux) ont été écartés : le profil ne sépare pas les statistiques de base des secondaires des pièces d’équipement. Un profil G13 compatible est nécessaire pour calculer ces bonus sans approximation.</span></div>'
+    ? '<div class="forge-result-warning"><strong>BONUS MULTIPLICATEURS EN % NON ÉVALUÉS</strong><span>Certains bonus % (Offense, Défense, Santé, Protection, Vitesse ou dégâts physiques/spéciaux) ont été écartés : le profil ne sépare pas les statistiques de base des secondaires des pièces d’équipement. Un profil Crinolo séparant les statistiques de base des contributions des pièces de gear est nécessaire à tous les paliers pour calculer ces bonus sans approximation.</span></div>'
     : warningCodes.includes('defense_percent_unavailable')
       ? '<div class="forge-result-warning"><strong>DÉFENSE % NON ÉVALUÉE</strong><span>Les mods Défense % ont été écartés du calcul : le profil ne fournit pas la composante Armor/Resistance de base séparée de l’équipement secondaire.</span></div>'
       : '';
