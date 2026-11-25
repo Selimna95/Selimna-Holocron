@@ -77,11 +77,12 @@ export function normalizeCrinoloRosterUnit(source) {
   }
 
   return {
+    gearSlots: gear,
     unit: {
       defId: baseId,
       rarity,
       level,
-      // Crinolo models G13 as gear tier 12 with all six current-tier pieces equipped.
+      // The maintained Crinolo data builder supports SWGOH gear tiers 1 through 13 directly.
       gear: gearLevel,
       equipped,
       relic: { currentTier: relicTier },
@@ -102,12 +103,22 @@ export function calculateCrinoloProfile(source, calculator, gameData) {
 
   const { unit, metadata } = normalized;
   const unitData = gameData.unitData?.[unit.defId];
-  if (!unitData?.gearLvl?.[unit.gear] || !unitData.growthModifiers?.[unit.rarity]) {
+  const gearDefinition = unitData?.gearLvl?.[unit.gear];
+  if (!gearDefinition || !unitData.growthModifiers?.[unit.rarity]) {
     return { profile: null, error: "Référence Crinolo absente pour ce personnage, son gear ou sa rareté." };
   }
-  for (const piece of unit.equipped) {
-    if (!gameData.gearData?.[piece.equipmentId]) {
-      return { profile: null, error: `Pièce de gear inconnue dans les données Crinolo : ${piece.equipmentId}.` };
+  const expectedGear = gearDefinition.gear;
+  if (!Array.isArray(expectedGear) || expectedGear.length !== 6) {
+    return { profile: null, error: `Les six pièces de référence Crinolo manquent pour ${unit.defId}.` };
+  }
+  for (const item of normalized.gearSlots) {
+    if (!item.is_obtained) continue;
+    const equipmentId = String(firstValue(item.base_id, item.baseId, item.equipmentId, item.equipment_id, "")).trim();
+    if (equipmentId !== String(expectedGear[Number(item.slot) - 1])) {
+      return { profile: null, error: `La pièce ${equipmentId} ne correspond pas au slot ${item.slot} de ${unit.defId} à ce gear.` };
+    }
+    if (!gameData.gearData?.[equipmentId]) {
+      return { profile: null, error: `Pièce de gear inconnue dans les données Crinolo : ${equipmentId}.` };
     }
   }
   if (unit.relic.currentTier > 2) {
