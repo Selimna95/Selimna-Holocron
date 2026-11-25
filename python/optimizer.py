@@ -96,38 +96,69 @@ def _normalize_profile_identity(value):
     return re.sub(r"[^a-z0-9]", "", text)
 
 
-def resolve_character_profile(profiles, base_id="", name=""):
-    """Resolve a complete reference profile by id, then unambiguous name."""
+def resolve_character_profile(profiles, base_id="", name="", character_metadata=None):
+    """Resolve only an exact snapshot or exact progression variant."""
     if not isinstance(profiles, dict):
+        return {}
+    collection = profiles.get("profiles") if profiles.get("schemaVersion") == 2 else profiles
+    if not isinstance(collection, dict):
         return {}
     wanted_id = _normalize_profile_identity(base_id)
     wanted_name = _normalize_profile_identity(name)
+    selected = None
     if wanted_id:
-        direct = profiles.get(str(base_id or "").strip().upper())
-        if isinstance(direct, dict) and isinstance(direct.get("base_stats"), dict) and direct["base_stats"]:
-            return direct
+        direct = collection.get(str(base_id or "").strip().upper())
+        if isinstance(direct, dict):
+            selected = direct
+        else:
+            matches = [
+                profile for profile in collection.values()
+                if isinstance(profile, dict)
+                and _normalize_profile_identity(profile.get("base_id")) == wanted_id
+            ]
+            if len(matches) == 1:
+                selected = matches[0]
+            # An explicit baseId is authoritative. Never substitute a name match.
+    elif wanted_name:
         matches = [
-            profile for profile in profiles.values()
-            if isinstance(profile, dict)
-            and _normalize_profile_identity(profile.get("base_id")) == wanted_id
-            and isinstance(profile.get("base_stats"), dict)
-            and profile["base_stats"]
-        ]
-        if len(matches) == 1:
-            return matches[0]
-        # An explicit baseId is authoritative. Never substitute a name match:
-        # homonyms and stale profile labels must fail closed.
-        return {}
-    if wanted_name:
-        matches = [
-            profile for profile in profiles.values()
+            profile for profile in collection.values()
             if isinstance(profile, dict)
             and _normalize_profile_identity(profile.get("name") or profile.get("character")) == wanted_name
-            and isinstance(profile.get("base_stats"), dict)
-            and profile["base_stats"]
         ]
         if len(matches) == 1:
-            return matches[0]
+            selected = matches[0]
+    if not isinstance(selected, dict):
+        return {}
+    variants = selected.get("variants")
+    if isinstance(variants, dict):
+        if not isinstance(character_metadata, dict):
+            raise RuntimeError("profile_progression_uncovered:metadata_missing")
+        try:
+            gear = int(character_metadata["gear_level"])
+            relic = int(character_metadata["relic_tier"])
+        except (KeyError, TypeError, ValueError):
+            raise RuntimeError("profile_progression_uncovered:metadata_missing")
+        key = f"{gear}:{relic}"
+        variant = variants.get(key)
+        if not isinstance(variant, dict):
+            raise RuntimeError(f"profile_progression_uncovered:{key}")
+        merged = {field: value for field, value in selected.items() if field != "variants"}
+        merged.update(variant)
+        selected = merged
+    elif isinstance(character_metadata, dict):
+        try:
+            gear = int(character_metadata["gear_level"])
+            relic = int(character_metadata["relic_tier"])
+            key = f"{gear}:{relic}"
+            for field in ("level", "rarity", "gear_level", "relic_tier"):
+                expected = selected.get(field)
+                actual = character_metadata.get(field)
+                if expected is None or actual is None or float(expected) != float(actual):
+                    raise RuntimeError(f"profile_progression_uncovered:{key}")
+        except (KeyError, TypeError, ValueError):
+            raise RuntimeError("profile_progression_uncovered:metadata_missing")
+    if isinstance(selected.get("base_stats"), dict) and selected["base_stats"]:
+        return selected
     return {}
 
 

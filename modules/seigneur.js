@@ -9,7 +9,7 @@ async function loadOptimizerReferenceData(){
   let loaded=null;
   for(const url of candidates){
     try{
-      const r=await fetch(url+'?v=3.4.4-cache-sync',{cache:'force-cache'});
+      const r=await fetch(url+'?v=4.1.91-profile-coverage',{cache:'force-cache'});
       if(!r.ok)continue;
       const json=await r.json();
       if(json&&typeof json==='object'&&Object.keys(json).length){loaded=json;break;}
@@ -22,6 +22,16 @@ async function loadOptimizerReferenceData(){
     optimizerProfiles={};
     log('Profils Optimizer UI non chargés : le Worker tentera de lire python/optimizer_profiles.json.');
   }
+  try{
+    const coverageResponse=await fetch(new URL('./statCalcData/optimizer_profile_coverage.json',document.baseURI).href+'?v=4.1.91-profile-coverage',{cache:'force-cache'});
+    if(coverageResponse.ok){
+      const coverage=await coverageResponse.json();
+      const ranks=(coverage.supportedG13RelicRanks||[]).map(rank=>`R${rank}`).join(', ');
+      log(`Couverture actuelle : ${coverage.profileCount||0} profils, ${coverage.g13SnapshotCount||0} G13, ${coverage.missingG13VariantCount||0}/${coverage.targetG13VariantCount||0} variantes G13 manquantes. Références Crinolo : ${ranks||'indisponibles'}.`);
+      const unsupported=(coverage.unsupportedG13RelicRanks||[]).map(rank=>`R${rank}`).join(', ');
+      if(unsupported)log(`Paliers non couverts par les données Crinolo : ${unsupported}. Aucun profil proche ne sera utilisé.`);
+    }
+  }catch(e){}
   // Kyber est une référence facultative : SWGOH.GG sera interrogé au besoin,
   // puis le profil local du Worker sert de secours.
   const kyberCandidates=[

@@ -1,3 +1,10 @@
+## V4.1.91 — Manifeste de couverture des profils
+
+- Publie un manifeste exact des instantanés de profils disponibles et des variantes G13 manquantes.
+- Affiche dans le journal le nombre de profils, de G13 et de progressions non couvertes.
+- Retourne le code explicite `profile_progression_uncovered` lorsqu’un gear ou palier de relique ne correspond pas à l’unique instantané disponible.
+- Conserve la règle stricte : aucune référence voisine, interpolation ou statistique brute du roster ne contourne la validation.
+
 ## V4.1.86 — publication des corrections PR #59 et invalidation du cache
 
 - Corrige le double comptage de la vitesse absolue dans les résultats du Seigneur Sith.
