@@ -17,6 +17,7 @@ assert.equal(manifest.profileCount, 2);
 assert.equal(manifest.g13SnapshotCount, 1);
 assert.equal(manifest.nonG13SnapshotCount, 1);
 assert.deepEqual(manifest.supportedG13RelicRanks, [0, 1, 2, 3]);
+assert.deepEqual(manifest.unsupportedG13RelicRanks, [4,5,6,7,8,9,10,11,12]);
 assert.equal(manifest.targetG13VariantCount, 8);
 assert.equal(manifest.coveredG13VariantCount, 1);
 assert.equal(manifest.missingG13VariantCount, 7);
