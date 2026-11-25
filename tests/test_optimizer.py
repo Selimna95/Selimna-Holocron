@@ -28,6 +28,19 @@ TEST_BASE_PROFILE = {
         "Physical Critical Chance": 40, "Special Critical Chance": 40,
         "Physical Critical Avoidance": 0, "Special Critical Avoidance": 0,
     },
+    "stat_components": {
+        "source": "Crinolo.stats.base+stats.gear",
+        "base": {
+            "Health": 9000, "Protection": 7000, "Speed": 90,
+            "Physical Damage": 450, "Special Damage": 450,
+            "Armor": 45, "Resistance": 45, "Potency": 0.1, "Tenacity": 0.1,
+        },
+        "gear": {
+            "Health": 1000, "Protection": 1000, "Speed": 10,
+            "Physical Damage": 50, "Special Damage": 50,
+            "Armor": 5, "Resistance": 5, "Potency": 0, "Tenacity": 0,
+        },
+    },
 }
 
 
