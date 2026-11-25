@@ -21,20 +21,20 @@ function compareOriginalProfile(original, generated, baseId) {
   assertRecord(newStats, `base_stats Crinolo pour ${baseId}`);
   const keys = Object.keys(oldStats);
   const generatedKeys = Object.keys(newStats);
+  const mismatches = [];
   if (!keys.length) throw new Error(`Aucune statistique de référence pour ${baseId}.`);
   if (keys.length !== generatedKeys.length || keys.some(key => !Object.hasOwn(newStats, key))) {
-    throw new Error(`Parité Crinolo refusée pour ${baseId} : les statistiques de référence ne sont pas identiques.`);
+    mismatches.push({ field: "stat_keys", existing: keys.sort(), crinolo: generatedKeys.sort() });
   }
   for (const key of keys) {
     const oldValue = Number(oldStats[key]);
     const newValue = Number(newStats[key]);
     if (!Number.isFinite(oldValue) || !Number.isFinite(newValue) ||
         Math.abs(oldValue - newValue) > PARITY_TOLERANCE) {
-      throw new Error(
-        `Parité Crinolo refusée pour ${baseId} (${key}) : ${oldStats[key]} != ${newStats[key]}.`
-      );
+      mismatches.push({ field: key, existing: oldStats[key], crinolo: newStats[key] });
     }
   }
+  return mismatches;
 }
 
 function profileMetadataKey(profile) {
@@ -70,6 +70,7 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
     originalSnapshotsPreserved: 0,
   };
   const supportedTiers = new Set([RELIC_TIER_MIN]);
+  const parityFailures = [];
   let supportedRanks = Array.from({ length: RELIC_TIER_MAX - RELIC_TIER_MIN + 1 }, (_, index) => index);
 
   for (const [profileId, original] of Object.entries(sourceProfiles)) {
@@ -136,7 +137,12 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
       }
       const key = `13:${relicTier}`;
       if (original.gear_level === 13 && Number(original.relic_tier) === relicTier) {
-        compareOriginalProfile(original, resolved.profile, baseId);
+        const mismatches = compareOriginalProfile(original, resolved.profile, baseId);
+        if (mismatches.length) parityFailures.push({
+          base_id: baseId,
+          progression: key,
+          mismatches,
+        });
       }
       variants[key] = resolved.profile;
       coverage.variants++;
@@ -170,6 +176,11 @@ export function buildOptimizerProfileVariants(sourceProfiles, gameData, calculat
   }
   if (coverage.uncoveredCharacters.length) {
     throw new Error(`Profils G13 non couverts : ${JSON.stringify(coverage.uncoveredCharacters.slice(0, 5))}`);
+  }
+  if (parityFailures.length) {
+    throw new Error(
+      `Parité Crinolo refusée pour ${parityFailures.length} profil(s) d'origine : ${JSON.stringify(parityFailures.slice(0, 30))}`
+    );
   }
 
   return {
