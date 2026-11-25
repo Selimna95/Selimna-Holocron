@@ -238,7 +238,10 @@ function optimizerValidatedProfileForCharacter(character) {
   const dynamic=character?.optimizer_base_profile;
   if (dynamic?.profile_source==='Crinolo' &&
       dynamic?.stat_components?.source==='Crinolo.stats.base+stats.gear' &&
-      optimizerProfileMatchesRoster(dynamic,metadata)) return dynamic;
+      optimizerProfileMatchesRoster(dynamic,metadata)) {
+    delete character.optimizer_profile_error;
+    return dynamic;
+  }
   const sourceProfile=optimizerProfileForCharacter(character);
   const profile=optimizerResolveProfileVariant(sourceProfile,metadata);
   if (sourceProfile?.variants && !profile) {
@@ -246,7 +249,11 @@ function optimizerValidatedProfileForCharacter(character) {
     character.optimizer_profile_error=`profile_progression_uncovered:${key}`;
     return null;
   }
-  return optimizerProfileMatchesRoster(profile,metadata) ? profile : null;
+  if (optimizerProfileMatchesRoster(profile,metadata)) {
+    delete character.optimizer_profile_error;
+    return profile;
+  }
+  return null;
 }
 function baseStatsForCharacter() {
   // The Worker resolves the complete exact profile itself, including stat_components.
