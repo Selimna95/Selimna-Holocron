@@ -51,28 +51,29 @@ export function normalizeCrinoloRosterUnit(source) {
     return fail("Palier de relique invalide ou incohérent avec le gear.");
   }
 
-  let equipped = [];
-  if (gearLevel < 13) {
-    const gear = firstValue(raw.gear, raw.equipment);
-    if (!Array.isArray(gear) || gear.length !== 6) {
-      return fail("Les six emplacements de gear courant ne sont pas fournis : calcul Crinolo refusé.");
+  const gear = firstValue(raw.gear, raw.equipment);
+  if (!Array.isArray(gear) || gear.length !== 6) {
+    return fail("Les six emplacements de gear courant ne sont pas fournis : calcul Crinolo refusé.");
+  }
+  const equipped = [];
+  const slots = new Set();
+  for (const item of gear) {
+    if (!isRecord(item)) return fail("Une pièce de gear ne possède pas un format exploitable.");
+    const slot = numeric(item.slot);
+    if (!Number.isInteger(slot) || slot < 1 || slot > 6 || slots.has(slot) ||
+        typeof item.is_obtained !== "boolean") {
+      return fail("Les six emplacements de gear ne sont pas identifiables sans ambiguïté.");
     }
-    const slots = new Set();
-    for (const item of gear) {
-      if (!isRecord(item)) return fail("Une pièce de gear ne possède pas un format exploitable.");
-      const slot = numeric(item.slot);
-      if (!Number.isInteger(slot) || slot < 1 || slot > 6 || slots.has(slot) ||
-          typeof item.is_obtained !== "boolean") {
-        return fail("Les six emplacements de gear ne sont pas identifiables sans ambiguïté.");
-      }
-      slots.add(slot);
-      if (item.is_obtained) {
-        const equipmentId = String(firstValue(item.base_id, item.baseId, item.equipmentId, item.equipment_id, "")).trim();
-        if (!equipmentId) return fail("Identifiant d'une pièce de gear équipée absent.");
-        equipped.push({ equipmentId });
-      }
+    slots.add(slot);
+    if (item.is_obtained) {
+      const equipmentId = String(firstValue(item.base_id, item.baseId, item.equipmentId, item.equipment_id, "")).trim();
+      if (!equipmentId) return fail("Identifiant d'une pièce de gear équipée absent.");
+      equipped.push({ equipmentId });
     }
-    if (slots.size !== 6) return fail("Un ou plusieurs emplacements de gear sont absents.");
+  }
+  if (slots.size !== 6) return fail("Un ou plusieurs emplacements de gear sont absents.");
+  if (gearLevel === 13 && equipped.length !== 6) {
+    return fail("Un personnage G13 doit avoir ses six pièces de gear équipées pour un calcul Crinolo exact.");
   }
 
   return {
@@ -80,7 +81,8 @@ export function normalizeCrinoloRosterUnit(source) {
       defId: baseId,
       rarity,
       level,
-      gear: gearLevel,
+      // Crinolo models G13 as gear tier 12 with all six current-tier pieces equipped.
+      gear: Math.min(gearLevel, 12),
       equipped,
       relic: { currentTier: relicTier },
     },
