@@ -69,7 +69,7 @@ assert.equal(calculated.profile.stat_components.gear.Resistance, 3);
 
 const unknownPiece = calculateCrinoloProfile({ data: { ...source.data, gear: gear.map((item, i) => i === 0 ? { ...item, base_id: "UNKNOWN" } : item) } }, calculator, gameData);
 assert.match(unknownPiece.error, /Pièce de gear inconnue/);
-const unsupportedRelic = calculateCrinoloProfile({ data: { base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 13, relic_tier: 11 } }, calculator, gameData);
+const unsupportedRelic = calculateCrinoloProfile({ data: { base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 13, relic_tier: 11, gear: g13Gear } }, calculator, gameData);
 assert.match(unsupportedRelic.error, /palier de relique/);
 
 console.log("Optimizer Crinolo progression tests passed.");
