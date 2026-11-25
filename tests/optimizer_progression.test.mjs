@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { calculateCrinoloProfile, normalizeCrinoloRosterUnit } from "../modules/optimizer-progression.mjs";
+import crinoloStatCalc from "../vendor/crinolo-stat-calc.mjs";
+
+assert.equal(typeof crinoloStatCalc.setGameData, "function");
+assert.equal(typeof crinoloStatCalc.calcCharStats, "function");
 
 const gear = [
   { slot: 1, is_obtained: true, base_id: "GEAR_A" },
