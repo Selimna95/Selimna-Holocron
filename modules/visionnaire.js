@@ -448,7 +448,6 @@
     const baseSpeed=beforeProjectionSummary.baseSpeed;
     const maximumSpeedSetBonus=baseSpeed>0?baseSpeed*.1:0;
     const retainedSpeed=current.filter(mod=>!slots.includes(slotOf(mod))).reduce((sum,mod)=>sum+modTotalSpeed(mod),0);
-    const candidateSpeedCeiling=baseSpeed+retainedSpeed+slots.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0)+maximumSpeedSetBonus;
     const buildSlotSubsets=(size,start=0,prefix=[],out=[])=>{
       if(prefix.length===size){out.push(prefix.slice());return out;}
       for(let index=start;index<=slots.length-(size-prefix.length);index++){
@@ -459,6 +458,10 @@
     const slotSubsetGroups=Array.from({length:slots.length},(_,index)=>({
       size:index+1,subsets:buildSlotSubsets(index+1)
     }));
+    const candidateSpeedCeiling=baseSpeed+Math.max(0,...slotSubsetGroups.flatMap(group=>group.subsets.map(subset=>
+      current.filter(mod=>!subset.includes(slotOf(mod))).reduce((sum,mod)=>sum+modTotalSpeed(mod),0)+
+      subset.reduce((sum,slot)=>sum+Math.max(0,...(optionsBySlot.get(slot)||[]).map(modTotalSpeed)),0)
+    )))+maximumSpeedSetBonus;
     const subsetProduct=(subset,useEligible=false)=>subset.reduce((product,slot)=>{
       const count=useEligible?(eligibleBySlot[LABELS[slot]]||0):(optionsBySlot.get(slot)||[]).length;
       return product*count;
