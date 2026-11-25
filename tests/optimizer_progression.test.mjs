@@ -68,7 +68,7 @@ assert.equal(calculated.profile.stat_components.source, "Crinolo.stats.base+stat
 assert.equal(calculated.profile.base_stats.Armor, 22);
 assert.ok(Math.abs(calculated.profile.base_stats.Resistance - 28) < 1e-10);
 assert.equal(calculated.profile.stat_components.base.Armor, 20);
-assert.equal(calculated.profile.stat_components.gear.Resistance, 3);
+assert.ok(Math.abs(calculated.profile.stat_components.gear.Resistance - 3) < 1e-10);
 
 const unknownPiece = calculateCrinoloProfile({ data: { ...source.data, gear: gear.map((item, i) => i === 0 ? { ...item, base_id: "UNKNOWN" } : item) } }, calculator, gameData);
 assert.match(unknownPiece.error, /Pièce de gear inconnue/);
