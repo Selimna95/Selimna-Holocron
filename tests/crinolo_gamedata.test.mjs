@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import crinoloStatCalc from "../vendor/crinolo-stat-calc.mjs";
-import { calculateCrinoloProfile } from "../modules/optimizer-progression.mjs";
+import { calculateCrinoloProfile, normalizeCrinoloRosterUnit } from "../modules/optimizer-progression.mjs";
 import { buildCrinoloGameData } from "../scripts/build-crinolo-gamedata.mjs";
 
 const gameData = await buildCrinoloGameData();
@@ -36,6 +36,23 @@ for (const profile of Object.values(profiles)) {
   }
   assert.equal(Object.keys(result.profile.base_stats).length, 9);
   assert.equal(result.profile.profile_source, "Crinolo");
+  if (calculatedCount === 0) {
+    const normalized = normalizeCrinoloRosterUnit(source);
+    const gameStyle = crinoloStatCalc.calcCharStats(normalized.unit, { withoutModCalc: true, gameStyle: true });
+    const statNames = {
+      "1": "Health", "28": "Protection", "5": "Speed",
+      "6": "Physical Damage", "7": "Special Damage",
+      "8": "Armor", "9": "Resistance", "17": "Potency", "18": "Tenacity",
+    };
+    for (const [statId, name] of Object.entries(statNames)) {
+      const scale = statId === "8" || statId === "9" ? 100 : 1;
+      const expected = Number(gameStyle.final?.[statId] || 0) * scale;
+      assert.ok(
+        Math.abs(result.profile.base_stats[name] - expected) < 1e-6,
+        `${profile.base_id} ${name}: séparation base/gear différente du résultat Crinolo gameStyle`
+      );
+    }
+  }
   calculatedCount++;
 }
 assert.deepEqual(failures, [], `Profils non calculables par Crinolo :\n${failures.join("\n")}`);
