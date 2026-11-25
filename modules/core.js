@@ -226,7 +226,10 @@ function optimizerValidatedProfileForCharacter(character) {
   const dynamic=character?.optimizer_base_profile;
   if (dynamic?.profile_source==='Crinolo' &&
       dynamic?.stat_components?.source==='Crinolo.stats.base+stats.gear' &&
-      optimizerProfileMatchesRoster(dynamic,metadata)) return dynamic;
+      optimizerProfileMatchesRoster(dynamic,metadata)) {
+    delete character.optimizer_profile_error;
+    return dynamic;
+  }
   const profile=optimizerProfileForCharacter(character);
   if (profile && !optimizerProfileMatchesRoster(profile,metadata)) {
     const key=`${metadata.gear_level??"?"}:${metadata.relic_tier??"?"}`;
