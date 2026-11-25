@@ -190,29 +190,50 @@ function optimizerRosterMetadata(character) {
     return null;
   };
   const readBoth = keys => read(raw, keys) ?? read(character, keys);
-  const relicObject = read(raw, ['relic']) ?? read(character, ['relic']);
-  const relicValue = readBoth(['relic_tier','relicTier','relic_level','relicLevel']) ??
-    read(relicObject, ['currentTier','tier','relicTier']);
+  const rawRelicObject = read(raw, ['relic']);
+  const characterRelicObject = read(character, ['relic']);
+  const rawRelicValue = read(raw, ['relic_tier','relicTier','relic_level','relicLevel']) ??
+    read(rawRelicObject, ['currentTier','tier','relicTier']);
+  const characterRelicValue = read(character, ['relic_tier','relicTier','relic_level','relicLevel']) ??
+    read(characterRelicObject, ['currentTier','tier','relicTier']);
+  const explicitCharacterRelic = numericValue(characterRelicValue, null);
+  const relicValue = rawRelicValue ?? (explicitCharacterRelic != null && explicitCharacterRelic > 0 ? characterRelicValue : null);
+  const gearLevel = numericValue(readBoth(['gear_level','gearLevel','gear','currentTier']), null);
+  let relicTier = numericValue(relicValue, null);
+  // Before G13 a unit cannot have an unlocked relic; use Crinolo's locked tier.
+  // At G13, only an explicit SWGOH.GG relic field can distinguish R0 from higher relics.
+  if (relicTier == null && gearLevel != null && gearLevel < 13) relicTier = 1;
+  if (relicTier === 0 && gearLevel != null) relicTier = gearLevel === 13 ? 2 : 1;
   return {
     level: numericValue(readBoth(['level','currentLevel']), null),
     rarity: numericValue(readBoth(['rarity','starLevel','stars','currentRarity']), null),
-    gear_level: numericValue(readBoth(['gear_level','gearLevel','gear','currentTier']), null),
-    relic_tier: numericValue(relicValue, null)
+    gear_level: gearLevel,
+    relic_tier: relicTier
   };
 }
-function optimizerValidatedProfileForCharacter(character) {
-  const profile=optimizerProfileForCharacter(character);
-  if (!profile || !profile.base_stats || typeof profile.base_stats !== 'object' || !Object.keys(profile.base_stats).length) return null;
-  const metadata=optimizerRosterMetadata(character);
+function optimizerProfileMatchesRoster(profile,metadata) {
+  if (!profile || !profile.base_stats || typeof profile.base_stats !== 'object' || !Object.keys(profile.base_stats).length) return false;
   for (const field of ['level','rarity','gear_level','relic_tier']) {
-    if (profile[field] == null) return null;
+    if (profile[field] == null) return false;
     const expected=Number(profile[field]);
     const actual=metadata[field];
-    if (actual == null || !Number.isFinite(expected) || expected !== Number(actual)) return null;
+    if (actual == null || !Number.isFinite(expected) || expected !== Number(actual)) return false;
   }
-  return profile;
+  return true;
+}
+function optimizerValidatedProfileForCharacter(character) {
+  const metadata=optimizerRosterMetadata(character);
+  const dynamic=character?.optimizer_base_profile;
+  if (dynamic?.profile_source==='Crinolo' &&
+      dynamic?.stat_components?.source==='Crinolo.stats.base+stats.gear' &&
+      optimizerProfileMatchesRoster(dynamic,metadata)) return dynamic;
+  const profile=optimizerProfileForCharacter(character);
+  return optimizerProfileMatchesRoster(profile,metadata) ? profile : null;
 }
 function baseStatsForCharacter(character) {
+  const dynamic=character?.optimizer_base_profile;
+  if (dynamic?.profile_source==='Crinolo' &&
+      optimizerProfileMatchesRoster(dynamic,optimizerRosterMetadata(character))) return dynamic.base_stats;
   const direct=character?.base_stats || character?.baseStats;
   if (direct && typeof direct === 'object' && Object.keys(direct).length) return direct;
   // Static snapshots are resolved and checked in the Worker against the live roster metadata.
@@ -976,6 +997,17 @@ async function loadRemotePlayer(){
     renderGalacticPower();
     updateRosterCounts(chars,ships);renderGalacticPower();buildFactionMap();fillCharacters(chars);updateAccountSummary(title,fmt);renderV18SpeedRecap('v18DashboardSpeed');renderModsAnalysis();renderDataTable();renderHolocronVerdict(holocronTopChangeCandidates().slice(0,10));renderVisionnaire();
     currentData={allyCode,name:title,characters:chars,ships,mods,galacticPower:accountGalacticPower};
+    try {
+      const profileSummary = await precomputeCrinoloProfiles(chars);
+      log(`Profils Crinolo validés : ${profileSummary.applied}/${profileSummary.total} personnages.`);
+      if (profileSummary.mismatches) log(`${profileSummary.mismatches} profil(s) refusé(s) : métadonnées différentes du roster.`);
+      if (profileSummary.errors.length) {
+        const examples = profileSummary.errors.slice(0, 3).map(item => `${item.base_id || 'ID absent'} : ${item.error}`).join(' · ');
+        log(`${profileSummary.errors.length} personnage(s) sans profil Crinolo calculable. Aucun palier approximatif ne sera utilisé. ${examples}`);
+      }
+    } catch (profileError) {
+      log(`Pré-calcul Crinolo indisponible : ${profileError.message}. Les profils statiques restent soumis à la validation exacte.`);
+    }
     $('dataInfo').textContent=`Source: ${apiChars.length?'SWGOH.GG API JSON':'SWGOH.GG HTML'}${relay?' via Cloudflare Worker':''}${!apiMods.length?' · mods HTML secours':''}\nJoueur: ${title}\nAlly Code: ${fmt}\nPersonnages: ${chars.length}\nVaisseaux: ${ships.length}\nUnités totales: ${chars.length+ships.length}\nMods: ${mods.length}\nProfils Kyber disponibles dans cette version: ${Object.keys(profiles).length}`;
     log(`TERMINÉ : ${chars.length} personnages, ${ships.length} vaisseaux, ${mods.length} mods exploitables.`);
     if(!mods.length)log('Aucun mod lisible : vérifier la disponibilité de l’API mods.');
@@ -1179,11 +1211,77 @@ document.querySelectorAll('.data-tab').forEach(btn=>btn.addEventListener('click'
 
 function getOptimizerWorker() {
   if (optimizerWorker) return optimizerWorker;
-  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.5.22-pr59-donor-heuristic', { type: 'module' });
+  optimizerWorker = new Worker('./optimizer-worker.mjs?v=3.6.2-crinolo-roster-batch', { type: 'module' });
   optimizerWorker.addEventListener('error', (event) => {
     log('Erreur du Worker Python : ' + (event.message || 'erreur inconnue'));
   });
   return optimizerWorker;
+}
+
+function precomputeCrinoloProfiles(characters) {
+  const list = Array.isArray(characters) ? characters : [];
+  if (!list.length) return Promise.resolve({ applied: 0, total: 0, errors: [] });
+  const worker = getOptimizerWorker();
+  const id = ++optimizerRequestId;
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      worker.removeEventListener('message', onMessage);
+      worker.removeEventListener('error', onError);
+    };
+    const onError = event => {
+      cleanup();
+      reject(new Error(event.message || 'Erreur du Worker pendant le calcul des profils Crinolo.'));
+    };
+    const onMessage = event => {
+      const data = event.data || {};
+      if (data.id !== id) return;
+      if (data.type === 'status') {
+        log(data.message || 'Calcul des profils Crinolo…');
+        return;
+      }
+      cleanup();
+      if (data.type !== 'profiles-done') {
+        reject(new Error(data.error || 'Le calcul des profils Crinolo a échoué.'));
+        return;
+      }
+      const byBaseId = new Map((data.profiles || []).map(profile => [
+        String(profile?.base_id || '').toUpperCase(), profile
+      ]));
+      let applied = 0;
+      let mismatches = 0;
+      for (const character of list) {
+        const baseId = String(character?.baseId || character?.base_id || '').toUpperCase();
+        const profile = byBaseId.get(baseId);
+        if (profile && optimizerProfileMatchesRoster(profile, optimizerRosterMetadata(character))) {
+          character.optimizer_base_profile = profile;
+          applied++;
+        } else if (profile) {
+          mismatches++;
+        }
+      }
+      if (applied) {
+        window.dispatchEvent(new CustomEvent('holocron:crinolo-profiles-ready', {
+          detail: { applied, total: list.length }
+        }));
+        window.dispatchEvent(new CustomEvent('holocron:data-updated'));
+        renderHolocronVerdict(holocronTopChangeCandidates().slice(0, 10));
+        renderVisionnaire();
+      }
+      resolve({
+        applied,
+        total: list.length,
+        mismatches,
+        errors: Array.isArray(data.errors) ? data.errors : []
+      });
+    };
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', onError, { once: true });
+    worker.postMessage({
+      id,
+      type: 'profile-batch',
+      characters: list.map(character => character?.raw || character)
+    });
+  });
 }
 
 function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context, scopedMods, currentTargetMods=[]) {
@@ -1200,6 +1298,9 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
       }
       worker.removeEventListener('message', onMessage);
       if (data.type === 'done') {
+        if (data.base_profile?.profile_source === 'Crinolo') {
+          character.optimizer_base_profile = data.base_profile;
+        }
         resolve(JSON.parse(data.result));
       } else {
         reject(new Error(data.error || 'Erreur inconnue du Worker Python.'));
@@ -1207,7 +1308,7 @@ function runOptimizationInWorker(character, profile, nBuilds, limitSlot, context
     };
     worker.addEventListener('message', onMessage);
     const characterMetadata = optimizerRosterMetadata(character);
-    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_metadata: characterMetadata, character_level: characterMetadata.level, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
+    worker.postMessage({ id, mods: scopedMods, current_target_mods: currentTargetMods, profile, base_stats: baseStatsForCharacter(character), character_source: character.raw || character, character_metadata: characterMetadata, character_level: characterMetadata.level, n_builds: nBuilds, limit_slot: limitSlot, character_name: character.name || character.baseId || '', character_base_id: character.baseId || character.base_id || '', context });
   });
 }
 

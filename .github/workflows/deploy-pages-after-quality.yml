@@ -37,6 +37,9 @@ jobs:
           source: ./
           destination: ./_site
 
+      - name: Build Crinolo game data
+        run: node scripts/build-crinolo-gamedata.mjs ./_site/statCalcData/gameData.json
+
       - name: Upload the tested site artifact
         uses: actions/upload-pages-artifact@v3
         with:

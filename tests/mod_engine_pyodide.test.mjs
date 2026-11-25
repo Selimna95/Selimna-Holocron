@@ -109,6 +109,25 @@ const base = {
   'Physical Accuracy': 0, 'Special Accuracy': 0, Accuracy: 0
 };
 pyodide.globals.set('base_json', JSON.stringify(base));
+const g13BaseProfile = {
+  level: 85,
+  gear_level: 13,
+  base_stats: base,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: {
+      Health: 9000, Protection: 7000, Speed: 90,
+      'Physical Damage': 450, 'Special Damage': 600,
+      Armor: 45, Resistance: 35
+    },
+    gear: {
+      Health: 1000, Protection: 1000, Speed: 10,
+      'Physical Damage': 50, 'Special Damage': 100,
+      Armor: 5, Resistance: 5
+    }
+  }
+};
+pyodide.globals.set('g13_profile_json', JSON.stringify(g13BaseProfile));
 const zeroSecondaries = { secondary_1_stat:'Protection', secondary_1_value:0, secondary_2_stat:'Potency %', secondary_2_value:0, secondary_3_stat:'Tenacity %', secondary_3_value:0, secondary_4_stat:'Critical Damage %', secondary_4_value:0 };
 
 const offenseMods = [
@@ -118,8 +137,8 @@ const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
 ];
 pyodide.globals.set('mods_json', JSON.stringify(offenseMods));
-pyodide.runPython("import json\ntry:\n optimizer.final_stats(json.loads(mods_json), json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\n offense_projection_error = ''\nexcept RuntimeError as error:\n offense_projection_error = str(error)\n");
-assert.equal(pyodide.runPython('offense_projection_error'), '', 'G13 offense percentage projection is calculable with zero gear contribution');
+pyodide.runPython("import json\ntry:\n optimizer.final_stats(json.loads(mods_json), json.loads(base_json), json.loads(g13_profile_json))\n offense_projection_error = ''\nexcept RuntimeError as error:\n offense_projection_error = str(error)\n");
+assert.equal(pyodide.runPython('offense_projection_error'), '', 'G13 offense percentage projection is calculable with the Crinolo gear split');
 
 const defense = JSON.parse(pyodide.runPython("import json\nresult = optimizer.final_stats([{'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense', 'primary_value': 40}], json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85})\njson.dumps(result)\n"));
 assert.ok(Math.abs(defense.Armor - 51.5209) < 0.001);
@@ -176,19 +195,31 @@ const optimizerProfiles = JSON.parse(read('../python/optimizer_profiles.json'));
 const moffGideonProfile = optimizerProfiles.MOFFGIDEONS3;
 assert.ok(moffGideonProfile && moffGideonProfile.base_stats && moffGideonProfile.gear_level === 13);
 assert.equal(moffGideonProfile.gear, undefined, 'profile must not be mistaken for a Crinolo gear-component breakdown');
+const moffGideonScoreProfile = {
+  ...moffGideonProfile,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: {
+      Speed: 150,
+      Health: Number(moffGideonProfile.base_stats.Health),
+      Protection: Number(moffGideonProfile.base_stats.Protection)
+    },
+    gear: { Speed: 3, Health: 0, Protection: 0 }
+  }
+};
 const g13SpeedSetMods = Array.from({ length: 4 }, (_, index) => ({
   slot: ['Square', 'Arrow', 'Diamond', 'Triangle'][index],
   level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 0,
   ...zeroSecondaries
 }));
 const unverifiedG13Speed = engine.calculateFinalStats(moffGideonProfile, g13SpeedSetMods, moffGideonProfile.level);
-assert.equal(unverifiedG13Speed.complete, true, 'G13 Speed set needs no synthetic gear split');
-assert.equal(unverifiedG13Speed.stats.Speed, 168);
+assert.equal(unverifiedG13Speed.complete, false, 'Static G13 snapshots do not disclose their equipped-gear contribution');
+assert.ok(unverifiedG13Speed.missing.includes('speed:gear_component_required'));
 const verifiedG13SpeedProfile = {
   ...moffGideonProfile,
   stat_components: {
     source: 'Crinolo.stats.base+stats.gear',
-    base: { Speed: 153 }, gear: { Speed: 0 }
+    base: { Speed: 150 }, gear: { Speed: 3 }
   }
 };
 const verifiedG13Speed = engine.calculateFinalStats(verifiedG13SpeedProfile, g13SpeedSetMods, verifiedG13SpeedProfile.level);
@@ -212,7 +243,9 @@ const r5d4OffenseProjection = engine.calculateFinalStats(r5d4Profile, offenseMod
 assert.equal(r5d4OffenseProjection.complete, false);
 assert.ok(r5d4OffenseProjection.missing.includes('offense:gear_component_required'));
 const moffGideonOffenseProjection = engine.calculateFinalStats(moffGideonProfile, offenseMods, moffGideonProfile.level);
-assert.equal(moffGideonOffenseProjection.complete, true, 'G13 Offense % must use the zero-gear base');
+assert.equal(moffGideonOffenseProjection.complete, false, 'Static G13 profile cannot project Offense % without gear components');
+const verifiedG13OffenseProjection = engine.calculateFinalStats(g13BaseProfile, offenseMods, 85);
+assert.equal(verifiedG13OffenseProjection.complete, true, 'Dynamic G13 profile projects Offense % from Crinolo components');
 const defenseProfileMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 },
   { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
@@ -223,18 +256,13 @@ for (const profile of Object.values(optimizerProfiles)) {
   const projection = engine.calculateFinalStats(profile, defenseProfileMods, profile.level);
   if (Number(profile.gear_level) === 13) g13ProfileCount++;
   else lowerGearProfileCount++;
-  if (Number(profile.gear_level) === 13) {
-    assert.equal(projection.complete, true, `G13 profile ${profile.base_id} has a known zero gear component`);
-    assert.ok(!projection.missing.includes('defense:gear_component_required'));
-  } else {
-    assert.equal(projection.complete, false, `Profile ${profile.base_id} below G13 must not guess the Defense % gear component`);
-    assert.ok(projection.missing.includes('defense:gear_component_required'));
-  }
+  assert.equal(projection.complete, false, `Static profile ${profile.base_id} must not guess the Defense % gear component`);
+  assert.ok(projection.missing.includes('defense:gear_component_required'));
 }
 assert.equal(g13ProfileCount, 328);
 assert.equal(lowerGearProfileCount, 6);
 
-// G13 has a verified zero equipment contribution for every multiplicative stat.
+// A static G13 snapshot has no gear split; a live Crinolo profile does.
 const g13PercentProfile = { ...moffGideonProfile, stat_components: undefined };
 const g13PercentMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Health %', primary_value: 10 },
@@ -243,14 +271,17 @@ const g13PercentMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10 }
 ];
 const g13PercentProjection = engine.calculateFinalStats(g13PercentProfile, g13PercentMods, g13PercentProfile.level);
-assert.equal(g13PercentProjection.complete, true, 'All supported percentage families must calculate at G13');
-assert.ok(Number.isFinite(g13PercentProjection.stats.Health));
-assert.ok(Number.isFinite(g13PercentProjection.stats.Protection));
-assert.ok(Number.isFinite(g13PercentProjection.stats['Physical Damage']));
-assert.ok(Number.isFinite(g13PercentProjection.stats.Armor));
+assert.equal(g13PercentProjection.complete, false, 'Static G13 snapshots must not invent a zero gear component');
+const verifiedG13PercentProjection = engine.calculateFinalStats(g13BaseProfile, g13PercentMods, 85);
+assert.equal(verifiedG13PercentProjection.complete, true, 'Crinolo components enable all supported percentage families at G13');
+assert.ok(Number.isFinite(verifiedG13PercentProjection.stats.Health));
+assert.ok(Number.isFinite(verifiedG13PercentProjection.stats.Protection));
+assert.ok(Number.isFinite(verifiedG13PercentProjection.stats['Physical Damage']));
+assert.ok(Number.isFinite(verifiedG13PercentProjection.stats.Armor));
 pyodide.globals.set('moff_gideon_profile_json', JSON.stringify(moffGideonProfile));
+pyodide.globals.set('moff_gideon_score_profile_json', JSON.stringify(moffGideonScoreProfile));
 pyodide.runPython(`import json
-profile = json.loads(moff_gideon_profile_json)
+profile = json.loads(moff_gideon_score_profile_json)
 mods = [
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10},
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 0}
@@ -267,7 +298,7 @@ non_g13_defense_missing = optimizer.final_stats_many(
 )[0].get('_projection_missing', [])
 non_g13_defense_reported = 'defense:gear_component_required' in non_g13_defense_missing
 `);
-assert.equal(pyodide.runPython("'defense:gear_component_required' in moff_defense_missing"), false);
+assert.equal(pyodide.runPython("'defense:gear_component_required' in moff_defense_missing"), true);
 assert.equal(pyodide.runPython('non_g13_defense_reported'), true);
 
 const defenseWarningResult = JSON.parse(pyodide.runPython(`import json
@@ -285,7 +316,7 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
 try:
     result = optimizer.optimize_kyber(
         mods, base_stats=json.loads(base_json),
-        base_profile={'base_stats': json.loads(base_json), 'level': 85},
+        base_profile=json.loads(moff_gideon_score_profile_json),
         kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
     )
     warning_error = ''
@@ -298,11 +329,11 @@ assert.equal(defenseWarningResult.count, 1, 'Defense % alone must not reject a b
 assert.ok(defenseWarningResult.missing.includes('defense:gear_component_required'), 'The result must disclose the uncalculated Defense %');
 
 const g13CandidateMods = JSON.parse(pyodide.runPython('json.dumps(mods)'));
-const g13DirectCandidateProjection = engine.calculateFinalStats(moffGideonProfile, g13CandidateMods, moffGideonProfile.level);
-assert.equal(g13DirectCandidateProjection.complete, true, 'G13 Defense % is calculable with zero gear contribution');
+const g13DirectCandidateProjection = engine.calculateFinalStats(g13BaseProfile, g13CandidateMods, 85);
+assert.equal(g13DirectCandidateProjection.complete, true, 'G13 Defense % is calculable with verified Crinolo components');
 assert.ok(!g13DirectCandidateProjection.missing.includes('defense:gear_component_required'));
 const g13DefenseWarningResult = JSON.parse(pyodide.runPython(`import json
-profile = json.loads(moff_gideon_profile_json)
+profile = json.loads(g13_profile_json)
 result = optimizer.optimize_kyber(
     mods, base_stats=profile['base_stats'], base_profile=profile,
     kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
@@ -312,7 +343,7 @@ json.dumps({
     'missing': result[0].get('missing_stats', []) if result else []
 })
 `));
-assert.equal(g13DefenseWarningResult.count, 1, 'G13 builds must calculate Defense % using the known zero gear contribution');
+assert.equal(g13DefenseWarningResult.count, 1, 'G13 builds must calculate Defense % using verified Crinolo components');
 assert.ok(!g13DefenseWarningResult.missing.includes('defense:gear_component_required'));
 pyodide.globals.set('score_missing_profile_json', JSON.stringify({
   base_stats: base, level: 85, gear_level: 12
@@ -355,7 +386,7 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
         'secondary_3_stat': 'Potency %', 'secondary_3_value': 1,
         'secondary_4_stat': 'Tenacity %', 'secondary_4_value': 1
     })
-score_profile = {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}
+score_profile = json.loads(g13_profile_json)
 result = optimizer.optimize_kyber(
     secondary_defense_mods, base_stats=json.loads(base_json), base_profile=score_profile,
     kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
@@ -366,7 +397,7 @@ json.dumps({
 })
 `));
 assert.equal(secondaryDefenseSearch.count, 1, 'Uncalculable Defense must not reject a build when the score stats are complete');
-assert.ok(!secondaryDefenseSearch.missing.includes('defense:gear_component_required'), 'G13 Defense % must be calculated with zero gear contribution');
+assert.ok(!secondaryDefenseSearch.missing.includes('defense:gear_component_required'), 'G13 Defense % must be calculated with verified Crinolo gear components');
 
 
 const realComlinkDefenseSearch = JSON.parse(pyodide.runPython(`import json
@@ -384,7 +415,7 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
             {'name': 'Tenacity', 'stat_id': 18, 'value': 281.8, 'display_value': '2.82%', 'unscaled_roll_values': [1778, 1159, 1761]}
         ]
     })
-score_profile = {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13}
+score_profile = json.loads(g13_profile_json)
 result = optimizer.optimize_kyber(
     comlink_mods, base_stats=json.loads(base_json), base_profile=score_profile,
     kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
@@ -402,7 +433,7 @@ pyodide.runPython("try:\n optimizer.final_stats([{'level': 1, 'set_name': 'Healt
 const incompleteUnknown = pyodide.runPython('incomplete_unknown_error');
 assert.match(incompleteUnknown, /stat:unknown/);
 
-const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 33, 'unscaledDecimalValue': 12000000}, 'secondary_1_stat': {'unitStatId': 37, 'unscaledDecimalValue': 1200000000}},\n {'level': 1, 'set_name': 'Defense', 'primary_stat': {'unitStatId': 34, 'unscaledDecimalValue': 6000000}, 'secondary_1_stat': {'unitStatId': 38, 'unscaledDecimalValue': 2400000000}},\n {'level': 1, 'set_name': 'Speed', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}\n]\nresult = optimizer.final_stats(mods, json.loads(base_json), {'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13})\njson.dumps(result)\n"));
+const accuracy = JSON.parse(pyodide.runPython("import json\nmods = [\n {'level': 1, 'set_name': 'Health', 'primary_stat': {'unitStatId': 33, 'unscaledDecimalValue': 12000000}, 'secondary_1_stat': {'unitStatId': 37, 'unscaledDecimalValue': 1200000000}},\n {'level': 1, 'set_name': 'Defense', 'primary_stat': {'unitStatId': 34, 'unscaledDecimalValue': 6000000}, 'secondary_1_stat': {'unitStatId': 38, 'unscaledDecimalValue': 2400000000}},\n {'level': 1, 'set_name': 'Speed', 'primary_stat': {'unitStatId': 52, 'unscaledDecimalValue': 12000000}}\n]\nresult = optimizer.final_stats(mods, json.loads(base_json), json.loads(g13_profile_json))\njson.dumps(result)\n"));
 assert.equal(accuracy['Physical Accuracy'], 13);
 assert.equal(accuracy['Special Accuracy'], 8);
 assert.equal(accuracy['Accuracy'], 0.12);
@@ -448,7 +479,7 @@ for slot in slots:
   })
 result = optimizer.optimize_kyber(
  mods, base_stats=json.loads(base_json),
- base_profile={'base_stats': json.loads(base_json), 'level': 85, 'gear_level': 13},
+ base_profile=json.loads(g13_profile_json),
  kyber={}, number_of_builds=1, limit_per_slot=3, beam_width=4
 )
 json.dumps({'count': len(result), 'mods': len(result[0]['build']) if result else 0})

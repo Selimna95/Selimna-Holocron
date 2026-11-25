@@ -333,6 +333,16 @@ const projectionBase = {
   'Physical Critical Chance': 40, 'Special Critical Chance': 30,
   'Physical Critical Avoidance': 0, 'Special Critical Avoidance': 0
 };
+const g13ProjectionProfile = {
+  gear_level: 13,
+  level: 85,
+  base_stats: projectionBase,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Health: 800, Protection: 1500, Speed: 90, 'Physical Damage': 400, 'Special Damage': 600, Armor: 45, Resistance: 35 },
+    gear: { Health: 200, Protection: 500, Speed: 10, 'Physical Damage': 100, 'Special Damage': 100, Armor: 5, Resistance: 5 }
+  }
+};
 // Comlink values are normalized by 1e8; Crinolo returns decimal ratios, while Holocron stores percentage points (x100), so 24 normalized rating units = 1 point.
 const critRatingProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, [
   { level: 1, set_name: 'Health', primary_stat: { unitStatId: 14, unscaledDecimalValue: 2400000000 } },
@@ -375,6 +385,34 @@ assert.ok(Math.abs(splitDefenseProjection.stats.Resistance - expectedBaseOnlyDef
 assert.ok(Math.abs(splitDefenseProjection.stats.Armor - incorrectlyGearInclusiveDefensePercent) > 0.02,
   'The old gear-inclusive calculation must be observably different');
 
+const dynamicCrinoloDefenseProfile = {
+  level: 85,
+  gear_level: 12,
+  base_stats: { Armor: 50, Resistance: 40 },
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Armor: 45, Resistance: 35 },
+    gear: { Armor: 5, Resistance: 5 }
+  }
+};
+const dynamicCrinoloDefenseProjection = engine.calculateFinalStats(dynamicCrinoloDefenseProfile, [{
+  level: 1, set_name: 'Health', primary_stat: 'Defense %', primary_value: 10
+}], 85);
+const baseArmorRating = 0.45 * defenseLevelEffect / (1 - 0.45);
+const baseResistanceRating = 0.35 * defenseLevelEffect / (1 - 0.35);
+const currentArmorRating = 0.50 * defenseLevelEffect / (1 - 0.50);
+const currentResistanceRating = 0.40 * defenseLevelEffect / (1 - 0.40);
+const expectedDynamicArmor = (currentArmorRating + Math.floor(baseArmorRating * 0.10)) /
+  (defenseLevelEffect + currentArmorRating + Math.floor(baseArmorRating * 0.10)) * 100;
+const expectedDynamicResistance = (currentResistanceRating + Math.floor(baseResistanceRating * 0.10)) /
+  (defenseLevelEffect + currentResistanceRating + Math.floor(baseResistanceRating * 0.10)) * 100;
+assert.equal(dynamicCrinoloDefenseProjection.complete, true);
+assert.ok(Math.abs(dynamicCrinoloDefenseProjection.stats.Armor - expectedDynamicArmor) < 1e-10,
+  'Dynamic Crinolo Armor % uses the base Armor component, excluding current gear contribution');
+assert.ok(Math.abs(dynamicCrinoloDefenseProjection.stats.Resistance - expectedDynamicResistance) < 1e-10,
+  'Dynamic Crinolo Resistance % uses the base Resistance component, excluding current gear contribution');
+
+
 const critAvoidanceProjection = engine.calculateFinalStats({
   'Physical Critical Avoidance': 10, 'Special Critical Avoidance': 5
 }, [
@@ -402,15 +440,15 @@ const speedPercentMods = [{
   secondary_1_stat: { unitStatId: 57, unscaledDecimalValue: 5000000 }
 }];
 const g13SpeedPercentWithoutBreakdown = engine.calculateSpeed(100, speedPercentMods, 13);
-assert.equal(g13SpeedPercentWithoutBreakdown.complete, true, 'G13 has a known zero equipment contribution for Speed %');
-assert.equal(g13SpeedPercentWithoutBreakdown.total, 105);
+assert.equal(g13SpeedPercentWithoutBreakdown.complete, false, 'G13 totals also require the equipped-gear split');
+assert.ok(g13SpeedPercentWithoutBreakdown.missing.includes('speed:gear_component_required'));
 const verifiedSpeedComponents = {
   source: 'Crinolo.stats.base+stats.gear',
-  base: { Speed: 100 }, gear: { Speed: 0 }
+  base: { Speed: 90 }, gear: { Speed: 10 }
 };
 const speedPercentProjection = engine.calculateSpeed(100, speedPercentMods, 13, verifiedSpeedComponents);
 assert.equal(speedPercentProjection.complete, true);
-assert.equal(speedPercentProjection.total, 105);
+assert.equal(speedPercentProjection.total, 104, 'Speed % applies to base Speed before adding the gear contribution');
 const inconsistentSpeedComponents = {
   source: 'Crinolo.stats.base+stats.gear',
   base: { Speed: 100 }, gear: { Speed: 1 }
@@ -428,17 +466,18 @@ const completeSpeedSet = Array.from({ length: 4 }, (_, index) => ({
   secondary_4_stat: 'Critical Damage %', secondary_4_value: 0
 }));
 const g13SpeedSetWithoutBreakdown = engine.calculateSpeed(153, completeSpeedSet, 13);
-assert.equal(g13SpeedSetWithoutBreakdown.complete, true, 'G13 Speed set needs no synthetic gear split');
-assert.equal(g13SpeedSetWithoutBreakdown.setBonus, 15);
-assert.equal(g13SpeedSetWithoutBreakdown.total, 168);
+assert.equal(g13SpeedSetWithoutBreakdown.complete, false, 'G13 Speed set requires the real gear split');
+assert.ok(g13SpeedSetWithoutBreakdown.missing.includes('speed:gear_component_required'));
 const verifiedGideonSpeedComponents = {
   source: 'Crinolo.stats.base+stats.gear',
-  base: { Speed: 153 }, gear: { Speed: 0 }
+  base: { Speed: 150 }, gear: { Speed: 3 }
 };
 const verifiedGideonSpeedSet = engine.calculateSpeed(153, completeSpeedSet, 13, verifiedGideonSpeedComponents);
 assert.equal(verifiedGideonSpeedSet.setBonus, 15, 'Crinolo floors the percentage-derived Speed set bonus');
 assert.equal(verifiedGideonSpeedSet.total, 168);
-const fractionalSpeedSet = engine.calculateSpeed(153.9, completeSpeedSet, 13);
+const fractionalSpeedSet = engine.calculateSpeed(153.9, completeSpeedSet, 13, {
+  source: 'Crinolo.stats.base+stats.gear', base: { Speed: 153.9 }, gear: { Speed: 0 }
+});
 assert.equal(fractionalSpeedSet.setBonus, 15, 'Speed set bonus floors fractional base × 10%');
 assert.equal(fractionalSpeedSet.total, 168.9);
 const gearSpeedComponents = {
@@ -458,6 +497,11 @@ assert.equal(verifiedHalfSpeedSet.total, 160);
 // Set bonuses and mod percentage secondaries are summed before one floor.
 const roundingProfile = {
   gear_level: 13,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: { Health: 1001, Protection: 1001, Speed: 153, 'Physical Damage': 501, 'Special Damage': 701, Armor: 50, Resistance: 40 },
+    gear: { Health: 0, Protection: 0, Speed: 0, 'Physical Damage': 0, 'Special Damage': 0, Armor: 0, Resistance: 0 }
+  },
   base_stats: {
     Health: 1001, Protection: 1001, Speed: 153,
     'Physical Damage': 501, 'Special Damage': 701,
@@ -510,7 +554,7 @@ const speedRounding = engine.calculateSpeed(153, [
   ...completeSpeedSet,
   { level: 15, set_name: 'Health', primary_stat: 'Health', primary_value: 0,
     ...zeroSecondaries, secondary_1_stat: 'Speed %', secondary_1_value: 2.5 }
-], 13);
+], 13, roundingProfile.stat_components);
 assert.equal(speedRounding.complete, true);
 assert.equal(speedRounding.setBonus, 15);
 assert.equal(speedRounding.total, 172,
@@ -551,15 +595,15 @@ const offenseMods = [
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries },
   { level: 15, set_name: 'Offense', primary_stat: 'Health', primary_value: 100, ...zeroSecondaries }
 ];
-const offenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
-assert.equal(offenseProjection.complete, true, 'G13 has no gear contribution to Offense %');
+const offenseProjection = engine.calculateFinalStats(g13ProjectionProfile, offenseMods, 85);
+assert.equal(offenseProjection.complete, true, 'G13 Offense % uses verified base and gear components');
 
 const gear12Profile = { gear_level: 12, base_stats: projectionBase };
 const gear12OffenseProjection = engine.calculateFinalStats(gear12Profile, offenseMods, 85);
 assert.equal(gear12OffenseProjection.complete, false);
 assert.ok(gear12OffenseProjection.missing.includes('offense:gear_component_required'));
-const gear13OffenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, offenseMods, 85);
-assert.equal(gear13OffenseProjection.complete, true, 'G13 Offense % is calculable without a supplied split');
+const gear13OffenseProjection = engine.calculateFinalStats(g13ProjectionProfile, offenseMods, 85);
+assert.equal(gear13OffenseProjection.complete, true, 'G13 Offense % is calculable with the supplied split');
 const directDamagePercentMods = [
   { level: 1, set_name: 'Health', primary_stat: 'Physical Damage %', primary_value: 10 },
   { level: 1, set_name: 'Health', primary_stat: 'Health', primary_value: 0 }
@@ -567,8 +611,8 @@ const directDamagePercentMods = [
 const g12DirectDamageProjection = engine.calculateFinalStats(gear12Profile, directDamagePercentMods, 85);
 assert.equal(g12DirectDamageProjection.complete, false);
 assert.ok(g12DirectDamageProjection.missing.includes('offense:gear_component_required'));
-const g13DirectDamageProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, directDamagePercentMods, 85);
-assert.equal(g13DirectDamageProjection.complete, true, 'G13 direct damage % uses the zero-gear base');
+const g13DirectDamageProjection = engine.calculateFinalStats(g13ProjectionProfile, directDamagePercentMods, 85);
+assert.equal(g13DirectDamageProjection.complete, true, 'G13 direct damage % uses verified base and gear components');
 
 const gearDependentPercentCases = [
   ['health', [
@@ -588,8 +632,8 @@ for (const [key, mods] of gearDependentPercentCases) {
   const projection = engine.calculateFinalStats(gear12Profile, mods, 85);
   assert.equal(projection.complete, false, `${key} % must not use aggregated gear stats`);
   assert.ok(projection.missing.includes(key + ':gear_component_required'));
-  const g13Projection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, mods, 85);
-  assert.equal(g13Projection.complete, true, key + ' % must use the known zero gear component at G13');
+  const g13Projection = engine.calculateFinalStats(g13ProjectionProfile, mods, 85);
+  assert.equal(g13Projection.complete, true, key + ' % must use the verified G13 gear split');
 }
 
 const defenseProjection = engine.calculateFinalStats(projectionBase, [
@@ -605,8 +649,8 @@ const defensePercentMods = [
 const nonG13DefenseProjection = engine.calculateFinalStats({ gear_level: 12, base_stats: projectionBase }, defensePercentMods, 85);
 assert.equal(nonG13DefenseProjection.complete, false);
 assert.ok(nonG13DefenseProjection.missing.includes('defense:gear_component_required'));
-const g13DefenseProjection = engine.calculateFinalStats({ gear_level: 13, base_stats: projectionBase }, defensePercentMods, 85);
-assert.equal(g13DefenseProjection.complete, true, 'G13 Defense % must use the known zero gear component');
+const g13DefenseProjection = engine.calculateFinalStats(g13ProjectionProfile, defensePercentMods, 85);
+assert.equal(g13DefenseProjection.complete, true, 'G13 Defense % must use verified Armor and Resistance components');
 const flatDefenseProjection = engine.calculateFinalStats(projectionBase, [
   { level: 1, set_name: 'Defense', primary_stat: 'Defense', primary_value: 40 }
 ], 85);
