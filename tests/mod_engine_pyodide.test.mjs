@@ -195,6 +195,18 @@ const optimizerProfiles = JSON.parse(read('../python/optimizer_profiles.json'));
 const moffGideonProfile = optimizerProfiles.MOFFGIDEONS3;
 assert.ok(moffGideonProfile && moffGideonProfile.base_stats && moffGideonProfile.gear_level === 13);
 assert.equal(moffGideonProfile.gear, undefined, 'profile must not be mistaken for a Crinolo gear-component breakdown');
+const moffGideonScoreProfile = {
+  ...moffGideonProfile,
+  stat_components: {
+    source: 'Crinolo.stats.base+stats.gear',
+    base: {
+      Speed: 150,
+      Health: Number(moffGideonProfile.base_stats.Health),
+      Protection: Number(moffGideonProfile.base_stats.Protection)
+    },
+    gear: { Speed: 3, Health: 0, Protection: 0 }
+  }
+};
 const g13SpeedSetMods = Array.from({ length: 4 }, (_, index) => ({
   slot: ['Square', 'Arrow', 'Diamond', 'Triangle'][index],
   level: 15, set_name: 'Speed', primary_stat: 'Health', primary_value: 0,
@@ -267,8 +279,9 @@ assert.ok(Number.isFinite(verifiedG13PercentProjection.stats.Protection));
 assert.ok(Number.isFinite(verifiedG13PercentProjection.stats['Physical Damage']));
 assert.ok(Number.isFinite(verifiedG13PercentProjection.stats.Armor));
 pyodide.globals.set('moff_gideon_profile_json', JSON.stringify(moffGideonProfile));
+pyodide.globals.set('moff_gideon_score_profile_json', JSON.stringify(moffGideonScoreProfile));
 pyodide.runPython(`import json
-profile = json.loads(moff_gideon_profile_json)
+profile = json.loads(moff_gideon_score_profile_json)
 mods = [
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Defense %', 'primary_value': 10},
  {'level': 1, 'set_name': 'Health', 'primary_stat': 'Health', 'primary_value': 0}
