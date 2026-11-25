@@ -4,12 +4,12 @@ async function loadOptimizerReferenceData(){
   // On tente les sources locales pour l'UI, mais l'Optimizer peut démarrer même
   // si le script embarqué n'a pas été publié par GitHub Pages.
   const candidates=[
-    new URL('./python/optimizer_profiles.json',document.baseURI).href,
+    new URL('./statCalcData/optimizer_profiles.v2.json',document.baseURI).href,
   ];
   let loaded=null;
   for(const url of candidates){
     try{
-      const r=await fetch(url+'?v=3.4.4-cache-sync',{cache:'force-cache'});
+      const r=await fetch(url+'?v=4.1.90-exact-progression',{cache:'force-cache'});
       if(!r.ok)continue;
       const json=await r.json();
       if(json&&typeof json==='object'&&Object.keys(json).length){loaded=json;break;}
@@ -17,7 +17,7 @@ async function loadOptimizerReferenceData(){
   }
   if(loaded){
     optimizerProfiles=loaded;
-    log(`Profils Optimizer UI chargés depuis la source JSON unique : ${Object.keys(optimizerProfiles).length}.`);
+    log(`Profils Optimizer UI chargés depuis la source JSON unique : ${Object.keys(optimizerProfiles.profiles||optimizerProfiles).length}.`);
   }else{
     optimizerProfiles={};
     log('Profils Optimizer UI non chargés : le Worker tentera de lire python/optimizer_profiles.json.');
