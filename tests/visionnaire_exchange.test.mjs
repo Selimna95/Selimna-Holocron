@@ -54,6 +54,12 @@ const primaryFilterPosition=js.indexOf('const eligible=state.mode===\'sets\'||!r
 const speedProjectionPosition=js.indexOf('const beforeProjectionSummary=forgeProjectedModSpeed');
 assert.ok(setFilterPosition>=0&&primaryFilterPosition>setFilterPosition&&speedProjectionPosition>primaryFilterPosition,
   'Kyber sets must be filtered first, primaries second, and speed projected only afterward');
+const evaluateStart=js.indexOf('const evaluateCombination=async combo=>');
+const combinationSetPosition=js.indexOf('const afterSetDistance=exchangeSetDistance(finalTarget,profile)',evaluateStart);
+const combinationPrimaryPosition=js.indexOf("if(state.mode==='both'&&!targetPrimarySafe(chosen))",evaluateStart);
+const combinationSpeedPosition=js.indexOf('const beforeProjection=forgeProjectedModSpeed',evaluateStart);
+assert.ok(combinationSetPosition>evaluateStart&&combinationPrimaryPosition>combinationSetPosition&&combinationSpeedPosition>combinationPrimaryPosition,
+  'Each full combination must pass its Kyber set and primary checks before speed projection');
 assert.ok(js.includes('candidateSpeedCeiling'), 'Search diagnostics must expose the maximum speed reachable from the current candidate pool');
 assert.ok(js.includes('baseSpeed+retainedForSubset+'), 'Each partial exchange must include the speed of untouched target mods');
 assert.ok(js.includes('if(!beforeProjection.complete||!afterProjection.complete)'), 'Target speed projections must fail closed when incomplete');
