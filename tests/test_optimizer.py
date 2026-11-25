@@ -200,7 +200,11 @@ class OptimizerScoringCalibrationTests(unittest.TestCase):
             "_source_usage": 1000,
         }
         score = _mod_score(mod, {"sets": {"Speed": 1.0}}, {})
-        self.assertEqual(score, optimizer_module.KYBER_MOD_SET_SHARE_WEIGHT)
+        self.assertAlmostEqual(
+            score,
+            optimizer_module.KYBER_MOD_SET_SHARE_WEIGHT
+            + optimizer_module._donor_usage_preference(1000) * 0.15,
+        )
 
     def test_dominant_set_missing_mod_penalty_uses_named_constant(self):
         build = [
@@ -211,8 +215,11 @@ class OptimizerScoringCalibrationTests(unittest.TestCase):
         ]
         kyber = {"sets": {"Speed": 0.8}}
         score = build_score(build, kyber, {}, {}, projected_stats={})
-        expected = -6 * 0.8 * optimizer_module.KYBER_BUILD_DOMINANT_SET_MISSING_MOD_PENALTY
-        self.assertEqual(score, expected)
+        expected = (
+            -6 * 0.8 * optimizer_module.KYBER_BUILD_DOMINANT_SET_MISSING_MOD_PENALTY
+            + 6 * optimizer_module._donor_usage_preference(1000) * 0.15
+        )
+        self.assertAlmostEqual(score, expected)
 
     def test_primary_mismatch_penalty_uses_named_constant(self):
         build = [{
@@ -222,7 +229,11 @@ class OptimizerScoringCalibrationTests(unittest.TestCase):
         }]
         kyber = {"slots": {"Arrow": {"primaries": {"Speed": 0.8, "Offense": 0.2}}}}
         score = build_score(build, kyber, {}, {}, projected_stats={})
-        self.assertEqual(score, -0.8 * optimizer_module.KYBER_BUILD_PRIMARY_MISMATCH_PENALTY)
+        self.assertAlmostEqual(
+            score,
+            -0.8 * optimizer_module.KYBER_BUILD_PRIMARY_MISMATCH_PENALTY
+            + optimizer_module._donor_usage_preference(1000) * 0.15,
+        )
 
 
 class OptimizerProfileResolutionTests(unittest.TestCase):
@@ -388,6 +399,27 @@ class OptimizerNormalizationTests(unittest.TestCase):
         )
         self.assertEqual(len(builds), 1)
         self.assertEqual(builds[0]["set_plan"], {"Speed": 6})
+
+    def test_realistic_high_gac_usage_counts_keep_distinct_logarithmic_ranks(self):
+        counts = (34_000, 100_000, 800_000)
+        preferences = [optimizer_module._donor_usage_preference(value) for value in counts]
+        self.assertGreater(preferences[0], preferences[1])
+        self.assertGreater(preferences[1], preferences[2])
+        self.assertEqual(len(set(round(value, 6) for value in preferences)), 3)
+
+        mods = [_realistic_mod("Square", "Speed", game_id=str(value),
+                               speed=10, source_usage=value) for value in counts]
+        scores = [_mod_score(mod, {}, {"Speed": 1.0}) for mod in mods]
+        self.assertGreater(scores[0], scores[1])
+        self.assertGreater(scores[1], scores[2])
+        base_stats = TEST_BASE_PROFILE["base_stats"]
+        build_scores = [
+            build_score([mod], {}, {"Speed": 1.0}, base_stats, TEST_BASE_PROFILE,
+                        projected_stats=final_stats([mod], base_stats, TEST_BASE_PROFILE))
+            for mod in mods
+        ]
+        self.assertGreater(build_scores[0], build_scores[1])
+        self.assertGreater(build_scores[1], build_scores[2])
 
     def test_lower_gac_usage_donor_is_preferred_after_mod_fit(self):
         low_use = _realistic_mod("Square", "Speed", game_id="low-use", speed=10, source_usage=5)

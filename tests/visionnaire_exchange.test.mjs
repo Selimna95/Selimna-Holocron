@@ -73,7 +73,8 @@ assert.ok(js.includes('await buildExchangeProposals'), 'UI must await the respon
 assert.ok(js.includes('searchProgress.tested'), 'UI must expose live search progress');
 assert.ok(js.includes('speedLoss:beforeSpeed-afterSpeed'), 'Rejected speed exchanges must report the measured speed loss');
 assert.ok(js.includes('afterSpeed+1e-9<beforeSpeed'),'Target speed must never decrease');
-assert.ok(js.includes('RECOMMANDÉ'),'Scenario verdict must be explicit');
+assert.ok(js.includes('MEILLEUR COMPROMIS TROUVÉ'),'Scenario verdict must describe a best-found compromise, not claim optimality');
+assert.ok(js.includes('INDICE HEURISTIQUE'),'The UI must label the score as heuristic');
 assert.ok(js.includes('const diagnostics={limit:15000'),'Search diagnostics must expose the safety limit and candidate counts');
 assert.ok(js.includes('eligibleBySlot')&&js.includes('setFilteredBySlot')&&js.includes('primaryFilteredBySlot'),'Search diagnostics must disclose the successive Kyber candidate filters');
 assert.ok(js.includes('fullCandidateSearchSpace')&&js.includes('fullSearchCoverage')&&js.includes('candidatePoolCoverage'),'Search coverage must describe the complete post-Kyber candidate pool');
@@ -98,7 +99,7 @@ const sandbox={
   modTotalSpeed:mod=>Number(mod.speed||0)
 };
 vm.createContext(sandbox);
-vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;this.focus=exchangeSecondaryFocusScore;this.focusImpact=exchangeTargetFocusImpact;',sandbox);
+vm.runInContext(js.slice(start,end)+'\nthis.project=exchangeFinalStats;this.score=exchangeScenarioScore;this.donorPreference=exchangeDonorUsagePreference;this.focus=exchangeSecondaryFocusScore;this.focusImpact=exchangeTargetFocusImpact;',sandbox);
 const fixture={baseId:'GLREY',gear_level:13,base_stats:{Health:1000,Speed:100,Potency:0.1},stat_components:{source:'Crinolo.stats.base+stats.gear',base:{Speed:100},gear:{Speed:0}}};
 const healthMods=[
  {set_name:'Health',level:14,primary_stat:'Health %',primary_value:5,secondary_1_stat:'Speed',secondary_1_value:0,secondary_2_stat:'Protection',secondary_2_value:0,secondary_3_stat:'Potency %',secondary_3_value:0,secondary_4_stat:'Tenacity %',secondary_4_value:0},
@@ -110,7 +111,13 @@ assert.equal(sandbox.project(fixture,speedMods).Speed,125);
 const better=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:0,primaryShare:.9,targetBalance:.02,donors:[{uses:5,statBalance:.01,statusWorsened:false}]});
 const worse=sandbox.score({mode:'sets',beforeSetDistance:4,afterSetDistance:3,primaryShare:.2,targetBalance:-.03,donors:[{uses:100,statBalance:-.05,statusWorsened:true}]});
 assert.ok(better.score>worse.score);
-assert.equal(better.verdict,'RECOMMANDÉ');
+assert.equal(better.verdict,'MEILLEUR COMPROMIS TROUVÉ');
+const realisticDonorCounts=[34000,100000,800000];
+const realisticDonorPreferences=realisticDonorCounts.map(sandbox.donorPreference);
+assert.ok(realisticDonorPreferences[0]>realisticDonorPreferences[1]&&realisticDonorPreferences[1]>realisticDonorPreferences[2],
+  'Logarithmic donor preference must distinguish 34,000, 100,000 and 800,000 GAC uses');
+assert.equal(new Set(realisticDonorPreferences.map(value=>value.toFixed(6))).size,3,
+  'Realistic high usage counts must not collapse to the same capped score');
 
 const sampleStart=js.indexOf('  function visionnaireSampleIndex(');
 const sampleEnd=js.indexOf('  const $ =',sampleStart);
