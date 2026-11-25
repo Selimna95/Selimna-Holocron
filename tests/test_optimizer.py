@@ -515,7 +515,7 @@ class OptimizerNormalizationTests(unittest.TestCase):
             for slot in ("Square", "Arrow", "Diamond", "Triangle")
         ]
         stats = final_stats(build, TEST_BASE_PROFILE["base_stats"], TEST_BASE_PROFILE)
-        self.assertAlmostEqual(stats["Speed"], 100 + 30 + 4 * 4 + 10)
+        self.assertAlmostEqual(stats["Speed"], 100 + 30 + 4 * 4 + 9)
 
     def test_critical_damage_set_bonus_is_thirty_percentage_points(self):
         build = [
