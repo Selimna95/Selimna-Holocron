@@ -426,12 +426,12 @@
         .map(mod=>({...mod,_visionnaireDonor:mod._sourceOwnerKey?rosterCharacters.find(c=>characterKey(c)===mod._sourceOwnerKey):null}))
         .filter(mod=>!mod._sourceOwnerKey||mod._visionnaireDonor)
         .map(mod=>[exchangeModId(mod),mod])).values()];
-      // 1. Filter sets against every exact Kyber composition, retaining any
-      // candidate that can still participate in an improvement with the other
-      // selected slots. Missing set references remain unknown, never invalid.
+      // 1. Filter sets against every exact Kyber composition. Set-focused modes
+      // require improvement; primary-only mode may preserve an already-correct
+      // composition but may never worsen it. Missing references remain unknown.
       const setEligible=ordered.filter(setCandidateCanImprove);
       setFilteredBySlot[LABELS[slot]]=ordered.length-setEligible.length;
-      // 2. Filter primaries for the target slot only when that criterion is active.
+      // 2. Filter primaries after sets in every mode whenever Kyber data exists.
       const reference=primaryDistribution(profile,slot);
       const eligible=!reference.length?setEligible:
         setEligible.filter(mod=>reference.some(entry=>statKey(entry.name,slot,true)===statKey(mod?.primary_stat,slot,false)));
