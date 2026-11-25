@@ -11,6 +11,7 @@ Important:
 
 import json
 import heapq
+import math
 import re
 import os
 import unicodedata
@@ -66,6 +67,19 @@ def _normalized_mod_cached(serialized):
 def _normalized_mod(mod):
     serialized = json.dumps(mod or {}, ensure_ascii=False, separators=(",", ":"))
     return _normalized_mod_cached(serialized)
+
+
+DONOR_USAGE_LOG_REFERENCE = 800_000.0
+
+
+def _donor_usage_preference(uses):
+    """Return a smooth 0..100 preference; lower GAC usage ranks higher.
+
+    Log scaling preserves distinctions across realistic six-digit usage counts
+    without clipping every donor above an arbitrary 1,000-use ceiling.
+    """
+    usage = max(0.0, to_float(uses))
+    return 100.0 / (1.0 + math.log1p(usage) / math.log1p(DONOR_USAGE_LOG_REFERENCE))
 
 
 def to_float(value, default=0.0):
@@ -501,7 +515,7 @@ def _mod_score(mod, kyber, weights, metadata=None, scoring_context=None):
     # Prefer mods from less-used GAC donors after preserving the target build fit.
     # Missing usage is never encoded as zero by the browser-side donor selector.
     donor_uses = to_float(mod.get("_source_usage"), 0.0)
-    score += max(0.0, 1000.0 - min(1000.0, donor_uses)) * 0.15
+    score += _donor_usage_preference(donor_uses) * 0.15
     return score
 
 
@@ -557,7 +571,7 @@ def build_score(build, kyber, weights, base_stats, base_profile=None, projected_
     donor_priority = 0.0
     for mod in build:
         donor_uses = metadata_for(mod)["donor_uses"]
-        donor_priority += max(0.0, 1000.0 - min(1000.0, donor_uses)) * 0.15
+        donor_priority += _donor_usage_preference(donor_uses) * 0.15
     score += donor_priority
 
     return score
