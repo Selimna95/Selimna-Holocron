@@ -51,7 +51,7 @@ const gameData = {
     growthModifiers: { 7: {} },
     relic: { 8: "RELIC_8", 10: "RELIC_10" },
   } },
-  gearData: { GEAR_A: {}, GEAR_C: {} },
+  gearData: { GEAR_A: {}, GEAR_B: {}, GEAR_C: {}, GEAR_D: {}, GEAR_E: {}, GEAR_F: {} },
   relicData: { RELIC_8: {}, RELIC_10: {} },
 };
 const calculated = calculateCrinoloProfile(source, calculator, gameData);
