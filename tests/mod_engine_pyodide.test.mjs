@@ -316,7 +316,7 @@ for index, slot in enumerate(['Square', 'Arrow', 'Diamond', 'Triangle', 'Circle'
 try:
     result = optimizer.optimize_kyber(
         mods, base_stats=json.loads(base_json),
-        base_profile={'base_stats': json.loads(base_json), 'level': 85},
+        base_profile=json.loads(moff_gideon_score_profile_json),
         kyber={}, number_of_builds=1, limit_per_slot=2, beam_width=8
     )
     warning_error = ''
