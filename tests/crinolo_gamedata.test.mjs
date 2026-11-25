@@ -2,22 +2,16 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import crinoloStatCalc from "../vendor/crinolo-stat-calc.mjs";
 import { calculateCrinoloProfile } from "../modules/optimizer-progression.mjs";
+import { buildCrinoloGameData } from "../scripts/build-crinolo-gamedata.mjs";
 
-const gameDataUrl = "https://raw.githubusercontent.com/swgoh-utils/gamedata/e96f00d4bcddb41d9bb93428a00ab7b4bb6fcdef/gameData.json";
-const response = await fetch(gameDataUrl);
-assert.equal(response.ok, true, `Crinolo gameData HTTP ${response.status}`);
-const downloaded = await response.json();
-console.log("download keys", Object.keys(downloaded));
-console.log("download data type", typeof downloaded.data, "data keys", Object.keys(downloaded.data || {}).slice(0, 30));
-console.log("download data sample", JSON.stringify(downloaded.data || {}).slice(0, 2500));
-const gameData = downloaded.data?.unitData ? downloaded.data : downloaded;
+const gameData = await buildCrinoloGameData();
 const profiles = JSON.parse(fs.readFileSync(new URL("../python/optimizer_profiles.json", import.meta.url), "utf8"));
 
 let calculatedCount = 0;
 const failures = [];
 for (const profile of Object.values(profiles)) {
   const unit = gameData.unitData?.[profile.base_id];
-  const crinoloGearLevel = Math.min(Number(profile.gear_level), 12);
+  const crinoloGearLevel = Number(profile.gear_level);
   if (!unit?.gearLvl?.[crinoloGearLevel] || !unit.growthModifiers?.[profile.rarity]) {
     failures.push(`${profile.base_id}: référence unité/gear/rareté absente`);
     continue;
