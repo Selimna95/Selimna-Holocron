@@ -495,18 +495,20 @@
       chosen=combo;
 
         const finalTarget=current.filter(mod=>!activeSlots.includes(slotOf(mod))).concat(chosen);
-        const beforeProjection=forgeProjectedModSpeed(character,profile,current);
-        const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
-        if(!beforeProjection.complete||!afterProjection.complete){reject('vitesse_cible_inconnue','Vitesse cible non calculable : données de base ou mods incomplets');return;}
-        const afterSpeed=afterProjection.total;
-        if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet){reject('bonus_vitesse_cible','Perte du bonus de set Vitesse');return;}
-        if(afterSpeed+1e-9<beforeSpeed){reject('vitesse_cible','La vitesse totale de la cible diminuerait',null,{targetSpeedBefore:beforeSpeed,targetSpeedAfter:afterSpeed,speedLoss:beforeSpeed-afterSpeed});return;}
+        // Revalidate the complete Kyber set composition and selected primaries
+        // before invoking any speed projection for this combination.
         const afterSetDistance=exchangeSetDistance(finalTarget,profile);
         if(state.mode!=='primaries'&&beforeSetDistance!==null&&afterSetDistance!==null&&afterSetDistance>=beforeSetDistance){
           reject('reference_sets','La composition de sets ne se rapproche pas de Kyber');return;
         }
         if(state.mode==='both'&&!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
         if(state.mode==='primaries'&&!targetPrimarySafe(chosen)){reject('primaire_cible','Une primaire reçue n’est pas observée dans Kyber');return;}
+        const beforeProjection=forgeProjectedModSpeed(character,profile,current);
+        const afterProjection=forgeProjectedModSpeed(character,profile,finalTarget);
+        if(!beforeProjection.complete||!afterProjection.complete){reject('vitesse_cible_inconnue','Vitesse cible non calculable : données de base ou mods incomplets');return;}
+        const afterSpeed=afterProjection.total;
+        if(beforeProjection.baseSpeed<=0&&beforeProjection.hasFourPieceSpeedSet&&!afterProjection.hasFourPieceSpeedSet){reject('bonus_vitesse_cible','Perte du bonus de set Vitesse');return;}
+        if(afterSpeed+1e-9<beforeSpeed){reject('vitesse_cible','La vitesse totale de la cible diminuerait',null,{targetSpeedBefore:beforeSpeed,targetSpeedAfter:afterSpeed,speedLoss:beforeSpeed-afterSpeed});return;}
         const donorGroups=new Map();
         for(const candidate of chosen){
           const owner=candidate._visionnaireDonor;
