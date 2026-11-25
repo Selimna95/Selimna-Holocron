@@ -33,6 +33,18 @@ assert.equal(g13.error, null);
 assert.equal(g13.unit.relic.currentTier, 2);
 assert.equal(g13.unit.gear, 13);
 assert.equal(g13.unit.equipped.length, 6);
+const explicitTopLevelRelic = normalizeCrinoloRosterUnit({
+  data: { base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 13, gear: g13Gear },
+  relic_tier: 8,
+});
+assert.equal(explicitTopLevelRelic.error, null);
+assert.equal(explicitTopLevelRelic.metadata.relic_tier, 8);
+assert.equal(explicitTopLevelRelic.unit.relic.currentTier, 8);
+const ambiguousDefaultRelic = normalizeCrinoloRosterUnit({
+  data: { base_id: "TEST_UNIT", level: 85, rarity: 7, gear_level: 13, gear: g13Gear },
+  relic_tier: 0,
+});
+assert.match(ambiguousDefaultRelic.error, /relique absent/);
 
 const statIds = { 1: 1000, 5: 120, 6: 200, 7: 150, 8: 159.375, 9: 212.5, 17: 0.1, 18: 0.2, 28: 500 };
 const gearIds = { 1: 100, 5: 5, 6: 10, 7: 0, 8: 20.4326923076923, 9: 35.41666666666666, 17: 0, 18: 0, 28: 50 };
