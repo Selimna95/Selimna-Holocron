@@ -32,6 +32,14 @@ assert.deepEqual(deploy.on.workflow_run.branches, ['main']);
 assert.deepEqual(deploy.on.workflow_run.types, ['completed']);
 
 const deployJob = deploy.jobs?.deploy;
+const profileCoverageStep = deployJob.steps.findIndex(step => step.run?.includes('build-optimizer-profile-coverage.mjs'));
+const gameDataStep = deployJob.steps.findIndex(step => step.run?.includes('build-crinolo-gamedata.mjs'));
+const artifactStep = deployJob.steps.findIndex(step => step.uses === 'actions/upload-pages-artifact@v3');
+assert.ok(profileCoverageStep > gameDataStep && profileCoverageStep < artifactStep, 'Coverage manifest must be built from Crinolo data before Pages artifact upload');
+const coverageJob = quality.jobs?.['optimizer-profile-coverage'];
+assert.ok(coverageJob, 'The real profile coverage manifest must be validated in CI');
+assert.ok(coverageJob.steps.some(step => step.run?.includes('build-optimizer-profile-coverage.mjs')));
+
 assert.ok(deployJob, 'A deploy job must exist');
 assert.match(deployJob.if, /conclusion\s*==\s*'success'/);
 assert.match(deployJob.if, /event\s*==\s*'push'/);
