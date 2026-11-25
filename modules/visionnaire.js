@@ -442,7 +442,12 @@
       optionsBySlot.set(slot,eligible);
     }
     const empty=slots.filter(slot=>!(optionsBySlot.get(slot)||[]).length);
-    if(empty.length)return {proposals:[],reason:exchangeGacSourceDiagnostic()||('Aucun donneur vérifié compatible avec les filtres Kyber pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.')};
+    if(empty.length)return {proposals:[],diagnostics:{
+      sourceCount:source.length,eligibleBySlot,setFilteredBySlot,primaryFilteredBySlot,
+      optionsBySlot:Object.fromEntries(slots.map(slot=>[LABELS[slot],(optionsBySlot.get(slot)||[]).length])),
+      searchSpace:0,fullCandidateSearchSpace:0,tested:0,sampled:0,accepted:0,
+      searchStages:[],rejected:{},examples:[],rejectedCandidates:[]
+    },reason:exchangeGacSourceDiagnostic()||('Aucun donneur vérifié compatible avec les filtres Kyber pour : '+empty.map(slot=>LABELS[slot]).join(', ')+'. Les GL et les usages GAC inconnus sont exclus.')};
     const beforeProjectionSummary=forgeProjectedModSpeed(character,profile,current);
     if(!beforeProjectionSummary.complete)return {proposals:[],reason:'La vitesse actuelle de la cible est non calculable : données de base ou mods incomplets.'};
     const beforeSpeed=beforeProjectionSummary.total;
