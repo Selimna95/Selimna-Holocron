@@ -82,7 +82,7 @@ export function buildOptimizerProfileCoverage(profiles, gameData) {
     gearLevelDistribution,
     relicTierDistribution,
     supportedG13RelicRanks: commonRanks,
-    unsupportedG13RelicRanks: [11, 12].filter(rank => !commonRanks.includes(rank)),
+    unsupportedG13RelicRanks: Array.from({ length: 13 }, (_, rank) => rank).filter(rank => !commonRanks.includes(rank)),
     targetG13VariantCount,
     coveredG13VariantCount,
     missingG13VariantCount,
